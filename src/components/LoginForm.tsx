@@ -112,7 +112,7 @@ export function LoginForm() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <img
           className="mx-auto h-40 w-auto"
-          src="./src/assets/images/landing.png" // Atualize o caminho da sua imagem
+          src="/images/landing.png" // Atualize o caminho da sua imagem
           alt="RecebimentoSmart"
         />
       </div>

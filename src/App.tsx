@@ -36,7 +36,7 @@ function AppContent() {
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
                   <img
                     className="mx-auto h-12 w-auto"
-                    src="./src/assets/images/header.png" // Atualize o caminho da sua imagem
+                    src="/images/header.png" // Atualize o caminho da sua imagem
                     alt="RecebimentoSmart"
                   />
                 </div>
