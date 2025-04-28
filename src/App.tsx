@@ -1,25 +1,125 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
+import { ClientList } from './components/ClientList';
+import { ClientForm } from './components/ClientForm';
+import { Reports } from './components/Reports';
+import { PaymentsDue } from './components/PaymentsDue';
+import { MonthlyPayments } from './components/MonthlyPayments';
+import { Users, BarChart, AlertCircle, Calendar } from 'lucide-react';
+import { ClientProvider } from './contexts/ClientContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { LoginForm } from './components/LoginForm';
+import { UserMenu } from './components/UserMenu';
+
+type View = 'clients' | 'reports' | 'status' | 'monthly';
+
+function AppContent() {
+  const [view, setView] = useState<View>('clients');
+  const { user } = useAuth();
+  const { getThemeClass } = useTheme();
+
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  return (
+    <ClientProvider>
+      <div className={`min-h-screen ${getThemeClass('background')}`}>
+        <Toaster position="top-right" />
+        
+        {/* Navigation */}
+        <nav className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex">
+                <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                  <img
+                    className="mx-auto h-12 w-auto"
+                    src="./src/assets/images/header.png" // Atualize o caminho da sua imagem
+                    alt="RecebimentoSmart"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                {/* Botões visíveis apenas em telas médias e maiores */}
+                <div className="hidden md:flex md:space-x-4">
+                  <button
+                    onClick={() => setView('clients')}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      view === 'clients'
+                        ? getThemeClass('primary')
+                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                    }`}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Clientes
+                  </button>
+                  <button
+                    onClick={() => setView('monthly')}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      view === 'monthly'
+                        ? getThemeClass('primary')
+                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                    }`}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Pagamentos do Mês
+                  </button>
+                  <button
+                    onClick={() => setView('reports')}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      view === 'reports'
+                        ? getThemeClass('primary')
+                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                    }`}
+                  >
+                    <BarChart className="h-4 w-4 mr-2" />
+                    Relatórios
+                  </button>
+                  <button
+                    onClick={() => setView('status')}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      view === 'status'
+                        ? getThemeClass('primary')
+                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                    }`}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Status
+                  </button>
+                </div>
+                {/* Menu do usuário com os botões de navegação em telas pequenas */}
+                <UserMenu currentView={view} onViewChange={setView} />
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Main content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {view === 'clients' && (
+            <div className="space-y-8">
+              <ClientForm />
+              <ClientList />
+            </div>
+          )}
+          {view === 'status' && <PaymentsDue />}
+          {view === 'monthly' && <MonthlyPayments />}
+          {view === 'reports' && <Reports />}
+        </main>
+      </div>
+    </ClientProvider>
+  );
+}
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AuthProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
