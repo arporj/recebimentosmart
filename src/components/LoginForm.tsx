@@ -75,7 +75,7 @@ export function LoginForm() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
                     placeholder="seu@email.com"
                   />
                 </div>
@@ -85,7 +85,7 @@ export function LoginForm() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50"
                 >
                   {loading ? 'Enviando...' : 'Enviar Email de Recuperação'}
                 </button>
@@ -95,7 +95,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(false)}
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
+                  className="font-medium text-custom hover:text-custom-hover"
                 >
                   Voltar ao Login
                 </button>
@@ -134,7 +134,7 @@ export function LoginForm() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -154,7 +154,7 @@ export function LoginForm() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="pl-10 pr-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button
@@ -177,7 +177,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(true)}
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
+                  className="font-medium text-custom hover:text-custom-hover"
                 >
                   Esqueceu sua senha?
                 </button>
@@ -188,7 +188,7 @@ export function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50"
               >
                 {loading ? 'Entrando...' : 'Entrar'}
               </button>
@@ -198,7 +198,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowSignUp(true)}
-                className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                className="text-sm font-medium text-custom hover:text-custom-hover"
               >
                 Não tem uma conta? Cadastre-se de graça por 7 dias
               </button>

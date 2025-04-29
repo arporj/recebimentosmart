@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { isSameDay, addMonths, format, startOfMonth } from 'date-fns';
 import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useClients } from '../contexts/ClientContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { PaymentModal } from './PaymentModal';
 import { PaymentHistory } from './PaymentHistory';
 import { ClientForm } from './ClientForm';
@@ -86,7 +85,6 @@ interface DeleteModalProps {
 }
 
 function DeleteModal({ client, onClose, onConfirm }: DeleteModalProps) {
-  const { getThemeClass } = useTheme();
   
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -119,7 +117,6 @@ function DeleteModal({ client, onClose, onConfirm }: DeleteModalProps) {
 
 export function ClientList() {
   const { clients, refreshClients } = useClients();
-  const { getThemeClass } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'late' | 'due-today'>('all');
@@ -297,7 +294,7 @@ export function ClientList() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => setSelectedClient(client)}
-                          className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white ${getThemeClass('primary')}`}
+                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-custom hover:bg-custom-hover"
                           title="Registrar Pagamento"
                         >
                           <DollarSign className="h-4 w-4" />

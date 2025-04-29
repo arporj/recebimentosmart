@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { UserPlus, X } from 'lucide-react';
 import { useClients } from '../contexts/ClientContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../lib/dates';
 import type { Database, PaymentFrequency } from '../types/supabase';
@@ -26,7 +25,6 @@ const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; label: string }[] = 
 
 export function ClientForm({ client, onClose }: ClientFormProps) {
   const { refreshClients } = useClients();
-  const { getThemeClass, currentTheme } = useTheme();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -330,7 +328,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           id="status"
           checked={formData.status}
           onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
-          className={`h-4 w-4 rounded border-gray-300 text-${currentTheme.primary}-600 focus:ring-${currentTheme.primary}-500`}
+          className="h-4 w-4 rounded border-gray-300 text-custom focus:ring-custom"
         />
         <label htmlFor="status" className="ml-2 block text-sm text-gray-900">
           Cliente Ativo
@@ -345,12 +343,12 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         >
           Cancelar
         </button>
-        <button
-          type="submit"
-          className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${getThemeClass('primary')}`}
-        >
-          {client ? 'Atualizar' : 'Salvar'}
-        </button>
+          <button
+            type="submit"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover"
+          >
+            {client ? 'Atualizar' : 'Salvar'}
+          </button>
       </div>
     </form>
   );
@@ -376,7 +374,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${getThemeClass('primary')}`}
+        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-custom hover:bg-custom-hover"
       >
         <UserPlus className="h-5 w-5 mr-2" />
         Novo Cliente

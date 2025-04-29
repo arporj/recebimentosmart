@@ -15,97 +15,61 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Retry configuration
-const MAX_RETRIES = 3;
-const INITIAL_DELAY = 1000; // 1 second
-
-async function retryWithBackoff<T>(
-  operation: () => Promise<T>,
-  retries: number = MAX_RETRIES,
-  delay: number = INITIAL_DELAY
-): Promise<T> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (retries === 0) throw error;
-    
-    // Only retry on database errors
-    if (error instanceof Error && 
-        !error.message.includes('Database error saving new user')) {
-      throw error;
-    }
-
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    return retryWithBackoff(
-      operation,
-      retries - 1,
-      delay * 2 // Exponential backoff
-    );
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 1. Verificação do estado de autenticação e sessão expirada
   useEffect(() => {
+    const checkSessionExpiration = () => {
+      const loginTime = localStorage.getItem('loginTime');
+      const maxSessionDuration = 20 * 60 * 1000; // 20 minutos em milissegundos
+
+      if (loginTime) {
+        const timeElapsed = new Date().getTime() - Number(loginTime);
+
+        if (timeElapsed > maxSessionDuration) {
+          // Faz o logout se a sessão expirou
+          supabase.auth.signOut();
+          localStorage.removeItem('loginTime');
+          setUser(null); // Reseta o estado de usuário
+          toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+          return;
+        }
+      }
+    };
+
+    // Verifica a sessão ao carregar o estado inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
+      checkSessionExpiration(); // Checa expiração no primeiro load
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
+    // Escutar mudanças no estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      checkSessionExpiration(); // Checa expiração quando o estado muda
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => subscription.unsubscribe(); // Limpa o listener ao desmontar
   }, []);
 
+  // 2. Login do usuário (salva horário de login)
   const signIn = async (email: string, password: string) => {
     try {
-      // 1. Autentica o usuário
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-  
+
       if (error || !data.user) throw error || new Error('Usuário não encontrado');
-  
-      // 2. Busca o perfil do usuário
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-  
-      if (profileError || !profile) {
-        throw new Error('Perfil do usuário não encontrado');
-      }
-  
-      // 3. Validação de status
-      const status = profile.status;
-      const createdAt = profile.created_at ? parseISO(profile.created_at) : null;
-      const today = new Date();
-  
-      if (status === 'blocked') {
-        throw new Error('Seu acesso está bloqueado. Entre em contato com a empresa ARRC.');
-      }
-  
-      if (status === 'trial') {
-        if (!createdAt) {
-          throw new Error('Erro no cadastro. Entre em contato com o suporte.');
-        }
-        const dias = differenceInDays(today, createdAt);
-        if (dias > 7) {
-          throw new Error('Seu período de experiência acabou. Entre em contato para ativar sua conta.');
-        }
-        // trial válido: deixa passar
-      }
-  
-      // Se chegou aqui, está ativo ou trial válido
-      setUser(data.user); // garante atualização do contexto
+
+      // Salvar horário de login
+      localStorage.setItem('loginTime', JSON.stringify(new Date().getTime()));
+
+      setUser(data.user); // Atualiza o estado de usuário
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -114,54 +78,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // 3. Cadastro de usuário
   const signUp = async (name: string, email: string, password: string) => {
     try {
-      const signUpOperation = async () => {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: name,
-            },
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
           },
-        });
+        },
+      });
 
-        if (error) {
-          console.error('Supabase signup error details:', {
-            message: error.message,
-            status: error.status,
-            name: error.name
-          });
-          throw error;
-        }
-        
-        if (!data.user) throw new Error('No user data returned');
-        return data;
-      };
+      if (error || !data.user) throw error || new Error('Erro ao criar conta');
 
-      await retryWithBackoff(signUpOperation);
       toast.success('Conta criada com sucesso!');
     } catch (error) {
-      console.error('Final signup error:', error);
-      
       if (error instanceof Error) {
-        if (error.message.includes('Database error saving new user')) {
-          toast.error('Não foi possível criar sua conta no momento. Por favor, tente novamente em alguns instantes.');
-        } else {
-          toast.error(error.message);
-        }
+        toast.error(error.message);
       } else {
-        toast.error('Erro ao criar conta. Por favor, tente novamente.');
+        toast.error('Erro ao criar conta. Tente novamente.');
       }
       throw error;
     }
   };
 
+  // 4. Logout (limpa horário de login)
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      localStorage.removeItem('loginTime'); // Remove o horário de login
+      setUser(null); // Reseta o estado de usuário
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -170,14 +120,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // 5. Reset de senha
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-      
+
       if (error) throw error;
-      
+
       toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
     } catch (error) {
       if (error instanceof Error) {
@@ -194,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Hook para consumir o contexto
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

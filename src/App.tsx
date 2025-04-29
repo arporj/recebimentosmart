@@ -3,12 +3,10 @@ import { Toaster } from 'react-hot-toast';
 import { ClientList } from './components/ClientList';
 import { ClientForm } from './components/ClientForm';
 import { Reports } from './components/Reports';
-import { PaymentsDue } from './components/PaymentsDue';
 import { MonthlyPayments } from './components/MonthlyPayments';
 import { Users, BarChart, AlertCircle, Calendar } from 'lucide-react';
 import { ClientProvider } from './contexts/ClientContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { LoginForm } from './components/LoginForm';
 import { UserMenu } from './components/UserMenu';
 
@@ -17,7 +15,6 @@ type View = 'clients' | 'reports' | 'status' | 'monthly';
 function AppContent() {
   const [view, setView] = useState<View>('clients');
   const { user } = useAuth();
-  const { getThemeClass } = useTheme();
 
   if (!user) {
     return <LoginForm />;
@@ -25,7 +22,7 @@ function AppContent() {
 
   return (
     <ClientProvider>
-      <div className={`min-h-screen ${getThemeClass('background')}`}>
+      <div className="min-h-screen bg-gray-50">
         <Toaster position="top-right" />
         
         {/* Navigation */}
@@ -48,8 +45,8 @@ function AppContent() {
                     onClick={() => setView('clients')}
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       view === 'clients'
-                        ? getThemeClass('primary')
-                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                        ? 'bg-custom text-white hover:bg-custom-hover'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     <Users className="h-4 w-4 mr-2" />
@@ -59,8 +56,8 @@ function AppContent() {
                     onClick={() => setView('monthly')}
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       view === 'monthly'
-                        ? getThemeClass('primary')
-                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                        ? 'bg-custom text-white hover:bg-custom-hover'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
@@ -70,23 +67,12 @@ function AppContent() {
                     onClick={() => setView('reports')}
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       view === 'reports'
-                        ? getThemeClass('primary')
-                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
+                        ? 'bg-custom text-white hover:bg-custom-hover'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     <BarChart className="h-4 w-4 mr-2" />
                     Relatórios
-                  </button>
-                  <button
-                    onClick={() => setView('status')}
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      view === 'status'
-                        ? getThemeClass('primary')
-                        : `${getThemeClass('secondary')} ${getThemeClass('text')}`
-                    }`}
-                  >
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Status
                   </button>
                 </div>
                 {/* Menu do usuário com os botões de navegação em telas pequenas */}
@@ -104,7 +90,6 @@ function AppContent() {
               <ClientList />
             </div>
           )}
-          {view === 'status' && <PaymentsDue />}
           {view === 'monthly' && <MonthlyPayments />}
           {view === 'reports' && <Reports />}
         </main>
@@ -116,9 +101,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
         <AppContent />
-      </ThemeProvider>
     </AuthProvider>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { formatToSP } from '../lib/dates';
-import { useTheme } from '../contexts/ThemeContext';
 import type { Database } from '../types/supabase';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -13,7 +12,6 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ client, onClose, onConfirm }: PaymentModalProps) {
-  const { getThemeClass } = useTheme();
   const [paymentDate, setPaymentDate] = useState(formatToSP(new Date(), 'yyyy-MM-dd'));
   const [error, setError] = useState<string | null>(null);
   const [referenceMonth, setReferenceMonth] = useState(formatToSP(new Date(), 'yyyy-MM'));
@@ -79,7 +77,7 @@ export function PaymentModal({ client, onClose, onConfirm }: PaymentModalProps) 
             </button>
             <button
               type="submit"
-              className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${getThemeClass('primary')}`}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover"
             >
               Confirmar Pagamento
             </button>

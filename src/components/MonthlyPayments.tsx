@@ -296,7 +296,7 @@ export function MonthlyPayments() {
                   <div>
                     <button
                       onClick={() => setSelectedClient(client)}
-                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-custom hover:bg-custom-hover"
                     >
                       <DollarSign className="h-4 w-4 mr-1" />
                       Registrar Pagamento
@@ -344,7 +344,7 @@ export function MonthlyPayments() {
       {/* Navegação e visão */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
-          <Calendar className="h-5 w-5 text-indigo-500" />
+        <Calendar className="h-5 w-5 text-custom" />
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePreviousMonth}
@@ -369,8 +369,8 @@ export function MonthlyPayments() {
             onClick={() => handleViewModeChange('month')}
             className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
               viewMode === 'month'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-custom text-white'
+                : 'bg-white text-gray-700 hover:bg-custom-hover hover:text-white'
             } border border-gray-200`}
           >
             Mensal
@@ -380,8 +380,8 @@ export function MonthlyPayments() {
             onClick={() => handleViewModeChange('today')}
             className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
               viewMode === 'today'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-custom text-white'
+                : 'bg-white text-gray-700 hover:bg-custom-hover hover:text-white'
             } border border-l-0 border-gray-200`}
           >
             Hoje
@@ -390,7 +390,7 @@ export function MonthlyPayments() {
       </div>
 
       {/* Resumo financeiro */}
-      <div className="grid grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500 flex items-center">
           <Users className="h-8 w-8 text-blue-400" />
           <div className="ml-5">
@@ -425,8 +425,8 @@ export function MonthlyPayments() {
       </div>
 
       {/* Cards de pagamentos */}
-      <div className="grid grid-cols-4 gap-6">
-        <div className="col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3">
           <div className="space-y-6">
             <PaymentList
               clients={dueNextFiveDaysPayments}
@@ -491,7 +491,7 @@ export function MonthlyPayments() {
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-gray-400" />
             <select
-              className="border border-gray-300 rounded p-1 text-sm"
+              className="border border-gray-300 rounded p-1 text-sm focus:border-custom focus:ring-custom"
               value={extratoFilter}
               onChange={e => setExtratoFilter(e.target.value as any)}
             >
@@ -503,7 +503,7 @@ export function MonthlyPayments() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
               <tr>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
@@ -540,7 +540,7 @@ export function MonthlyPayments() {
                   <td className="px-4 py-2">
                     {payment.status !== 'pago' && (
                       <button
-                        className="text-indigo-600 hover:text-indigo-900 text-xs"
+                        className="text-custom hover:text-custom-hover text-xs"
                         onClick={() => setSelectedClient(clients.find(c => c.id === payment.client_id) || null)}
                       >
                         Registrar Pagamento
@@ -551,22 +551,6 @@ export function MonthlyPayments() {
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Legenda */}
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-amber-100 border-2 border-amber-200"></div>
-          <span className="text-sm text-gray-600">Vencendo hoje</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-red-100 border-2 border-red-200"></div>
-          <span className="text-sm text-gray-600">Em atraso</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-emerald-100 border-2 border-emerald-200"></div>
-          <span className="text-sm text-gray-600">A vencer</span>
         </div>
       </div>
 

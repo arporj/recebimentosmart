@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { Settings, LogOut, Palette, Key, ChevronDown, Users, BarChart, AlertCircle, Calendar } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
-import { ThemeSettingsModal } from './ThemeSettingsModal';
 
 type View = 'clients' | 'reports' | 'status' | 'monthly';
 
@@ -14,7 +12,6 @@ interface UserMenuProps {
 
 export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
   const { user, signOut } = useAuth();
-  const { getThemeClass } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
@@ -52,7 +49,7 @@ export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center space-x-2 text-sm focus:outline-none"
         >
-          <div className={`h-8 w-8 rounded-full ${getThemeClass('primary')} flex items-center justify-center text-white font-medium`}>
+          <div className="h-8 w-8 rounded-full bg-custom flex items-center justify-center text-white font-medium">
             {user.user_metadata.name?.[0]?.toUpperCase() || 'U'}
           </div>
           <span className="hidden sm:block font-medium text-gray-700">
@@ -68,9 +65,11 @@ export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
               <div className="md:hidden border-b border-gray-100 pb-2 mb-2">
                 <button
                   onClick={() => handleViewChange('clients')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    currentView === 'clients' ? 'text-blue-600 font-medium' : 'text-gray-700'
-                  } hover:bg-gray-100`}
+                  className={`flex items-center w-full px-4 py-2 text-sm rounded ${
+                    currentView === 'clients'
+                      ? 'bg-custom text-white font-semibold'
+                      : 'text-custom hover:bg-custom-hover hover:text-white'
+                  }`}
                   role="menuitem"
                 >
                   <Users className="h-4 w-4 mr-2" />
@@ -78,9 +77,11 @@ export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
                 </button>
                 <button
                   onClick={() => handleViewChange('monthly')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    currentView === 'monthly' ? 'text-blue-600 font-medium' : 'text-gray-700'
-                  } hover:bg-gray-100`}
+                  className={`flex items-center w-full px-4 py-2 text-sm rounded ${
+                    currentView === 'monthly'
+                      ? 'bg-custom text-white font-semibold'
+                      : 'text-custom hover:bg-custom-hover hover:text-white'
+                  }`}
                   role="menuitem"
                 >
                   <Calendar className="h-4 w-4 mr-2" />
@@ -88,23 +89,15 @@ export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
                 </button>
                 <button
                   onClick={() => handleViewChange('reports')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    currentView === 'reports' ? 'text-blue-600 font-medium' : 'text-gray-700'
-                  } hover:bg-gray-100`}
+                  className={`flex items-center w-full px-4 py-2 text-sm rounded ${
+                    currentView === 'reports'
+                      ? 'bg-custom text-white font-semibold'
+                      : 'text-custom hover:bg-custom-hover hover:text-white'
+                  }`}
                   role="menuitem"
                 >
                   <BarChart className="h-4 w-4 mr-2" />
                   Relatórios
-                </button>
-                <button
-                  onClick={() => handleViewChange('status')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    currentView === 'status' ? 'text-blue-600 font-medium' : 'text-gray-700'
-                  } hover:bg-gray-100`}
-                  role="menuitem"
-                >
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Status
                 </button>
               </div>
               
@@ -119,17 +112,6 @@ export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
               >
                 <Key className="h-4 w-4 mr-2" />
                 Trocar Senha
-              </button>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  setShowThemeSettings(true);
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                role="menuitem"
-              >
-                <Palette className="h-4 w-4 mr-2" />
-                Alterar Layout
               </button>
               <button
                 onClick={() => {
@@ -151,9 +133,6 @@ export function UserMenu({ currentView, onViewChange }: UserMenuProps) {
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
       )}
 
-      {showThemeSettings && (
-        <ThemeSettingsModal onClose={() => setShowThemeSettings(false)} />
-      )}
     </>
   );
 }
