@@ -3,6 +3,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { SignUpForm } from './SignUpForm';
+import { useNavigate, Link } from 'react-router-dom';
 
 export function LoginForm() {
   const { signIn, resetPassword } = useAuth();
@@ -12,6 +13,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +21,7 @@ export function LoginForm() {
   
     try {
       await signIn(email, password);
+      navigate('/');
       // Redireciona para o sistema normalmente
     } catch (error) {
       if (error instanceof Error) {
@@ -38,8 +41,10 @@ export function LoginForm() {
     try {
       await resetPassword(email);
       setShowResetPassword(false);
+      toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
     } catch (error) {
       console.error('Error resetting password:', error);
+      toast.error('Erro ao enviar email de recuperação.');
     } finally {
       setLoading(false);
     }
@@ -172,16 +177,10 @@ export function LoginForm() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <button
-                  type="button"
-                  onClick={() => setShowResetPassword(true)}
-                  className="font-medium text-custom hover:text-custom-hover"
-                >
-                  Esqueceu sua senha?
-                </button>
-              </div>
+            <div className="text-center mt-4">
+              <Link to="/forgot-password" className="text-sm text-custom hover:text-custom-hover">
+                Esqueceu sua senha?
+              </Link>
             </div>
 
             <div>

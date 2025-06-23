@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
 import { differenceInDays, parseISO } from 'date-fns';
+import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -23,11 +23,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkSessionExpiration = () => {
       const loginTime = localStorage.getItem('loginTime');
+      
       const maxSessionDuration = 20 * 60 * 1000; // 20 minutos em milissegundos
-
+      
       if (loginTime) {
         const timeElapsed = new Date().getTime() - Number(loginTime);
-
+        
         if (timeElapsed > maxSessionDuration) {
           // Faz o logout se a sessão expirou
           supabase.auth.signOut();
@@ -63,16 +64,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
-
+      
       if (error || !data.user) throw error || new Error('Usuário não encontrado');
-
+      
       // Salvar horário de login
       localStorage.setItem('loginTime', JSON.stringify(new Date().getTime()));
-
-      setUser(data.user); // Atualiza o estado de usuário
+      
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
+      } else {
+        toast.error('Erro ao fazer login');
       }
       throw error;
     }
@@ -90,9 +92,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         },
       });
-
+      
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
-
+      
       toast.success('Conta criada com sucesso!');
     } catch (error) {
       if (error instanceof Error) {
@@ -109,9 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
+      
       localStorage.removeItem('loginTime'); // Remove o horário de login
-      setUser(null); // Reseta o estado de usuário
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -126,13 +127,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-
+      
       if (error) throw error;
-
+      
       toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
+      } else {
+        toast.error('Erro ao enviar email de recuperação. Tente novamente.');
       }
       throw error;
     }
@@ -148,8 +151,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // Hook para consumir o contexto
 export function useAuth() {
   const context = useContext(AuthContext);
+  
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
   return context;
 }
