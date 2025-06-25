@@ -65,18 +65,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
       
-      if (error || !data.user) throw error || new Error('Usuário não encontrado');
+      if (error) {
+        // Tratamento específico para diferentes tipos de erro
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Email não confirmado. Verifique sua caixa de entrada e confirme seu email.');
+        } else if (error.message.includes('Too many requests')) {
+          throw new Error('Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente.');
+        } else {
+          throw new Error(error.message || 'Erro ao fazer login. Tente novamente.');
+        }
+      }
+      
+      if (!data.user) {
+        throw new Error('Usuário não encontrado. Verifique suas credenciais.');
+      }
       
       // Salvar horário de login
       localStorage.setItem('loginTime', JSON.stringify(new Date().getTime()));
       
     } catch (error) {
       if (error instanceof Error) {
-        toast.error(error.message);
+        // Não usar toast aqui, deixar o componente LoginForm tratar a exibição do erro
+        throw error;
       } else {
-        toast.error('Erro ao fazer login');
+        throw new Error('Erro inesperado ao fazer login. Tente novamente.');
       }
-      throw error;
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 const FeedbackForm = () => {
@@ -29,45 +30,37 @@ const FeedbackForm = () => {
     try {
       // Dados do usuário atual
       const userEmail = user?.email || 'Não informado';
-      const userName = user?.user_metadata?.name || 'Usuário';
+      const userName = user?.user_metadata?.name || userEmail;
       
-      // Preparar o corpo do e-mail
-      const emailData = {
-        to: 'contato@recebimentosmart.com.br',
-        subject: `[${type}] ${subject}`,
-        body: `
-          Tipo: ${type}
-          Assunto: ${subject}
-          
-          Comentário:
-          ${comment}
-          
-          ---
-          Enviado por: ${userName}
-          E-mail: ${userEmail}
-        `,
+      // Preparar dados para envio
+      const feedbackData = {
         from: userEmail,
-        name: userName
+        name: userName,
+        type: type,
+        subject: subject,
+        comment: comment
       };
       
-      // Enviar e-mail usando uma API ou serviço
-      const response = await fetch('/api/send-feedback', {
+      // Enviar para a Netlify Function
+      const response = await fetch('/.netlify/functions/send-feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(emailData),
+        body: JSON.stringify(feedbackData),
       });
       
-      if (!response.ok) {
-        throw new Error('Falha ao enviar feedback');
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        toast.success('Seu feedback foi enviado com sucesso!');
+        
+        // Limpar o formulário
+        setSubject('');
+        setComment('');
+      } else {
+        throw new Error(result.message || 'Erro desconhecido');
       }
-      
-      toast.success('Seu feedback foi enviado com sucesso!');
-      
-      // Limpar o formulário
-      setSubject('');
-      setComment('');
       
     } catch (error) {
       console.error('Erro ao enviar feedback:', error);
@@ -168,7 +161,7 @@ const FeedbackForm = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               'Enviando...'
@@ -181,6 +174,14 @@ const FeedbackForm = () => {
           </button>
         </div>
       </form>
+      
+      {user && (
+        <div className="mt-6 p-4 bg-gray-50 rounded-md">
+          <p className="text-sm text-gray-600">
+            <strong>Enviando como:</strong> {user.email}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

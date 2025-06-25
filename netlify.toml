@@ -1,0 +1,25 @@
+[build]
+  # Diretório onde estão os arquivos de build do frontend
+  publish = "dist"
+  
+  # Comando para fazer o build do projeto
+  command = "npm run build"
+
+[functions]
+  # Diretório onde estão as Netlify Functions
+  directory = "netlify/functions"
+
+# Configurações de redirecionamento para SPA (Single Page Application)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Configuração específica para as funções
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+
