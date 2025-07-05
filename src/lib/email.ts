@@ -1,20 +1,21 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com', // Servidor SMTP do Brevo
-  port: 587,                   // Porta configurada
+  host: import.meta.env.VITE_SMTP_HOST,
+  port: Number(import.meta.env.VITE_SMTP_PORT),
+  secure: import.meta.env.VITE_SMTP_SECURE === 'true',
   auth: {
-    user: '8bce81001@smtp-brevo.com', // Usuário fornecido
-    pass: '9Py1swHURIW4CgxB'          // Senha fornecida
+    user: import.meta.env.VITE_SMTP_USER,
+    pass: import.meta.env.VITE_SMTP_PASSWORD
   }
 });
 
 export async function sendPasswordResetEmail(email: string, resetLink: string, name = 'Usuário') {
   try {
     const info = await transporter.sendMail({
-      from: '"RecebimentoSmart" <no-reply@recebimentosmart.com.br>', // "From" precisa ser verificado no Brevo
-      to: email, // Destinatário
-      subject: 'Recuperação de Senha - RecebimentoSmart', // Assunto
+      from: `"${import.meta.env.VITE_SMTP_FROM_NAME}" <${import.meta.env.VITE_SMTP_FROM_EMAIL}>`,
+      to: email,
+      subject: 'Recuperação de Senha - RecebimentoSmart',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Recuperação de Senha</h2>

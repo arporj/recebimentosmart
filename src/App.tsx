@@ -14,6 +14,8 @@ import { ResetPasswordPage } from './components/reset-password';
 import { ForgotPasswordPage } from './components/forgot-password';
 import { Users, BarChart, AlertCircle, Calendar } from 'lucide-react';
 
+import { MainLayout } from './components/layout/MainLayout';
+
 // Importar os novos componentes
 import FeedbackForm from './components/FeedbackForm';
 import PaymentIntegration from './components/PaymentIntegration';
@@ -86,91 +88,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 // Componente principal do dashboard
 function Dashboard() {
-  const [view, setView] = React.useState('clients');
-  
-  // Adicionar listener para fechar notificações ao clique
-  React.useEffect(() => {
-    const handleToastClick = (e: MouseEvent) => {
-      const toastElement = (e.target as Element)?.closest('[data-hot-toast-container] > div');
-      if (toastElement) {
-        toast.dismiss();
-      }
-    };
-    
-    document.addEventListener('click', handleToastClick);
-    return () => document.removeEventListener('click', handleToastClick);
-  }, []);
-  
   return (
     <ClientProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Toaster {...toasterConfig} />
-        
-        {/* Navigation */}
-        <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex">
-                <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                  <img
-                    className="mx-auto h-12 w-auto"
-                    src="/images/header.png"
-                    alt="RecebimentoSmart"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                {/* Botões visíveis apenas em telas médias e maiores */}
-                <div className="hidden md:flex md:space-x-4">
-                  <button
-                    onClick={() => setView('clients')}
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      view === 'clients'
-                        ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Clientes
-                  </button>
-                  <Link
-                    to="/monthly"
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Pagamentos do Mês
-                  </Link>
-                  <Link
-                    to="/reports"
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  >
-                    <BarChart className="h-4 w-4 mr-2" />
-                    Relatórios
-                  </Link>
-                </div>
-                {/* Menu do usuário com os botões de navegação em telas pequenas */}
-                <UserMenu currentView={view} onViewChange={setView} />
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {view === 'clients' && (
-            <div className="space-y-8">
-              <ClientForm />
-              <ClientList />
-            </div>
-          )}
-          
-          {/* Novas views */}
-          {view === 'feedback' && <FeedbackForm />}
-          {view === 'payment' && <PaymentIntegration />}
-          {view === 'admin/users' && <AdminUserManagement />}
-          {view === 'profile' && <UserProfileSettings />}
-          {view === 'change-password' && <ChangePassword />}
-        </main>
+      <div className="space-y-8">
+        <ClientForm />
+        <ClientList />
       </div>
     </ClientProvider>
   );
@@ -180,6 +102,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster {...toasterConfig} />
         <Routes>
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/login" element={<LoginForm />} />
@@ -188,7 +111,9 @@ function App() {
             path="/" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <MainLayout>
+                  <Dashboard />
+                </MainLayout>
               </ProtectedRoute>
             } 
           />
@@ -196,56 +121,11 @@ function App() {
             path="/monthly" 
             element={
               <ProtectedRoute>
-                <ClientProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster {...toasterConfig} />
-                    <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                          <div className="flex">
-                            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                              <img
-                                className="mx-auto h-12 w-auto"
-                                src="/images/header.png"
-                                alt="RecebimentoSmart"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            {/* Botões visíveis apenas em telas médias e maiores */}
-                            <div className="hidden md:flex md:space-x-4">
-                              <Link
-                                to="/"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Clientes
-                              </Link>
-                              <Link
-                                to="/monthly"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-custom text-white hover:bg-custom-hover"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Pagamentos do Mês
-                              </Link>
-                              <Link
-                                to="/reports"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Relatórios
-                              </Link>
-                            </div>
-                            <UserMenu />
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <MonthlyPayments />
-                    </main>
-                  </div>
-                </ClientProvider>
+                <MainLayout currentView='monthly'>
+                  <ClientProvider>
+                    <MonthlyPayments />
+                  </ClientProvider>
+                </MainLayout>
               </ProtectedRoute>
             } 
           />
@@ -253,56 +133,11 @@ function App() {
             path="/reports" 
             element={
               <ProtectedRoute>
-                <ClientProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster {...toasterConfig} />
-                    <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                          <div className="flex">
-                            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                              <img
-                                className="mx-auto h-12 w-auto"
-                                src="/images/header.png"
-                                alt="RecebimentoSmart"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            {/* Botões visíveis apenas em telas médias e maiores */}
-                            <div className="hidden md:flex md:space-x-4">
-                              <Link
-                                to="/"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Clientes
-                              </Link>
-                              <Link
-                                to="/monthly"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Pagamentos do Mês
-                              </Link>
-                              <Link
-                                to="/reports"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-custom text-white hover:bg-custom-hover"
-                              >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Relatórios
-                              </Link>
-                            </div>
-                            <UserMenu />
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <Reports />
-                    </main>
-                  </div>
-                </ClientProvider>
+                <MainLayout currentView='reports'>
+                  <ClientProvider>
+                    <Reports />
+                  </ClientProvider>
+                </MainLayout>
               </ProtectedRoute>
             } 
           />
@@ -310,56 +145,11 @@ function App() {
             path="/feedback" 
             element={
               <ProtectedRoute>
-                <ClientProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster {...toasterConfig} />
-                    <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                          <div className="flex">
-                            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                              <img
-                                className="mx-auto h-12 w-auto"
-                                src="/images/header.png"
-                                alt="RecebimentoSmart"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            {/* Botões visíveis apenas em telas médias e maiores */}
-                            <div className="hidden md:flex md:space-x-4">
-                              <Link
-                                to="/"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Clientes
-                              </Link>
-                              <Link
-                                to="/monthly"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Pagamentos do Mês
-                              </Link>
-                              <Link
-                                to="/reports"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Relatórios
-                              </Link>
-                            </div>
-                            <UserMenu />
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <FeedbackForm />
-                    </main>
-                  </div>
-                </ClientProvider>
+                <MainLayout>
+                  <ClientProvider>
+                    <FeedbackForm />
+                  </ClientProvider>
+                </MainLayout>
               </ProtectedRoute>
             } 
           />
@@ -367,170 +157,47 @@ function App() {
             path="/payment" 
             element={
               <ProtectedRoute>
-                <ClientProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster {...toasterConfig} />
-                    <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                          <div className="flex">
-                            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                              <img
-                                className="mx-auto h-12 w-auto"
-                                src="/images/header.png"
-                                alt="RecebimentoSmart"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            {/* Botões visíveis apenas em telas médias e maiores */}
-                            <div className="hidden md:flex md:space-x-4">
-                              <Link
-                                to="/"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Clientes
-                              </Link>
-                              <Link
-                                to="/monthly"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Pagamentos do Mês
-                              </Link>
-                              <Link
-                                to="/reports"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Relatórios
-                              </Link>
-                            </div>
-                            <UserMenu />
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <PaymentIntegration />
-                    </main>
-                  </div>
-                </ClientProvider>
+                <MainLayout>
+                  <ClientProvider>
+                    <PaymentIntegration />
+                  </ClientProvider>
+                </MainLayout>
               </ProtectedRoute>
             } 
           />
           <Route 
             path="/admin/users" 
             element={
-              <AdminRoute>
-                <ClientProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster {...toasterConfig} />
-                    <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                          <div className="flex">
-                            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                              <img
-                                className="mx-auto h-12 w-auto"
-                                src="/images/header.png"
-                                alt="RecebimentoSmart"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            {/* Botões visíveis apenas em telas médias e maiores */}
-                            <div className="hidden md:flex md:space-x-4">
-                              <Link
-                                to="/"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Clientes
-                              </Link>
-                              <Link
-                                to="/monthly"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Pagamentos do Mês
-                              </Link>
-                              <Link
-                                to="/reports"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Relatórios
-                              </Link>
-                            </div>
-                            <UserMenu />
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <AdminUserManagement />
-                    </main>
-                  </div>
-                </ClientProvider>
-              </AdminRoute>
+              <ProtectedRoute>
+                <MainLayout>
+                  <ClientProvider>
+                    <AdminUserManagement />
+                  </ClientProvider>
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <ClientProvider>
+                    <UserProfileSettings />
+                  </ClientProvider>
+                </MainLayout>
+              </ProtectedRoute>
             } 
           />
           <Route 
             path="/change-password" 
             element={
               <ProtectedRoute>
-                <ClientProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster {...toasterConfig} />
-                    <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                          <div className="flex">
-                            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                              <img
-                                className="mx-auto h-12 w-auto"
-                                src="/images/header.png"
-                                alt="RecebimentoSmart"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            {/* Botões visíveis apenas em telas médias e maiores */}
-                            <div className="hidden md:flex md:space-x-4">
-                              <Link
-                                to="/"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Clientes
-                              </Link>
-                              <Link
-                                to="/monthly"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Pagamentos do Mês
-                              </Link>
-                              <Link
-                                to="/reports"
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Relatórios
-                              </Link>
-                            </div>
-                            <UserMenu />
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <ChangePassword />
-                    </main>
-                  </div>
-                </ClientProvider>
+                <MainLayout>
+                  <ClientProvider>
+                    <ChangePassword />
+                  </ClientProvider>
+                </MainLayout>
               </ProtectedRoute>
             } 
           />

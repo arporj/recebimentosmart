@@ -17,15 +17,19 @@ export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      setAccessToken(token);
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.substring(1)); // remove the #
+    const accessToken = params.get('access_token');
+
+    if (accessToken) {
+      setAccessToken(accessToken);
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: '' });
     } else {
       toast.error('Link de recuperação inválido ou expirado');
       setTimeout(() => navigate('/login'), 2000);
     }
     setInitialLoading(false);
-  }, [navigate, searchParams]);
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +63,11 @@ export function ResetPasswordPage() {
         throw new Error('Token de recuperação não encontrado');
       }
     } catch (error) {
-      toast.error('Erro ao redefinir senha.');
+      if (error instanceof Error && error.message.includes('should be different')) {
+        toast.error('A nova senha deve ser diferente da atual.');
+      } else {
+        toast.error('Erro ao redefinir senha.');
+      }
     } finally {
       setLoading(false);
     }
@@ -113,6 +121,7 @@ export function ResetPasswordPage() {
                 </button>
               </div>
             </div>
+            <p className="mt-2 text-xs text-gray-500">Mínimo de 6 caracteres.</p>
           </div>
           
           <div>

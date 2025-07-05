@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const webhookRoutes = require('./webhooks/inter-pix');
+const webhookRoutes = require('./webhook/inter-pix');
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -29,6 +29,9 @@ app.get('/', (req, res) => {
 
 // Montar rotas de webhook
 app.use('/webhooks/inter-pix', webhookRoutes);
+
+// Montar rotas de autenticação
+app.use('/api', authRoutes);
 
 // Porta do servidor
 const PORT = process.env.PORT || 3000;
