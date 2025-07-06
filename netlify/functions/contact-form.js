@@ -68,7 +68,7 @@ export async function handler(event) {
     const { subject, comment, from, name, type } = data;
 
     const mailOptions = {
-      from: `\"${name}\" <${process.env.SMTP_FROM_EMAIL}>`,
+      from: `"RecebimentoSmart Feedback" <${process.env.SMTP_USER}>`,
       to: process.env.RECIPIENT_EMAIL,
       replyTo: from,
       subject: `[${type}] ${subject}`,
