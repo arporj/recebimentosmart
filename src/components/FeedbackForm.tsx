@@ -73,7 +73,7 @@ const FeedbackForm = () => {
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <div className="flex items-center mb-6">
-        <Mail className="h-6 w-6 text-indigo-600 mr-2" />
+        <Mail className="h-6 w-6 text-custom mr-2" />
         <h1 className="text-2xl font-bold text-gray-800">Críticas e Sugestões</h1>
       </div>
       
@@ -89,7 +89,7 @@ const FeedbackForm = () => {
           <div className="relative">
             <button
               type="button"
-              className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-custom"
               onClick={() => setShowDropdown(!showDropdown)}
             >
               <span>{type}</span>
@@ -136,7 +136,7 @@ const FeedbackForm = () => {
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-custom"
             placeholder="Digite o assunto"
             required
           />
@@ -151,7 +151,7 @@ const FeedbackForm = () => {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={5}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-custom"
             placeholder="Descreva sua crítica ou sugestão em detalhes"
             required
           />
@@ -161,7 +161,7 @@ const FeedbackForm = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               'Enviando...'
