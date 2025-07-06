@@ -42,7 +42,7 @@ const FeedbackForm = () => {
       };
       
       // Enviar para a Netlify Function
-      const response = await fetch('/.netlify/functions/send-feedback', {
+      const response = await fetch('/api/send-feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

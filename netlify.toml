@@ -5,21 +5,20 @@
 [functions]
   directory = "netlify/functions"
 
-# Regra para garantir que as chamadas de API sejam roteadas para as funções
+# Redirecionamento de API (proxy) para as funções Netlify
 [[redirects]]
-  from = "/.netlify/functions/*"
+  from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Regra de fallback para a Single Page Application (SPA)
+# Redirecionamento de fallback para a SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Configuração de headers para as funções (CORS)
 [[headers]]
-  for = "/.netlify/functions/*"
+  for = "/api/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
