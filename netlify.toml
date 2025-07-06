@@ -1,29 +1,26 @@
 [build]
-  # Diretório onde estão os arquivos de build do frontend
   publish = "dist"
-  
-  # Comando para fazer o build do projeto
   command = "npm run build"
 
 [functions]
-  # Diretório onde estão as Netlify Functions
   directory = "netlify/functions"
 
-# Configurações de redirecionamento para SPA (Single Page Application)
+# Regra para garantir que as chamadas de API sejam roteadas para as funções
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Regra de fallback para a Single Page Application (SPA)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  force = false
-  conditions = {
-    path = ["!/.netlify/functions/*"]
-  }
 
-# Configuração específica para as funções
+# Configuração de headers para as funções (CORS)
 [[headers]]
   for = "/.netlify/functions/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-
