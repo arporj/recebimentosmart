@@ -14,6 +14,10 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
+  conditions = {
+    path = ["!/.netlify/functions/*"]
+  }
 
 # Configuração específica para as funções
 [[headers]]
