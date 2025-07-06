@@ -60,7 +60,7 @@ export async function handler(event) {
       port: parseInt(process.env.SMTP_PORT, 10),
       secure: process.env.SMTP_PORT === '465',
       auth: {
-        user: process.env.SMTP_FROM_EMAIL, // Using FROM_EMAIL as user, can be changed to SMTP_USER if needed
+        user: process.env.SMTP_USER, // Using SMTP_USER for authentication
         pass: process.env.SMTP_PASSWORD,
       },
     });
