@@ -1,4 +1,4 @@
-// netlify/functions/send-email.js
+// netlify/functions/contact-form.js
 import nodemailer from 'nodemailer';
 
 const buildResponse = (statusCode, body) => ({
@@ -68,7 +68,7 @@ export async function handler(event) {
     const { subject, comment, from, name, type } = data;
 
     const mailOptions = {
-      from: `"${name}" <${process.env.SMTP_FROM_EMAIL}>`,
+      from: `\"${name}\" <${process.env.SMTP_FROM_EMAIL}>`,
       to: process.env.RECIPIENT_EMAIL,
       replyTo: from,
       subject: `[${type}] ${subject}`,
