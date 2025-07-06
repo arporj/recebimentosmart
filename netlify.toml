@@ -5,9 +5,9 @@
 [functions]
   directory = "netlify/functions"
 
-# Redirecionamento de API (proxy) para as funções Netlify
+# Redirecionamento de API v1 (proxy) para as funções Netlify
 [[redirects]]
-  from = "/api/*"
+  from = "/api/v1/*"
   to = "/.netlify/functions/:splat"
   status = 200
 
@@ -18,7 +18,7 @@
   status = 200
 
 [[headers]]
-  for = "/api/*"
+  for = "/api/v1/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
