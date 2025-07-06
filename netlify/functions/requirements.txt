@@ -1,4 +1,0 @@
-# Dependências Python para Netlify Functions
-# Nota: O smtplib, ssl, json, e os são módulos built-in do Python
-# Não precisam ser instalados separadamente
-
