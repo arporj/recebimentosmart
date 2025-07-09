@@ -1,7 +1,7 @@
 // server/routes/auth.js
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../../src/lib/supabase'); // Ajuste o caminho conforme necessário
+const { supabase } = require('../lib/supabase'); // Ajuste o caminho conforme necessário
 const nodemailer = require('nodemailer');
 const { passwordResetService } = require('../lib/passwordResetService'); // Ajuste o caminho conforme necessário
 
