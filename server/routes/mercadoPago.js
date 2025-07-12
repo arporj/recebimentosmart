@@ -11,16 +11,104 @@ const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || "https://api.mer
 const webhookUrl = process.env.WEBHOOK_URL;
 const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
 
+// Rota para obter detalhes do pagamento
+router.get('/payment-details/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const baseFee = 35; // Valor base da mensalidade
+
+    try {
+        // Contar quantas indicações pagas o usuário tem
+        const { data: referrals, error } = await supabase
+            .from('referral_credits')
+            .select('id', { count: 'exact' })
+            .eq('referrer_user_id', userId)
+            .eq('status', 'credited');
+
+        if (error) throw error;
+
+        const paidReferrals = referrals.length;
+        const creditsToUse = Math.min(paidReferrals, 5);
+        const discount = creditsToUse * (baseFee * 0.20);
+        const amountToPay = Math.max(0, baseFee - discount);
+
+        res.status(200).json({
+            success: true,
+            baseFee,
+            totalCredits: discount,
+            amountToPay,
+            creditsUsed: creditsToUse
+        });
+
+    } catch (error) {
+        console.error("Erro ao buscar detalhes de pagamento:", error.message);
+        res.status(500).json({ success: false, message: "Falha ao buscar detalhes de pagamento", error: error.message });
+    }
+});
+
+// Rota para obter estatísticas de indicação
+router.get('/referral-stats/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // 1. Obter o código de indicação do usuário
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('referral_code')
+            .eq('id', userId)
+            .single();
+
+        if (profileError) throw profileError;
+
+        const referralLink = `https://www.recebimentosmart.com.br/cadastro?ref=${profile.referral_code}`;
+
+        // 2. Contar total de usuários cadastrados com o código
+        const { count: totalRegistered, error: totalError } = await supabase
+            .from('referral_credits')
+            .select('*', { count: 'exact', head: true })
+            .eq('referrer_user_id', userId);
+
+        if (totalError) throw totalError;
+
+        // 3. Contar total de usuários que pagaram (status 'credited' ou 'used')
+        const { count: totalPaid, error: paidError } = await supabase
+            .from('referral_credits')
+            .select('*', { count: 'exact', head: true })
+            .eq('referrer_user_id', userId)
+            .in('status', ['credited', 'used']);
+        
+        if (paidError) throw paidError;
+
+        // 4. Contar créditos disponíveis (status 'credited')
+        const { count: availableCredits, error: creditsError } = await supabase
+            .from('referral_credits')
+            .select('*', { count: 'exact', head: true })
+            .eq('referrer_user_id', userId)
+            .eq('status', 'credited');
+
+        if (creditsError) throw creditsError;
+
+        res.status(200).json({
+            success: true,
+            referralLink,
+            totalRegistered: totalRegistered || 0,
+            totalPaid: totalPaid || 0,
+            availableCredits: availableCredits || 0,
+        });
+
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas de indicação:", error.message);
+        res.status(500).json({ success: false, message: "Falha ao buscar estatísticas de indicação", error: error.message });
+    }
+});
+
+
 // Rota para gerar um novo pagamento
 router.post('/generate-payment', async (req, res) => {
     const { 
         amount, 
         description, 
         userId, 
-        paymentMethod = "pix",
-        customerData,
-        cardData,
-        installments = 1
+        customerData
     } = req.body;
 
     if (!amount || !description || !userId) {
@@ -38,21 +126,7 @@ router.post('/generate-payment', async (req, res) => {
             last_name: customerData?.lastName || "Exemplo"
         };
 
-        let paymentPayload;
-
-        switch (paymentMethod) {
-            case "pix":
-                paymentPayload = createPixPaymentPayload(amount, description, payer, externalReference);
-                break;
-            case "credit_card":
-                paymentPayload = createCreditCardPaymentPayload(amount, description, payer, cardData, installments, externalReference);
-                break;
-            case "ticket":
-                paymentPayload = createTicketPaymentPayload(amount, description, payer, externalReference);
-                break;
-            default:
-                return res.status(400).json({ success: false, message: "Método de pagamento não suportado" });
-        }
+        const paymentPayload = createPixPaymentPayload(amount, description, payer, externalReference);
 
         if (webhookUrl) {
             paymentPayload.notification_url = webhookUrl;
@@ -71,15 +145,10 @@ router.post('/generate-payment', async (req, res) => {
             success: true,
             paymentId: payment.id,
             status: payment.status,
-            paymentMethod: paymentMethod,
+            paymentMethod: 'pix',
+            pixQrCode: payment.point_of_interaction?.transaction_data?.qr_code,
+            pixQrCodeBase64: payment.point_of_interaction?.transaction_data?.qr_code_base64
         };
-
-        if (paymentMethod === "pix") {
-            responseData.pixQrCode = payment.point_of_interaction?.transaction_data?.qr_code;
-            responseData.pixQrCodeBase64 = payment.point_of_interaction?.transaction_data?.qr_code_base64;
-        } else if (paymentMethod === "ticket") {
-            responseData.ticketUrl = payment.transaction_details?.external_resource_url;
-        }
 
         res.status(200).json(responseData);
 
@@ -131,14 +200,6 @@ async function saveTransactionAssociation(externalReference, userId, amount, des
 
 function createPixPaymentPayload(amount, description, payer, externalReference) {
     return { transaction_amount: amount, description, payment_method_id: "pix", payer, external_reference: externalReference };
-}
-
-function createCreditCardPaymentPayload(amount, description, payer, cardData, installments, externalReference) {
-    return { transaction_amount: amount, description, payment_method_id: cardData.payment_method_id || "visa", token: cardData.token, installments, payer, external_reference: externalReference };
-}
-
-function createTicketPaymentPayload(amount, description, payer, externalReference) {
-    return { transaction_amount: amount, description, payment_method_id: "bolbradesco", payer, external_reference: externalReference };
 }
 
 async function getPaymentDetails(paymentId) {

@@ -23,6 +23,8 @@ import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
 import ChangePassword from './components/ChangePassword';
 
+import ReferralPage from './components/ReferralPage';
+
 // Configuração global do Toaster
 const toasterConfig = {
   position: "top-right" as const,
@@ -197,6 +199,16 @@ function App() {
                   <ClientProvider>
                     <ChangePassword />
                   </ClientProvider>
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/indicacoes" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <ReferralPage />
                 </MainLayout>
               </ProtectedRoute>
             } 
