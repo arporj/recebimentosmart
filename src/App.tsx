@@ -1,7 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import toast from 'react-hot-toast';
 import { ClientList } from './components/ClientList';
 import { ClientForm } from './components/ClientForm';
 import { Reports } from './components/Reports';
@@ -9,12 +8,10 @@ import { MonthlyPayments } from './components/MonthlyPayments';
 import { ClientProvider } from './contexts/ClientContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
-import UserMenu from './components/UserMenu';
 import { ResetPasswordPage } from './components/reset-password';
 import { ForgotPasswordPage } from './components/forgot-password';
-import { Users, BarChart, AlertCircle, Calendar } from 'lucide-react';
-
 import { MainLayout } from './components/layout/MainLayout';
+import { ProtectedRoute } from './components/ProtectedRoute'; // Importa a nova rota protegida
 
 // Importar os novos componentes
 import FeedbackForm from './components/FeedbackForm';
@@ -22,7 +19,6 @@ import PaymentIntegration from './components/PaymentIntegration';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
 import ChangePassword from './components/ChangePassword';
-
 import { SignUpPage } from './components/SignUpPage';
 import ReferralPage from './components/ReferralPage';
 
@@ -32,10 +28,10 @@ const toasterConfig = {
   toastOptions: {
     duration: 4000,
     style: {
-      zIndex: 50, // Menor que o z-index do menu
-      marginTop: '70px', // Espaço para não sobrepor o menu
+      zIndex: 50,
+      marginTop: '70px',
       marginRight: '16px',
-      cursor: 'pointer', // Indica que é clicável
+      cursor: 'pointer',
     },
     success: {
       style: {
@@ -52,34 +48,18 @@ const toasterConfig = {
   }
 };
 
-// Componente para rotas protegidas
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
-  
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-}
-
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <div>Carregando...</div>;
+    return <div>Carregando...</div>; // Pode ser um spinner
   }
   
   if (!user) {
     return <Navigate to="/login" replace />;
   }
   
-  // Verificar se o usuário é administrador
   const isAdmin = user.email === 'arporj@gmail.com' || user.email === 'andre@andreric.com';
   
   if (!isAdmin) {
@@ -107,10 +87,25 @@ function App() {
       <BrowserRouter>
         <Toaster {...toasterConfig} />
         <Routes>
+          {/* Rotas Públicas */}
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Rota de Pagamento (acessível mesmo sem pagamento em dia) */}
+          <Route 
+            path="/payment" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <PaymentIntegration />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Rotas Protegidas por Pagamento */}
           <Route 
             path="/" 
             element={
@@ -150,33 +145,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <MainLayout>
-                  <ClientProvider>
-                    <FeedbackForm />
-                  </ClientProvider>
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/payment" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <ClientProvider>
-                    <PaymentIntegration />
-                  </ClientProvider>
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/admin/users" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <ClientProvider>
-                    <AdminUserManagement />
-                  </ClientProvider>
+                  <FeedbackForm />
                 </MainLayout>
               </ProtectedRoute>
             } 
@@ -186,9 +155,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <MainLayout>
-                  <ClientProvider>
-                    <UserProfileSettings />
-                  </ClientProvider>
+                  <UserProfileSettings />
                 </MainLayout>
               </ProtectedRoute>
             } 
@@ -198,9 +165,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <MainLayout>
-                  <ClientProvider>
-                    <ChangePassword />
-                  </ClientProvider>
+                  <ChangePassword />
                 </MainLayout>
               </ProtectedRoute>
             } 
@@ -215,6 +180,18 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          {/* Rota de Admin */}
+          <Route 
+            path="/admin/users" 
+            element={
+              <AdminRoute>
+                <MainLayout>
+                  <AdminUserManagement />
+                </MainLayout>
+              </AdminRoute>
+            } 
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
@@ -222,4 +199,3 @@ function App() {
 }
 
 export default App;
-

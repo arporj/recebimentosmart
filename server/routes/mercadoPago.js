@@ -221,7 +221,32 @@ async function processPayment(payment) {
     await supabase.from("payment_transactions").update({ status, charge_id: id.toString(), payment_method: payment_method_id }).eq("reference_id", external_reference);
 
     if (status === 'approved') {
-        await supabase.from("payments").insert({ user_id: transaction.user_id, amount: transaction_amount, status: "completed", transaction_id: id.toString(), payment_method: payment_method_id, reference_id: external_reference });
+        // Insere o registro de pagamento
+        await supabase.from("payments").insert({ 
+            user_id: transaction.user_id, 
+            amount: transaction_amount, 
+            status: "completed", 
+            transaction_id: id.toString(), 
+            payment_method: payment_method_id, 
+            reference_id: external_reference 
+        });
+
+        // Calcula a nova data de validade (30 dias a partir de hoje)
+        const newExpiryDate = new Date();
+        newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+
+        // Atualiza o perfil do usuário com a nova data de validade
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ valid_until: newExpiryDate.toISOString() })
+            .eq('id', transaction.user_id);
+
+        if (updateError) {
+            console.error("Erro ao atualizar a data de validade do usuário:", updateError);
+        } else {
+            console.log(`Data de validade atualizada para o usuário ${transaction.user_id}: ${newExpiryDate.toISOString()}`);
+        }
+
         // Chamar RPC de crédito de referência se necessário
     }
 }

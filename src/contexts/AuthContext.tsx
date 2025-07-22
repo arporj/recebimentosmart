@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, isFuture } from 'date-fns';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
+  isPaid: boolean; // Novo estado para o status de pagamento
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
@@ -17,47 +18,55 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isPaid, setIsPaid] = useState<boolean>(false); // Estado inicial como não pago
   const [loading, setLoading] = useState(true);
 
-  // 1. Verificação do estado de autenticação e sessão expirada
   useEffect(() => {
-    const checkSessionExpiration = () => {
-      const loginTime = localStorage.getItem('loginTime');
-      
-      const maxSessionDuration = 20 * 60 * 1000; // 20 minutos em milissegundos
-      
-      if (loginTime) {
-        const timeElapsed = new Date().getTime() - Number(loginTime);
-        
-        if (timeElapsed > maxSessionDuration) {
-          // Faz o logout se a sessão expirou
-          supabase.auth.signOut();
-          localStorage.removeItem('loginTime');
-          setUser(null); // Reseta o estado de usuário
-          toast.error('Sua sessão expirou. Por favor, faça login novamente.');
-          return;
+    const checkUserStatus = async (currentUser: User | null) => {
+      if (currentUser) {
+        // Se tem usuário, busca o perfil para checar a validade
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('valid_until')
+            .eq('id', currentUser.id)
+            .single();
+
+          if (error) throw error;
+
+          if (profile && profile.valid_until) {
+            // Verifica se a data de validade é no futuro
+            setIsPaid(isFuture(parseISO(profile.valid_until)));
+          } else {
+            setIsPaid(false);
+          }
+        } catch (error) {
+          console.error("Erro ao buscar perfil do usuário:", error);
+          setIsPaid(false);
         }
+      } else {
+        // Se não tem usuário, não está pago
+        setIsPaid(false);
       }
+      setUser(currentUser);
+      setLoading(false);
     };
 
     // Verifica a sessão ao carregar o estado inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
-      checkSessionExpiration(); // Checa expiração no primeiro load
-      setUser(session?.user ?? null);
-      setLoading(false);
+      checkUserStatus(session?.user ?? null);
     });
 
     // Escutar mudanças no estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkSessionExpiration(); // Checa expiração quando o estado muda
-      setUser(session?.user ?? null);
-      setLoading(false);
+      checkUserStatus(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe(); // Limpa o listener ao desmontar
+    return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Login do usuário (salva horário de login)
+  // ... (manter as funções signIn, signUp, signOut, resetPassword como estão)
+
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -66,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
       if (error) {
-        // Tratamento específico para diferentes tipos de erro
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');
         } else if (error.message.includes('Email not confirmed')) {
@@ -82,12 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Usuário não encontrado. Verifique suas credenciais.');
       }
       
-      // Salvar horário de login
       localStorage.setItem('loginTime', JSON.stringify(new Date().getTime()));
       
     } catch (error) {
       if (error instanceof Error) {
-        // Não usar toast aqui, deixar o componente LoginForm tratar a exibição do erro
         throw error;
       } else {
         throw new Error('Erro inesperado ao fazer login. Tente novamente.');
@@ -95,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 3. Cadastro de usuário
   const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -104,17 +109,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name: name,
-            referral_code: referralCode, // Adiciona o código de indicação aos metadados do usuário
+            referral_code: referralCode,
           },
         },
       });
       
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
       
-      // Se há um código de indicação, criar a associação na tabela referral_credits
       if (referralCode && data.user) {
         try {
-          // Buscar o usuário que possui este código de indicação
           const { data: referrerProfile, error: referrerError } = await supabase
             .from('profiles')
             .select('id')
@@ -124,27 +127,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (referrerError) {
             console.error('Erro ao buscar usuário indicador:', referrerError);
           } else if (referrerProfile) {
-            // Criar o registro de crédito de indicação
             const { error: creditError } = await supabase
               .from('referral_credits')
               .insert({
                 referrer_user_id: referrerProfile.id,
                 referred_user_id: data.user.id,
                 referral_level: 1,
-                credit_amount: 7.00, // 20% de R$ 35,00
+                credit_amount: 7.00,
                 status: 'pending',
                 created_at: new Date().toISOString()
               });
 
             if (creditError) {
               console.error('Erro ao criar crédito de indicação:', creditError);
-            } else {
-              console.log('Crédito de indicação criado com sucesso');
             }
           }
         } catch (referralError) {
           console.error('Erro no processamento da indicação:', referralError);
-          // Não falha o cadastro se houver erro na indicação
         }
       }
       
@@ -159,22 +158,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 4. Logout (limpa horário de login)
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      localStorage.removeItem('loginTime'); // Remove o horário de login
+      localStorage.removeItem('loginTime');
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
-      }
+      } 
       throw error;
     }
   };
 
-  // 5. Reset de senha
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -195,13 +192,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, isPaid, loading, signIn, signUp, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook para consumir o contexto
 export function useAuth() {
   const context = useContext(AuthContext);
   
