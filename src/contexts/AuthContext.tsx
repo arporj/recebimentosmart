@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // 3. Cadastro de usuário
-  const signUp = async (name: string, email: string, password: string) => {
+  const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -104,11 +104,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name: name,
+            referral_code: referralCode, // Adiciona o código de indicação aos metadados do usuário
           },
         },
       });
       
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
+      
+      // Se há um código de indicação, criar a associação na tabela referral_credits
+      if (referralCode && data.user) {
+        try {
+          // Buscar o usuário que possui este código de indicação
+          const { data: referrerProfile, error: referrerError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', referralCode)
+            .single();
+
+          if (referrerError) {
+            console.error('Erro ao buscar usuário indicador:', referrerError);
+          } else if (referrerProfile) {
+            // Criar o registro de crédito de indicação
+            const { error: creditError } = await supabase
+              .from('referral_credits')
+              .insert({
+                referrer_user_id: referrerProfile.id,
+                referred_user_id: data.user.id,
+                referral_level: 1,
+                credit_amount: 7.00, // 20% de R$ 35,00
+                status: 'pending',
+                created_at: new Date().toISOString()
+              });
+
+            if (creditError) {
+              console.error('Erro ao criar crédito de indicação:', creditError);
+            } else {
+              console.log('Crédito de indicação criado com sucesso');
+            }
+          }
+        } catch (referralError) {
+          console.error('Erro no processamento da indicação:', referralError);
+          // Não falha o cadastro se houver erro na indicação
+        }
+      }
       
       toast.success('Conta criada com sucesso!');
     } catch (error) {

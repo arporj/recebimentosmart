@@ -23,6 +23,7 @@ import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
 import ChangePassword from './components/ChangePassword';
 
+import { SignUpPage } from './components/SignUpPage';
 import ReferralPage from './components/ReferralPage';
 
 // Configuração global do Toaster
@@ -108,6 +109,7 @@ function App() {
         <Routes>
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/login" element={<LoginForm />} />
+          <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route 
             path="/" 

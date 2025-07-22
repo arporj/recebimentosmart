@@ -29,6 +29,40 @@ app.use(express.json());
 // --- Cliente Supabase ---
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+app.get('/api/payment-details/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const baseFee = 35.00; // Valor base da mensalidade
+
+  try {
+    // Buscar o total de créditos do usuário
+    const { data: credits, error: creditsError } = await supabaseAdmin
+      .from('referrals')
+      .select('credits_earned')
+      .eq('user_id', userId)
+      .single();
+
+    if (creditsError && creditsError.code !== 'PGRST116') { // Ignora erro se não encontrar registro
+      throw new Error(`Erro ao buscar créditos: ${creditsError.message}`);
+    }
+
+    const totalCredits = credits?.credits_earned || 0;
+    const creditsUsed = Math.min(baseFee, totalCredits);
+    const amountToPay = Math.max(0, baseFee - creditsUsed);
+
+    res.status(200).json({
+      success: true,
+      baseFee,
+      totalCredits,
+      creditsUsed,
+      amountToPay,
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar detalhes de pagamento:', error.message);
+    res.status(500).json({ success: false, message: 'Falha ao buscar detalhes de pagamento.' });
+  }
+});
+
 // --- Rotas da API ---
 app.post('/api/generate-payment-mp', async (req, res) => {
   try {

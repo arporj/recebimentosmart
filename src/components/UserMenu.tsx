@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Lock, MessageSquare, CreditCard, UserCheck, Users, Calendar, BarChart } from 'lucide-react';
+import { User, LogOut, Lock, MessageSquare, CreditCard, UserCheck, Users, Calendar, BarChart, Gift } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -197,6 +197,15 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
             >
               <CreditCard className="h-4 w-4 mr-2 text-gray-500" />
               Pagamentos
+            </button>
+            
+            <button
+              onClick={() => navigate('/indicacoes')}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+              role="menuitem"
+            >
+              <Gift className="h-4 w-4 mr-2 text-gray-500" />
+              Indicações
             </button>
             
             {isAdmin && (
