@@ -37,7 +37,9 @@ app.use('/api/mp', mercadoPagoRoutes); // Usando as novas rotas do Mercado Pago
 const PORT = process.env.PORT || 3000;
 
 // Iniciar o servidor
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-  console.log(`Webhook do Mercado Pago disponível em: http://localhost:${PORT}/api/mp/webhook`);
-});
+// app.listen(PORT, () => {
+//   console.log(`Servidor rodando na porta ${PORT}`);
+//   console.log(`Webhook do Mercado Pago disponível em: http://localhost:${PORT}/api/mp/webhook`);
+// });
+
+module.exports = app;
