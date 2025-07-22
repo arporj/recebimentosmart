@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { SignUpForm } from './SignUpForm'; // Importando o formulário refatorado
+import { SignUpForm } from './SignUpForm';
+import axios from 'axios'; // Importar axios
 
 export function SignUpPage() {
   const { signUp } = useAuth();
@@ -10,12 +11,23 @@ export function SignUpPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referrerName, setReferrerName] = useState<string | null>(null); // Novo estado para o nome
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const refCode = urlParams.get('ref');
     if (refCode) {
       setReferralCode(refCode);
+      // Buscar o nome de quem indicou
+      axios.get(`/api/mp/referrer-info/${refCode}`)
+        .then(response => {
+          if (response.data.success) {
+            setReferrerName(response.data.name);
+          }
+        })
+        .catch(error => {
+          console.error("Erro ao buscar nome do indicador:", error);
+        });
     }
   }, [location]);
 
@@ -61,6 +73,7 @@ export function SignUpPage() {
         onSubmit={handleSignUp} 
         loading={loading} 
         referralCode={referralCode} 
+        referrerName={referrerName} // Passar o nome para o formulário
       />
 
       <Toaster position="top-right" />

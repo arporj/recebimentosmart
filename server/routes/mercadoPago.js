@@ -11,32 +11,67 @@ const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || "https://api.mer
 const webhookUrl = process.env.WEBHOOK_URL;
 const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
 
+// Rota para buscar o nome de quem indicou através do código
+router.get('/referrer-info/:referralCode', async (req, res) => {
+    const { referralCode } = req.params;
+    try {
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('referral_code', referralCode)
+            .single();
+
+        if (error || !profile) {
+            return res.status(404).json({ success: false, message: "Código de indicação não encontrado." });
+        }
+
+        res.status(200).json({ success: true, name: profile.name });
+
+    } catch (error) {
+        console.error("Erro ao buscar informações do indicador:", error.message);
+        res.status(500).json({ success: false, message: "Falha ao buscar informações do indicador." });
+    }
+});
+
 // Rota para obter detalhes do pagamento
 router.get('/payment-details/:userId', async (req, res) => {
     const { userId } = req.params;
     const baseFee = 35; // Valor base da mensalidade
+    let initialDiscount = 0;
 
     try {
-        // Contar quantas indicações pagas o usuário tem
-        const { data: referrals, error } = await supabase
+        // Verificar se este usuário foi indicado e se é o primeiro pagamento dele
+        const { data: referralCredit, error: referralError } = await supabase
+            .from('referral_credits')
+            .select('status')
+            .eq('referred_user_id', userId)
+            .single();
+
+        // Se o usuário foi indicado e o crédito ainda está pendente, aplica o desconto inicial
+        if (referralCredit && referralCredit.status === 'pending') {
+            initialDiscount = baseFee * 0.20; // 20% de desconto
+        }
+
+        // Contar quantos créditos por indicação o usuário tem para usar
+        const { count: paidReferrals, error: creditsError } = await supabase
             .from('referral_credits')
             .select('id', { count: 'exact' })
             .eq('referrer_user_id', userId)
             .eq('status', 'credited');
 
-        if (error) throw error;
+        if (creditsError) throw creditsError;
 
-        const paidReferrals = referrals.length;
-        const creditsToUse = Math.min(paidReferrals, 5);
-        const discount = creditsToUse * (baseFee * 0.20);
-        const amountToPay = Math.max(0, baseFee - discount);
+        const referralCreditsValue = (paidReferrals || 0) * (baseFee * 0.20);
+        const totalDiscount = initialDiscount + referralCreditsValue;
+        const amountToPay = Math.max(0, baseFee - totalDiscount);
 
         res.status(200).json({
             success: true,
             baseFee,
-            totalCredits: discount,
+            totalCredits: totalDiscount,
             amountToPay,
-            creditsUsed: creditsToUse
+            creditsUsed: paidReferrals || 0,
+            initialDiscount: initialDiscount > 0
         });
 
     } catch (error) {

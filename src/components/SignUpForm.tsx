@@ -27,7 +27,7 @@ const InputField = ({ id, label, type, value, onChange, placeholder, icon: Icon,
   </div>
 );
 
-export function SignUpForm({ onSubmit, loading, referralCode }) {
+export function SignUpForm({ onSubmit, loading, referralCode, referrerName }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -84,9 +84,14 @@ export function SignUpForm({ onSubmit, loading, referralCode }) {
                   Você foi indicado por um amigo!
                 </h3>
                 <p className="text-sm text-green-700 mt-1">
-                  Código de indicação: <span className="font-mono font-bold">{referralCode}</span>
-                </p>
-                <p className="text-xs text-green-600 mt-1">
+                    Código de indicação: <span className="font-mono font-bold">{referralCode}</span>
+                  </p>
+                  {referrerName && (
+                    <p className="text-sm text-green-700 mt-1">
+                      Indicado por: <b className="font-semibold">{referrerName}</b>
+                    </p>
+                  )}
+                  <p className="text-xs text-green-600 mt-1">
                   Ao se cadastrar, você e seu amigo ganham benefícios especiais!
                 </p>
               </div>
