@@ -18,12 +18,20 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3. Se o usuário está logado, mas não está com o pagamento em dia, redireciona para a página de pagamento.
+  // Definição de quem é admin
+  const isAdmin = user.email === 'arporj@gmail.com' || user.email === 'andre@andreric.com';
+
+  // 3. Se o usuário é admin, permite o acesso a qualquer rota, ignorando o status de pagamento.
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
+  // 4. Se não é admin e não está com o pagamento em dia, redireciona para a página de pagamento.
   // A exceção é se ele já estiver tentando acessar a própria página de pagamento.
   if (!isPaid && location.pathname !== '/payment') {
     return <Navigate to="/payment" replace />;
   }
 
-  // 4. Se o usuário está logado e com o pagamento em dia, permite o acesso à rota solicitada.
+  // 5. Se o usuário está logado e com o pagamento em dia (ou é admin), permite o acesso.
   return <>{children}</>;
 }
