@@ -129,6 +129,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Erro ao definir a data de validade:', profileError);
         // Mesmo com erro aqui, o usuário foi criado, então não lançamos o erro para o usuário
         // Apenas logamos para depuração.
+      } else {
+        // Se a data de validade foi definida, o usuário está no período de trial.
+        setIsPaid(true);
       }
       
       if (referralCode && data.user) {
