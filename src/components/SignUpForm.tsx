@@ -120,7 +120,42 @@ export function SignUpForm({ onSubmit, loading, referralCode, referrerName }) {
             icon={Mail}
             error={errors.email}
           />
-          {/* Campos de senha e confirmação de senha aqui, usando um componente semelhante */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Senha
+            </label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className={`pl-10 block w-full rounded-md ${errors.password ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-custom focus:ring-custom sm:text-sm`}
+                placeholder="Crie uma senha"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-500">
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+            {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
+          </div>
+
+          <InputField
+            id="confirmPassword"
+            label="Confirmar Senha"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Confirme sua senha"
+            icon={Lock}
+            error={errors.confirmPassword}
+          />
           
           <div>
             <button
