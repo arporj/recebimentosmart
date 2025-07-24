@@ -12,7 +12,7 @@ interface UserMenuProps {
 
 // Exportação nomeada para corresponder à importação em App.tsx
 export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange }) => {
-  const { user, signOut, isTrialActive } = useAuth();
+  const { user, signOut, hasFullAccess } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.email === 'arporj@gmail.com' || user?.email === 'andre@andreric.com';
   
@@ -64,7 +64,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
   };
 
   // Se o período de teste expirou, mostramos apenas o menu de pagamento e sair
-  if (!isTrialActive && !isAdmin) {
+  if (!hasFullAccess && !isAdmin) {
     return (
       <div className="relative">
         <button 

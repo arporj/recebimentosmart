@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
-  isPaid: boolean; // Novo estado para o status de pagamento
+  hasFullAccess: boolean; // Novo estado para o status de acesso total (pago ou trial)
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isPaid, setIsPaid] = useState<boolean>(false); // Estado inicial como não pago
+  const [hasFullAccess, setHasFullAccess] = useState<boolean>(false); // Estado inicial como sem acesso total
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,17 +36,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (profile && profile.valid_until) {
             // Verifica se a data de validade é no futuro
-            setIsPaid(isFuture(parseISO(profile.valid_until)));
+            setHasFullAccess(isFuture(parseISO(profile.valid_until)));
           } else {
-            setIsPaid(false);
+            setHasFullAccess(false);
           }
         } catch (error) {
           console.error("Erro ao buscar perfil do usuário:", error);
-          setIsPaid(false);
+          setHasFullAccess(false);
         }
       } else {
-        // Se não tem usuário, não está pago
-        setIsPaid(false);
+        // Se não tem usuário, não tem acesso total
+        setHasFullAccess(false);
       }
       setUser(currentUser);
       setLoading(false);
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // O trigger no Supabase irá lidar com a criação do perfil.
       // Apenas atualizamos o estado local para refletir o período de trial.
-      setIsPaid(true);
+      setHasFullAccess(true);
       
       if (referralCode && data.user) {
         try {
@@ -199,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isPaid, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, hasFullAccess, loading, signIn, signUp, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
