@@ -103,6 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
     try {
+      const validUntil = addDays(new Date(), 7).toISOString();
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -110,29 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             name: name,
             referral_code: referralCode,
+            valid_until: validUntil,
           },
         },
       });
       
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
 
-      // Define a data de validade para 7 dias no futuro
-      const validUntil = addDays(new Date(), 7).toISOString();
-
-      // Insere ou atualiza o perfil do usuário com a data de validade
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ valid_until: validUntil })
-        .eq('id', data.user.id);
-
-      if (profileError) {
-        console.error('Erro ao definir a data de validade:', profileError);
-        // Mesmo com erro aqui, o usuário foi criado, então não lançamos o erro para o usuário
-        // Apenas logamos para depuração.
-      } else {
-        // Se a data de validade foi definida, o usuário está no período de trial.
-        setIsPaid(true);
-      }
+      // O trigger no Supabase irá lidar com a criação do perfil.
+      // Apenas atualizamos o estado local para refletir o período de trial.
+      setIsPaid(true);
       
       if (referralCode && data.user) {
         try {
