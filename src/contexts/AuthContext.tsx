@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { differenceInDays, parseISO, isFuture } from 'date-fns';
+import { addDays, differenceInDays, parseISO, isFuture } from 'date-fns';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -115,6 +115,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
+
+      // Define a data de validade para 7 dias no futuro
+      const validUntil = addDays(new Date(), 7).toISOString();
+
+      // Insere ou atualiza o perfil do usuário com a data de validade
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ valid_until: validUntil })
+        .eq('id', data.user.id);
+
+      if (profileError) {
+        console.error('Erro ao definir a data de validade:', profileError);
+        // Mesmo com erro aqui, o usuário foi criado, então não lançamos o erro para o usuário
+        // Apenas logamos para depuração.
+      }
       
       if (referralCode && data.user) {
         try {
