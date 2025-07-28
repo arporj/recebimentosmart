@@ -4,15 +4,43 @@ import KpiCard from './admin/KpiCard';
 import PriceManagement from './admin/PriceManagement';
 import UserTable from './admin/UserTable';
 
-// Mock de dados para os KPIs, substituiremos por dados reais
-const kpiData = {
-  monthlyRevenue: 3500.50,
-  activeUsers: 100,
-  newUsers: 15,
-  convertedTrials: 5,
-};
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
+import { DollarSign, Users, UserPlus, CheckCircle } from 'lucide-react';
+import KpiCard from './admin/KpiCard';
+import PriceManagement from './admin/PriceManagement';
+import UserTable from './admin/UserTable';
+
+interface KpiData {
+  monthlyRevenue: number;
+  activeUsers: number;
+  newUsers: number;
+  convertedTrials: number;
+}
 
 const AdminDashboard = () => {
+  const [kpiData, setKpiData] = useState<KpiData | null>(null);
+  const [loadingKpis, setLoadingKpis] = useState(true);
+
+  useEffect(() => {
+    const fetchKpis = async () => {
+      setLoadingKpis(true);
+      try {
+        const { data, error } = await supabase.rpc('get_admin_dashboard_kpis');
+        if (error) throw error;
+        setKpiData(data);
+      } catch (error: any) {
+        console.error('Erro ao buscar KPIs:', error);
+        toast.error('Falha ao carregar as métricas do dashboard.');
+      } finally {
+        setLoadingKpis(false);
+      }
+    };
+
+    fetchKpis();
+  }, []);
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Administrativo</h1>
@@ -21,22 +49,22 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KpiCard 
           title="Receita do Mês"
-          value={`R$ ${kpiData.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          value={loadingKpis ? '...' : `R$ ${kpiData?.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           icon={<DollarSign className="h-8 w-8 text-green-500" />}
         />
         <KpiCard 
           title="Usuários Ativos"
-          value={kpiData.activeUsers.toString()}
+          value={loadingKpis ? '...' : kpiData?.activeUsers.toString()}
           icon={<Users className="h-8 w-8 text-blue-500" />}
         />
         <KpiCard 
           title="Novos Usuários (30d)"
-          value={kpiData.newUsers.toString()}
+          value={loadingKpis ? '...' : kpiData?.newUsers.toString()}
           icon={<UserPlus className="h-8 w-8 text-purple-500" />}
         />
         <KpiCard 
           title="Conversões de Trial"
-          value={kpiData.convertedTrials.toString()}
+          value={loadingKpis ? '...' : kpiData?.convertedTrials.toString()}
           icon={<CheckCircle className="h-8 w-8 text-yellow-500" />}
         />
       </div>

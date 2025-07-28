@@ -33,24 +33,15 @@ BEGIN
         DECLARE
             personalized_body TEXT := REPLACE(email_body, '[User]', COALESCE(user_record.name, 'usuário'));
         BEGIN
-            -- Placeholder para a chamada da API de e-mail
-            -- Exemplo com a função http_request (requer a extensão pg_http)
-            /*
-            SELECT content FROM http_post(
-                'https://api.resend.com/emails',
+            -- Usar a API de admin para enviar um e-mail customizado.
+            -- Isso requer que o template de "Invite" no Supabase seja customizado para esta notificação.
+            PERFORM supabase.auth.admin.invite_user_by_email(
+                user_record.email,
                 json_build_object(
-                    'from', 'Seu Nome <seu@email.com>',
-                    'to', user_record.email,
-                    'subject', email_subject,
-                    'html', personalized_body
-                )::text,
-                'application/json',
-                ARRAY['Authorization: Bearer SEU_RESEND_API_KEY']
+                    'name', user_record.name,
+                    'new_price', new_price
+                )::jsonb
             );
-            */
-            
-            -- Por enquanto, vamos apenas logar no console do Supabase
-            RAISE LOG 'Enviando e-mail para: %, Corpo: %', user_record.email, personalized_body;
             users_notified := users_notified + 1;
         EXCEPTION
             WHEN OTHERS THEN
