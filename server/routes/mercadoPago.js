@@ -111,9 +111,9 @@ router.get('/referral-stats/:userId', async (req, res) => {
 
         // 2. Contar total de usuários cadastrados com o código
         const { count: totalRegistered, error: totalError } = await supabase
-            .from('referral_credits')
+            .from('referrals') // Alterado para a tabela 'referrals'
             .select('*', { count: 'exact', head: true })
-            .eq('referrer_user_id', userId);
+            .eq('referrer_id', userId); // Alterado para 'referrer_id'
 
         if (totalError) throw totalError;
 
