@@ -46,18 +46,21 @@ export default async function handler(req, res) {
       // throw new Error("Falha ao registrar pagamento.");
     }
 
-    // 2. Chamar a função para aplicar créditos de referência (Nível 1 e Nível 2)
-    const { error: creditError } = await supabaseAdmin.rpc(
-      "apply_referral_credit_multilevel",
-      { p_referred_user_id: userId }
+    // 2. Chamar a função para processar o pagamento e atualizar a validade
+    const { error: paymentProcessingError } = await supabaseAdmin.rpc(
+      "handle_user_payment",
+      { p_user_id: userId }
     );
 
-    if (creditError) {
-      console.error("Erro ao aplicar créditos de referência multinível:", creditError);
+    if (paymentProcessingError) {
+      console.error("Erro ao processar o pagamento do usuário:", paymentProcessingError);
       // Não retornar erro para o cliente, mas logar no backend
     }
 
-    return res.status(200).json({ success: true, message: "Pagamento registrado e créditos aplicados (se aplicável)." });
+    // A lógica de crédito de indicação é tratada pelo trigger `on_new_payment`
+    // que é disparado pela inserção na tabela `payments`.
+
+    return res.status(200).json({ success: true, message: "Pagamento registrado e processado com sucesso." });
 
   } catch (error) {
     console.error("Erro no processo de confirmação de pagamento:", error);
