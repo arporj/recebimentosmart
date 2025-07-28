@@ -23,7 +23,7 @@ BEGIN
     SELECT 
         u.id,
         p.name,
-        u.email,
+        u.email::TEXT, -- Cast para TEXT para corresponder ao tipo de retorno
         p.valid_until,
         p.is_admin,
         u.created_at
