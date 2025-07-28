@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, CheckCircle, Gift, Info, QrCode } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase'; // Importar supabase
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -17,6 +18,7 @@ const PaymentIntegration = () => {
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
+  const [monthlyFee, setMonthlyFee] = useState<number | null>(null); // Novo estado para a mensalidade
 
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
@@ -44,7 +46,23 @@ const PaymentIntegration = () => {
     };
 
     fetchPaymentDetails();
-  }, [user]);
+
+    // Buscar o valor da mensalidade da tabela app_settings
+    const fetchMonthlyFee = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'subscription_price')
+          .single();
+        if (error) throw error;
+        setMonthlyFee(parseFloat(data.value));
+      } catch (error) {
+        console.error('Erro ao buscar mensalidade:', error);
+      }
+    };
+    fetchMonthlyFee();
+  }, [user]); // Adicionar monthlyFee ao array de dependências
 
   const generatePayment = async () => {
     if (!paymentDetails || paymentDetails.amountToPay <= 0) {
@@ -196,7 +214,7 @@ const PaymentIntegration = () => {
       <div className="mt-8 border-t border-gray-200 pt-6">
         <h3 className="text-sm font-medium text-gray-700 mb-2">Informações importantes:</h3>
         <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-          <li>A mensalidade é de R$ 35,00.</li>
+          <li>A mensalidade é de R$ {monthlyFee !== null ? monthlyFee.toFixed(2).replace('.', ',') : 'Carregando...'}.</li>
           <li>O QR Code PIX gerado tem validade de 30 minutos.</li>
         </ul>
       </div>
