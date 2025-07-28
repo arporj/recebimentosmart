@@ -1,4 +1,4 @@
--- supabase/migrations/0008_create_handle_payment_function.sql
+-- supabase/migrations/0016_recreate_handle_payment_function.sql
 
 -- 1. Função para lidar com a lógica de pagamento de um usuário
 CREATE OR REPLACE FUNCTION public.handle_user_payment(p_user_id UUID)
@@ -23,13 +23,11 @@ BEGIN
         WHERE id = p_user_id;
     END IF;
 
-    -- Marca a indicação como convertida se for o primeiro pagamento.
-    -- Esta lógica é acionada por um trigger na tabela 'payments'.
-    -- Apenas garantimos que o pagamento seja inserido para o trigger disparar.
+    -- A lógica de indicação é tratada por um trigger na tabela 'subscriptions'.
 
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 2. Ajuste no trigger para garantir que ele continue funcionando
--- A lógica em `handle_new_payment` já está correta e é chamada após a inserção na tabela `payments`.
+-- A lógica em `handle_new_subscription_payment` agora é chamada após a inserção na tabela `subscriptions`.
 -- Não são necessárias mais alterações aqui.

@@ -28,22 +28,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Registrar o pagamento na tabela public.payments
-    const { error: paymentError } = await supabaseAdmin
-      .from("payments")
+    // 1. Registrar a assinatura na tabela public.subscriptions
+    const { error: subscriptionError } = await supabaseAdmin
+      .from("subscriptions")
       .insert({
         user_id: userId,
         amount: amountPaid,
-        status: "completed",
         transaction_id: transactionId,
-        payment_date: new Date().toISOString(),
+        subscription_date: new Date().toISOString(),
       });
 
-    if (paymentError) {
-      console.error("Erro ao registrar pagamento:", paymentError);
-      // Continuar mesmo assim para tentar aplicar o crédito?
-      // Ou retornar erro? Decidimos continuar, mas logar.
-      // throw new Error("Falha ao registrar pagamento.");
+    if (subscriptionError) {
+      console.error("Erro ao registrar assinatura:", subscriptionError);
+      throw new Error("Falha ao registrar assinatura.");
     }
 
     // 2. Chamar a função para processar o pagamento e atualizar a validade

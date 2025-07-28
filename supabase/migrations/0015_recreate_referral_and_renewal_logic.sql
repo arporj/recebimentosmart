@@ -1,4 +1,4 @@
--- supabase/migrations/0007_create_referral_and_renewal_logic.sql
+-- supabase/migrations/0015_recreate_referral_and_renewal_logic.sql
 
 -- 1. Tabela para rastrear o status das indicações
 CREATE TABLE IF NOT EXISTS public.referrals (
@@ -49,13 +49,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. Função para marcar uma indicação como convertida no primeiro pagamento
-CREATE OR REPLACE FUNCTION public.handle_new_payment()
+-- 3. Função para marcar uma indicação como convertida no primeiro pagamento de ASSINATURA
+CREATE OR REPLACE FUNCTION public.handle_new_subscription_payment()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Verifica se este é o primeiro pagamento do usuário
-    IF NOT EXISTS (SELECT 1 FROM public.payments WHERE user_id = NEW.user_id AND id != NEW.id) THEN
-        -- Se for o primeiro pagamento, marca a indicação como convertida
+    -- Verifica se este é o primeiro pagamento de assinatura do usuário
+    IF NOT EXISTS (SELECT 1 FROM public.subscriptions WHERE user_id = NEW.user_id AND id != NEW.id) THEN
+        -- Se for o primeiro pagamento de assinatura, marca a indicação como convertida
         UPDATE public.referrals
         SET is_converted = TRUE
         WHERE referred_id = NEW.user_id;
@@ -64,11 +64,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. Trigger para chamar handle_new_payment após cada novo pagamento
-DROP TRIGGER IF EXISTS on_new_payment ON public.payments;
-CREATE TRIGGER on_new_payment
-AFTER INSERT ON public.payments
-FOR EACH ROW EXECUTE FUNCTION public.handle_new_payment();
+-- 4. Trigger para chamar handle_new_subscription_payment após cada novo pagamento de ASSINATURA
+DROP TRIGGER IF EXISTS on_new_payment ON public.payments; -- Remove o trigger antigo
+DROP TRIGGER IF EXISTS on_new_subscription_payment ON public.subscriptions;
+CREATE TRIGGER on_new_subscription_payment
+AFTER INSERT ON public.subscriptions
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_subscription_payment();
 
 -- 5. Agendamento da função (Cron Job)
 -- Isso precisa ser configurado no painel do Supabase em "Database" -> "Cron Jobs"

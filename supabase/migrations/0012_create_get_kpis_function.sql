@@ -14,10 +14,10 @@ BEGIN
 
     -- Calcula todos os KPIs em uma única consulta
     SELECT json_build_object(
-        'monthlyRevenue', COALESCE((SELECT SUM(amount) FROM public.payments WHERE payment_date >= date_trunc('month', NOW())), 0),
+        'monthlyRevenue', COALESCE((SELECT SUM(amount) FROM public.subscriptions WHERE subscription_date >= date_trunc('month', NOW())), 0),
         'activeUsers', (SELECT COUNT(*) FROM public.profiles WHERE valid_until > NOW()),
         'newUsers', (SELECT COUNT(*) FROM auth.users WHERE created_at >= NOW() - INTERVAL '30 days'),
-        'convertedTrials', (SELECT COUNT(DISTINCT user_id) FROM public.payments)
+        'convertedTrials', (SELECT COUNT(DISTINCT user_id) FROM public.subscriptions)
     ) INTO kpi_data;
 
     RETURN kpi_data;
