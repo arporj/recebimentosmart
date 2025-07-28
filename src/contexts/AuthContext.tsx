@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
-  hasFullAccess: boolean; // Novo estado para o status de acesso total (pago ou trial)
+  hasFullAccess: boolean;
+  isAdmin: boolean; // Novo estado para o status de admin
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
@@ -18,35 +19,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [hasFullAccess, setHasFullAccess] = useState<boolean>(false); // Estado inicial como sem acesso total
+  const [hasFullAccess, setHasFullAccess] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false); // Novo estado para admin
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
       if (currentUser) {
-        // Se tem usuário, busca o perfil para checar a validade
         try {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('valid_until')
+            .select('valid_until, is_admin') // Busca também o campo is_admin
             .eq('id', currentUser.id)
             .single();
 
           if (error) throw error;
 
-          if (profile && profile.valid_until) {
-            // Verifica se a data de validade é no futuro
-            setHasFullAccess(isFuture(parseISO(profile.valid_until)));
+          if (profile) {
+            setHasFullAccess(profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false);
+            setIsAdmin(profile.is_admin || false); // Define o estado de admin
           } else {
             setHasFullAccess(false);
+            setIsAdmin(false);
           }
         } catch (error) {
           console.error("Erro ao buscar perfil do usuário:", error);
           setHasFullAccess(false);
+          setIsAdmin(false);
         }
       } else {
-        // Se não tem usuário, não tem acesso total
         setHasFullAccess(false);
+        setIsAdmin(false);
       }
       setUser(currentUser);
       setLoading(false);
@@ -199,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, hasFullAccess, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, hasFullAccess, isAdmin, loading, signIn, signUp, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

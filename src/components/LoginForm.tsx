@@ -21,8 +21,7 @@ export function LoginForm() {
   
     try {
       await signIn(email, password);
-      navigate('/');
-      // Redireciona para o sistema normalmente
+      // O redirecionamento será tratado pelo App.tsx com base no estado de autenticação
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

@@ -50,17 +50,15 @@ const toasterConfig = {
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   
   if (loading) {
-    return <div>Carregando...</div>; // Pode ser um spinner
+    return <LoadingSpinner />;
   }
   
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
-  const isAdmin = user.email === 'arporj@gmail.com' || user.email === 'andre@andreric.com';
   
   if (!isAdmin) {
     return <Navigate to="/" replace />;
@@ -81,118 +79,62 @@ function Dashboard() {
   );
 }
 
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <Routes>
+      {/* Se não há usuário, mostra apenas rotas públicas e redireciona o resto */}
+      {!user ? (
+        <>
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/cadastro" element={<SignUpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </>
+      ) : (
+        <> 
+          {/* Rotas Protegidas (requerem login) */}
+          <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+          <Route path="/monthly" element={<ProtectedRoute><MainLayout currentView='monthly'><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><MainLayout currentView='reports'><ClientProvider><Reports /></ClientProvider></MainLayout></ProtectedRoute>} />
+          <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackForm /></MainLayout></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
+          <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
+          <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
+          <Route path="/payment" element={<ProtectedRoute><MainLayout><PaymentIntegration /></MainLayout></ProtectedRoute>} />
+
+          {/* Rota de Admin */}
+          <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
+          
+          {/* Se o usuário logado tentar acessar /login, redireciona para a home */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+        </>
+      )}
+    </Routes>
+  );
+}
+
+// Componente de Loading Spinner
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-custom"></div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Toaster {...toasterConfig} />
-        <Routes>
-          {/* Rotas Públicas */}
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/cadastro" element={<SignUpPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-
-          {/* Rota de Pagamento (acessível mesmo sem pagamento em dia) */}
-          <Route 
-            path="/payment" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <PaymentIntegration />
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-
-          {/* Rotas Protegidas por Pagamento */}
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <Dashboard />
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/monthly" 
-            element={
-              <ProtectedRoute>
-                <MainLayout currentView='monthly'>
-                  <ClientProvider>
-                    <MonthlyPayments />
-                  </ClientProvider>
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/reports" 
-            element={
-              <ProtectedRoute>
-                <MainLayout currentView='reports'>
-                  <ClientProvider>
-                    <Reports />
-                  </ClientProvider>
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/feedback" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <FeedbackForm />
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <UserProfileSettings />
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/change-password" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <ChangePassword />
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/indicacoes" 
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <ReferralPage />
-                </MainLayout>
-              </ProtectedRoute>
-            } 
-          />
-
-          {/* Rota de Admin */}
-          <Route 
-            path="/admin/users" 
-            element={
-              <AdminRoute>
-                <MainLayout>
-                  <AdminUserManagement />
-                </MainLayout>
-              </AdminRoute>
-            } 
-          />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </AuthProvider>
   );
