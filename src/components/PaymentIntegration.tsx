@@ -117,7 +117,7 @@ const PaymentIntegration = () => {
           </div>
         )}
         <hr className="my-2" />
-        <div className="flex justify-between items-center text-lg font-bold text-indigo-700">
+        <div className="flex justify-between items-center text-lg font-bold text-custom-hover">
           <span>Total a Pagar:</span>
           <span>R$ {amountToPay.toFixed(2)}</span>
         </div>
@@ -147,7 +147,7 @@ const PaymentIntegration = () => {
             <img src={`data:image/jpeg;base64,${pixQrCode}`} alt="QR Code PIX" className="w-48 h-48 mb-4" />
             <div className="flex">
               <input type="text" value={pixCode} readOnly className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-xs" />
-              <button onClick={copyPixCode} className="px-4 py-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 text-sm">Copiar</button>
+              <button onClick={copyPixCode} className="px-4 py-2 bg-custom text-white rounded-r-md hover:bg-custom-hover text-sm">Copiar</button>
             </div>
           </div>
         </div>
@@ -160,7 +160,7 @@ const PaymentIntegration = () => {
             <button
             onClick={generatePayment}
             disabled={loading}
-            className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 mt-4"
+            className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-custom hover:bg-custom-hover mt-4"
             >
             {loading ? 'Processando...' : `Pagar R$ ${paymentDetails.amountToPay.toFixed(2)}`}
             </button>
@@ -174,7 +174,7 @@ const PaymentIntegration = () => {
   return (
     <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
       <div className="flex items-center mb-4">
-        <CreditCard className="h-6 w-6 text-indigo-600 mr-2" />
+        <CreditCard className="h-6 w-6 text-custom mr-2" />
         <h1 className="text-2xl font-bold text-gray-800">Pagamento da Mensalidade</h1>
       </div>
 

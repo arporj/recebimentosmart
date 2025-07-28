@@ -36,10 +36,23 @@ router.get('/referrer-info/:referralCode', async (req, res) => {
 // Rota para obter detalhes do pagamento
 router.get('/payment-details/:userId', async (req, res) => {
     const { userId } = req.params;
-    const baseFee = 35; // Valor base da mensalidade
+    let baseFee = 35; // Valor padrão caso não encontre no DB
     let initialDiscount = 0;
 
     try {
+        // Buscar o preço da assinatura do banco de dados
+        const { data: settings, error: settingsError } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'subscription_price')
+            .single();
+
+        if (settingsError) console.error("Erro ao buscar subscription_price:", settingsError.message);
+        if (settings && settings.value) {
+            baseFee = parseFloat(settings.value);
+        }
+
+        // Verificar se este usuário foi indicado e se é o primeiro pagamento dele
         // Verificar se este usuário foi indicado e se é o primeiro pagamento dele
         const { data: referralCredit, error: referralError } = await supabase
             .from('referral_credits')
