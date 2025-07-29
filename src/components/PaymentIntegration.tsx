@@ -35,7 +35,7 @@ const PaymentIntegration = () => {
         // Buscar detalhes de pagamento e informações de indicação em paralelo
         const [paymentResponse, referralResponse] = await Promise.all([
           axios.get(`/api/mp/payment-details/${user.id}`),
-          supabase.rpc('get_referral_stats', { p_user_id: user.id })
+          supabase.rpc('get_full_referral_stats', { p_user_id: user.id })
         ]);
 
         if (paymentResponse.data?.success) {
@@ -119,8 +119,13 @@ const PaymentIntegration = () => {
       return <p className="text-center text-red-500">Erro ao carregar detalhes de pagamento.</p>;
     }
 
-    const { baseFee, totalCredits, amountToPay, creditsUsed } = paymentDetails;
-    const welcomeDiscount = baseFee * 0.20;
+    let { baseFee, totalCredits, amountToPay, creditsUsed } = paymentDetails;
+    let welcomeDiscountAmount = 0;
+
+    if (referralInfo?.was_referred) {
+      welcomeDiscountAmount = baseFee * 0.20;
+      amountToPay = Math.max(0, amountToPay - welcomeDiscountAmount);
+    }
 
     return (
       <div className="mb-6 p-4 border border-gray-200 rounded-md bg-gray-50 space-y-2">
@@ -137,7 +142,7 @@ const PaymentIntegration = () => {
                         Desconto por indicação de <strong>{referralInfo.referrer_name || 'um amigo'}</strong>:
                     </span>
                 </span>
-                <span className="font-medium">- R$ {welcomeDiscount.toFixed(2)}</span>
+                <span className="font-medium">- R$ {welcomeDiscountAmount.toFixed(2)}</span>
             </div>
         )}
 
