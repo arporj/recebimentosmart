@@ -1,5 +1,5 @@
 
-const nodemailer = require('nodemailer');
+const { createClient } = require('@supabase/supabase-js');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -7,37 +7,40 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { name, email, message } = JSON.parse(event.body);
+    const { name, email, message, type, subject } = JSON.parse(event.body);
 
-    // Configurar o transporter do Nodemailer
-    // Use suas credenciais de e-mail aqui, preferencialmente de variáveis de ambiente
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: process.env.SMTP_SECURE === 'true', // true para 465, false para outras portas
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    const recipientEmail = process.env.RECIPIENT_EMAIL;
+
+    const emailSubject = `[${type}] ${subject} - De: ${name} (${email})`;
+    const emailHtml = `
+      <p><strong>Tipo:</strong> ${type}</p>
+      <p><strong>Assunto:</strong> ${subject}</p>
+      <p><strong>Nome:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Mensagem:</strong></p>
+      <p>${message}</p>
+    `;
+
+    // Chamada para uma função Supabase (Edge Function ou Database Function) para enviar o e-mail
+    const { data, error } = await supabase.rpc('send_feedback_email', {
+      to_email: recipientEmail,
+      email_subject: emailSubject,
+      email_html: emailHtml,
     });
 
-    const mailOptions = {
-      from: process.env.SMTP_FROM_EMAIL,
-      to: process.env.RECIPIENT_EMAIL, // O e-mail para onde as críticas/sugestões serão enviadas
-      subject: `Nova Crítica/Sugestão de ${name}`,
-      html: `
-        <p><strong>Nome:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Mensagem:</strong></p>
-        <p>${message}</p>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error('Erro ao chamar função Supabase para enviar e-mail:', error);
+      throw new Error(error.message);
+    }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Feedback enviado com sucesso!' }),
+      body: JSON.stringify({ message: 'Feedback enviado com sucesso!', success: true }),
     };
   } catch (error) {
     console.error('Erro ao enviar feedback:', error);
