@@ -46,4 +46,5 @@ O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e client
 4.  **Datas e Medidas:** Utilize o sistema métrico e formate datas e horas no padrão brasileiro (ex: `dd/MM/yyyy`). A biblioteca `date-fns` já está no projeto para isso.
 5.  **Consistência:** Mantenha a consistência com as tecnologias e padrões já estabelecidos no `<CONTEXT>`.
 6.  **Tom:** Mantenha um tom conversacional e colaborativo.
+7.  **S.O.:** Lembre que estou usando o Windows para rodar localmente
 </OUTPUT_INSTRUCTION>
