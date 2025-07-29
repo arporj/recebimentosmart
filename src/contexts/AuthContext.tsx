@@ -123,6 +123,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
 
       // O trigger no Supabase irá lidar com a criação do perfil.
+      // Atualiza o estado local do usuário com a data de validade para refletir o período de trial imediatamente.
+      setUser({
+        ...data.user,
+        user_metadata: {
+          ...data.user.user_metadata,
+          valid_until: validUntil,
+        },
+      });
       // Apenas atualizamos o estado local para refletir o período de trial.
       setHasFullAccess(true);
       

@@ -1,39 +1,27 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, User, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react'; // Importar ícones
 
-// Componente de Input reutilizável
-const InputField = ({ id, label, type, value, onChange, placeholder, icon: Icon, error }) => (
-  <div>
-    <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-      {label}
-    </label>
-    <div className="mt-1 relative rounded-md shadow-sm">
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <Icon className="h-5 w-5 text-gray-400" />
-      </div>
-      <input
-        id={id}
-        type={type}
-        required
-        value={value}
-        onChange={onChange}
-        className={`pl-10 block w-full rounded-md ${error ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-custom focus:ring-custom sm:text-sm`}
-        placeholder={placeholder}
-      />
-      {/* Adicionar um espaço para o ícone de mostrar/esconder senha se necessário */}
-    </div>
-    {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-  </div>
-);
+interface SignUpFormProps {
+  onSuccess?: () => void;
+}
 
-export function SignUpForm({ onSubmit, loading, referralCode, referrerName }) {
+const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+  const [errors, setErrors] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/esconder senha
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Estado para mostrar/esconder confirmar senha
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -146,16 +134,31 @@ export function SignUpForm({ onSubmit, loading, referralCode, referrerName }) {
             {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
           </div>
 
-          <InputField
-            id="confirmPassword"
-            label="Confirmar Senha"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            placeholder="Confirme sua senha"
-            icon={Lock}
-            error={errors.confirmPassword}
-          />
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              Confirmar Senha
+            </label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className={`pl-10 block w-full rounded-md ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-custom focus:ring-custom sm:text-sm`}
+                placeholder="Confirme sua senha"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-gray-400 hover:text-gray-500">
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+            {errors.confirmPassword && <p className="mt-2 text-sm text-red-600">{errors.confirmPassword}</p>}
+          </div>
           
           <div>
             <button

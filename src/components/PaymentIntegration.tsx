@@ -18,7 +18,7 @@ const PaymentIntegration = () => {
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
-  const [monthlyFee, setMonthlyFee] = useState<number | null>(null); // Novo estado para a mensalidade
+  // monthlyFee e fetchMonthlyFee removidos conforme solicitação
 
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
@@ -47,21 +47,6 @@ const PaymentIntegration = () => {
 
     fetchPaymentDetails();
 
-    // Buscar o valor da mensalidade da tabela app_settings
-    const fetchMonthlyFee = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'subscription_price')
-          .single();
-        if (error) throw error;
-        setMonthlyFee(parseFloat(data.value));
-      } catch (error) {
-        console.error('Erro ao buscar mensalidade:', error);
-      }
-    };
-    fetchMonthlyFee();
   }, [user]); // Adicionar monthlyFee ao array de dependências
 
   const generatePayment = async () => {
@@ -211,13 +196,6 @@ const PaymentIntegration = () => {
       {renderPaymentDetails()}
       {renderPaymentArea()}
 
-      <div className="mt-8 border-t border-gray-200 pt-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Informações importantes:</h3>
-        <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-          <li>A mensalidade é de R$ {monthlyFee !== null ? monthlyFee.toFixed(2).replace('.', ',') : 'Carregando...'}.</li>
-          <li>O QR Code PIX gerado tem validade de 30 minutos.</li>
-        </ul>
-      </div>
     </div>
   );
 };
