@@ -38,19 +38,31 @@ const PaymentIntegration = () => {
           supabase.rpc('get_full_referral_stats', { p_user_id: user.id })
         ]);
 
-        if (paymentResponse.data?.success) {
-          setPaymentDetails(paymentResponse.data);
-          if (paymentResponse.data.amountToPay === 0) {
-            setPaymentStatus('completed');
-          }
-        } else {
+        let fetchedPaymentDetails = paymentResponse.data;
+        let fetchedReferralInfo = null;
+
+        if (!paymentResponse.data?.success) {
           throw new Error('Erro ao buscar detalhes de pagamento');
         }
 
         if (referralResponse.error) throw referralResponse.error;
-        // A RPC retorna um array, pegamos o primeiro elemento
         if (referralResponse.data && referralResponse.data.length > 0) {
-            setReferralInfo(referralResponse.data[0]);
+            fetchedReferralInfo = referralResponse.data[0];
+        }
+
+        // Calcula o valor com desconto aqui, antes de setar o estado
+        if (fetchedPaymentDetails && fetchedReferralInfo?.was_referred) {
+            const baseFee = fetchedPaymentDetails.baseFee;
+            const welcomeDiscountAmount = baseFee * 0.20;
+            fetchedPaymentDetails.amountToPay = Math.max(0, fetchedPaymentDetails.amountToPay - welcomeDiscountAmount);
+        }
+
+        // Agora seta o estado com os valores finais calculados
+        setPaymentDetails(fetchedPaymentDetails);
+        setReferralInfo(fetchedReferralInfo);
+
+        if (fetchedPaymentDetails.amountToPay === 0) {
+            setPaymentStatus('completed');
         }
 
 
