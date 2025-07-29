@@ -136,7 +136,6 @@ const PaymentIntegration = () => {
 
     if (referralInfo?.was_referred) {
       welcomeDiscountAmount = baseFee * 0.20;
-      amountToPay = Math.max(0, amountToPay - welcomeDiscountAmount);
     }
 
     return (
