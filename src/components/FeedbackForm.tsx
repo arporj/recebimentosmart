@@ -42,7 +42,7 @@ const FeedbackForm = () => {
       };
       
       // Enviar para a Netlify Function
-      const response = await fetch('/api/v1/contact-form', {
+      const response = await fetch('/.netlify/functions/contact-form', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
