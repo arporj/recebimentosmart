@@ -127,34 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setHasFullAccess(true);
       
       if (referralCode && data.user) {
-        try {
-          const { data: referrerProfile, error: referrerError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('referral_code', referralCode)
-            .single();
-
-          if (referrerError) {
-            console.error('Erro ao buscar usuário indicador:', referrerError);
-          } else if (referrerProfile) {
-            const { error: creditError } = await supabase
-              .from('referral_credits')
-              .insert({
-                referrer_user_id: referrerProfile.id,
-                referred_user_id: data.user.id,
-                referral_level: 1,
-                credit_amount: 7.00,
-                status: 'pending',
-                created_at: new Date().toISOString()
-              });
-
-            if (creditError) {
-              console.error('Erro ao criar crédito de indicação:', creditError);
-            }
-          }
-        } catch (referralError) {
-          console.error('Erro no processamento da indicação:', referralError);
-        }
+        // A lógica de inserção em 'referrals' e 'referral_credits' agora é tratada por triggers no banco de dados.
+        // Não é necessário inserir aqui no lado do cliente.
       }
       
       toast.success('Conta criada com sucesso!');
