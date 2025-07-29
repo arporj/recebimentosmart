@@ -35,29 +35,19 @@ const ReferralPage = () => {
     const fetchReferralStats = async () => {
       if (!user) return;
       try {
-        // Chamar a nova função RPC
-        const { data, error } = await supabase.rpc('get_referral_stats', { p_user_id: user.id });
+        const { data, error } = await supabase.rpc('get_full_referral_stats', { p_user_id: user.id });
+
         if (error) throw error;
 
-        // A função RPC retorna um array, então pegamos o primeiro elemento
-        const referralData = data[0];
-
-        // O link de indicação é gerado no frontend
-        const referralLink = `${window.location.origin}/cadastro?ref=${user.id}`;
-
-        // TODO: Os dados de totalRegistered e totalPaid precisariam de outras chamadas RPC
-        // para serem implementados completamente. Por enquanto, usaremos valores mockados.
-        const mockStats = {
-          totalRegistered: 0,
-          totalPaid: 0,
-        };
+        const statsData = data[0];
 
         setStats({
-          availableCredits: referralData.available_credits,
-          wasReferred: referralData.was_referred,
-          referrerName: referralData.referrer_name,
-          referralLink,
-          ...mockStats,
+          referralLink: `${window.location.origin}/cadastro?ref=${statsData.referral_code}`,
+          totalRegistered: statsData.total_registered,
+          totalPaid: statsData.total_paid,
+          availableCredits: statsData.available_credits,
+          wasReferred: statsData.was_referred,
+          referrerName: statsData.referrer_name,
         });
 
       } catch (error) {
@@ -190,21 +180,57 @@ const ReferralPage = () => {
 
       {/* Estatísticas */}
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalRegistered}</p>
-          <p className="text-sm text-gray-600">Usuários cadastrados</p>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <Users className="h-6 w-6 text-blue-600" />
+            </div>
+            <Info className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalRegistered}</p>
+            <p className="text-sm text-gray-600">Usuários cadastrados</p>
+            <p className="text-xs text-blue-600 mt-2">Total de pessoas que usaram seu link</p>
+          </div>
         </div>
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalPaid}</p>
-          <p className="text-sm text-gray-600">Pagamentos confirmados</p>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-green-100 p-3 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+            <DollarSign className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalPaid}</p>
+            <p className="text-sm text-gray-600">Pagamentos confirmados</p>
+            <p className="text-xs text-green-600 mt-2">Indicações que geraram desconto</p>
+          </div>
         </div>
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <p className="text-3xl font-bold text-gray-900 mb-1">{totalCredits}</p>
-          <p className="text-sm text-gray-600">Créditos disponíveis</p>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <Gift className="h-6 w-6 text-purple-600" />
+            </div>
+            <TrendingUp className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{totalCredits}</p>
+            <p className="text-sm text-gray-600">Créditos disponíveis</p>
+            <p className="text-xs text-purple-600 mt-2">Descontos para usar nas próximas faturas</p>
+          </div>
         </div>
-         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalRegistered - stats.totalPaid}</p>
-          <p className="text-sm text-gray-600">Aguardando pagamento</p>
+         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-orange-100 p-3 rounded-lg">
+              <Clock className="h-6 w-6 text-orange-600" />
+            </div>
+            <Info className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalRegistered - stats.totalPaid}</p>
+            <p className="text-sm text-gray-600">Aguardando pagamento</p>
+            <p className="text-xs text-orange-600 mt-2">Usuários que ainda não pagaram</p>
+          </div>
         </div>
       </div>
 

@@ -36,8 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (error) throw error;
 
           if (profile) {
-            setHasFullAccess(profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false);
-            setIsAdmin(profile.is_admin || false); // Define o estado de admin
+            const trialDays = 7;
+            const createdAt = parseISO(currentUser.created_at);
+            const trialEndDate = addDays(createdAt, trialDays);
+
+            const hasPaidAccess = profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false;
+            const isInTrial = isFuture(trialEndDate);
+
+            setHasFullAccess(hasPaidAccess || isInTrial);
+            setIsAdmin(profile.is_admin || false);
           } else {
             setHasFullAccess(false);
             setIsAdmin(false);

@@ -19,7 +19,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
     password: '',
     confirmPassword: ''
   });
-  const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/esconder senha
   const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Estado para mostrar/esconder confirmar senha
 
   const validate = () => {
