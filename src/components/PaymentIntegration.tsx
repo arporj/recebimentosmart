@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, CheckCircle, Gift, Info, QrCode } from 'lucide-react';
+import { CreditCard, CheckCircle, Gift, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase'; // Importar supabase
+import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -12,42 +12,58 @@ interface PaymentDetails {
   creditsUsed: number;
 }
 
+interface ReferralInfo {
+  was_referred: boolean;
+  referrer_name: string | null;
+}
+
 const PaymentIntegration = () => {
-  const { user, isPaid } = useAuth();
+  const { user, hasFullAccess, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+  const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
-  // monthlyFee e fetchMonthlyFee removidos conforme solicitação
-
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
 
   useEffect(() => {
-    const fetchPaymentDetails = async () => {
+    const fetchInitialData = async () => {
       if (!user) return;
       setLoadingDetails(true);
       try {
-        const response = await axios.get(`/api/mp/payment-details/${user.id}`);
-        if (response.data?.success) {
-          setPaymentDetails(response.data);
-          if (response.data.amountToPay === 0) {
+        // Buscar detalhes de pagamento e informações de indicação em paralelo
+        const [paymentResponse, referralResponse] = await Promise.all([
+          axios.get(`/api/mp/payment-details/${user.id}`),
+          supabase.rpc('get_referral_stats', { p_user_id: user.id })
+        ]);
+
+        if (paymentResponse.data?.success) {
+          setPaymentDetails(paymentResponse.data);
+          if (paymentResponse.data.amountToPay === 0) {
             setPaymentStatus('completed');
           }
         } else {
           throw new Error('Erro ao buscar detalhes de pagamento');
         }
+
+        if (referralResponse.error) throw referralResponse.error;
+        // A RPC retorna um array, pegamos o primeiro elemento
+        if (referralResponse.data && referralResponse.data.length > 0) {
+            setReferralInfo(referralResponse.data[0]);
+        }
+
+
       } catch (error) {
-        console.error('Erro ao buscar detalhes de pagamento:', error);
-        toast.error('Não foi possível carregar os detalhes de pagamento.');
+        console.error('Erro ao buscar dados iniciais:', error);
+        toast.error('Não foi possível carregar os detalhes da página.');
       } finally {
         setLoadingDetails(false);
       }
     };
 
-    fetchPaymentDetails();
-
-  }, [user]); // Adicionar monthlyFee ao array de dependências
+    fetchInitialData();
+  }, [user]);
 
   const generatePayment = async () => {
     if (!paymentDetails || paymentDetails.amountToPay <= 0) {
@@ -56,7 +72,7 @@ const PaymentIntegration = () => {
 
     setLoading(true);
     setPaymentStatus('pending');
-    
+
     const paymentPayload = {
         amount: paymentDetails.amountToPay,
         description: `Pagamento Mensalidade RecebimentoSmart - ${user?.email}`,
@@ -104,6 +120,7 @@ const PaymentIntegration = () => {
     }
 
     const { baseFee, totalCredits, amountToPay, creditsUsed } = paymentDetails;
+    const welcomeDiscount = baseFee * 0.20;
 
     return (
       <div className="mb-6 p-4 border border-gray-200 rounded-md bg-gray-50 space-y-2">
@@ -111,6 +128,19 @@ const PaymentIntegration = () => {
           <span className="text-sm text-gray-600">Mensalidade Base:</span>
           <span className="font-medium text-gray-800">R$ {baseFee.toFixed(2)}</span>
         </div>
+
+        {referralInfo?.was_referred && (
+            <div className="flex justify-between items-center text-yellow-500">
+                <span className="text-sm flex items-center">
+                    <Star className="h-4 w-4 mr-1" />
+                    <span>
+                        Desconto por indicação de <strong>{referralInfo.referrer_name || 'um amigo'}</strong>:
+                    </span>
+                </span>
+                <span className="font-medium">- R$ {welcomeDiscount.toFixed(2)}</span>
+            </div>
+        )}
+
         {creditsUsed > 0 && (
           <div className="flex justify-between items-center text-green-600">
             <span className="text-sm flex items-center">
@@ -181,13 +211,13 @@ const PaymentIntegration = () => {
         <h1 className="text-2xl font-bold text-gray-800">Pagamento da Mensalidade</h1>
       </div>
 
-      {isPaid && paymentStatus !== 'completed' && (
+      {hasFullAccess && paymentStatus !== 'completed' && (
         <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-3 text-center">
              <p className="text-sm text-green-700 font-medium">Seu pagamento está em dia!</p>
         </div>
       )}
 
-      {!isPaid && (
+      {!hasFullAccess && !isAdmin && (
            <p className="text-sm text-red-600 mb-4 text-center font-medium">
              Seu acesso expirou. Realize o pagamento para continuar utilizando o sistema.
            </p>
