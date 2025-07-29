@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
-import { SignUpForm } from './SignUpForm';
+import SignUpForm from './SignUpForm';
 import { useNavigate, Link } from 'react-router-dom';
 
 export function LoginForm() {

@@ -21,8 +21,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
   });
   const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/esconder senha
   const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Estado para mostrar/esconder confirmar senha
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
 
   const validate = () => {
     const newErrors = {};
@@ -182,4 +180,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
       </div>
     </div>
   );
-}
+};
+
+export default SignUpForm;

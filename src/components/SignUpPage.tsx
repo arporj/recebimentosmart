@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { SignUpForm } from './SignUpForm';
+import SignUpForm from './SignUpForm';
 import axios from 'axios'; // Importar axios
 
 export function SignUpPage() {
