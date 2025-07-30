@@ -10,9 +10,10 @@ exports.handler = async (event) => {
     const { name, email, message, type, subject } = JSON.parse(event.body);
 
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseServiceRoleKey = process.env.RECIPIENT_EMAIL;
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    // A URL da sua Edge Function (substitua pelo seu URL real do Supabase)
+    const edgeFunctionUrl = `https://kwdweztilsoxxcgudtsz.supabase.co/functions/v1/send_feedback_email`;
 
     const recipientEmail = process.env.RECIPIENT_EMAIL;
 
@@ -26,16 +27,28 @@ exports.handler = async (event) => {
       <p>${message}</p>
     `;
 
-    // Chamada para uma função Supabase (Edge Function ou Database Function) para enviar o e-mail
-    const { data, error } = await supabase.rpc('send_feedback_email', {
+    // Dados a serem enviados para a Edge Function
+    const payload = {
       to_email: recipientEmail,
       email_subject: emailSubject,
       email_html: emailHtml,
+    };
+
+    // Chamada HTTP POST para a Edge Function
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+      },
+      body: JSON.stringify(payload),
     });
 
-    if (error) {
-      console.error('Erro ao chamar função Supabase para enviar e-mail:', error);
-      throw new Error(error.message);
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('Erro ao chamar Edge Function:', result);
+      throw new Error(result.error || 'Erro desconhecido ao chamar Edge Function');
     }
 
     return {
