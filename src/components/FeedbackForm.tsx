@@ -53,7 +53,7 @@ const FeedbackForm = () => {
         setSubject('');
         setComment('');
       } else {
-        throw new Error(result.message || 'Erro desconhecido');
+        throw error;
       }
       
     } catch (error) {
