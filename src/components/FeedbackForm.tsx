@@ -41,18 +41,12 @@ const FeedbackForm = () => {
         comment: comment
       };
       
-      // Enviar para a Netlify Function
-      const response = await fetch('/.netlify/functions/contact-form', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(feedbackData),
+      // Enviar para a Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('send_feedback_email', {
+        body: feedbackData,
       });
-      
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
+
+      if (!error) {
         toast.success('Seu feedback foi enviado com sucesso!');
         
         // Limpar o formulário
