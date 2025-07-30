@@ -173,19 +173,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Chama a Edge Function customizada em vez da função padrão do Supabase
+      const { error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email },
       });
-      
-      if (error) throw error;
-      
-      toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Erro ao enviar email de recuperação. Tente novamente.');
+
+      if (error) {
+        // Lança o erro para ser pego pelo bloco catch
+        throw error;
       }
+
+      toast.success('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+    } catch (error) {
+      // O erro pode ser uma FunctionsHttpError, que é uma instância de Error.
+      // A mensagem pode não ser amigável, então mostramos uma mensagem genérica.
+      toast.error('Não foi possível enviar o e-mail. Verifique o endereço e tente novamente.');
+      // Re-lança o erro para que a UI possa reagir (ex: parar um spinner de loading)
       throw error;
     }
   };
