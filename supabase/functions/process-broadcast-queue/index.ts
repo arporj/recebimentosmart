@@ -100,13 +100,16 @@ serve(async (req) => {
       throw new Error(`Falha ao buscar perfis para o broadcast. Detalhes: ${JSON.stringify(profilesError)}`);
     }
 
-    const { data: authUsers, error: authUsersError } = await supabaseAdmin
-      .from('users', { schema: 'auth' })
-      .select('id, email');
+    const { data: { users: authUsers }, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
 
     if (authUsersError) {
       console.error('Erro ao buscar usuários de autenticação:', authUsersError);
       throw new Error('Falha ao buscar usuários de autenticação para o broadcast.');
+    }
+
+    // O método listUsers já retorna os usuários em um formato adequado, não é necessário mapeamento adicional se apenas precisarmos do array.
+    if (!authUsers) {
+      throw new Error('Nenhum usuário de autenticação retornado.');
     }
 
     const authUsersMap = new Map(authUsers.map(u => [u.id, u.email]));
@@ -174,6 +177,8 @@ serve(async (req) => {
 
         const emailPayload = {
             sender: { name: 'Recebimento $mart', email: 'contato@recebimentosmart.com.br' },
+            subject: broadcast.subject,
+            htmlContent: broadcast.body, // Conteúdo de fallback
             messageVersions: messageVersions
         };
 
@@ -230,7 +235,40 @@ serve(async (req) => {
         })
         .eq('id', broadcast.id);
     }
-    // ... (código de alerta de erro)
+    // Envia e-mail de alerta para o administrador
+    try {
+      const alertPayload = {
+        sender: { name: 'Recebimento $mart - Alerta', email: 'no-reply@recebimentosmart.com.br' },
+        to: [{ email: 'andre@recebimentosmart.com.br' }],
+        subject: `ALERTA: Falha no processamento de Broadcast - ID: ${broadcast?.id || 'N/A'}`,
+        htmlContent: `
+          <p>Ocorreu um erro fatal ao processar um broadcast de e-mails.</p>
+          <p><strong>ID do Broadcast:</strong> ${broadcast?.id || 'N/A'}</p>
+          <p><strong>Assunto do Broadcast:</strong> ${broadcast?.subject || 'N/A'}</p>
+          <p><strong>Mensagem de Erro:</strong> ${err.message}</p>
+          <p>Por favor, verifique os logs da função <code>process-broadcast-queue</code> no Supabase para mais detalhes.</p>
+        `,
+      };
+
+      const alertResponse = await fetch(BREVO_API_URL, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': BREVO_API_KEY,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(alertPayload),
+      });
+
+      if (!alertResponse.ok) {
+        const alertErrorBody = await alertResponse.json();
+        console.error('Erro ao enviar e-mail de alerta via Brevo:', alertErrorBody);
+      } else {
+        console.log('E-mail de alerta enviado com sucesso.');
+      }
+    } catch (alertErr) {
+      console.error('Erro inesperado ao tentar enviar e-mail de alerta:', alertErr);
+    }
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
