@@ -46,8 +46,36 @@ export function SignUpPage() {
         formData.password,
         referralCode
       );
-      toast.success('Conta criada com sucesso! Redirecionando para o login...');
+      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
       navigate('/login');
+
+      // Enviar e-mail de notificação para o financeiro
+      try {
+        const subject = `Novo Cadastro: ${formData.name}`;
+        const htmlContent = `
+          <p>Um novo usuário se cadastrou no Recebimento $mart:</p>
+          <ul>
+            <li><b>Nome:</b> ${formData.name}</li>
+            <li><b>Email:</b> ${formData.email}</li>
+            ${referralCode ? `<li><b>Código de Indicação:</b> ${referralCode}</li>` : ''}
+            ${referrerName ? `<li><b>Indicado por:</b> ${referrerName}</li>` : ''}
+          </ul>
+          <p>Data do Cadastro: ${new Date().toLocaleString('pt-BR')}</p>
+          <p>Atenciosamente,<br>Equipe Recebimento $mart</p>
+        `;
+
+        await fetch('/api/send-notification-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject,
+            htmlContent,
+            recipientEmail: 'financeiro@recebimentosmart.com.br',
+          }),
+        });
+      } catch (emailError) {
+        console.error('Erro ao enviar e-mail de notificação de cadastro:', emailError);
+      }
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
