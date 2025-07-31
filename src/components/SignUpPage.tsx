@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SignUpForm from './SignUpForm';
-import axios from 'axios'; // Importar axios
+import { supabase } from '../lib/supabase';
 
 export function SignUpPage() {
   const { signUp } = useAuth();
@@ -11,23 +11,29 @@ export function SignUpPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referrerName, setReferrerName] = useState<string | null>(null); // Novo estado para o nome
+  const [referrerName, setReferrerName] = useState<string | null>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const refCode = urlParams.get('ref');
     if (refCode) {
       setReferralCode(refCode);
-      // Buscar o nome de quem indicou
-      axios.get(`/api/mp/referrer-info/${refCode}`)
-        .then(response => {
-          if (response.data.success) {
-            setReferrerName(response.data.name);
+      const fetchReferrerName = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('referral_code', refCode)
+            .single();
+          if (error) throw error;
+          if (data) {
+            setReferrerName(data.name);
           }
-        })
-        .catch(error => {
+        } catch (error) {
           console.error("Erro ao buscar nome do indicador:", error);
-        });
+        }
+      };
+      fetchReferrerName();
     }
   }, [location]);
 
@@ -35,10 +41,10 @@ export function SignUpPage() {
     try {
       setLoading(true);
       await signUp(
-        formData.name.trim(),
-        formData.email.trim().toLowerCase(),
+        formData.name,
+        formData.email,
         formData.password,
-        referralCode || undefined
+        referralCode
       );
       toast.success('Conta criada com sucesso! Redirecionando para o login...');
       navigate('/login');
@@ -54,7 +60,7 @@ export function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <img
           className="mx-auto h-40 w-auto"
@@ -73,11 +79,10 @@ export function SignUpPage() {
         onSubmit={handleSignUp} 
         loading={loading} 
         referralCode={referralCode} 
-        referrerName={referrerName} // Passar o nome para o formulário
+        referrerName={referrerName}
       />
 
       <Toaster position="top-right" />
     </div>
   );
 }
-

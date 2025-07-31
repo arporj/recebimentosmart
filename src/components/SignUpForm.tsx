@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, User, ArrowLeft } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 interface SignUpFormProps {
-  onSuccess?: () => void;
+  onSubmit: (formData: any) => void;
+  loading: boolean;
+  referralCode: string | null;
+  referrerName: string | null;
 }
 
-const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
+const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode, referrerName }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,37 +19,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referrerName, setReferrerName] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const refCode = params.get('ref');
-
-    if (refCode) {
-      setReferralCode(refCode);
-      const fetchReferrerName = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('referral_code', refCode)
-            .single();
-          if (error) throw error;
-          if (data) {
-            setReferrerName(data.name);
-          }
-        } catch (error) {
-          console.error('Erro ao buscar nome do indicador:', error);
-        }
-      };
-      fetchReferrerName();
-    }
-  }, [location.search]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -67,41 +37,14 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
     return newErrors;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      return;
-    }
-
-    setErrors({});
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.name,
-            referral_code: referralCode,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate('/login');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Ocorreu um erro ao criar a conta.');
-    } finally {
-      setLoading(false);
+    } else {
+      setErrors({});
+      onSubmit(formData);
     }
   };
 
