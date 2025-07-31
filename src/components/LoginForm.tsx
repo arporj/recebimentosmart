@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
-import SignUpForm from './SignUpForm';
 import { useNavigate, Link } from 'react-router-dom';
 
 export function LoginForm() {
@@ -11,8 +10,6 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +36,6 @@ export function LoginForm() {
 
     try {
       await resetPassword(email);
-      setShowResetPassword(false);
       toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
     } catch (error) {
       console.error('Error resetting password:', error);
@@ -49,74 +45,15 @@ export function LoginForm() {
     }
   };
 
-  if (showSignUp) {
-    return <SignUpForm onCancel={() => setShowSignUp(false)} />;
-  }
-
-  if (showResetPassword) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Recuperar Senha
-          </h2>
-        </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <form onSubmit={handleResetPassword} className="space-y-6">
-              <div>
-                <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="reset-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-                    placeholder="seu@email.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50"
-                >
-                  {loading ? 'Enviando...' : 'Enviar Email de Recuperação'}
-                </button>
-              </div>
-
-              <div className="text-sm text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowResetPassword(false)}
-                  className="font-medium text-custom hover:text-custom-hover"
-                >
-                  Voltar ao Login
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Removido o showSignUp e showResetPassword como estados de renderização condicional aqui
+  // A navegação para /cadastro e /forgot-password será feita via react-router-dom
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <img
           className="mx-auto h-40 w-auto"
-          src="/images/landing.png" // Atualize o caminho da sua imagem
+          src="/images/landing.png"
           alt="RecebimentoSmart"
         />
       </div>
@@ -195,7 +132,7 @@ export function LoginForm() {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => setShowSignUp(true)}
+                onClick={() => navigate('/cadastro')} // Agora navega para a rota /cadastro
                 className="text-sm font-medium text-custom hover:text-custom-hover"
               >
                 Não tem uma conta? Cadastre-se de graça por 7 dias
