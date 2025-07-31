@@ -287,7 +287,6 @@ const ReferralPage = () => {
         </div>
         <p className="text-sm text-gray-600 mt-4">
           Cada crédito representa {discountPercentage}% de desconto na sua próxima fatura.
-          Você pode acumular até {maxCredits} créditos.
         </p>
       </div>
     </div>

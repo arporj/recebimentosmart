@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../lib/dates';
 import type { Database, PaymentFrequency } from '../types/supabase';
 import { setDate } from 'date-fns';
+import { CurrencyInput } from './ui/CurrencyInput';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 
@@ -30,7 +31,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    monthly_payment: '',
+    monthly_payment: 0, // Alterado para número (centavos)
     payment_due_day: '',
     start_date: '',
     status: true,
@@ -45,9 +46,9 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       setFormData({
         name: client.name || '',
         phone: client.phone || '',
-        monthly_payment: client.monthly_payment?.toString() || '',
+        monthly_payment: client.monthly_payment ? Math.round(client.monthly_payment * 100) : 0, // Convertido para centavos
         payment_due_day: client.payment_due_day?.toString() || '',
-        start_date: client.start_date?.toString() || '',
+        start_date: client.start_date ? formatToSP(client.start_date, 'yyyy-MM-dd') : '',
         status: client.status ?? true,
         payment_frequency: client.payment_frequency || 'monthly',
         device_key: client?.device_key || '',
@@ -66,19 +67,6 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     }
   };
 
-  const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-    value = value.replace(/[^\d.]/g, '');
-    const parts = value.split('.');
-    if (parts.length > 2) {
-      value = parts[0] + '.' + parts.slice(1).join('');
-    }
-    if (parts[1]?.length > 2) {
-      value = parts[0] + '.' + parts[1].slice(0, 2);
-    }
-    setFormData({ ...formData, monthly_payment: value });
-  };
-
   const handleDueDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
     const day = parseInt(value);
@@ -91,7 +79,6 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     const today = new Date();
     let nextPaymentDate = setDate(startDate, paymentDueDay);
 
-    // If the calculated date is in the past, set it to today
     if (nextPaymentDate < today) {
       nextPaymentDate = setDate(today, paymentDueDay);
     }
@@ -107,11 +94,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         throw new Error('Usuário não autenticado');
       }
 
-      if (!formData.name || !formData.monthly_payment || !formData.payment_due_day || !formData.start_date) {
+      if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
         throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
       }
 
-      const monthlyPayment = parseFloat(formData.monthly_payment);
+      const monthlyPayment = formData.monthly_payment / 100; // Convertido de centavos para decimal
       if (isNaN(monthlyPayment) || monthlyPayment <= 0) {
         throw new Error('Valor do pagamento inválido');
       }
@@ -142,13 +129,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       let error;
 
       if (client) {
-        // Update existing client
         ({ error } = await supabase
           .from('clients')
           .update(clientData)
           .eq('id', client.id));
       } else {
-        // Create new client
         ({ error } = await supabase
           .from('clients')
           .insert([clientData]));
@@ -163,7 +148,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         setFormData({
           name: '',
           phone: '',
-          monthly_payment: '',
+          monthly_payment: 0,
           payment_due_day: '',
           start_date: '',
           status: true,
@@ -187,12 +172,13 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
   };
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto p-1">
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="name">
           Nome Completo
         </label>
         <input
+          id="name"
           type="text"
           required
           value={formData.name}
@@ -203,10 +189,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="phone">
           Telefone
         </label>
         <input
+          id="phone"
           type="tel"
           value={formData.phone}
           onChange={handlePhoneChange}
@@ -216,10 +203,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="start_date">
           Data de Início
         </label>
         <input
+          id="start_date"
           type="date"
           required
           value={formData.start_date}
@@ -230,29 +218,26 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="monthly_payment">
           Valor do Pagamento
         </label>
-        <div className="mt-1 relative rounded-md shadow-sm">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="text-gray-500 sm:text-sm">R$</span>
-          </div>
-          <input
-            type="text"
-            required
+        <div className="mt-1">
+          <CurrencyInput
+            id="monthly_payment"
             value={formData.monthly_payment}
-            onChange={handleMoneyChange}
-            className="pl-8 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="0.00"
+            onValueChange={(value) => setFormData({ ...formData, monthly_payment: value })}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="R$ 0,00"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="payment_frequency">
           Frequência de Pagamento
         </label>
         <select
+          id="payment_frequency"
           value={formData.payment_frequency}
           onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value as PaymentFrequency })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
@@ -266,10 +251,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="payment_due_day">
           Dia do Vencimento
         </label>
         <input
+          id="payment_due_day"
           type="text"
           required
           value={formData.payment_due_day}
@@ -278,15 +264,16 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           placeholder="Digite um número entre 1 e 31"
         />
         <p className="mt-1 text-sm text-gray-500">
-          Dia do mês em que o pagamento deve ser realizado
+          Dia do mês em que o pagamento deve ser realizado.
         </p>
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="device_key">
           Device Key
         </label>
         <input
+          id="device_key"
           type="text"
           value={formData.device_key || ''}
           onChange={(e) => setFormData({ ...formData, device_key: e.target.value })}
@@ -296,10 +283,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="mac_address">
           Endereço MAC
         </label>
         <input
+          id="mac_address"
           type="text"
           value={formData.mac_address || ''}
           onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
@@ -310,10 +298,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700" htmlFor="app">
           App
         </label>
         <input
+          id="app"
           type="text"
           value={formData.app || ''}
           onChange={(e) => setFormData({ ...formData, app: e.target.value })}
@@ -356,7 +345,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
   if (client) {
     return (
       <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full relative">
+        <div className="bg-white rounded-lg p-6 max-w-2xl w-full relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
@@ -382,7 +371,10 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
       {isOpen && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full relative">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full relative">
+            <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-500">
+              <X className="h-5 w-5" />
+            </button>
             <h2 className="text-lg font-medium mb-4">Cadastrar Novo Cliente</h2>
             {formContent}
           </div>
