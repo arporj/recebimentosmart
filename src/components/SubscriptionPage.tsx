@@ -167,7 +167,7 @@ const SubscriptionPage = () => { // Renomeado aqui
     };
 
     try {
-        const response = await axios.post('/api/generate-payment-mp', paymentPayload);
+        const response = await axios.post('/api/mp/generate-payment-mp', paymentPayload);
 
         if (!response.data || !response.data.success) {
             throw new Error(response.data?.message || 'Erro ao gerar pagamento');

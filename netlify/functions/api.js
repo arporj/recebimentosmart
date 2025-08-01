@@ -34,6 +34,8 @@ async function saveTransactionAssociation(externalReference, userId, amount, des
 }
 
 exports.handler = async (event, context) => {
+  console.log('Requisição recebida na Netlify Function api.js');
+  console.log('event.path:', event.path);
   // Permite requisições OPTIONS para CORS
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -47,8 +49,10 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const path = event.path.replace(/\.netlify\/functions\/api/, '');
+  const path = event.path.replace(/^\/api\//, ''); // Remove /api/ from the start
   const segments = path.split('/').filter(Boolean);
+  console.log('path (after replace): ', path);
+  console.log('segments: ', segments);
 
   switch (segments[0]) {
     case 'payment-details':
