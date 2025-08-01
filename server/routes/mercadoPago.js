@@ -208,8 +208,9 @@ router.post('/generate-payment-mp', async (req, res) => {
 
 // Rota para o webhook
 router.post('/webhook', async (req, res) => {
-    console.log('Webhook recebido:', JSON.stringify(req.body, null, 2));
-    console.log('Headers do Webhook:', JSON.stringify(req.headers, null, 2));
+    console.log('--- INÍCIO DO WEBHOOK ---');
+    console.log('Webhook recebido (body):', req.body);
+    console.log('Headers do Webhook:', req.headers);
     try {
         const isValid = await validateWebhookSignature(req);
         if (!isValid) {
