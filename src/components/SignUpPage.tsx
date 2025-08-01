@@ -64,6 +64,8 @@ export function SignUpPage() {
         `;
 
         const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             subject,
             htmlContent,
@@ -72,9 +74,8 @@ export function SignUpPage() {
         });
 
         if (emailError) {
-          // Loga o erro do e-mail, mas não impede o fluxo do usuário
+          // Loga o erro do e-mail silenciosamente, sem impedir o fluxo do usuário
           console.error('Erro ao enviar e-mail de notificação de cadastro:', emailError);
-          toast.error('Houve um problema ao enviar a notificação, mas seu cadastro foi criado.');
         }
 
       } catch (emailError) {
