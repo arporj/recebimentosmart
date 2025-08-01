@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { CreditCard, CheckCircle, Gift, Star } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { CreditCard, CheckCircle, Gift, Star, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface PaymentDetails {
   baseFee: number;
@@ -26,15 +28,42 @@ const PaymentIntegration = () => {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
+  const [nextDueDate, setNextDueDate] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
+  const [currentExternalReference, setCurrentExternalReference] = useState<string | null>(null);
+
+  const fetchSubscriptionStatus = async () => {
+    if (!user) return;
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('valid_until')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (profile?.valid_until) {
+        setNextDueDate(format(parseISO(profile.valid_until), 'dd/MM/yyyy', { locale: ptBR }));
+      } else {
+        setNextDueDate(null);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar status da assinatura:", error);
+      setNextDueDate(null);
+    }
+  };
 
   useEffect(() => {
+    fetchSubscriptionStatus();
+
     const fetchInitialData = async () => {
       if (!user) return;
       setLoadingDetails(true);
       try {
         // Buscar detalhes de pagamento e informações de indicação em paralelo
         const [paymentResponse, referralResponse] = await Promise.all([
-          axios.get(`/api/mp/payment-details/${user.id}`),
+          axios.get(`/api/payment-details/${user.id}`),
           supabase.rpc('get_full_referral_stats', { p_user_id: user.id })
         ]);
 
@@ -77,6 +106,49 @@ const PaymentIntegration = () => {
     fetchInitialData();
   }, [user]);
 
+  // Polling para verificar o status do pagamento
+  useEffect(() => {
+    if (paymentStatus === 'pending' && currentExternalReference) {
+      pollingIntervalRef.current = window.setInterval(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('payment_transactions')
+            .select('status')
+            .eq('reference_id', currentExternalReference)
+            .single();
+
+          if (error) throw error;
+
+          if (data?.status === 'COMPLETED') {
+            clearInterval(pollingIntervalRef.current!); // Para o polling
+            setPaymentStatus('completed');
+            setPixCode(''); // Limpa o PIX
+            setPixQrCode('');
+            toast.success('Pagamento confirmado com sucesso!');
+            fetchSubscriptionStatus(); // Atualiza o status da assinatura
+          } else if (data?.status === 'FAILED') {
+            clearInterval(pollingIntervalRef.current!); // Para o polling
+            setPaymentStatus('failed');
+            setPixCode(''); // Limpa o PIX
+            setPixQrCode('');
+            toast.error('Pagamento falhou. Tente novamente.');
+          }
+        } catch (error) {
+          console.error('Erro no polling de pagamento:', error);
+          clearInterval(pollingIntervalRef.current!); // Para o polling em caso de erro
+          setPaymentStatus('failed');
+          toast.error('Erro ao verificar status do pagamento.');
+        }
+      }, 5000); // Verifica a cada 5 segundos
+    }
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [paymentStatus, currentExternalReference]);
+
   const generatePayment = async () => {
     if (!paymentDetails || paymentDetails.amountToPay <= 0) {
       return;
@@ -97,7 +169,7 @@ const PaymentIntegration = () => {
     };
 
     try {
-        const response = await axios.post('/api/mp/generate-payment', paymentPayload);
+        const response = await axios.post('/api/generate-payment-mp', paymentPayload);
 
         if (!response.data || !response.data.success) {
             throw new Error(response.data?.message || 'Erro ao gerar pagamento');
@@ -106,7 +178,8 @@ const PaymentIntegration = () => {
         const { data } = response;
         setPixCode(data.pixQrCode);
         setPixQrCode(data.pixQrCodeBase64);
-        toast.success('QR Code PIX gerado!');
+        setCurrentExternalReference(data.externalReference); // Salva a referência para o polling
+        toast.success('QR Code PIX gerado! Aguardando confirmação...');
 
     } catch (error) {
         console.error('Erro ao gerar pagamento:', error);
@@ -183,7 +256,10 @@ const PaymentIntegration = () => {
       return (
         <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6 text-center">
           <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-          <p className="text-green-700 font-medium mb-2">Sua mensalidade está coberta pelos créditos!</p>
+          <p className="text-green-700 font-medium mb-2">Sua mensalidade está em dia!</p>
+          {nextDueDate && (
+            <p className="text-sm text-green-700 mt-1">Próximo vencimento: <span className="font-bold">{nextDueDate}</span></p>
+          )}
         </div>
       );
     }
@@ -199,6 +275,12 @@ const PaymentIntegration = () => {
               <button onClick={copyPixCode} className="px-4 py-2 bg-custom text-white rounded-r-md hover:bg-custom-hover text-sm">Copiar</button>
             </div>
           </div>
+          {paymentStatus === 'pending' && (
+            <div className="mt-4 text-center text-blue-600 flex items-center justify-center">
+              <Clock className="h-5 w-5 mr-2 animate-spin" />
+              <span>Aguardando confirmação do pagamento...</span>
+            </div>
+          )}
         </div>
       );
     }
@@ -230,6 +312,9 @@ const PaymentIntegration = () => {
       {hasFullAccess && paymentStatus !== 'completed' && (
         <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-3 text-center">
              <p className="text-sm text-green-700 font-medium">Seu pagamento está em dia!</p>
+             {nextDueDate && (
+               <p className="text-sm text-green-700 mt-1">Próximo vencimento: <span className="font-bold">{nextDueDate}</span></p>
+             )}
         </div>
       )}
 

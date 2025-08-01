@@ -157,6 +157,84 @@ app.post('/api/generate-payment-mp', async (req, res) => {
   }
 });
 
+// --- Webhook do Mercado Pago ---
+app.post('/api/mp-webhook', async (req, res) => {
+  try {
+    const { topic, id } = req.body; // topic: 'payment', id: payment_id
+
+    if (topic === 'payment') {
+      // 1. Buscar detalhes do pagamento no Mercado Pago
+      const response = await axios.get(
+        `${mercadoPagoBaseUrl}/v1/payments/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${mercadoPagoAccessToken}`,
+          },
+        }
+      );
+
+      const payment = response.data;
+
+      // 2. Verificar se o pagamento foi aprovado
+      if (payment.status === 'approved') {
+        const externalReference = payment.external_reference;
+
+        // 3. Encontrar a transação associada no nosso banco de dados
+        const { data: transaction, error: transactionError } = await supabaseAdmin
+          .from('payment_transactions')
+          .select('*')
+          .eq('reference_id', externalReference)
+          .single();
+
+        if (transactionError) {
+          console.error('Erro ao buscar transação associada:', transactionError);
+          return res.status(500).send('Erro interno do servidor');
+        }
+
+        if (transaction) {
+          // 4. Atualizar o status da transação para COMPLETED
+          const { error: updateError } = await supabaseAdmin
+            .from('payment_transactions')
+            .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
+            .eq('id', transaction.id);
+
+          if (updateError) {
+            console.error('Erro ao atualizar status da transação:', updateError);
+            return res.status(500).send('Erro interno do servidor');
+          }
+
+          // 5. Inserir/Atualizar registro na tabela 'subscriptions'
+          // Assumindo que 'subscriptions' tem user_id, start_date, end_date, status, plan_id
+          // E que 'start_date' pode ser a data do pagamento
+          const { error: subscriptionError } = await supabaseAdmin
+            .from('subscriptions')
+            .insert({
+              user_id: transaction.user_id,
+              start_date: new Date().toISOString(), // Data do pagamento
+              end_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(), // 1 mês de validade
+              status: 'active',
+              plan_id: 'monthly_plan', // Assumindo um plano padrão
+              // Nota: 'amount' e 'payment_id' não estão no schema atual de 'subscriptions'
+              // Se forem necessários, uma migração de DB será preciso.
+            });
+
+          if (subscriptionError) {
+            console.error('Erro ao criar/atualizar assinatura:', subscriptionError);
+            return res.status(500).send('Erro interno do servidor');
+          }
+
+          console.log(`Pagamento ${payment.id} aprovado e assinatura criada/atualizada para o usuário ${transaction.user_id}.`);
+        }
+      }
+    }
+
+    res.status(200).send('OK'); // Sempre retornar 200 para o Mercado Pago
+  } catch (error) {
+    console.error('Erro no webhook do Mercado Pago:', error.response?.data || error.message);
+    res.status(500).send('Erro interno do servidor');
+  }
+});
+
 // --- Funções Auxiliares ---
 function createPixPaymentPayload(amount, description, payer, externalReference) {
   return { transaction_amount: amount, description, payment_method_id: 'pix', payer, external_reference: externalReference };
