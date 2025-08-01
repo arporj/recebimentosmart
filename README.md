@@ -1,51 +1,91 @@
-<<<<<<< HEAD
-# Getting Started with Create React App
+# Recebimento $mart
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> Um sistema de gestão de clientes e pagamentos recorrentes, projetado para autônomos e pequenas empresas. Simplifique suas cobranças e organize suas finanças.
 
-## Available Scripts
+## 🚀 Sobre o Projeto
 
-In the project directory, you can run:
+O Recebimento $mart é uma aplicação web construída para resolver um problema comum: o gerenciamento de pagamentos mensais de clientes. Ele permite que o usuário cadastre seus próprios clientes, defina um valor e um dia de vencimento, e acompanhe facilmente quem está em dia e quem está em atraso.
 
-### `npm start`
+O projeto utiliza uma arquitetura moderna com React e Vite no frontend para uma experiência de usuário rápida e reativa, e Supabase no backend, aproveitando seus serviços de autenticação, banco de dados em tempo real e Edge Functions para lógicas de negócio seguras.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## ✨ Funcionalidades Principais
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+- **Autenticação de Usuários:** Sistema completo de cadastro, login e recuperação de senha.
+- **Dashboard:** Visão geral e centralizada das informações mais importantes.
+- **Gestão de Clientes:** CRUD completo para gerenciar a carteira de clientes.
+- **Controle de Pagamentos:** Acompanhamento do status de pagamento de cada cliente (Em dia, Em atraso, Próximo).
+- **Notificações Automatizadas:** Envio de e-mails para o administrador em eventos importantes (novos cadastros, primeiros pagamentos).
+- **Sistema de Assinatura:** O próprio sistema é um SaaS com um período de trial de 7 dias para novos usuários.
+- **Sistema de Indicação:** Usuários podem indicar amigos para ganhar benefícios.
 
-### `npm test`
+## 🛠️ Tecnologias Utilizadas
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Frontend:**
+  - [React](https://react.dev/)
+  - [TypeScript](https://www.typescriptlang.org/)
+  - [Vite](https://vitejs.dev/)
+  - [Tailwind CSS](https://tailwindcss.com/)
+- **Backend (BaaS):**
+  - [Supabase](https://supabase.com/) (Database, Auth, Edge Functions)
+- **Roteamento:**
+  - [React Router DOM](https://reactrouter.com/)
+- **Notificações (UI):**
+  - [React Hot Toast](https://react-hot-toast.com/)
+- **Ícones:**
+  - [Lucide React](https://lucide.dev/)
+- **Requisições HTTP:**
+  - [Axios](https://axios-http.com/)
+- **Manipulação de Datas:**
+  - [date-fns](https://date-fns.org/)
 
-### `npm run build`
+## ⚙️ Como Começar
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Siga os passos abaixo para configurar e rodar o projeto em seu ambiente local.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Pré-requisitos
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- [Node.js](https://nodejs.org/en) (versão 18 ou superior)
+- [npm](https://www.npmjs.com/) (geralmente vem com o Node.js)
+- Uma conta no [Supabase](https://supabase.com/) para criar seu próprio backend.
 
-### `npm run eject`
+### Instalação
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/seu-usuario/recebimento-smart.git
+    ```
+2.  **Navegue até o diretório do projeto:**
+    ```bash
+    cd recebimento-smart
+    ```
+3.  **Instale as dependências:**
+    ```bash
+    npm install
+    ```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Variáveis de Ambiente
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Para que a aplicação se conecte ao Supabase, você precisa criar um arquivo de variáveis de ambiente.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+1.  Crie um arquivo chamado `.env` na raiz do projeto.
+2.  Copie o conteúdo do exemplo abaixo e cole no seu arquivo `.env`, substituindo os valores pelas chaves do seu projeto no Supabase.
 
-## Learn More
+    ```env
+    # Arquivo .env.example
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+    # Chaves do Supabase (encontradas em Project Settings > API)
+    VITE_SUPABASE_URL="https://SUA_URL_DO_PROJETO.supabase.co"
+    VITE_SUPABASE_ANON_KEY="SUA_CHAVE_ANON"
+    ```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-=======
-# recebimentosmart
-Sistema para controle de pagamentos recorrentes de clientes
->>>>>>> 37ac39f25218fae2b1478b1d752aad2730d689bc
+### Rodando o Projeto
+
+Com tudo configurado, inicie o servidor de desenvolvimento:
+
+```bash
+npm run dev
+```
+
+A aplicação estará disponível em `http://localhost:5173` (ou outra porta, se a 5173 estiver em uso).
+
+---
