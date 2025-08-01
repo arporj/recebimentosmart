@@ -15,3 +15,18 @@ Este arquivo serve para rastrear tarefas, bugs de baixa prioridade e melhorias q
 - [ ] **Corrigir erro de Roteamento: `No routes matched location "/cadastro"`**
   - **Descrição:** O console do navegador exibe um aviso de que a rota `/cadastro` não foi encontrada. Isso provavelmente ocorre durante a navegação após o registro ou login.
   - **Ação Sugerida:** Investigar o código de roteamento (provavelmente em `App.tsx` e os componentes de página) para encontrar onde a navegação para `/cadastro` está sendo chamada e corrigir para a rota correta (ex: `/login` ou a página principal da aplicação após o login).
+
+## Melhorias na Integração com Mercado Pago
+
+- [ ] **Aprovação de Pagamentos: 9 Ações Pendentes**
+  - **Descrição:** O Mercado Pago indica 9 ações para melhorar a aprovação de pagamentos. Estas devem ser implementadas na requisição de criação de pagamento.
+  - **Ações Detalhadas:**
+    - [ ] **Obrigatório:** Implementar o `device ID` (ou usar SDK Oficial MercadoPago.JS V2 para tokenizar cartões).
+    - [ ] **Recomendado:** Enviar `payer.first_name`.
+    - [ ] **Recomendado:** Enviar `payer.last_name`.
+    - [ ] **Recomendado:** Enviar `items.category_id`.
+    - [ ] **Recomendado:** Enviar `items.description`.
+    - [ ] **Recomendado:** Enviar `items.id`.
+    - [ ] **Recomendado:** Enviar `items.quantity`.
+    - [ ] **Recomendado:** Enviar `items.title`.
+    - [ ] **Recomendado:** Enviar `items.unit_price`.

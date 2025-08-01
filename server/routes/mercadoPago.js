@@ -208,33 +208,43 @@ router.post('/generate-payment-mp', async (req, res) => {
 
 // Rota para o webhook
 router.post('/webhook', async (req, res) => {
-    console.log('Webhook recebido:', req.body);
-    console.log('Headers do Webhook:', req.headers);
+    console.log('Webhook recebido:', JSON.stringify(req.body, null, 2));
+    console.log('Headers do Webhook:', JSON.stringify(req.headers, null, 2));
     try {
         const isValid = await validateWebhookSignature(req);
         if (!isValid) {
-            return res.status(403).json({ success: false, message: "Assinatura inválida" });
+            console.warn('Webhook: Assinatura inválida ou secreta não configurada.');
+            return res.status(403).json({ success: false, message: "Assinatura inválida ou secreta não configurada" });
         }
 
         const notification = req.body;
+        console.log('Webhook: Tipo de notificação recebida:', notification.type);
+
         if (notification.type !== "payment") {
+            console.log('Webhook: Notificação não é de pagamento, ignorando.');
             return res.status(200).json({ success: true, message: "Notificação não é de pagamento" });
         }
 
         const paymentId = notification.data?.id;
         if (!paymentId) {
+            console.warn('Webhook: ID do pagamento não encontrado na notificação.');
             return res.status(200).json({ success: true, message: "ID do pagamento não encontrado" });
         }
 
+        console.log(`Webhook: Processando pagamento com ID: ${paymentId}`);
         const paymentDetails = await getPaymentDetails(paymentId);
+
         if (paymentDetails) {
+            console.log('Webhook: Detalhes do pagamento obtidos, iniciando processamento...');
             await processPayment(paymentDetails);
+        } else {
+            console.warn(`Webhook: Não foi possível obter detalhes para o pagamento ID: ${paymentId}`);
         }
 
         res.status(200).json({ success: true, message: "Webhook processado com sucesso" });
 
     } catch (error) {
-        console.error("Webhook Mercado Pago: Erro ao processar notificação:", error);
+        console.error("Webhook Mercado Pago: Erro ao processar notificação:", error.message, error.stack);
         res.status(200).json({ success: false, message: "Erro interno ao processar webhook" });
     }
 });
