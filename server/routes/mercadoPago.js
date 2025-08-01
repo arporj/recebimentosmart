@@ -208,6 +208,8 @@ router.post('/generate-payment-mp', async (req, res) => {
 
 // Rota para o webhook
 router.post('/webhook', async (req, res) => {
+    console.log('Webhook recebido:', req.body);
+    console.log('Headers do Webhook:', req.headers);
     try {
         const isValid = await validateWebhookSignature(req);
         if (!isValid) {
@@ -261,16 +263,27 @@ async function getPaymentDetails(paymentId) {
 }
 
 async function processPayment(payment) {
+    console.log('Iniciando processamento do pagamento:', payment);
     const { id, status, transaction_amount, external_reference, payment_method_id } = payment;
 
     const { data: transaction } = await supabase.from("payment_transactions").select("user_id").eq("reference_id", external_reference).single();
-    if (!transaction) return;
+    if (!transaction) {
+        console.log('Transação não encontrada para external_reference:', external_reference);
+        return;
+    }
+    console.log('Transação encontrada:', transaction);
 
-    await supabase.from("payment_transactions").update({ status, charge_id: id.toString(), payment_method: payment_method_id }).eq("reference_id", external_reference);
+    const { error: updateTransactionError } = await supabase.from("payment_transactions").update({ status, charge_id: id.toString(), payment_method: payment_method_id }).eq("reference_id", external_reference);
+    if (updateTransactionError) {
+        console.error('Erro ao atualizar status da transação:', updateTransactionError);
+        return;
+    }
+    console.log('Status da transação atualizado para:', status);
 
     if (status === 'approved') {
+        console.log('Pagamento aprovado. Inserindo registro de pagamento e atualizando validade.');
         // Insere o registro de pagamento
-        await supabase.from("payments").insert({ 
+        const { error: insertPaymentError } = await supabase.from("payments").insert({ 
             user_id: transaction.user_id, 
             amount: transaction_amount, 
             status: "completed", 
@@ -278,19 +291,24 @@ async function processPayment(payment) {
             payment_method: payment_method_id, 
             reference_id: external_reference 
         });
+        if (insertPaymentError) {
+            console.error('Erro ao inserir registro de pagamento:', insertPaymentError);
+            return;
+        }
+        console.log('Registro de pagamento inserido.');
 
         // Calcula a nova data de validade (30 dias a partir de hoje)
         const newExpiryDate = new Date();
         newExpiryDate.setDate(newExpiryDate.getDate() + 30);
 
         // Atualiza o perfil do usuário com a nova data de validade
-        const { error: updateError } = await supabase
+        const { error: updateProfileError } = await supabase
             .from('profiles')
             .update({ valid_until: newExpiryDate.toISOString() })
             .eq('id', transaction.user_id);
 
-        if (updateError) {
-            console.error("Erro ao atualizar a data de validade do usuário:", updateError);
+        if (updateProfileError) {
+            console.error("Erro ao atualizar a data de validade do usuário:", updateProfileError);
         } else {
             console.log(`Data de validade atualizada para o usuário ${transaction.user_id}: ${newExpiryDate.toISOString()}`);
         }
