@@ -62,9 +62,16 @@ const SubscriptionPage = () => { // Renomeado aqui
       setLoadingDetails(true);
       try {
         // Buscar detalhes de pagamento e informações de indicação em paralelo
-        const [paymentResponse, referralResponse] = await Promise.all([
-          axios.get(`/api/payment-details/${user.id}`),
-          supabase.rpc('get_full_referral_stats', { p_user_id: user.id })
+        const fetchInitialData = async () => {
+      try {
+        const [
+          { data: paymentDetails },
+          { data: subscriptionData },
+          { data: userProfile },
+        ] = await Promise.all([
+          axios.get(`/api/mp/payment-details/${user.id}`),
+          axios.get(`/api/subscription/${user.id}`),
+          supabase.from('users').select('*').eq('id', user.id).single(),
         ]);
 
         let fetchedPaymentDetails = paymentResponse.data;
