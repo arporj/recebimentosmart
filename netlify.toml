@@ -3,6 +3,12 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Regra específica para as rotas do Mercado Pago via servidor Express
+[[redirects]]
+  from = "/api/mp/*"
+  to = "/.netlify/functions/express-api/:splat"
+  status = 200
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
