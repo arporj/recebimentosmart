@@ -57,21 +57,14 @@ const SubscriptionPage = () => { // Renomeado aqui
   useEffect(() => {
     fetchSubscriptionStatus();
 
-    const fetchInitialData = async () => {
+    (async () => { // IIFE
       if (!user) return;
       setLoadingDetails(true);
       try {
         // Buscar detalhes de pagamento e informações de indicação em paralelo
-        const fetchInitialData = async () => {
-      try {
-        const [
-          { data: paymentDetails },
-          { data: subscriptionData },
-          { data: userProfile },
-        ] = await Promise.all([
+        const [paymentResponse, referralResponse] = await Promise.all([
           axios.get(`/api/mp/payment-details/${user.id}`),
-          axios.get(`/api/subscription/${user.id}`),
-          supabase.from('users').select('*').eq('id', user.id).single(),
+          supabase.rpc('get_full_referral_stats', { p_user_id: user.id })
         ]);
 
         let fetchedPaymentDetails = paymentResponse.data;
@@ -108,9 +101,7 @@ const SubscriptionPage = () => { // Renomeado aqui
       } finally {
         setLoadingDetails(false);
       }
-    };
-
-    fetchInitialData();
+    })(); // Call the IIFE
   }, [user]);
 
   // Polling para verificar o status do pagamento
