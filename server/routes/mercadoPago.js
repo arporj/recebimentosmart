@@ -151,7 +151,7 @@ router.get('/referral-stats/:userId', async (req, res) => {
 
 
 // Rota para gerar um novo pagamento
-router.post('/generate-payment', async (req, res) => {
+router.post('/generate-payment-mp', async (req, res) => {
     const { 
         amount, 
         description, 
