@@ -38,18 +38,17 @@ export function SignUpPage() {
   }, [location]);
 
   const handleSignUp = async (formData) => {
+    setLoading(true);
     try {
-      setLoading(true);
+      // 1. Tenta criar o usuário primeiro
       await signUp(
         formData.name,
         formData.email,
         formData.password,
         referralCode
       );
-      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
-      navigate('/login');
 
-      // Enviar e-mail de notificação para o financeiro
+      // 2. Se o cadastro for bem-sucedido, envia o e-mail de notificação
       try {
         const subject = `Novo Cadastro: ${formData.name}`;
         const htmlContent = `
@@ -64,24 +63,32 @@ export function SignUpPage() {
           <p>Atenciosamente,<br>Equipe Recebimento $mart</p>
         `;
 
-                await supabase.functions.invoke('send-notification-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
+          body: {
             subject,
             htmlContent,
             recipientEmail: 'financeiro@recebimentosmart.com.br',
-          }),
+          },
         });
+
+        if (emailError) {
+          // Loga o erro do e-mail, mas não impede o fluxo do usuário
+          console.error('Erro ao enviar e-mail de notificação de cadastro:', emailError);
+          toast.error('Houve um problema ao enviar a notificação, mas seu cadastro foi criado.');
+        }
+
       } catch (emailError) {
-        console.error('Erro ao enviar e-mail de notificação de cadastro:', emailError);
+        console.error('Erro crítico ao tentar enviar e-mail de notificação:', emailError);
       }
+
+      // 3. Informa o usuário e redireciona
+      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
+      navigate('/login');
+
     } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Erro ao criar conta');
-      }
+      // O erro do signUp do AuthContext já mostra um toast
+      // Não é necessário mostrar outro aqui, apenas logar se desejar.
+      console.error("Erro no processo de signUp:", error);
     } finally {
       setLoading(false);
     }
