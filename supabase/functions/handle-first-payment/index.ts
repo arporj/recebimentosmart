@@ -70,7 +70,7 @@ serve(async (req) => {
       `;
 
       // Chamar a Edge Function genérica para enviar o e-mail
-      await fetch(`https://kwdweztilsoxxcgudtsz.supabase.co/functions/v1/send-notification-email`, { // Use o URL da sua Edge Function
+      const { error: invokeError } = await supabaseAdmin.functions.invoke('send-notification-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

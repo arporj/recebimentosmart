@@ -64,7 +64,7 @@ export function SignUpPage() {
           <p>Atenciosamente,<br>Equipe Recebimento $mart</p>
         `;
 
-        await fetch('/api/send-notification-email', {
+                await supabase.functions.invoke('send-notification-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
