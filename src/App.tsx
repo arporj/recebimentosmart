@@ -15,7 +15,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'; // Importa a nova 
 
 // Importar os novos componentes
 import FeedbackForm from './components/FeedbackForm';
-import PaymentIntegration from './components/PaymentIntegration';
+import SubscriptionPage from './components/SubscriptionPage';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
 import ChangePassword from './components/ChangePassword';
@@ -107,7 +107,7 @@ function AppRoutes() {
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
-          <Route path="/payment" element={<ProtectedRoute><MainLayout><PaymentIntegration /></MainLayout></ProtectedRoute>} />
+          <Route path="/payment" element={<ProtectedRoute><MainLayout><SubscriptionPage /></MainLayout></ProtectedRoute>} />
 
           {/* Rota de Admin */}
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />

@@ -19,7 +19,7 @@ interface ReferralInfo {
   referrer_name: string | null;
 }
 
-const PaymentIntegration = () => {
+const SubscriptionPage = () => { // Renomeado aqui
   const { user, hasFullAccess, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(true);
@@ -306,12 +306,12 @@ const PaymentIntegration = () => {
     <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
       <div className="flex items-center mb-4">
         <CreditCard className="h-6 w-6 text-custom mr-2" />
-        <h1 className="text-2xl font-bold text-gray-800">Pagamento da Mensalidade</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Sua Assinatura</h1> {/* Renomeado aqui */}
       </div>
 
       {hasFullAccess && paymentStatus !== 'completed' && (
         <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-3 text-center">
-             <p className="text-sm text-green-700 font-medium">Seu pagamento está em dia!</p>
+             <p className="text-sm text-green-700 font-medium">Sua mensalidade está em dia!</p>
              {nextDueDate && (
                <p className="text-sm text-green-700 mt-1">Próximo vencimento: <span className="font-bold">{nextDueDate}</span></p>
              )}
@@ -331,4 +331,4 @@ const PaymentIntegration = () => {
   );
 };
 
-export default PaymentIntegration;
+export default SubscriptionPage; // Renomeado aqui

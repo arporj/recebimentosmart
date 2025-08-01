@@ -91,7 +91,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
                 role="menuitem"
               >
                 <CreditCard className="h-4 w-4 mr-2 text-red-500" />
-                Realizar Pagamento
+                Sua Assinatura
               </button>
               
               <hr className="my-1" />
@@ -196,7 +196,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
               role="menuitem"
             >
               <CreditCard className="h-4 w-4 mr-2 text-gray-500" />
-              Pagamentos
+              Sua Assinatura
             </button>
             
             <button
