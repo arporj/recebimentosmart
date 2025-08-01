@@ -64,11 +64,11 @@ export function SignUpPage() {
         `;
 
         const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
-          body: {
+          body: JSON.stringify({
             subject,
             htmlContent,
             recipientEmail: 'financeiro@recebimentosmart.com.br',
-          },
+          }),
         });
 
         if (emailError) {
