@@ -12,6 +12,16 @@ const mercadoPagoRoutes = require('./routes/mercadoPago'); // Novas rotas
 // Inicializar o app Express
 const app = express();
 
+// Middleware para logar todas as requisições
+app.use((req, res, next) => {
+  console.log('--- REQUISIÇÃO RECEBIDA ---');
+  console.log('Método:', req.method);
+  console.log('URL:', req.url);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  next();
+});
+
 // Middleware
 app.use(express.json());
 app.use(cors({
