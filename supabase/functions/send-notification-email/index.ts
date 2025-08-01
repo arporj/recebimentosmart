@@ -9,20 +9,21 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Trata a requisição preflight CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  if (!BREVO_API_KEY) {
-    return new Response(JSON.stringify({ error: 'BREVO_API_KEY não configurada.' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
+    // Valida a existência da chave da API
+    if (!BREVO_API_KEY) {
+      throw new Error('BREVO_API_KEY não foi configurada como um secret da função.');
+    }
+
+    // Extrai os dados do corpo da requisição
     const { subject, htmlContent, recipientEmail } = await req.json();
 
+    // Valida os parâmetros recebidos
     if (!subject || !htmlContent || !recipientEmail) {
       return new Response(JSON.stringify({ error: 'Parâmetros subject, htmlContent e recipientEmail são obrigatórios.' }), {
         status: 400,
@@ -30,6 +31,7 @@ serve(async (req) => {
       });
     }
 
+    // Monta o payload para a API da Brevo
     const emailPayload = {
       sender: { name: 'Recebimento $mart - Notificação', email: 'no-reply@recebimentosmart.com.br' },
       to: [{ email: recipientEmail }],
@@ -37,6 +39,7 @@ serve(async (req) => {
       htmlContent: htmlContent,
     };
 
+    // Envia o e-mail
     const brevoResponse = await fetch(BREVO_API_URL, {
       method: 'POST',
       headers: {
@@ -47,17 +50,23 @@ serve(async (req) => {
       body: JSON.stringify(emailPayload),
     });
 
+    // Trata a resposta da API da Brevo
     if (!brevoResponse.ok) {
       const errorBody = await brevoResponse.json();
-      console.error('Erro ao enviar e-mail via Brevo:', errorBody);
-      throw new Error(`Falha ao enviar e-mail via Brevo: ${JSON.stringify(errorBody)}`);
+      console.error('Erro da API Brevo:', errorBody);
+      throw new Error(`Falha ao enviar e-mail via Brevo: ${errorBody.message || brevoResponse.statusText}`);
     }
 
-    return new Response(JSON.stringify({ success: true, message: 'E-mail de notificação enviado com sucesso.' }), {
+    const responseData = await brevoResponse.json();
+
+    // Retorna sucesso
+    return new Response(JSON.stringify({ success: true, data: responseData }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
+    // Captura qualquer erro que ocorrer no processo
     console.error('Erro na função send-notification-email:', error);
     return new Response(JSON.stringify({ error: error.message || 'Erro interno do servidor.' }), {
       status: 500,
