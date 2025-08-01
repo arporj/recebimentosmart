@@ -4,9 +4,13 @@ Este arquivo serve para rastrear tarefas, bugs de baixa prioridade e melhorias q
 
 ## Itens Pendentes
 
-- [ ] **URGENTE: Corrigir lógica de status de pagamento do cliente**
-  - **Descrição:** Um cliente com data de vencimento futura (ex: 10 de Agosto) está sendo incorretamente marcado como "Em atraso: Agosto/2025". A tag principal mostra "Em dia", mas o status detalhado e o calendário indicam um atraso inexistente.
-  - **Ação Sugerida:** Revisar a lógica de cálculo de status de pagamento no componente da página de clientes. A verificação de "atraso" deve considerar se a data de vencimento do mês atual já passou. Se a data de vencimento (ex: dia 10) do mês corrente ainda não chegou, o status não pode ser "em atraso".
+- [x] **URGENTE: Corrigir lógica de status de pagamento do cliente (Backend)**
+  - **Descrição:** O fluxo de backend para o primeiro pagamento foi implementado, incluindo o webhook do Mercado Pago e a inserção na tabela `subscriptions`.
+  - **Status:** Concluído (Backend).
+
+- [ ] **Melhorar feedback visual e exibição de próximo vencimento (Frontend)**
+  - **Descrição:** Na tela de pagamentos, o usuário precisa de feedback visual claro após iniciar o pagamento (ex: "Aguardando confirmação...") e a data do próximo vencimento deve ser exibida e atualizada dinamicamente.
+  - **Ação Sugerida:** Implementar polling na tabela `payment_transactions` para o `externalReference` e atualizar o `PaymentIntegration.tsx` para exibir o status e a data de vencimento.
 
 - [ ] **Corrigir erro de Roteamento: `No routes matched location "/cadastro"`**
   - **Descrição:** O console do navegador exibe um aviso de que a rota `/cadastro` não foi encontrada. Isso provavelmente ocorre durante a navegação após o registro ou login.
