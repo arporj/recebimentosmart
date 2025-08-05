@@ -2,7 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import UserMenu from '../UserMenu';
-import { Users, BarChart, Calendar } from 'lucide-react';
+import { Users, BarChart, Calendar, Settings } from 'lucide-react'; // Adicionado ícone de Configurações
+import { useAuth } from '../../contexts/AuthContext'; // Importar o hook de autenticação
 
 // Configuração do Toaster (movida para o layout para consistência)
 const toasterConfig = {
@@ -27,7 +28,8 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, currentView = 'clients', onViewChange = () => {} }: MainLayoutProps) {
-  
+  const { isAdmin } = useAuth(); // Obter o status de admin
+
   // Listener para fechar notificações ao clique
   React.useEffect(() => {
     const handleToastClick = (e: MouseEvent) => {
@@ -97,6 +99,20 @@ export function MainLayout({ children, currentView = 'clients', onViewChange = (
                   <BarChart className="h-4 w-4 mr-2" />
                   Relatórios
                 </Link>
+                {isAdmin && (
+                  <Link
+                    to="/configuracoes"
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      currentView === 'configuracoes'
+                        ? 'bg-custom text-white hover:bg-custom-hover'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    onClick={() => onViewChange('configuracoes')}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurações
+                  </Link>
+                )}
               </div>
               {/* Menu do usuário */}
               <UserMenu currentView={currentView} onViewChange={onViewChange} />
