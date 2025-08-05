@@ -341,4 +341,57 @@ async function validateWebhookSignature(req) {
     return expectedSignature === v1;
 }
 
+// Rota para criar uma preferência de pagamento
+router.post('/create-preference', async (req, res) => {
+    const { title, unit_price, quantity, userId } = req.body;
+
+    if (!title || !unit_price || !quantity || !userId) {
+        return res.status(400).json({ success: false, message: "Dados obrigatórios: title, unit_price, quantity, userId" });
+    }
+
+    try {
+        const preferencePayload = {
+            items: [
+                {
+                    title,
+                    unit_price,
+                    quantity,
+                },
+            ],
+            payer: {
+                // Adicionar dados do pagador se necessário
+            },
+            back_urls: {
+                success: `${process.env.VITE_APP_URL}/payment-success`,
+                failure: `${process.env.VITE_APP_URL}/payment-failure`,
+                pending: `${process.env.VITE_APP_URL}/payment-pending`,
+            },
+            auto_return: 'approved',
+            external_reference: uuidv4(), // Associar a transação ao usuário
+        };
+
+        if (webhookUrl) {
+            preferencePayload.notification_url = webhookUrl;
+        }
+
+        const response = await axios.post(`${mercadoPagoBaseUrl}/checkout/preferences`, preferencePayload, {
+            headers: {
+                Authorization: `Bearer ${mercadoPagoAccessToken}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const { id: preferenceId } = response.data;
+
+        // Salvar a associação da preferência com o usuário no seu banco de dados
+        await saveTransactionAssociation(preferencePayload.external_reference, userId, unit_price * quantity, title);
+
+        res.status(201).json({ success: true, preferenceId });
+
+    } catch (error) {
+        console.error("Erro ao criar preferência no Mercado Pago:", error.response?.data || error.message);
+        res.status(500).json({ success: false, message: "Falha ao criar preferência", error: error.response?.data || error.message });
+    }
+});
+
 module.exports = router;

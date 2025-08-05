@@ -15,6 +15,17 @@ const formatDisplayCurrency = (value: number) => {
 };
 
 
+import TestPaymentButton from '@/components/TestPaymentButton'; // Importe o botão de teste
+
+// Função para formatar para exibição
+const formatDisplayCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value / 100); // Divide por 100 porque o valor vem em centavos
+};
+
+
 const Configuracoes = () => {
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [newPrice, setNewPrice] = useState<number>(0);
@@ -64,37 +75,48 @@ const Configuracoes = () => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Configurações do Sistema</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Preço da Assinatura</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <p>Carregando...</p>
-          ) : (
-            <>
-              <p>
-                O valor atual da assinatura é de:{' '}
-                <strong className="text-lg">{formatDisplayCurrency(currentPrice)}</strong>
-              </p>
-              <div className="space-y-2">
-                <label htmlFor="new-price">Novo valor da assinatura (em centavos)</label>
-                <CurrencyInput
-                  id="new-price"
-                  value={newPrice}
-                  onValueChange={(value) => setNewPrice(value)}
-                  disabled={loading}
-                />
-              </div>
-              <Button onClick={handleUpdatePrice} disabled={loading || newPrice === currentPrice}>
-                {loading ? 'Salvando...' : 'Salvar Novo Preço'}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Preço da Assinatura</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <p>Carregando...</p>
+            ) : (
+              <>
+                <p>
+                  O valor atual da assinatura é de:{' '}
+                  <strong className="text-lg">{formatDisplayCurrency(currentPrice)}</strong>
+                </p>
+                <div className="space-y-2">
+                  <label htmlFor="new-price">Novo valor da assinatura (em centavos)</label>
+                  <CurrencyInput
+                    id="new-price"
+                    value={newPrice}
+                    onValueChange={(value) => setNewPrice(value)}
+                    disabled={loading}
+                  />
+                </div>
+                <Button onClick={handleUpdatePrice} disabled={loading || newPrice === currentPrice}>
+                  {loading ? 'Salvando...' : 'Salvar Novo Preço'}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Teste de Pagamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TestPaymentButton />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
+
 
 export default Configuracoes;
