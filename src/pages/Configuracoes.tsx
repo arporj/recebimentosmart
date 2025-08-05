@@ -34,6 +34,8 @@ const Configuracoes = () => {
     fetchConfig();
   }, []);
 
+  
+
   const handleUpdatePrice = async () => {
     const newPriceNumber = parseCurrency(newPrice); // Converte a string formatada para número
 
