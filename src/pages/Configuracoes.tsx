@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CurrencyInput } from '@/components/ui/CurrencyInput'; // Importe o novo componente
-import { supabase } from '@/lib/supabase'; // Seu cliente Supabase
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import TestPaymentButton from '@/components/TestPaymentButton';
 
 // Função para formatar para exibição
 const formatDisplayCurrency = (value: number) => {
@@ -13,18 +14,6 @@ const formatDisplayCurrency = (value: number) => {
         currency: 'BRL',
     }).format(value / 100); // Divide por 100 porque o valor vem em centavos
 };
-
-
-import TestPaymentButton from '@/components/TestPaymentButton'; // Importe o botão de teste
-
-// Função para formatar para exibição
-const formatDisplayCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value / 100); // Divide por 100 porque o valor vem em centavos
-};
-
 
 const Configuracoes = () => {
   const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -35,7 +24,6 @@ const Configuracoes = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       setLoading(true);
-      // Supondo que você tenha uma tabela 'app_config' para isso
       const { data, error } = await supabase
         .from('app_config')
         .select('value')
@@ -48,7 +36,7 @@ const Configuracoes = () => {
       } else if (data) {
         const priceInCents = parseInt(data.value, 10);
         setCurrentPrice(priceInCents);
-        setNewPrice(priceInCents); // Inicia o campo com o valor atual
+        setNewPrice(priceInCents);
       }
       setLoading(false);
     };
@@ -117,6 +105,5 @@ const Configuracoes = () => {
     </div>
   );
 };
-
 
 export default Configuracoes;
