@@ -21,6 +21,7 @@ import UserProfileSettings from './components/UserProfileSettings';
 import ChangePassword from './components/ChangePassword';
 import { SignUpPage } from './components/SignUpPage';
 import ReferralPage from './components/ReferralPage';
+import Configuracoes from './pages/Configuracoes';
 
 // Configuração global do Toaster
 const toasterConfig = {
@@ -111,6 +112,7 @@ function AppRoutes() {
 
           {/* Rota de Admin */}
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
+          <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
           
           {/* Se o usuário logado tentar acessar /login, redireciona para a home */}
           <Route path="/login" element={<Navigate to="/" replace />} />
