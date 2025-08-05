@@ -391,6 +391,6 @@ router.get('/referral-stats/:userId', async (req, res) => {
 });
 
 
-app.use('/.netlify/functions/express-api', router); // Prefixo para as rotas
+app.use('/', router); // Monta as rotas na raiz do aplicativo Express
 
 module.exports.handler = serverless(app);
