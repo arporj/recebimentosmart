@@ -1,0 +1,15 @@
+{
+  "name": "express-api-function",
+  "version": "1.0.0",
+  "description": "Netlify Function for Express API",
+  "main": "express-api.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "serverless-http": "^3.2.0",
+    "axios": "^1.9.0",
+    "uuid": "^11.1.0",
+    "@supabase/supabase-js": "^2.39.7",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1"
+  }
+}
