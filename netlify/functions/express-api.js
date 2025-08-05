@@ -24,6 +24,12 @@ const router = express.Router();
 app.use(express.json());
 app.use(cors()); // Permite todas as origens por padrão para funções Netlify
 
+// Middleware de log para depuração
+app.use((req, res, next) => {
+  console.log(`[Express Function] Recebida requisição: ${req.method} ${req.url} (Path: ${req.path})`);
+  next();
+});
+
 // --- Funções Auxiliares (copiadas de server/routes/mercadoPago.js) ---
 
 async function saveTransactionAssociation(externalReference, userId, amount, description) {
