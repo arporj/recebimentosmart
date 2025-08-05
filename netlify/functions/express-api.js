@@ -4,7 +4,13 @@ const cors = require('cors');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
-const { supabase } = require('../../server/lib/supabase'); // Ajuste o caminho conforme necessário
+const { createClient } = require('@supabase/supabase-js');
+
+// Inicialização do Supabase para Netlify Function
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // Variáveis de ambiente (Netlify Functions as acessam diretamente)
 const mercadoPagoAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
@@ -307,7 +313,7 @@ router.get('/payment-details/:userId', async (req, res) => {
 
         const { count: paidReferrals, error: creditsError } = await supabase
             .from('referral_credits')
-            .select('id', { count: 'exact' })
+            .select('*', { count: 'exact', head: true })
             .eq('referrer_user_id', userId)
             .in('status', ['credited', 'used']);
         
