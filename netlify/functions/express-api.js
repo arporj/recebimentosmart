@@ -23,7 +23,7 @@ router.post('/create-preference', (req, res) => {
 
 // Rota para processar pagamento com cartão usando o SDK v2
 router.post('/process-card-payment', async (req, res) => {
-  const { token, description, transaction_amount, payer_email, userId } = req.body;
+  const { token, description, transaction_amount, userId } = req.body;
 
   const payment = new Payment(client);
 
@@ -33,7 +33,7 @@ router.post('/process-card-payment', async (req, res) => {
     description: description,
     installments: 1,
     payer: {
-      email: payer_email,
+      email: 'TESTUSER1191943637@testuser.com', // E-mail do comprador de teste
     },
     metadata: {
       user_id: userId,
