@@ -47,7 +47,7 @@ const TestPaymentButton: React.FC = () => {
           body: JSON.stringify({
             token: token.id, // Enviando o ID do token
             description: 'Pagamento de Teste - Assinatura',
-            transaction_amount: 0.01,
+            transaction_amount: 1.00,
             payer_email: user?.email || 'test_user@test.com',
             userId: user?.id,
           }),
