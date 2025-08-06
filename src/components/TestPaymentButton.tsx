@@ -1,54 +1,86 @@
 import React, { useState } from 'react';
-import MercadoPagoPayment from './MercadoPagoPayment';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
+
+// Declara o tipo MercadoPago para o TypeScript, para que ele reconheça o objeto global
+declare const MercadoPago: any;
 
 const TestPaymentButton: React.FC = () => {
-  const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  const createPreference = async () => {
+  // Sua Chave Pública do Mercado Pago
+  const mpPublicKey = 'TEST-6122fc5e-2330-49f2-a7ac-b1f0e00e5c54';
+
+  const handleTestCardPayment = async () => {
     setLoading(true);
+    toast.loading('Iniciando pagamento de teste...');
+
     try {
-      const response = await fetch('/api/mp/create-preference', {
+      // Inicializa a biblioteca do Mercado Pago
+      const mp = new MercadoPago(mpPublicKey);
+
+      // Dados do cartão de teste (Mastercard)
+      const cardData = {
+        cardNumber: "5031433215406351",
+        cardholderName: "TESTUSER1191943637",
+        cardExpirationMonth: "11",
+        cardExpirationYear: "2030",
+        securityCode: "123",
+        identificationType: "CPF",
+        identificationNumber: "12345678909" // CPF de teste válido
+      };
+
+      // Cria o token do cartão de forma segura
+      const { token } = await mp.createCardToken(cardData);
+
+      if (!token) {
+        throw new Error('Não foi possível gerar o token do cartão.');
+      }
+
+      toast.dismiss();
+      toast.loading('Processando pagamento no backend...');
+
+      // Envia o token para o seu backend para processar o pagamento
+      const response = await fetch('/api/mp/process-card-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: 'Assinatura Mensal - Teste',
-          unit_price: 1, // 1 centavo para teste
-          quantity: 1,
+          token: token,
+          description: 'Pagamento de Teste - Assinatura',
+          transaction_amount: 0.01, // Usando 1 centavo para o teste
+          payer_email: user?.email || 'test_user@test.com',
           userId: user?.id,
         }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
+      toast.dismiss();
 
-      if (data.success) {
-        setPreferenceId(data.preferenceId);
+      if (response.ok && result.success) {
+        toast.success(`Pagamento de teste ${result.status}! ID: ${result.paymentId}`);
       } else {
-        // Adicionar um toast de erro aqui seria uma boa prática
-        console.error('Falha ao criar preferência de pagamento');
+        throw new Error(result.message || 'Falha ao processar o pagamento no backend.');
       }
-    } catch (error) {
-      console.error('Erro ao criar preferência:', error);
+
+    } catch (error: any) {
+      toast.dismiss();
+      console.error('Erro no pagamento de teste:', error);
+      toast.error(error.message || 'Ocorreu um erro inesperado.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (preferenceId) {
-    return <MercadoPagoPayment preferenceId={preferenceId} />;
-  }
-
   return (
-    <button 
-      onClick={createPreference} 
+    <button
+      onClick={handleTestCardPayment}
       disabled={loading}
-      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50"
+      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
     >
-      {loading ? 'Gerando Pagamento...' : 'Testar Pagamento com Mercado Pago'}
+      {loading ? 'Processando Teste...' : 'Testar Pagamento com Cartão'}
     </button>
   );
 };
