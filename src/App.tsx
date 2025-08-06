@@ -22,6 +22,8 @@ import ChangePassword from './components/ChangePassword';
 import { SignUpPage } from './components/SignUpPage';
 import ReferralPage from './components/ReferralPage';
 import Configuracoes from './pages/Configuracoes';
+import PaymentSuccessPage from './pages/payment-success';
+import PaymentFailurePage from './pages/payment-failure';
 
 // Configuração global do Toaster
 const toasterConfig = {
@@ -109,6 +111,10 @@ function AppRoutes() {
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
           <Route path="/payment" element={<ProtectedRoute><MainLayout><SubscriptionPage /></MainLayout></ProtectedRoute>} />
+
+          {/* Rotas de retorno do pagamento */}
+          <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
+          <Route path="/payment-failure" element={<ProtectedRoute><PaymentFailurePage /></ProtectedRoute>} />
 
           {/* Rota de Admin */}
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />

@@ -1,7 +1,7 @@
 import express from 'express';
 import serverless from 'serverless-http';
 import cors from 'cors';
-import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { MercadoPagoConfig, Payment, Preference } from 'mercadopago';
 
 // Inicializa o cliente do Mercado Pago com o Access Token
 const client = new MercadoPagoConfig({ 
@@ -15,49 +15,77 @@ const router = express.Router();
 app.use(express.json());
 app.use(cors());
 
-// Rota de teste para criação de preferência (PIX)
-router.post('/create-preference', (req, res) => {
-  console.log('[Express Function] Test route hit!');
-  res.status(200).json({ success: true, message: 'Test preference created successfully!' });
+// Rota para criar preferência de pagamento e redirecionar para o checkout
+router.post('/create-preference', async (req, res) => {
+  try {
+    const { title, unit_price, quantity, userId } = req.body;
+    const siteUrl = req.headers.origin; // URL base do site (ex: https://recebimentosmart.com.br)
+
+    const preference = new Preference(client);
+
+    const result = await preference.create({
+      body: {
+        items: [
+          {
+            title: title,
+            unit_price: Number(unit_price),
+            quantity: Number(quantity),
+            currency_id: 'BRL',
+          },
+        ],
+        back_urls: {
+          success: `${siteUrl}/payment-success`,
+          failure: `${siteUrl}/payment-failure`,
+          pending: `${siteUrl}/payment-pending`,
+        },
+        auto_return: 'approved',
+        metadata: {
+          user_id: userId,
+        },
+        // notification_url: `${siteUrl}/api/mp/webhook` // Opcional: para receber webhooks
+      },
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      preferenceId: result.id,
+      init_point: result.init_point // URL de checkout do Mercado Pago
+    });
+
+  } catch (error) {
+    console.error('Erro ao criar preferência:', JSON.stringify(error, null, 2));
+    const errorMessage = error.cause?.[0]?.description || error.message || 'Erro desconhecido ao criar preferência.';
+    res.status(500).json({ success: false, message: errorMessage });
+  }
 });
 
-// Rota para processar pagamento com cartão usando o SDK v2
+// Rota para processar pagamento com cartão (teste programático - manter por enquanto)
 router.post('/process-card-payment', async (req, res) => {
-  // Usando o e-mail do pagador vindo do frontend
   const { token, description, transaction_amount, payer_email, userId } = req.body;
-
   const payment = new Payment(client);
-
   const body = {
     transaction_amount: Number(transaction_amount),
     token: token,
     description: description,
     installments: 1,
-    payer: {
-      email: payer_email, // Revertido para usar o e-mail do usuário logado
-    },
-    metadata: {
-      user_id: userId,
-    },
+    payer: { email: payer_email },
+    metadata: { user_id: userId },
   };
 
   try {
     const result = await payment.create({ body });
     res.status(201).json({ 
       success: true, 
-      message: 'Pagamento processado com sucesso!',
       paymentId: result.id,
       status: result.status,
-      status_detail: result.status_detail
     });
   } catch (error) {
     console.error('Erro detalhado ao processar pagamento:', JSON.stringify(error, null, 2));
-    const errorMessage = error.cause?.[0]?.description || error.message || 'Erro desconhecido ao processar pagamento.';
+    const errorMessage = error.cause?.[0]?.description || error.message || 'Erro desconhecido.';
     res.status(500).json({ success: false, message: errorMessage });
   }
 });
 
 app.use('/api/mp', router);
 
-// Transforma o app Express em uma função serverless
 export const handler = serverless(app);
