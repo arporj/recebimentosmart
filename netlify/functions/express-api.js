@@ -1,11 +1,12 @@
-const express = require('express');
-const serverless = require('serverless-http');
-const cors = require('cors');
-const mercadopago = require('mercadopago');
+import express from 'express';
+import serverless from 'serverless-http';
+import cors from 'cors';
+import { MercadoPagoConfig, Payment } from 'mercadopago';
 
-// Configure o Mercado Pago com seu Access Token
-mercadopago.configure({
-  access_token: 'TEST-6058466609332947-072217-b82dec033b5106f14bdb573acc981ed9-6402098',
+// Inicializa o cliente do Mercado Pago com o Access Token
+const client = new MercadoPagoConfig({ 
+  accessToken: 'TEST-6058466609332947-072217-b82dec033b5106f14bdb573acc981ed9-6402098',
+  options: { timeout: 5000 }
 });
 
 const app = express();
@@ -14,38 +15,39 @@ const router = express.Router();
 app.use(express.json());
 app.use(cors());
 
-// Rota para criar preferência de pagamento (PIX)
+// Rota de teste para criação de preferência (PIX)
 router.post('/create-preference', (req, res) => {
   console.log('[Express Function] Test route hit!');
   res.status(200).json({ success: true, message: 'Test preference created successfully!' });
 });
 
-// Rota para processar pagamento com cartão
+// Rota para processar pagamento com cartão usando o SDK v2
 router.post('/process-card-payment', async (req, res) => {
   const { token, description, transaction_amount, payer_email, userId } = req.body;
 
-  // Objeto de pagamento simplificado. O token já contém os detalhes do cartão.
-  const payment_data = {
-    token: token,
+  const payment = new Payment(client);
+
+  const body = {
     transaction_amount: Number(transaction_amount),
-    installments: 1,
+    token: token,
     description: description,
+    installments: 1,
     payer: {
       email: payer_email,
     },
     metadata: {
       user_id: userId,
-    }
+    },
   };
 
   try {
-    const { body } = await mercadopago.payment.create(payment_data);
+    const result = await payment.create({ body });
     res.status(201).json({ 
       success: true, 
       message: 'Pagamento processado com sucesso!',
-      paymentId: body.id,
-      status: body.status,
-      status_detail: body.status_detail
+      paymentId: result.id,
+      status: result.status,
+      status_detail: result.status_detail
     });
   } catch (error) {
     console.error('Erro detalhado ao processar pagamento:', JSON.stringify(error, null, 2));
@@ -56,4 +58,5 @@ router.post('/process-card-payment', async (req, res) => {
 
 app.use('/api/mp', router);
 
-module.exports.handler = serverless(app);
+// Transforma o app Express em uma função serverless
+export const handler = serverless(app);
