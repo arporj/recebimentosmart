@@ -3,7 +3,6 @@
   publish = "dist"
   functions = "netlify/functions"
 
-# Regra específica para as rotas do Mercado Pago via servidor Express
 [[redirects]]
   from = "/api/mp/*"
   to = "/.netlify/functions/express-api/:splat"
@@ -14,9 +13,15 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
-# Regra "Catch-all" para SPAs (Single Page Applications)
-# Redireciona todas as outras rotas para o index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["express", "serverless-http", "axios", "uuid", "@supabase/supabase-js", "cors", "crypto"]
+  # Explicitly define the express-api function
+  # This is usually not needed if functions are in the functions directory
+  # but can help with dependency issues.
+  # express-api = { directory = "netlify/functions/express-api" }
