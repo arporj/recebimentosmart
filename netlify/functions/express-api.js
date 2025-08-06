@@ -14,6 +14,6 @@ router.post('/create-preference', (req, res) => {
   res.status(200).json({ success: true, message: 'Test preference created successfully!' });
 });
 
-app.use('/', router);
+app.use('/api/mp', router);
 
 module.exports.handler = serverless(app);
