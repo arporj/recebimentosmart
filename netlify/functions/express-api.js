@@ -62,55 +62,45 @@ router.post('/webhook', async (req, res) => {
 
       if (paymentDetails && paymentDetails.status === 'approved') {
         const userId = paymentDetails.metadata?.user_id;
-        
+        const transactionId = paymentDetails.id;
+        const amount = paymentDetails.transaction_amount;
+
         if (!userId) {
           throw new Error('UserID não encontrado nos metadados do pagamento.');
         }
 
-        // Lógica para atualizar a assinatura no Supabase
-        const { data: subscription, error } = await supabase
-          .from('Assinatura')
+        // 1. Verificar se o pagamento já foi registrado para evitar duplicidade
+        const { data: existingSubscription, error: selectError } = await supabase
+          .from('subscriptions') // Nome da tabela corrigido
           .select('id')
-          .eq('usuario_id', userId)
-          .order('data_inicio', { ascending: false })
-          .limit(1)
+          .eq('transaction_id', transactionId)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // Ignora erro se não encontrar assinatura
-          throw error;
+        if (selectError && selectError.code !== 'PGRST116') { // PGRST116 significa "no rows found"
+          throw selectError;
         }
 
-        const today = new Date();
-        const endDate = new Date();
-        endDate.setDate(today.getDate() + 30);
+        if (existingSubscription) {
+          console.log(`Pagamento ${transactionId} já registrado. Ignorando.`);
+          return res.status(200).send('OK - Pagamento já registrado');
+        }
 
-        const subscriptionData = {
-          usuario_id: userId,
-          plano: 'Mensal',
-          valor: paymentDetails.transaction_amount,
-          status: 'ativa',
-          data_inicio: today.toISOString(),
-          data_fim: endDate.toISOString(),
-          metodo_pagamento: 'mercadopago',
-          referencia_pagamento: paymentDetails.id,
-        };
+        // 2. Inserir o novo registro de pagamento na tabela 'subscriptions'
+        const { error: insertError } = await supabase
+          .from('subscriptions') // Nome da tabela corrigido
+          .insert({
+            user_id: userId,
+            amount: amount,
+            payment_provider: 'mercadopago',
+            transaction_id: transactionId,
+            // created_at e subscription_date usarão o default NOW() do banco de dados
+          });
 
-        if (subscription) {
-          // Atualiza assinatura existente
-          const { error: updateError } = await supabase
-            .from('Assinatura')
-            .update(subscriptionData)
-            .eq('id', subscription.id);
-          if (updateError) throw updateError;
-        } else {
-          // Cria nova assinatura
-          const { error: insertError } = await supabase
-            .from('Assinatura')
-            .insert(subscriptionData);
-          if (insertError) throw insertError;
+        if (insertError) {
+          throw insertError;
         }
         
-        console.log(`Assinatura para usuário ${userId} atualizada com sucesso.`);
+        console.log(`Pagamento ${transactionId} para usuário ${userId} registrado com sucesso na tabela subscriptions.`);
       }
 
       res.status(200).send('OK');
