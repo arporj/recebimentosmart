@@ -20,20 +20,18 @@ router.post('/create-preference', (req, res) => {
   res.status(200).json({ success: true, message: 'Test preference created successfully!' });
 });
 
-// Nova rota para processar pagamento com cartão
+// Rota para processar pagamento com cartão
 router.post('/process-card-payment', async (req, res) => {
   const { token, description, transaction_amount, payer_email, userId } = req.body;
 
+  // Objeto de pagamento simplificado. O token já contém os detalhes do cartão.
   const payment_data = {
     token: token,
-    issuer_id: req.body.issuer_id, // Opcional, mas recomendado
-    payment_method_id: req.body.payment_method_id, // Opcional, mas recomendado
     transaction_amount: Number(transaction_amount),
-    installments: 1, // Pagamento em 1 parcela
+    installments: 1,
     description: description,
     payer: {
       email: payer_email,
-      // first_name e last_name podem ser adicionados se disponíveis
     },
     metadata: {
       user_id: userId,
@@ -50,8 +48,8 @@ router.post('/process-card-payment', async (req, res) => {
       status_detail: body.status_detail
     });
   } catch (error) {
-    console.error('Erro ao processar pagamento com cartão:', error);
-    const errorMessage = error.cause?.message || 'Erro desconhecido ao processar pagamento.';
+    console.error('Erro detalhado ao processar pagamento:', JSON.stringify(error, null, 2));
+    const errorMessage = error.cause?.[0]?.description || error.message || 'Erro desconhecido ao processar pagamento.';
     res.status(500).json({ success: false, message: errorMessage });
   }
 });
