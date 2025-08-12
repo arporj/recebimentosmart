@@ -343,7 +343,7 @@ async function validateWebhookSignature(req) {
 
 // Rota para criar uma preferência de pagamento
 router.post('/create-preference', async (req, res) => {
-    const { title, unit_price, quantity, userId } = req.body;
+    const { title, unit_price, quantity, userId, deviceId } = req.body;
 
     if (!title || !unit_price || !quantity || !userId) {
         return res.status(400).json({ success: false, message: "Dados obrigatórios: title, unit_price, quantity, userId" });
@@ -381,6 +381,7 @@ router.post('/create-preference', async (req, res) => {
             },
             auto_return: 'approved',
             external_reference: uuidv4(), // Associar a transação ao usuário
+            metadata: deviceId ? { device_id: deviceId } : undefined
         };
 
         if (webhookUrl) {
