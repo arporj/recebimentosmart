@@ -370,7 +370,8 @@ router.post('/create-preference', async (req, res) => {
                 },
             ],
             payer: {
-                name: user.name || 'Usuário de Teste',
+                name: (user.name || 'Usuário Teste').split(' ')[0],
+                surname: (user.name || 'Usuário Teste').split(' ').slice(1).join(' '),
                 email: user.email,
             },
             back_urls: {
