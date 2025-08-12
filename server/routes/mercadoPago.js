@@ -350,6 +350,17 @@ router.post('/create-preference', async (req, res) => {
     }
 
     try {
+        // Buscar dados do usuário para o payer
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('email, raw_user_meta_data->>name as name')
+            .eq('id', userId)
+            .single();
+
+        if (userError) {
+            throw new Error('Usuário não encontrado para adicionar como pagador.');
+        }
+
         const preferencePayload = {
             items: [
                 {
@@ -359,7 +370,8 @@ router.post('/create-preference', async (req, res) => {
                 },
             ],
             payer: {
-                // Adicionar dados do pagador se necessário
+                name: user.name || 'Usuário de Teste',
+                email: user.email,
             },
             back_urls: {
                 success: `${process.env.VITE_APP_URL}/payment-success`,
