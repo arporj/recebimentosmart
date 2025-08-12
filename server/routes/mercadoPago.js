@@ -381,12 +381,17 @@ router.post('/create-preference', async (req, res) => {
             },
         });
 
-        const { id: preferenceId } = response.data;
+        const preference = response.data;
 
         // Salvar a associação da preferência com o usuário no seu banco de dados
         await saveTransactionAssociation(preferencePayload.external_reference, userId, unit_price * quantity, title);
 
-        res.status(201).json({ success: true, preferenceId });
+        // Retorna o init_point correto (sandbox ou produção)
+        res.status(201).json({
+            success: true,
+            preferenceId: preference.id,
+            init_point: preference.sandbox_init_point || preference.init_point,
+        });
 
     } catch (error) {
         console.error("Erro ao criar preferência no Mercado Pago:", error.response?.data || error.message);
