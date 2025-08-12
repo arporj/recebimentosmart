@@ -361,23 +361,32 @@ router.post('/create-preference', async (req, res) => {
             throw new Error('Usuário não encontrado para adicionar como pagador.');
         }
 
+        // Dados hard coded para teste Mercado Pago
         const preferencePayload = {
             items: [
                 {
-                    title,
-                    unit_price,
-                    quantity,
+                    id: "TEST_ITEM_001",
+                    title: title || "Teste Mercado Pago",
+                    description: "Pagamento de teste Mercado Pago",
+                    category_id: "others",
+                    unit_price: unit_price,
+                    quantity: quantity,
                 },
             ],
             payer: {
-                name: (user.name || 'Usuário Teste').split(' ')[0],
-                surname: (user.name || 'Usuário Teste').split(' ').slice(1).join(' '),
-                email: user.email,
+                id: "2541606571",
+                email: "test_user_1191943637@testuser.com",
+                name: "TESTUSER1191943637",
+                surname: "CompradorTeste",
+                identification: {
+                    type: "CPF",
+                    number: "12345678909"
+                }
             },
             back_urls: {
-                success: `${process.env.VITE_APP_URL}/payment-success`,
-                failure: `${process.env.VITE_APP_URL}/payment-failure`,
-                pending: `${process.env.VITE_APP_URL}/payment-pending`,
+                success: "https://www.recebimentosmart.com.br/payment-success",
+                failure: "https://www.recebimentosmart.com.br/payment-failure",
+                pending: "https://www.recebimentosmart.com.br/payment-pending",
             },
             auto_return: 'approved',
             external_reference: uuidv4(), // Associar a transação ao usuário
@@ -388,9 +397,11 @@ router.post('/create-preference', async (req, res) => {
             preferencePayload.notification_url = webhookUrl;
         }
 
+        // Usar access token do vendedor de teste
+        const TEST_SELLER_ACCESS_TOKEN = "APP_USR-2541602513-TESTTOKEN";
         const response = await axios.post(`${mercadoPagoBaseUrl}/checkout/preferences`, preferencePayload, {
             headers: {
-                Authorization: `Bearer ${mercadoPagoAccessToken}`,
+                Authorization: `Bearer ${TEST_SELLER_ACCESS_TOKEN}`,
                 'Content-Type': 'application/json',
             },
         });
