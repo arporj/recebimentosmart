@@ -381,6 +381,11 @@ router.post('/create-preference', async (req, res) => {
                 identification: {
                     type: "CPF",
                     number: "12345678909"
+                },
+                address: {
+                    street_name: "Rua Teste",
+                    street_number: 123,
+                    zip_code: "01000-000"
                 }
             },
             back_urls: {
@@ -390,6 +395,7 @@ router.post('/create-preference', async (req, res) => {
             },
             auto_return: 'approved',
             external_reference: uuidv4(), // Associar a transação ao usuário
+            statement_descriptor: "RECEBIMENTO SMART",
             metadata: deviceId ? { device_id: deviceId } : undefined
         };
 
