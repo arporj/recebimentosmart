@@ -11,24 +11,39 @@ const MercadoPagoPayment: React.FC<MercadoPagoPaymentProps> = ({ preferenceId })
 
   useEffect(() => {
     if (mercadoPago && preferenceId) {
-      // Inicializar o SDK MercadoPago.JS V2 e gerar device ID
-      const mp = new (window as any).MercadoPago(process.env.REACT_APP_MP_PUBLIC_KEY, {
+      // Inicializar Brick/CardForm oficial do MercadoPago.JS V2
+      const mp = new window.MercadoPago(import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY, {
         locale: 'pt-BR'
       });
-      const deviceId = mp.device.sessionId();
-      // Enviar deviceId para o backend junto com a preferência
-      mercadoPago.checkout({
-        preference: {
-          id: preferenceId,
+      const bricksBuilder = mp.bricks();
+      bricksBuilder.create('cardPayment', '#payment-brick-container', {
+        initialization: {
+          amount: 1.00, // Valor de teste
+          preferenceId: preferenceId,
         },
-        render: {
-          container: '#payment-brick-container',
-          label: 'Pagar',
+        customization: {
+          paymentMethods: {
+            creditCard: 'all',
+            debitCard: 'all',
+          },
+          visual: {
+            style: {
+              theme: 'default',
+            },
+          },
         },
-        // deviceId pode ser enviado como parte dos dados do payer ou metadata
-        metadata: {
-          device_id: deviceId
-        }
+        callbacks: {
+          onReady: () => {
+            // Brick pronto
+          },
+          onSubmit: (cardFormData) => {
+            // Aqui você pode enviar o token do cartão e deviceId para o backend
+            // Exemplo: fetch('/api/mp/process-card', { ... })
+          },
+          onError: (error) => {
+            console.error('Erro no Brick/CardForm:', error);
+          },
+        },
       });
     }
   }, [mercadoPago, preferenceId]);
