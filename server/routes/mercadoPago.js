@@ -376,8 +376,8 @@ router.post('/create-preference', async (req, res) => {
             payer: {
                 id: "2541606571",
                 email: "test_user_1191943637@testuser.com",
-                name: "TESTUSER1191943637",
-                surname: "CompradorTeste",
+                first_name: "TESTUSER1191943637",
+                last_name: "CompradorTeste",
                 identification: {
                     type: "CPF",
                     number: "12345678909"
