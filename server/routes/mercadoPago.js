@@ -397,8 +397,8 @@ router.post('/create-preference', async (req, res) => {
             preferencePayload.notification_url = webhookUrl;
         }
 
-        // Usar access token do vendedor de teste
-        const TEST_SELLER_ACCESS_TOKEN = "APP_USR-2541602513-TESTTOKEN";
+        // Usar access token do vendedor de teste fornecido
+        const TEST_SELLER_ACCESS_TOKEN = "TEST-6058466609332947-072217-b82dec033b5106f14bdb573acc981ed9-6402098";
         const response = await axios.post(`${mercadoPagoBaseUrl}/checkout/preferences`, preferencePayload, {
             headers: {
                 Authorization: `Bearer ${TEST_SELLER_ACCESS_TOKEN}`,
