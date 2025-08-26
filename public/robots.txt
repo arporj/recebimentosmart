@@ -1,0 +1,6 @@
+# Allow all user agents to crawl the site
+User-agent: *
+Disallow:
+
+# Point to the sitemap
+Sitemap: https://www.recebimentosmart.com.br/sitemap.xml

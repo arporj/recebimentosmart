@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import viteSitemap from 'vite-plugin-sitemap';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteSitemap({
+      hostname: 'https://www.recebimentosmart.com.br',
+    }),
+  ],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
