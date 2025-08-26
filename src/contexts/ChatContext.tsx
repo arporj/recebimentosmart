@@ -23,14 +23,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
-  console.log('ChatProvider: Initializing. User:', user);
-
   const getConversation = useCallback(async () => {
-    if (!user) {
-      console.log('ChatProvider: getConversation - No user, exiting.');
-      return null;
-    }
-    console.log('ChatProvider: getConversation - Fetching for user:', user.id);
+    if (!user) return null;
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -38,16 +33,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (error && error.code !== 'PGRST116') { // Ignore 'single row not found'
+      if (error) {
         throw new Error(`Supabase error fetching conversation: ${error.message}`);
       }
       
-      console.log('ChatProvider: getConversation - Fetched data:', data);
-      setConversation(data);
-      return data;
+      const currentConversation = data && data.length > 0 ? data[0] : null;
+      setConversation(currentConversation);
+      return currentConversation;
     } catch (error) {
       console.error('[ChatProvider] Error in getConversation:', error);
       toast.error('Erro ao carregar o chat.');
@@ -59,7 +53,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const createConversation = async () => {
     if (!user) return null;
-    console.log('ChatProvider: createConversation - Creating for user:', user.id);
 
     try {
       const { data, error } = await supabase
@@ -70,7 +63,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw new Error(`Supabase error creating conversation: ${error.message}`);
       
-      console.log('ChatProvider: createConversation - Created data:', data);
       setConversation(data);
       return data;
     } catch (error) {
@@ -81,19 +73,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!user) {
-      console.log('ChatProvider: Main useEffect - No user, skipping.');
-      return;
-    }
-    if (!conversation) {
-      console.log('ChatProvider: Main useEffect - No conversation, skipping.');
-      return;
-    }
-
-    console.log('ChatProvider: Main useEffect - Setting up for conversation:', conversation.id);
+    if (!user || !conversation) return;
 
     const fetchMessages = async () => {
-      console.log('ChatProvider: fetchMessages - Fetching for conversation:', conversation.id);
       setLoading(true);
       try {
         const { data, error } = await supabase
@@ -103,7 +85,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           .order('created_at', { ascending: true });
 
         if (error) throw new Error(`Supabase error fetching messages: ${error.message}`);
-        console.log('ChatProvider: fetchMessages - Fetched messages:', data);
         setMessages(data || []);
       } catch (error) {
         console.error('[ChatProvider] Error in fetchMessages:', error);
@@ -114,44 +95,33 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     fetchMessages();
 
-    try {
-      console.log('ChatProvider: Subscribing to realtime channel...');
-      const channel = supabase
-        .channel(`messages:${conversation.id}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` }, 
-          (payload) => {
-            console.log('ChatProvider: Realtime message received:', payload.new);
-            const newMessage = payload.new as Message;
-            setMessages((prev) => [...prev, newMessage]);
-            if (!isOpen && newMessage.sender_id !== user.id) {
-              setUnreadMessages(prev => prev + 1);
-              toast.success('Nova mensagem do suporte!');
-            }
+    const channel = supabase
+      .channel(`messages:${conversation.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` }, 
+        (payload) => {
+          const newMessage = payload.new as Message;
+          setMessages((prev) => [...prev, newMessage]);
+          if (!isOpen && newMessage.sender_id !== user.id) {
+            setUnreadMessages(prev => prev + 1);
+            toast.success('Nova mensagem do suporte!');
           }
-        )
-        .subscribe((status, err) => {
-          if (err) {
-            console.error('[ChatProvider] Realtime subscription error:', err);
-          }
-          console.log('[ChatProvider] Realtime status:', status);
-        });
+        }
+      )
+      .subscribe((status, err) => {
+        if (err) {
+          console.error('[ChatProvider] Realtime subscription error:', err);
+        }
+      });
 
-      return () => {
-        console.log('ChatProvider: Unsubscribing from realtime channel.');
-        supabase.removeChannel(channel);
-      };
-    } catch (error) {
-      console.error('[ChatProvider] Failed to subscribe to realtime channel:', error);
-    }
+    return () => {
+      supabase.removeChannel(channel);
+    };
 
   }, [user, conversation, isOpen]);
 
   useEffect(() => {
     if (user) {
-      console.log('ChatProvider: User found, attempting to get conversation.');
       getConversation();
-    } else {
-      console.log('ChatProvider: No user yet.');
     }
   }, [user, getConversation]);
 
@@ -167,7 +137,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     let currentConversation = conversation;
     if (!currentConversation) {
-      console.log('ChatProvider: sendMessage - No current conversation, creating one.');
       currentConversation = await createConversation();
     }
 

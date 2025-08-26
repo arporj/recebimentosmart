@@ -118,8 +118,9 @@ function AppRoutes() {
           <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
           <Route path="/payment-failure" element={<ProtectedRoute><PaymentFailurePage /></ProtectedRoute>} />
 
-          {/* Rota de Admin */}
+          {/* Rotas de Admin */}
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
+          <Route path="/admin/chat" element={<AdminRoute><MainLayout currentView='admin-chat'><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
           
           {/* Se o usuário logado tentar acessar rotas públicas, redireciona para o dashboard */}
