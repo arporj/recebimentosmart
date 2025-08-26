@@ -430,4 +430,51 @@ router.post('/create-preference', async (req, res) => {
     }
 });
 
+// Rota para processar token do cartão gerado pelo Brick/CardForm
+router.post('/process-card', async (req, res) => {
+    const { cardToken, deviceId, amount, userId } = req.body;
+    if (!cardToken || !deviceId || !amount || !userId) {
+        return res.status(400).json({ success: false, message: "Dados obrigatórios: cardToken, deviceId, amount, userId" });
+    }
+    try {
+        // Dados do comprador de teste
+        const payer = {
+            id: "2541606571",
+            email: "test_user_1191943637@testuser.com",
+            first_name: "TESTUSER1191943637",
+            last_name: "CompradorTeste",
+            identification: { type: "CPF", number: "12345678909" },
+            address: { street_name: "Rua Teste", street_number: 123, zip_code: "01000-000" }
+        };
+        // Payload para pagamento com cartão
+        const paymentPayload = {
+            transaction_amount: amount,
+            token: cardToken,
+            description: "Pagamento com cartão via Brick/CardForm",
+            payment_method_id: "visa", // ou outro conforme o cartão
+            payer,
+            external_reference: uuidv4(),
+            statement_descriptor: "RECEBIMENTO SMART",
+            metadata: { device_id: deviceId },
+            installments: 1,
+            notification_url: webhookUrl || undefined
+        };
+        // Usar access token do vendedor de teste fornecido
+        const TEST_SELLER_ACCESS_TOKEN = "TEST-6058466609332947-072217-b82dec033b5106f14bdb573acc981ed9-6402098";
+        const response = await axios.post(`${mercadoPagoBaseUrl}/v1/payments`, paymentPayload, {
+            headers: {
+                Authorization: `Bearer ${TEST_SELLER_ACCESS_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        const payment = response.data;
+        // Salvar associação da transação
+        await saveTransactionAssociation(paymentPayload.external_reference, userId, amount, "Pagamento com cartão");
+        res.status(201).json({ success: true, paymentId: payment.id, status: payment.status });
+    } catch (error) {
+        console.error("Erro ao processar pagamento com cartão:", error.response?.data || error.message);
+        res.status(500).json({ success: false, message: "Falha ao processar pagamento com cartão", error: error.response?.data || error.message });
+    }
+});
+
 module.exports = router;

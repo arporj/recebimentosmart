@@ -24,6 +24,7 @@ import ReferralPage from './components/ReferralPage';
 import Configuracoes from './pages/Configuracoes';
 import PaymentSuccessPage from './pages/payment-success';
 import PaymentFailurePage from './pages/payment-failure';
+import LandingPage from './pages/LandingPage'; // Importa a nova Landing Page
 
 // Configuração global do Toaster
 const toasterConfig = {
@@ -64,7 +65,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!isAdmin) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   
   return <>{children}</>;
@@ -91,19 +92,20 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Se não há usuário, mostra apenas rotas públicas e redireciona o resto */}
+      {/* Se não há usuário, mostra a landing page e rotas públicas */}
       {!user ? (
         <>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </>
       ) : (
         <> 
           {/* Rotas Protegidas (requerem login) */}
-          <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
           <Route path="/monthly" element={<ProtectedRoute><MainLayout currentView='monthly'><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><MainLayout currentView='reports'><ClientProvider><Reports /></ClientProvider></MainLayout></ProtectedRoute>} />
           <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackForm /></MainLayout></ProtectedRoute>} />
@@ -120,8 +122,10 @@ function AppRoutes() {
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
           
-          {/* Se o usuário logado tentar acessar /login, redireciona para a home */}
-          <Route path="/login" element={<Navigate to="/" replace />} />
+          {/* Se o usuário logado tentar acessar rotas públicas, redireciona para o dashboard */}
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/cadastro" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </>
       )}
     </Routes>
