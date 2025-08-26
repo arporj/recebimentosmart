@@ -31,7 +31,6 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, currentView = 'clients', onViewChange = () => {} }: MainLayoutProps) {
-  console.log('[MainLayout] Rendering...'); // <-- NOVO LOG DE TESTE
   const { isAdmin } = useAuth(); // Obter o status de admin
 
   // Listener para fechar notificações ao clique
