@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { format, parseISO } from 'date-fns';
 
 // Tipos para os dados
 interface Conversation {
@@ -59,11 +60,18 @@ const ConversationList: React.FC<{
             key={convo.id} 
             onClick={() => onSelect(convo)}
             className={`p-4 cursor-pointer hover:bg-gray-100 ${selectedConversationId === convo.id ? 'bg-gray-200' : ''}`}>
-            <p className="font-semibold">{convo.profile?.name || 'Usuário Desconhecido'}</p>
-            <p className="text-sm text-gray-500">ID: {convo.user_id.substring(0, 8)}</p>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${convo.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              {convo.status}
-            </span>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-semibold">{convo.profile?.name || 'Usuário Desconhecido'}</p>
+                <p className="text-sm text-gray-500">ID: {convo.user_id.substring(0, 8)}</p>
+              </div>
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${convo.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {convo.status}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Iniciado em: {format(parseISO(convo.created_at), 'dd/MM/yyyy')}
+            </p>
           </li>
         ))}
       </ul>
@@ -115,10 +123,13 @@ const MessageWindow: React.FC<{
       <main className="flex-1 p-4 overflow-y-auto bg-gray-50">
         <div className="space-y-4">
           {messages.map(msg => (
-            <div key={msg.id} className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex flex-col ${msg.sender_id === user?.id ? 'items-end' : 'items-start'}`}>
               <div className={`max-w-md px-4 py-2 rounded-xl ${msg.sender_id === user?.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
                 <p>{msg.content}</p>
               </div>
+              <p className="text-xs text-gray-400 mt-1 px-1">
+                {format(parseISO(msg.created_at), 'dd/MM/yyyy HH:mm')}
+              </p>
             </div>
           ))}
           <div ref={messagesEndRef} />
