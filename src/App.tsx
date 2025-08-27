@@ -24,6 +24,7 @@ import ReferralPage from './components/ReferralPage';
 import Configuracoes from './pages/Configuracoes';
 import PaymentSuccessPage from './pages/payment-success';
 import PaymentFailurePage from './pages/payment-failure';
+import LandingPage from './pages/LandingPage';
 import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do admin
 
 // Configuração global do Toaster
