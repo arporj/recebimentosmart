@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 interface AuthContextType {
   user: User | null;
   hasFullAccess: boolean;
-  isAdmin: boolean; // Novo estado para o status de admin
+  isAdmin: boolean;
+  plano: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
@@ -20,7 +21,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [hasFullAccess, setHasFullAccess] = useState<boolean>(false);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false); // Novo estado para admin
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [plano, setPlano] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('valid_until, is_admin') // Busca também o campo is_admin
+            .select('valid_until, is_admin, plano')
             .eq('id', currentUser.id)
             .single();
 
@@ -45,37 +47,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setHasFullAccess(hasPaidAccess || isInTrial);
             setIsAdmin(profile.is_admin || false);
+            setPlano(profile.plano || 'basico');
           } else {
             setHasFullAccess(false);
             setIsAdmin(false);
+            setPlano(null);
           }
         } catch (error) {
           console.error("Erro ao buscar perfil do usuário:", error);
           setHasFullAccess(false);
           setIsAdmin(false);
+          setPlano(null);
         }
-      } else {
-        setHasFullAccess(false);
-        setIsAdmin(false);
       }
       setUser(currentUser);
       setLoading(false);
     };
 
-    // Verifica a sessão ao carregar o estado inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       checkUserStatus(session?.user ?? null);
     });
 
-    // Escutar mudanças no estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       checkUserStatus(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // ... (manter as funções signIn, signUp, signOut, resetPassword como estão)
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -129,8 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
 
-      // O trigger no Supabase irá lidar com a criação do perfil.
-      // Atualiza o estado local do usuário com a data de validade para refletir o período de trial imediatamente.
       setUser({
         ...data.user,
         user_metadata: {
@@ -138,13 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           valid_until: validUntil,
         },
       });
-      // Apenas atualizamos o estado local para refletir o período de trial.
       setHasFullAccess(true);
-      
-      if (referralCode && data.user) {
-        // A lógica de inserção em 'referrals' e 'referral_credits' agora é tratada por triggers no banco de dados.
-        // Não é necessário inserir aqui no lado do cliente.
-      }
       
       toast.success('Conta criada com sucesso!');
     } catch (error) {
@@ -173,22 +163,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
-      // Chama a Edge Function customizada em vez da função padrão do Supabase
       const { error } = await supabase.functions.invoke('send-password-reset', {
         body: { email },
       });
 
       if (error) {
-        // Lança o erro para ser pego pelo bloco catch
         throw error;
       }
 
       toast.success('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
     } catch (error) {
-      // O erro pode ser uma FunctionsHttpError, que é uma instância de Error.
-      // A mensagem pode não ser amigável, então mostramos uma mensagem genérica.
       toast.error('Não foi possível enviar o e-mail. Verifique o endereço e tente novamente.');
-      // Re-lança o erro para que a UI possa reagir (ex: parar um spinner de loading)
       throw error;
     }
   };
