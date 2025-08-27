@@ -91,18 +91,20 @@ export function MainLayout({ children, currentView = 'clients', onViewChange = (
                     <Calendar className="h-4 w-4 mr-2" />
                     Pagamentos do Mês
                   </Link>
-                  <Link
-                    to="/reports"
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      currentView === 'reports'
-                        ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                     onClick={() => onViewChange('reports')}
-                  >
-                    <BarChart className="h-4 w-4 mr-2" />
-                    Relatórios
-                  </Link>
+                  {(isAdmin || plano === 'pro' || plano === 'premium') && (
+                    <Link
+                      to="/reports"
+                      className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                        currentView === 'reports'
+                          ? 'bg-custom text-white hover:bg-custom-hover'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                       onClick={() => onViewChange('reports')}
+                    >
+                      <BarChart className="h-4 w-4 mr-2" />
+                      Relatórios
+                    </Link>
+                  )}
                   {isAdmin && (
                     <>
                       <Link
