@@ -77,7 +77,7 @@ const MessageWindow: React.FC<{
         <div className="space-y-4">
           {messages.map(msg => (
             <div key={msg.id} className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-md px-4 py-2 rounded-xl ${msg.sender_id === user?.id ? 'bg-custom text-white' : 'bg-gray-200 text-gray-800'}`}>
+              <div className={`max-w-md px-4 py-2 rounded-xl ${msg.sender_id === user?.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
                 <p>{msg.content}</p>
               </div>
             </div>
@@ -114,37 +114,11 @@ const AdminChatPage: React.FC = () => {
     const fetchConversations = async () => {
       setLoading(true);
       try {
-        // 1. Fetch conversations
-        const { data: convosData, error: convosError } = await supabase
-          .from('conversations')
-          .select(`*`)
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.functions.invoke('get-conversations');
 
-        if (convosError) throw convosError;
-        if (!convosData) return;
+        if (error) throw error;
 
-        // 2. Get unique user IDs
-        const userIds = [...new Set(convosData.map(c => c.user_id))];
-
-        // 3. Fetch corresponding profiles
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select(`id, name`)
-          .in('id', userIds);
-
-        if (profilesError) throw profilesError;
-
-        // 4. Create a map for easy lookup
-        const profilesMap = new Map(profilesData.map(p => [p.id, p]));
-
-        // 5. Combine the data
-        const combinedData = convosData.map(convo => ({
-          ...convo,
-          profile: profilesMap.get(convo.user_id)
-        }));
-
-        setConversations(combinedData as Conversation[]);
-
+        setConversations(data || []);
       } catch (error) {
         console.error('Error fetching conversations:', error);
       } finally {
