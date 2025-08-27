@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { XCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // Tipos para os dados
 interface Conversation {
