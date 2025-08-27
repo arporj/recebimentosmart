@@ -129,7 +129,7 @@ const AdminChatPage: React.FC = () => {
         // 3. Fetch corresponding profiles
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select(`id, name, avatar_url`)
+          .select(`id, name`)
           .in('id', userIds);
 
         if (profilesError) throw profilesError;
