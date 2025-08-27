@@ -113,17 +113,43 @@ const AdminChatPage: React.FC = () => {
   useEffect(() => {
     const fetchConversations = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`*, profiles (name, avatar_url)`)
-        .order('created_at', { ascending: false });
+      try {
+        // 1. Fetch conversations
+        const { data: convosData, error: convosError } = await supabase
+          .from('conversations')
+          .select(`*`)
+          .order('created_at', { ascending: false });
 
-      if (error) {
+        if (convosError) throw convosError;
+        if (!convosData) return;
+
+        // 2. Get unique user IDs
+        const userIds = [...new Set(convosData.map(c => c.user_id))];
+
+        // 3. Fetch corresponding profiles
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select(`id, name, avatar_url`)
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        // 4. Create a map for easy lookup
+        const profilesMap = new Map(profilesData.map(p => [p.id, p]));
+
+        // 5. Combine the data
+        const combinedData = convosData.map(convo => ({
+          ...convo,
+          profile: profilesMap.get(convo.user_id)
+        }));
+
+        setConversations(combinedData as Conversation[]);
+
+      } catch (error) {
         console.error('Error fetching conversations:', error);
-      } else {
-        setConversations(data as Conversation[]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchConversations();
 
