@@ -72,7 +72,7 @@ const MessageWindow: React.FC<{
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="p-4 border-b font-bold">{conversation.profiles?.name || 'Chat'}</header>
+      <header className="p-4 border-b font-bold">{conversation.profile?.name || 'Chat'}</header>
       <main className="flex-1 p-4 overflow-y-auto bg-gray-50">
         <div className="space-y-4">
           {messages.map(msg => (
