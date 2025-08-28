@@ -31,7 +31,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, currentView = 'clients', onViewChange = () => {} }: MainLayoutProps) {
-  const { isAdmin } = useAuth(); // Obter o status de admin
+  const { isAdmin, plano } = useAuth(); // Obter o status de admin e o plano
 
   // Listener para fechar notificações ao clique
   React.useEffect(() => {
