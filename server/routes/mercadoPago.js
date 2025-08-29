@@ -275,7 +275,7 @@ async function getPaymentDetails(paymentId) {
 
 async function processPayment(payment) {
     console.log('Iniciando processamento do pagamento:', payment);
-    const { id, status, transaction_amount, external_reference, payment_method_id } = payment;
+    const { id, status, transaction_amount, external_reference, payment_method_id, metadata } = payment;
 
     const { data: transaction } = await supabase.from("payment_transactions").select("user_id").eq("reference_id", external_reference).single();
     if (!transaction) {
@@ -292,8 +292,8 @@ async function processPayment(payment) {
     console.log('Status da transação atualizado para:', status);
 
     if (status === 'approved') {
-        console.log('Pagamento aprovado. Inserindo registro de pagamento e atualizando validade.');
-        // Insere o registro de pagamento
+        console.log('Pagamento aprovado. Inserindo registro de pagamento e atualizando perfil.');
+        
         const { error: insertPaymentError } = await supabase.from("payments").insert({ 
             user_id: transaction.user_id, 
             amount: transaction_amount, 
@@ -304,27 +304,39 @@ async function processPayment(payment) {
         });
         if (insertPaymentError) {
             console.error('Erro ao inserir registro de pagamento:', insertPaymentError);
-            return;
+            return; // Retorna para não continuar se a inserção do pagamento falhar
         }
         console.log('Registro de pagamento inserido.');
 
-        // Calcula a nova data de validade (30 dias a partir de hoje)
         const newExpiryDate = new Date();
         newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+        const paidPlan = metadata?.plan || 'basico'; // Pega o plano do metadata ou assume 'basico'
 
-        // Atualiza o perfil do usuário com a nova data de validade
         const { error: updateProfileError } = await supabase
             .from('profiles')
-            .update({ valid_until: newExpiryDate.toISOString() })
+            .update({ 
+                valid_until: newExpiryDate.toISOString(),
+                plano: paidPlan
+            })
             .eq('id', transaction.user_id);
 
         if (updateProfileError) {
-            console.error("Erro ao atualizar a data de validade do usuário:", updateProfileError);
+            console.error("Erro ao atualizar o perfil do usuário:", updateProfileError);
         } else {
-            console.log(`Data de validade atualizada para o usuário ${transaction.user_id}: ${newExpiryDate.toISOString()}`);
-        }
+            console.log(`Perfil do usuário ${transaction.user_id} atualizado para plano ${paidPlan} com validade até ${newExpiryDate.toISOString()}`);
+            
+            // Após o sucesso da atualização, chama a função para conceder crédito de indicação
+            const { error: creditError } = await supabase.rpc('grant_referral_credit', {
+                referred_user_id: transaction.user_id,
+                paid_plan: paidPlan
+            });
 
-        // Chamar RPC de crédito de referência se necessário
+            if (creditError) {
+                console.error(`Erro ao conceder crédito de indicação para o pagamento do usuário ${transaction.user_id}:`, creditError);
+            } else {
+                console.log(`Verificação de crédito de indicação para o usuário ${transaction.user_id} concluída.`);
+            }
+        }
     }
 }
 
