@@ -1,18 +1,42 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Search, Edit, XCircle } from 'lucide-react';
-import EditUserModal from './EditUserModal'; // Criaremos este componente a seguir
+import { Search, Edit } from 'lucide-react';
+import EditUserModal from './EditUserModal';
 
 // Interface para o perfil do usuário vindo do banco
 export interface UserProfile {
   id: string;
   name: string | null;
   email: string;
+  plano: string | null; // Adicionado
   valid_until: string | null;
   is_admin: boolean;
   created_at: string;
 }
+
+const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
+  if (!plan) {
+    return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>;
+  }
+
+  const planLower = plan.toLowerCase();
+  let colorClasses = 'bg-gray-100 text-gray-800';
+
+  if (planLower === 'trial') {
+    colorClasses = 'bg-yellow-100 text-yellow-800';
+  } else if (planLower === 'pro' || planLower === 'premium') {
+    colorClasses = 'bg-blue-100 text-blue-800';
+  } else if (planLower === 'basico') {
+    colorClasses = 'bg-green-100 text-green-800';
+  }
+
+  return (
+    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorClasses}`}>
+      {plan.charAt(0).toUpperCase() + plan.slice(1)}
+    </span>
+  );
+};
 
 const UserTable = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -20,13 +44,10 @@ const UserTable = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
-  // Função para buscar os dados dos usuários
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Precisamos de uma função RPC para buscar dados de perfis e auth.users de forma segura
       const { data, error } = await supabase.rpc('get_all_users_admin');
-
       if (error) throw error;
       setUsers(data || []);
     } catch (error: any) {
@@ -41,7 +62,6 @@ const UserTable = () => {
     fetchUsers();
   }, []);
 
-  // Filtra os usuários com base no termo de busca
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users;
     return users.filter(user => 
@@ -81,6 +101,7 @@ const UserTable = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Válido Até</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
@@ -88,9 +109,9 @@ const UserTable = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={4} className="text-center py-4">Carregando...</td></tr>
+              <tr><td colSpan={5} className="text-center py-4">Carregando...</td></tr>
             ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan={4} className="text-center py-4">Nenhum usuário encontrado.</td></tr>
+              <tr><td colSpan={5} className="text-center py-4">Nenhum usuário encontrado.</td></tr>
             ) : (
               filteredUsers.map(user => (
                 <tr key={user.id}>
@@ -99,6 +120,9 @@ const UserTable = () => {
                       <span className="text-sm font-medium text-gray-900">{user.name || 'Não informado'}</span>
                       <span className="text-sm text-gray-500">{user.email}</span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <PlanBadge plan={user.plano} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {user.is_admin ? (
