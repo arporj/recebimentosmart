@@ -111,8 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
     try {
-      const validUntil = addDays(new Date(), 7).toISOString();
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -120,7 +118,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             name: name,
             referral_code: referralCode,
-            valid_until: validUntil,
           },
         },
       });
