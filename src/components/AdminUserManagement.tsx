@@ -1,15 +1,8 @@
-import React from 'react';
-import { DollarSign, Users, UserPlus, CheckCircle } from 'lucide-react';
-import KpiCard from './admin/KpiCard';
-import PriceManagement from './admin/PriceManagement';
-import UserTable from './admin/UserTable';
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { DollarSign, Users, UserPlus, CheckCircle } from 'lucide-react';
 import KpiCard from './admin/KpiCard';
-import PriceManagement from './admin/PriceManagement';
 import UserTable from './admin/UserTable';
 
 interface KpiData {
@@ -70,17 +63,11 @@ const AdminDashboard = () => {
       </div>
 
       {/* Seção de Gestão */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* Coluna Principal: Tabela de Usuários */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-bold text-gray-700 mb-4">Gerenciar Usuários</h2>
           <UserTable />
-        </div>
-
-        {/* Coluna Lateral: Gestão de Preço */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold text-gray-700 mb-4">Configurações</h2>
-          <PriceManagement />
         </div>
       </div>
     </div>
