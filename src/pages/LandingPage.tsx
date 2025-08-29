@@ -1,45 +1,74 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight, BarChart, Users, Zap, DollarSign, ShieldCheck, Rocket } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { formatCurrency } from '../lib/utils';
+
+const initialTiers = [
+  {
+    name: 'Básico',
+    price: '--,--',
+    features: [
+      'Controle de usuários',
+      'Notificação por e-mail',
+      'Dashboard simples',
+    ],
+    icon: (props: any) => <Users {...props} />,
+    popular: false,
+  },
+  {
+    name: 'Pro',
+    price: '--,--',
+    features: [
+      'Tudo do plano Básico',
+      'Relatórios detalhados',
+      'Análises de performance',
+      'Suporte via chat',
+    ],
+    icon: (props: any) => <BarChart {...props} />,
+    popular: true,
+  },
+  {
+    name: 'Premium',
+    price: '--,--',
+    features: [
+      'Tudo do plano Pro',
+      'Notificação por WhatsApp',
+      'Suporte prioritário',
+      'Acesso antecipado a recursos',
+    ],
+    icon: (props: any) => <Zap {...props} />,
+    popular: false,
+  },
+];
 
 const LandingPage: React.FC = () => {
-  const pricingTiers = [
-    {
-      name: 'Básico',
-      price: '15,00',
-      features: [
-        'Controle de usuários',
-        'Notificação por e-mail',
-        'Dashboard simples',
-      ],
-      icon: (props: any) => <Users {...props} />,
-      popular: false,
-    },
-    {
-      name: 'Pro',
-      price: '25,00',
-      features: [
-        'Tudo do plano Básico',
-        'Relatórios detalhados',
-        'Análises de performance',
-        'Suporte via chat',
-      ],
-      icon: (props: any) => <BarChart {...props} />,
-      popular: true,
-    },
-    {
-      name: 'Premium',
-      price: '40,00',
-      features: [
-        'Tudo do plano Pro',
-        'Notificação por WhatsApp',
-        'Suporte prioritário',
-        'Acesso antecipado a recursos',
-      ],
-      icon: (props: any) => <Zap {...props} />,
-      popular: false,
-    },
-  ];
+  const [pricingTiers, setPricingTiers] = useState(initialTiers);
+
+  useEffect(() => {
+    const fetchPrices = async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', ['price_basico', 'price_pro', 'price_premium']);
+
+      if (error) {
+        console.error("Error fetching prices:", error);
+      } else if (data) {
+        const prices: { [key: string]: string } = {};
+        data.forEach(p => { prices[p.key] = p.value; });
+
+        setPricingTiers(prevTiers => prevTiers.map(tier => {
+          const priceKey = `price_${tier.name.toLowerCase()}`;
+          const newPrice = prices[priceKey] ? formatCurrency(parseFloat(prices[priceKey])) : tier.price;
+          // Remove o "R$" para não duplicar
+          return { ...tier, price: newPrice.replace('R$\xa0', '') };
+        }));
+      }
+    };
+
+    fetchPrices();
+  }, []);
 
   const features = [
     {
