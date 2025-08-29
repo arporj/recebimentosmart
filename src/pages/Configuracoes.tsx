@@ -4,102 +4,129 @@ import { toast } from 'react-hot-toast';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { supabase } from '../lib/supabase';
 import TestPaymentButton from '../components/TestPaymentButton';
-import { formatCurrency, handleCurrencyInputChange, parseCurrency } from '../lib/utils';
+import { handleCurrencyInputChange, parseCurrency } from '../lib/utils';
+
+interface PlanPrices {
+  basico: string;
+  pro: string;
+  premium: string;
+}
 
 const Configuracoes = () => {
-  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
-  const [newPrice, setNewPrice] = useState('');
+  const [prices, setPrices] = useState<PlanPrices>({ basico: '0,00', pro: '0,00', premium: '0,00' });
+  const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: '0,00', pro: '0,00', premium: '0,00' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchConfig = async () => {
+    const fetchPrices = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from('app_settings') // Corrigido para app_settings
-        .select('value')
-        .eq('key', 'subscription_price') // Corrigido para subscription_price
-        .single();
+        .from('app_settings')
+        .select('key, value')
+        .in('key', ['price_basico', 'price_pro', 'price_premium']);
 
       if (error) {
-        console.error('Erro ao buscar configuração de preço:', error);
-        toast.error('Não foi possível carregar o preço atual.');
-      } else if (data && typeof data.value === 'string') {
-        const priceValue = parseFloat(data.value);
-        setCurrentPrice(priceValue);
-        setNewPrice(priceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })); // Formata para exibição no input
+        toast.error('Não foi possível carregar os preços dos planos.');
+        console.error('Erro ao buscar preços:', error);
+      } else if (data) {
+        const fetchedPrices: Partial<PlanPrices> = {};
+        data.forEach(setting => {
+          if (setting.key === 'price_basico') fetchedPrices.basico = setting.value;
+          if (setting.key === 'price_pro') fetchedPrices.pro = setting.value;
+          if (setting.key === 'price_premium') fetchedPrices.premium = setting.value;
+        });
+
+        const formattedPrices: PlanPrices = {
+          basico: parseFloat(fetchedPrices.basico || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+          pro: parseFloat(fetchedPrices.pro || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+          premium: parseFloat(fetchedPrices.premium || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+        };
+        
+        setPrices(formattedPrices);
+        setInitialPrices(formattedPrices);
       }
       setLoading(false);
     };
 
-    fetchConfig();
+    fetchPrices();
   }, []);
 
-  
+  const handlePriceChange = (plan: keyof PlanPrices, e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = handleCurrencyInputChange(e);
+    setPrices(prev => ({ ...prev, [plan]: formattedValue }));
+  };
 
-  const handleUpdatePrice = async () => {
-    const newPriceNumber = parseCurrency(newPrice); // Converte a string formatada para número
-
-    if (newPriceNumber === currentPrice) {
-      toast.info('O novo preço é igual ao preço atual.');
-      return;
-    }
-
+  const handleUpdatePrices = async () => {
     setLoading(true);
-    const { error } = await supabase
-      .from('app_settings') // Corrigido para app_settings
-      .update({ value: newPriceNumber.toString() }) // Salva como string no DB
-      .eq('key', 'subscription_price'); // Corrigido para subscription_price
+    const pricesToSave = {
+      basico: parseCurrency(prices.basico),
+      pro: parseCurrency(prices.pro),
+      premium: parseCurrency(prices.premium),
+    };
+
+    const { error } = await supabase.rpc('update_plan_prices', { prices_data: pricesToSave });
 
     if (error) {
-      toast.error('Falha ao atualizar o preço.');
+      toast.error(`Falha ao atualizar os preços: ${error.message}`);
+      console.error('Erro ao salvar preços:', error);
     } else {
-      setCurrentPrice(newPriceNumber);
-      toast.success('O preço da assinatura foi atualizado.');
+      toast.success('Preços dos planos atualizados com sucesso!');
+      setInitialPrices(prices);
     }
     setLoading(false);
   };
 
-  const onNewPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = handleCurrencyInputChange(e);
-    setNewPrice(formattedValue);
-  };
+  const hasChanges = JSON.stringify(prices) !== JSON.stringify(initialPrices);
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Configurações do Sistema</h1>
       <div className="space-y-4">
-        {/* Card de Preço da Assinatura */}
+        {/* Card de Preços dos Planos */}
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Preço da Assinatura</h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Preços dos Planos</h3>
             <div className="mt-2 max-w-xl text-sm text-gray-500">
-              <p>Defina o valor mensal da assinatura para novos clientes.</p>
+              <p>Defina o valor mensal para cada um dos planos de assinatura.</p>
             </div>
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 space-y-6">
               {loading ? (
-                <p>Carregando...</p>
+                <p>Carregando preços...</p>
               ) : (
                 <>
-                  <p>
-                    O valor atual da assinatura é de:{' '}
-                    <strong className="text-lg text-gray-800">{formatCurrency(currentPrice)}</strong>
-                  </p>
                   <div className="space-y-2">
-                    <label htmlFor="new-price" className="block text-sm font-medium text-gray-700">Novo valor da assinatura</label>
+                    <label htmlFor="price-basico" className="block text-sm font-medium text-gray-700">Plano Básico (R$)</label>
                     <CurrencyInput
-                      id="new-price"
-                      value={newPrice}
-                      onValueChange={onNewPriceChange}
+                      id="price-basico"
+                      value={prices.basico}
+                      onValueChange={(e) => handlePriceChange('basico', e)}
                       disabled={loading}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="price-pro" className="block text-sm font-medium text-gray-700">Plano Pró (R$)</label>
+                    <CurrencyInput
+                      id="price-pro"
+                      value={prices.pro}
+                      onValueChange={(e) => handlePriceChange('pro', e)}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="price-premium" className="block text-sm font-medium text-gray-700">Plano Premium (R$)</label>
+                    <CurrencyInput
+                      id="price-premium"
+                      value={prices.premium}
+                      onValueChange={(e) => handlePriceChange('premium', e)}
+                      disabled={loading}
                     />
                   </div>
                   <button 
-                    onClick={handleUpdatePrice} 
-                    disabled={loading || newPrice === currentPrice?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    onClick={handleUpdatePrices} 
+                    disabled={loading || !hasChanges}
                     className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50"
                   >
-                    {loading ? 'Salvando...' : 'Salvar Novo Preço'}
+                    {loading ? 'Salvando...' : 'Salvar Preços'}
                   </button>
                 </>
               )}
