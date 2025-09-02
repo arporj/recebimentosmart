@@ -1,23 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Search, Edit } from 'lucide-react';
+import { Search, Edit, Star } from 'lucide-react';
 import EditUserModal from './EditUserModal';
 
-// Interface para o perfil do usuário vindo do banco
+// Interface atualizada para o perfil do usuário vindo da nova função RPC
 export interface UserProfile {
   id: string;
   name: string | null;
   email: string;
-  plano: string | null; // Adicionado
-  valid_until: string | null;
+  plan_name: string | null;
+  subscription_status: string | null;
+  subscription_end_date: string | null;
   is_admin: boolean;
   created_at: string;
 }
 
 const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
   if (!plan) {
-    return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>;
+    return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Nenhum</span>;
   }
 
   const planLower = plan.toLowerCase();
@@ -38,6 +39,46 @@ const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
   );
 };
 
+const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ status, isAdmin }) => {
+  if (isAdmin) {
+    return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>;
+  }
+  if (!status) {
+    return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-200 text-gray-800">-</span>;
+  }
+
+  const statusLower = status.toLowerCase();
+  let colorClasses = 'bg-gray-100 text-gray-800';
+  let text = status.charAt(0).toUpperCase() + status.slice(1)
+
+  switch (statusLower) {
+    case 'active':
+      colorClasses = 'bg-green-100 text-green-800';
+      text = 'Ativo';
+      break;
+    case 'trialing':
+      colorClasses = 'bg-yellow-100 text-yellow-800';
+      text = 'Em Teste';
+      break;
+    case 'canceled':
+      colorClasses = 'bg-orange-100 text-orange-800';
+      text = 'Cancelado';
+      break;
+    case 'expired':
+    case 'past_due':
+      colorClasses = 'bg-red-100 text-red-800';
+      text = 'Expirado';
+      break;
+  }
+
+  return (
+    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorClasses}`}>
+      {text}
+    </span>
+  );
+};
+
+
 const UserTable = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +88,7 @@ const UserTable = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      // Chama a nova função RPC que já inclui os dados da assinatura
       const { data, error } = await supabase.rpc('get_all_users_admin');
       if (error) throw error;
       setUsers(data || []);
@@ -66,7 +108,7 @@ const UserTable = () => {
     if (!searchTerm) return users;
     return users.filter(user => 
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [searchTerm, users]);
 
@@ -81,6 +123,27 @@ const UserTable = () => {
   const handleUserUpdate = (updatedUser: UserProfile) => {
     setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
     toast.success(`Usuário ${updatedUser.name || updatedUser.email} atualizado com sucesso!`);
+    fetchUsers(); // Re-busca os dados para garantir consistência
+  };
+
+  const handleMakePro = async (userId: string) => {
+    if (!window.confirm('Deseja realmente tornar este usuário um cliente Pró por 30 dias?')) return;
+
+    const toastId = toast.loading('Atualizando plano do usuário...');
+    try {
+      const { error } = await supabase.rpc('admin_set_user_plan', {
+        user_id_to_update: userId,
+        new_plan_name: 'Pro'
+      });
+
+      if (error) throw error;
+
+      toast.success('Plano do usuário atualizado para Pró!', { id: toastId });
+      fetchUsers(); // Re-busca a lista de usuários para refletir a mudança
+    } catch (error: any) {
+      console.error('Erro ao atualizar plano:', error);
+      toast.error(error.message || 'Não foi possível atualizar o plano.', { id: toastId });
+    }
   };
 
   return (
@@ -103,7 +166,7 @@ const UserTable = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Válido Até</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expira em</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
@@ -122,22 +185,25 @@ const UserTable = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <PlanBadge plan={user.plano} />
+                    <PlanBadge plan={user.plan_name} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {user.is_admin ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>
-                    ) : new Date(user.valid_until || 0) > new Date() ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>
-                    ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Expirado</span>
-                    )}
+                    <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.valid_until ? new Date(user.valid_until).toLocaleDateString('pt-BR') : 'N/A'}
+                    {user.subscription_end_date ? new Date(user.subscription_end_date).toLocaleDateString('pt-BR') : 'N/A'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => handleEditUser(user)} className="text-indigo-600 hover:text-indigo-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    {!user.plan_name && !user.is_admin && (
+                       <button 
+                        onClick={() => handleMakePro(user.id)} 
+                        className="text-green-600 hover:text-green-900 p-1 rounded-md hover:bg-green-100 transition-colors"
+                        title="Tornar usuário Pró"
+                      >
+                        <Star className="h-5 w-5" />
+                      </button>
+                    )}
+                    <button onClick={() => handleEditUser(user)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded-md hover:bg-indigo-100 transition-colors" title="Editar Usuário">
                       <Edit className="h-5 w-5" />
                     </button>
                   </td>

@@ -47,21 +47,14 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     const fetchPrices = async () => {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('key, value')
-        .in('key', ['price_basico', 'price_pro', 'price_premium']);
+      const { data, error } = await supabase.rpc('get_all_plans_with_prices');
 
       if (error) {
         console.error("Error fetching prices:", error);
       } else if (data) {
-        const prices: { [key: string]: string } = {};
-        data.forEach(p => { prices[p.key] = p.value; });
-
         setPricingTiers(prevTiers => prevTiers.map(tier => {
-          const priceKey = `price_${tier.name.toLowerCase()}`;
-          const newPrice = prices[priceKey] ? formatCurrency(parseFloat(prices[priceKey])) : tier.price;
-          // Remove o "R$" para não duplicar
+          const planData = data.find(p => p.name.toLowerCase() === tier.name.toLowerCase());
+          const newPrice = planData ? formatCurrency(planData.price_monthly) : tier.price;
           return { ...tier, price: newPrice.replace('R$\xa0', '') };
         }));
       }

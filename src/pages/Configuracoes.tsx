@@ -20,20 +20,18 @@ const Configuracoes = () => {
   useEffect(() => {
     const fetchPrices = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('key, value')
-        .in('key', ['price_basico', 'price_pro', 'price_premium']);
+      const { data, error } = await supabase.rpc('get_all_plans_with_prices');
 
       if (error) {
         toast.error('Não foi possível carregar os preços dos planos.');
         console.error('Erro ao buscar preços:', error);
       } else if (data) {
         const fetchedPrices: Partial<PlanPrices> = {};
-        data.forEach(setting => {
-          if (setting.key === 'price_basico') fetchedPrices.basico = setting.value;
-          if (setting.key === 'price_pro') fetchedPrices.pro = setting.value;
-          if (setting.key === 'price_premium') fetchedPrices.premium = setting.value;
+        data.forEach(plan => {
+          const planName = plan.name.toLowerCase();
+          if (planName === 'básico' || planName === 'basico') fetchedPrices.basico = plan.price_monthly;
+          if (planName === 'pro') fetchedPrices.pro = plan.price_monthly;
+          if (planName === 'premium') fetchedPrices.premium = plan.price_monthly;
         });
 
         const formattedPrices: PlanPrices = {
