@@ -115,7 +115,7 @@ const Configuracoes = () => {
                     <CurrencyInput
                       id="price-premium"
                       value={prices.premium}
-                      onValueChange={(e) => handlePriceChange('premium', e)}
+                      onValueChange={(value) => handlePriceChange('premium', value || '0,00')}
                       disabled={loading}
                     />
                   </div>
