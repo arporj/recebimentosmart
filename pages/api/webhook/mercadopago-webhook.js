@@ -140,18 +140,26 @@ async function processPayment(payment) {
         console.error(`Webhook Mercado Pago: Erro ao registrar pagamento para ${paymentId}:`, paymentError);
       }
 
-      // Aplicar créditos de referência (se aplicável)
+      // Conceder crédito de indicação, se aplicável
       try {
-        const { error: creditError } = await supabaseAdmin.rpc(
-          "apply_referral_credit_multilevel",
-          { p_referred_user_id: userId }
-        );
+        // A descrição da transação deve conter o nome do plano pago
+        const paidPlanName = transaction.description;
 
-        if (creditError) {
-          console.error(`Webhook Mercado Pago: Erro ao aplicar créditos para usuário ${userId}:`, creditError);
+        if (userId && paidPlanName) {
+          const { error: creditError } = await supabaseAdmin.rpc(
+            "grant_referral_credit",
+            { 
+              referred_user_id: userId, 
+              paid_plan_name: paidPlanName 
+            }
+          );
+
+          if (creditError) {
+            console.error(`Webhook Mercado Pago: Erro ao conceder crédito de indicação para usuário ${userId}:`, creditError);
+          }
         }
       } catch (creditError) {
-        console.error(`Webhook Mercado Pago: Erro ao aplicar créditos para usuário ${userId}:`, creditError);
+        console.error(`Webhook Mercado Pago: Erro ao executar a lógica de crédito de indicação para usuário ${userId}:`, creditError);
       }
 
       console.log(`Webhook Mercado Pago: Pagamento e créditos processados para usuário ${userId}, pagamento ${paymentId}`);
