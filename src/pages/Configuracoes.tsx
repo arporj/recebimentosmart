@@ -3,12 +3,11 @@ import { toast } from 'react-hot-toast';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { supabase } from '../lib/supabase';
 import TestPaymentButton from '../components/TestPaymentButton';
-import { parseCurrency } from '../lib/utils';
 
 interface PlanPrices {
-  basico: string;
-  pro: string;
-  premium: string;
+  basico: number;
+  pro: number;
+  premium: number;
 }
 
 // Função para normalizar nomes de planos (remove acentos e torna minúsculo)
@@ -16,8 +15,8 @@ const normalizePlanName = (name: string) =>
   name.toLowerCase().normalize("NFD").replace(/[^\w\s]/gi, '');
 
 const Configuracoes = () => {
-  const [prices, setPrices] = useState<PlanPrices>({ basico: '0,00', pro: '0,00', premium: '0,00' });
-  const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: '0,00', pro: '0,00', premium: '0,00' });
+  const [prices, setPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
+  const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,19 +31,20 @@ const Configuracoes = () => {
           const fetchedPrices: Partial<PlanPrices> = {};
           data.forEach(plan => {
             const normalizedName = normalizePlanName(plan.name);
-            if (normalizedName === 'basico') fetchedPrices.basico = plan.price_monthly;
-            if (normalizedName === 'pro') fetchedPrices.pro = plan.price_monthly;
-            if (normalizedName === 'premium') fetchedPrices.premium = plan.price_monthly;
+            const price = parseFloat(plan.price_monthly || '0');
+            if (normalizedName === 'basico') fetchedPrices.basico = price;
+            if (normalizedName === 'pro') fetchedPrices.pro = price;
+            if (normalizedName === 'premium') fetchedPrices.premium = price;
           });
 
-          const formattedPrices: PlanPrices = {
-            basico: parseFloat(fetchedPrices.basico || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
-            pro: parseFloat(fetchedPrices.pro || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
-            premium: parseFloat(fetchedPrices.premium || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+          const numericPrices: PlanPrices = {
+            basico: fetchedPrices.basico || 0,
+            pro: fetchedPrices.pro || 0,
+            premium: fetchedPrices.premium || 0,
           };
           
-          setPrices(formattedPrices);
-          setInitialPrices(formattedPrices);
+          setPrices(numericPrices);
+          setInitialPrices(numericPrices);
         }
       } catch (error: any) {
         toast.error(error.message || 'Não foi possível carregar os preços dos planos.');
@@ -57,20 +57,14 @@ const Configuracoes = () => {
     fetchPrices();
   }, []);
 
-  const handlePriceChange = (plan: keyof PlanPrices, value: string | undefined) => {
-    // Garante que o valor nunca seja nulo ou indefinido no estado, evitando erros no componente filho
-    setPrices(prev => ({ ...prev, [plan]: value || '' }));
+  const handlePriceChange = (plan: keyof PlanPrices, value: number | undefined) => {
+    setPrices(prev => ({ ...prev, [plan]: value || 0 }));
   };
 
   const handleUpdatePrices = async () => {
     setLoading(true);
-    const pricesToSave = {
-      basico: parseCurrency(prices.basico),
-      pro: parseCurrency(prices.pro),
-      premium: parseCurrency(prices.premium),
-    };
-
-    const { error } = await supabase.rpc('update_plan_prices', { prices_data: pricesToSave });
+    
+    const { error } = await supabase.rpc('update_plan_prices', { prices_data: prices });
 
     if (error) {
       toast.error(`Falha ao atualizar os preços: ${error.message}`);

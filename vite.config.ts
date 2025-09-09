@@ -7,7 +7,13 @@ export default defineConfig({
     react(),
     viteSitemap({
       hostname: 'https://www.recebimentosmart.com.br',
-      generateRobotsTxt: false, // Adicionado para evitar que o plugin gerencie o robots.txt
+      generateRobotsTxt: true,
+      robots: [
+        {
+          userAgent: '*',
+          disallow: '',
+        },
+      ],
     }),
   ],
   optimizeDeps: {
