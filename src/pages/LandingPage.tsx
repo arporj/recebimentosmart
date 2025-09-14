@@ -4,6 +4,9 @@ import { CheckCircle, ArrowRight, BarChart, Users, Zap, DollarSign, ShieldCheck,
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 
+const normalizePlanName = (name: string) => 
+  name.toLowerCase().normalize("NFD").replace(/[^\w\s]/gi, '');
+
 const initialTiers = [
   {
     name: 'Básico',
