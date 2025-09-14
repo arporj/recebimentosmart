@@ -98,7 +98,7 @@ const Configuracoes = () => {
                     <label htmlFor="price-basico" className="block text-sm font-medium text-gray-700">Plano Básico (R$)</label>
                     <CurrencyInput
                       id="price-basico"
-                      value={prices.basico}
+                      value={String(prices.basico)}
                       onValueChange={(value) => handlePriceChange('basico', value)}
                       disabled={loading}
                     />
@@ -107,7 +107,7 @@ const Configuracoes = () => {
                     <label htmlFor="price-pro" className="block text-sm font-medium text-gray-700">Plano Pró (R$)</label>
                     <CurrencyInput
                       id="price-pro"
-                      value={prices.pro}
+                      value={String(prices.pro)}
                       onValueChange={(value) => handlePriceChange('pro', value)}
                       disabled={loading}
                     />
@@ -116,7 +116,7 @@ const Configuracoes = () => {
                     <label htmlFor="price-premium" className="block text-sm font-medium text-gray-700">Plano Premium (R$)</label>
                     <CurrencyInput
                       id="price-premium"
-                      value={prices.premium}
+                      value={String(prices.premium)}
                       onValueChange={(value) => handlePriceChange('premium', value)}
                       disabled={loading}
                     />
