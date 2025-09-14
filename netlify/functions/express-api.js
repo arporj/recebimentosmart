@@ -25,7 +25,7 @@ app.use(cors());
 // Rota para criar preferência de pagamento
 router.post('/create-preference', async (req, res) => {
   try {
-    const { title, unit_price, quantity, userId } = req.body;
+    const { title, unit_price, quantity, userId, metadata } = req.body;
     const siteUrl = req.headers.origin;
 
     const preference = new Preference(mpClient);
@@ -38,7 +38,7 @@ router.post('/create-preference', async (req, res) => {
           pending: `${siteUrl}/payment-pending`,
         },
         auto_return: 'approved',
-        metadata: { user_id: userId },
+        metadata: { ...metadata, user_id: userId }, // Inclui metadata adicional
         notification_url: `${siteUrl}/api/mp/webhook`,
       },
     });
@@ -62,6 +62,7 @@ router.post('/webhook', async (req, res) => {
 
       if (paymentDetails && paymentDetails.status === 'approved') {
         const userId = paymentDetails.metadata?.user_id;
+        const planName = paymentDetails.metadata?.plan_name; // Pega o nome do plano
         const transactionId = paymentDetails.id;
         const amount = paymentDetails.transaction_amount;
 
@@ -69,14 +70,14 @@ router.post('/webhook', async (req, res) => {
           throw new Error('UserID não encontrado nos metadados do pagamento.');
         }
 
-        // 1. Verificar se o pagamento já foi registrado para evitar duplicidade
+        // 1. Verificar se o pagamento já foi registrado
         const { data: existingSubscription, error: selectError } = await supabase
-          .from('subscriptions') // Nome da tabela corrigido
+          .from('subscriptions')
           .select('id')
           .eq('transaction_id', transactionId)
           .single();
 
-        if (selectError && selectError.code !== 'PGRST116') { // PGRST116 significa "no rows found"
+        if (selectError && selectError.code !== 'PGRST116') {
           throw selectError;
         }
 
@@ -85,22 +86,35 @@ router.post('/webhook', async (req, res) => {
           return res.status(200).send('OK - Pagamento já registrado');
         }
 
-        // 2. Inserir o novo registro de pagamento na tabela 'subscriptions'
+        // 2. Inserir o novo registro de pagamento
         const { error: insertError } = await supabase
-          .from('subscriptions') // Nome da tabela corrigido
+          .from('subscriptions')
           .insert({
             user_id: userId,
             amount: amount,
             payment_provider: 'mercadopago',
             transaction_id: transactionId,
-            // created_at e subscription_date usarão o default NOW() do banco de dados
           });
 
         if (insertError) {
           throw insertError;
         }
         
-        console.log(`Pagamento ${transactionId} para usuário ${userId} registrado com sucesso na tabela subscriptions.`);
+        console.log(`Pagamento ${transactionId} para usuário ${userId} registrado.`);
+
+        // 3. Se o plano foi especificado, atualiza o perfil do usuário
+        if (planName) {
+          const { error: rpcError } = await supabase.rpc('update_user_subscription', {
+            p_user_id: userId,
+            p_plan_name: planName,
+          });
+
+          if (rpcError) {
+            console.error(`Erro ao atualizar plano para ${planName} para o usuário ${userId}:`, rpcError);
+          } else {
+            console.log(`Plano do usuário ${userId} atualizado para ${planName}.`);
+          }
+        }
       }
 
       res.status(200).send('OK');
@@ -113,6 +127,57 @@ router.post('/webhook', async (req, res) => {
     res.status(200).send('Notificação não relevante');
   }
 });
+
+// Rota para gerar pagamento (usada pela SubscriptionPage)
+router.post('/generate-payment-mp', async (req, res) => {
+  try {
+    const { amount, description, userId, metadata, customerData } = req.body;
+    const siteUrl = req.headers.origin;
+
+    const preference = new Preference(mpClient);
+    const result = await preference.create({
+      body: {
+        items: [{
+          title: description,
+          unit_price: Number(amount),
+          quantity: 1,
+          currency_id: 'BRL'
+        }],
+        payer: {
+          email: customerData.email,
+          first_name: customerData.firstName,
+          last_name: customerData.lastName,
+        },
+        back_urls: {
+          success: `${siteUrl}/assinatura`,
+          failure: `${siteUrl}/assinatura`,
+          pending: `${siteUrl}/assinatura`,
+        },
+        auto_return: 'approved',
+        metadata: { ...metadata, user_id: userId },
+        notification_url: `${siteUrl}/api/mp/webhook`,
+      },
+    });
+
+    const pixData = result.point_of_interaction?.transaction_data;
+    if (!pixData) {
+      throw new Error('Dados do PIX não foram retornados pela API do Mercado Pago.');
+    }
+
+    res.status(201).json({
+      success: true,
+      paymentId: result.id,
+      externalReference: result.external_reference,
+      pixQrCode: pixData.qr_code,
+      pixQrCodeBase64: pixData.qr_code_base64,
+    });
+
+  } catch (error) {
+    console.error('Erro ao gerar pagamento no MP:', JSON.stringify(error, null, 2));
+    res.status(500).json({ success: false, message: 'Erro ao gerar o pagamento.' });
+  }
+});
+
 
 app.use('/api/mp', router);
 
