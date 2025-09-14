@@ -32,77 +32,75 @@ const SubscriptionPage = () => { // Renomeado aqui
   const pollingIntervalRef = useRef<number | null>(null);
   const [currentExternalReference, setCurrentExternalReference] = useState<string | null>(null);
 
-  const fetchSubscriptionStatus = async () => {
-    if (!user) return;
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('valid_until')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-
-      if (profile?.valid_until) {
-        setNextDueDate(format(parseISO(profile.valid_until), 'dd/MM/yyyy', { locale: ptBR }));
-      } else {
-        setNextDueDate(null);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar status da assinatura:", error);
-      setNextDueDate(null);
-    }
-  };
-
   useEffect(() => {
-    fetchSubscriptionStatus();
-
-    (async () => { // IIFE
+    const fetchInitialData = async () => {
       if (!user) return;
       setLoadingDetails(true);
+
       try {
-        // Buscar detalhes de pagamento e informações de indicação em paralelo
-        const [paymentResponse, referralResponse] = await Promise.all([
-          axios.get(`/api/mp/payment-details/${user.id}`),
-          supabase.rpc('get_full_referral_stats', { p_user_id: user.id })
-        ]);
+        const { data, error } = await supabase.rpc('get_subscription_page_data');
 
-        let fetchedPaymentDetails = paymentResponse.data;
-        let fetchedReferralInfo = null;
+        if (error) throw error;
 
-        if (!paymentResponse.data?.success) {
-          throw new Error('Erro ao buscar detalhes de pagamento');
+        // 1. Set Referral Info & Next Due Date
+        const newReferralInfo = {
+          was_referred: data.user.was_referred,
+          referrer_name: data.user.referrer_name,
+        };
+        setReferralInfo(newReferralInfo);
+
+        if (data.user.valid_until) {
+          setNextDueDate(format(parseISO(data.user.valid_until), 'dd/MM/yyyy', { locale: ptBR }));
+        } else {
+          setNextDueDate(null);
         }
 
-        if (referralResponse.error) throw referralResponse.error;
-        if (referralResponse.data && referralResponse.data.length > 0) {
-            fetchedReferralInfo = referralResponse.data[0];
+        // 2. Calculate and Set Payment Details
+        const currentUserPlanName = data.user.plan;
+        const currentUserPlan = data.plans.find(p => p.name === currentUserPlanName);
+        const baseFee = currentUserPlan ? currentUserPlan.price_monthly : 0;
+        
+        // Assumindo que cada crédito de indicação vale R$10
+        const creditValue = 10;
+        const totalCreditsValue = (data.user.credits || 0) * creditValue;
+
+        let amountToPay = baseFee;
+        let welcomeDiscountAmount = 0;
+
+        // Aplica desconto de boas-vindas se o usuário foi indicado
+        if (newReferralInfo.was_referred) {
+          // NOTA: Uma lógica mais robusta verificaria se este é o primeiro pagamento do usuário.
+          welcomeDiscountAmount = baseFee * 0.20; // 20% de desconto
+          amountToPay -= welcomeDiscountAmount;
         }
 
-        // Calcula o valor com desconto aqui, antes de setar o estado
-        if (fetchedPaymentDetails && fetchedReferralInfo?.was_referred) {
-            const baseFee = fetchedPaymentDetails.baseFee;
-            const welcomeDiscountAmount = baseFee * 0.20;
-            fetchedPaymentDetails.amountToPay = Math.max(0, fetchedPaymentDetails.amountToPay - welcomeDiscountAmount);
+        // Aplica créditos de indicação que o usuário possui
+        const creditsToUseValue = Math.min(amountToPay, totalCreditsValue);
+        amountToPay -= creditsToUseValue;
+        const creditsUsedCount = creditsToUseValue > 0 ? Math.round(creditsToUseValue / creditValue) : 0;
+
+        const newPaymentDetails: PaymentDetails = {
+          baseFee: baseFee,
+          totalCredits: totalCreditsValue,
+          amountToPay: Math.max(0, amountToPay),
+          creditsUsed: creditsUsedCount,
+        };
+        setPaymentDetails(newPaymentDetails);
+
+        if (newPaymentDetails.amountToPay === 0 && hasFullAccess) {
+          setPaymentStatus('completed');
         }
 
-        // Agora seta o estado com os valores finais calculados
-        setPaymentDetails(fetchedPaymentDetails);
-        setReferralInfo(fetchedReferralInfo);
-
-        if (fetchedPaymentDetails.amountToPay === 0) {
-            setPaymentStatus('completed');
-        }
-
-
-      } catch (error) {
-        console.error('Erro ao buscar dados iniciais:', error);
-        toast.error('Não foi possível carregar os detalhes da página.');
+      } catch (err) {
+        console.error('Erro ao buscar dados iniciais:', err);
+        toast.error('Não foi possível carregar os detalhes da sua assinatura.');
       } finally {
         setLoadingDetails(false);
       }
-    })(); // Call the IIFE
-  }, [user]);
+    };
+
+    fetchInitialData();
+  }, [user, hasFullAccess]);
 
   // Polling para verificar o status do pagamento
   useEffect(() => {
