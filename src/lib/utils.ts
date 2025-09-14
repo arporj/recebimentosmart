@@ -9,6 +9,7 @@ export const formatCurrency = (value: number | string | null | undefined): strin
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
+    minimumFractionDigits: 2, // Garante a exibição de duas casas decimais
   }).format(numericValue);
 };
 

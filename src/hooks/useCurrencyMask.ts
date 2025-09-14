@@ -1,15 +1,18 @@
 // src/hooks/useCurrencyMask.ts
 import { useState, useCallback } from 'react';
 
-export const formatCurrency = (value: string | number): string => {
-  const stringValue = String(value).replace(/\D/g, '');
-  if (!stringValue) return '';
+export const formatCurrency = (value: number): string => {
+  if (typeof value !== 'number' || isNaN(value)) {
+    return ''; 
+  }
 
-  const numberValue = parseInt(stringValue, 10) / 100;
+  const numberValue = value / 100; // Assume que o valor está em centavos
 
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
+    minimumFractionDigits: 2, // Garante sempre 2 casas decimais
+    maximumFractionDigits: 2,
   }).format(numberValue);
 };
 

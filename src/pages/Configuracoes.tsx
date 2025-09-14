@@ -31,7 +31,7 @@ const Configuracoes = () => {
           const fetchedPrices: Partial<PlanPrices> = {};
           data.forEach(plan => {
             const normalizedName = normalizePlanName(plan.name);
-            const price = parseFloat(plan.price_monthly || '0');
+            const price = Math.round(parseFloat(plan.price_monthly || '0') * 100);
             if (normalizedName === 'basico') fetchedPrices.basico = price;
             if (normalizedName === 'pro') fetchedPrices.pro = price;
             if (normalizedName === 'premium') fetchedPrices.premium = price;

@@ -53,7 +53,8 @@ const LandingPage: React.FC = () => {
         console.error("Error fetching prices:", error);
       } else if (data) {
         setPricingTiers(prevTiers => prevTiers.map(tier => {
-          const planData = data.find(p => p.name.toLowerCase() === tier.name.toLowerCase());
+          // Lógica de busca corrigida para usar a normalização
+          const planData = data.find(p => normalizePlanName(p.name) === normalizePlanName(tier.name));
           const newPrice = planData ? formatCurrency(planData.price_monthly) : tier.price;
           return { ...tier, price: newPrice.replace('R$\xa0', '') };
         }));
