@@ -30,6 +30,7 @@ ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
 
 -- 3. Cria uma política para permitir a leitura pública dos planos
 -- Isso é necessário para que a landing page e a página de configurações possam exibir os preços.
+DROP POLICY IF EXISTS "Allow public read access to plans" ON public.plans;
 CREATE POLICY "Allow public read access to plans" 
 ON public.plans 
 FOR SELECT 
@@ -37,6 +38,7 @@ TO anon, authenticated
 USING (true);
 
 -- 4. Cria uma política para permitir que administradores gerenciem os planos
+DROP POLICY IF EXISTS "Allow admin full access to plans" ON public.plans;
 CREATE POLICY "Allow admin full access to plans" 
 ON public.plans 
 FOR ALL 
@@ -70,6 +72,7 @@ VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- 6. Trigger para atualizar o campo `updated_at` automaticamente
+DROP TRIGGER IF EXISTS handle_updated_at ON public.plans;
 CREATE TRIGGER handle_updated_at
     BEFORE UPDATE ON public.plans
     FOR EACH ROW

@@ -29,3 +29,6 @@ certs/*
 
 # Environment variables
 *.env
+
+# Supabase temporary files
+supabase/.temp/
