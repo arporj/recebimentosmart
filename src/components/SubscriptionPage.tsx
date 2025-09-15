@@ -60,7 +60,7 @@ const SubscriptionPage = () => {
 
         const currentPlan = plans.find(p => p.name === data.user.plan);
         setCurrentUserPlan(currentPlan || null);
-        setSelectedPlan(currentPlan || null);
+        setSelectedPlan(currentPlan || plans[0] || null);
         
         setReferralInfo({
           was_referred: data.user.was_referred,
@@ -205,6 +205,9 @@ const SubscriptionPage = () => {
               <div className="flex justify-between items-center">
                 <span className="font-bold text-gray-800">{plan.name}</span>
                 <span className="font-semibold text-custom-hover">R$ {plan.price_monthly.toFixed(2)}/mês</span>
+                {currentUserPlan?.name === plan.name && (
+                  <span className="ml-2 px-2 py-1 text-xs font-semibold text-white bg-blue-500 rounded-full">Atual</span>
+                )}
               </div>
             </div>
           ))}
