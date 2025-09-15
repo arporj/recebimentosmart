@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     viteSitemap({
       hostname: 'https://www.recebimentosmart.com.br',
-      generateRobotsTxt: true,
+      generateRobotsTxt: false, // Desativado para evitar erro de build
       robots: [
         {
           userAgent: '*',
