@@ -11,6 +11,8 @@ import { ptBR } from 'date-fns/locale';
 interface Plan {
   name: string;
   price_monthly: number;
+  description: string; // Adicionado
+  features: string[];  // Adicionado
 }
 
 interface PaymentDetails {
@@ -38,6 +40,7 @@ const SubscriptionPage = () => {
   const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null);
   const [userCredits, setUserCredits] = useState(0);
   const [nextDueDate, setNextDueDate] = useState<string | null>(null);
+  const [expandedPlanName, setExpandedPlanName] = useState<string | null>(null); // Novo estado
 
   // Estados do fluxo de pagamento
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
@@ -193,25 +196,45 @@ const SubscriptionPage = () => {
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-3">Escolha seu plano:</h2>
         <div className="space-y-3">
-          {allPlans.map(plan => (
-            <div 
-              key={plan.name}
-              onClick={() => setSelectedPlan(plan)}
-              className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                selectedPlan?.name === plan.name
-                  ? 'border-custom shadow-md bg-custom-light'
-                  : 'border-gray-200 bg-white hover:border-gray-400'
-              }`}>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-800">{plan.name}</span>
-                <span className="font-semibold text-custom-hover">R$ {plan.price_monthly.toFixed(2)}/mês</span>
-                {currentUserPlan?.name === plan.name && (
-                  <span className="ml-2 px-2 py-1 text-xs font-semibold text-white bg-blue-500 rounded-full">Atual</span>
+          {allPlans.map(plan => {
+            const isExpanded = expandedPlanName === plan.name;
+            return (
+              <div 
+                key={plan.name}
+                className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  selectedPlan?.name === plan.name
+                    ? 'border-custom shadow-md bg-custom-light'
+                    : 'border-gray-200 bg-white hover:border-gray-400'
+                }`}>
+                <div 
+                  className="flex justify-between items-center"
+                  onClick={() => {
+                    setSelectedPlan(plan);
+                    setExpandedPlanName(isExpanded ? null : plan.name);
+                  }}
+                >
+                  <span className="font-bold text-gray-800">{plan.name}</span>
+                  <span className="font-semibold text-custom-hover">R$ {plan.price_monthly.toFixed(2)}/mês</span>
+                  {currentUserPlan?.name === plan.name && (
+                    <span className="ml-2 px-2 py-1 text-xs font-semibold text-white bg-blue-500 rounded-full">Atual</span>
+                  )}
+                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </div>
+                {isExpanded && (
+                  <div className="mt-4 text-sm text-gray-600">
+                    <p className="mb-2">{plan.description}</p>
+                    {plan.features && plan.features.length > 0 && (
+                      <ul className="list-disc list-inside space-y-1">
+                        {plan.features.map(feature => (
+                          <li key={feature}>{feature}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
+            );
+          })}
       </div>
     );
   };
