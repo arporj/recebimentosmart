@@ -15,13 +15,14 @@ import { ProtectedRoute } from './components/ProtectedRoute'; // Importa a nova 
 
 // Importar os novos componentes
 import FeedbackForm from './components/FeedbackForm';
-import SubscriptionPage from './components/SubscriptionPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
 import ChangePassword from './components/ChangePassword';
 import { SignUpPage } from './components/SignUpPage';
 import ReferralPage from './components/ReferralPage';
 import Configuracoes from './pages/Configuracoes';
+import CamposPersonalizados from './pages/CamposPersonalizados'; // Importa a nova página
 import PaymentSuccessPage from './pages/payment-success';
 import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
@@ -107,13 +108,14 @@ function AppRoutes() {
         <> 
           {/* Rotas Protegidas (requerem login) */}
           <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
-          <Route path="/monthly" element={<ProtectedRoute><MainLayout currentView='monthly'><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><MainLayout currentView='reports'><ClientProvider><Reports /></ClientProvider></MainLayout></ProtectedRoute>} />
+          <Route path="/monthly" element={<ProtectedRoute><MainLayout><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><MainLayout><ClientProvider><Reports /></ClientProvider></MainLayout></ProtectedRoute>} />
           <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackForm /></MainLayout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
           <Route path="/payment" element={<ProtectedRoute><MainLayout><SubscriptionPage /></MainLayout></ProtectedRoute>} />
+          <Route path="/campos-personalizados" element={<ProtectedRoute><MainLayout><CamposPersonalizados /></MainLayout></ProtectedRoute>} />
 
           {/* Rotas de retorno do pagamento */}
           <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
@@ -121,7 +123,7 @@ function AppRoutes() {
 
           {/* Rotas de Admin */}
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
-          <Route path="/admin/chat" element={<AdminRoute><MainLayout currentView='admin-chat'><AdminChatPage /></MainLayout></AdminRoute>} />
+          <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
           
           {/* Se o usuário logado tentar acessar rotas públicas, redireciona para o dashboard */}

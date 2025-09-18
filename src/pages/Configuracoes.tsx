@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { supabase } from '../lib/supabase';
 import TestPaymentButton from '../components/TestPaymentButton';
+import { CustomFieldsManager } from '../components/CustomFieldsManager';
 
 interface PlanPrices {
   basico: number;

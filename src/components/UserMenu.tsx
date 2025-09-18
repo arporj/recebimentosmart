@@ -1,19 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, LogOut, Lock, MessageSquare, CreditCard, UserCheck, Users, Calendar, BarChart, Gift } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 // Interface para as props do componente
-interface UserMenuProps {
-  currentView?: 'clients' | 'reports' | 'status' | 'monthly';
-  onViewChange?: (view: 'clients' | 'reports' | 'status' | 'monthly') => void;
-}
+interface UserMenuProps {}
 
 // Exportação nomeada para corresponder à importação em App.tsx
-export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange }) => {
+export const UserMenu: React.FC<UserMenuProps> = () => {
   const { user, signOut, hasFullAccess } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { pathname } = location;
   const isAdmin = user?.email === 'arporj@gmail.com' || user?.email === 'andre@andreric.com';
   
   // Estado para controlar a visibilidade do menu
@@ -51,16 +50,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
   };
 
   // Função para navegar para uma página específica
-  const handleNavigation = (view: 'clients' | 'reports' | 'status' | 'monthly' | 'feedback' | 'payment' | 'admin/users' | 'change-password') => {
+  const handleNavigation = (path: string) => {
     setIsMenuOpen(false);
-    
-    // Se for uma das views principais e onViewChange estiver disponível, use-o
-    if ((view === 'clients' || view === 'reports' || view === 'monthly' || view === 'status') && onViewChange) {
-      onViewChange(view);
-    } else {
-      // Para outras páginas, use o navigate do React Router
-      navigate(`/${view}`);
-    }
+    navigate(`/${path}`);
   };
 
   // Se o período de teste expirou, mostramos apenas o menu de pagamento e sair
@@ -140,7 +132,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
               <button
                 onClick={() => handleNavigation('clients')}
                 className={`flex items-center w-full px-4 py-2 text-sm ${
-                  currentView === 'clients' ? 'text-indigo-600 font-medium' : 'text-gray-700'
+                  pathname === '/clients' ? 'text-indigo-600 font-medium' : 'text-gray-700'
                 } hover:bg-gray-100 focus:bg-gray-100 focus:outline-none`}
                 role="menuitem"
               >
@@ -151,7 +143,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
               <button
                 onClick={() => handleNavigation('monthly')}
                 className={`flex items-center w-full px-4 py-2 text-sm ${
-                  currentView === 'monthly' ? 'text-indigo-600 font-medium' : 'text-gray-700'
+                  pathname === '/monthly' ? 'text-indigo-600 font-medium' : 'text-gray-700'
                 } hover:bg-gray-100 focus:bg-gray-100 focus:outline-none`}
                 role="menuitem"
               >
@@ -162,7 +154,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentView, onViewChange })
               <button
                 onClick={() => handleNavigation('reports')}
                 className={`flex items-center w-full px-4 py-2 text-sm ${
-                  currentView === 'reports' ? 'text-indigo-600 font-medium' : 'text-gray-700'
+                  pathname === '/reports' ? 'text-indigo-600 font-medium' : 'text-gray-700'
                 } hover:bg-gray-100 focus:bg-gray-100 focus:outline-none`}
                 role="menuitem"
               >

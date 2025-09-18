@@ -18,7 +18,7 @@
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",
     "date-fns-tz": "^2.0.0",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "js-sha256": "^0.10.1",
     "lucide-react": "^0.358.0",

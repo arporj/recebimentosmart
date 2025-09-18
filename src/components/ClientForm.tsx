@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus, X, PlusCircle, Save, ArrowLeft } from 'lucide-react';
 import { useClients } from '../contexts/ClientContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../lib/dates';
 import type { Database, PaymentFrequency } from '../types/supabase';
 import { setDate } from 'date-fns';
 import { CurrencyInput } from './ui/CurrencyInput';
+import { AddCustomFieldModal } from './AddCustomFieldModal'; // Importa o novo modal
 
 type Client = Database['public']['Tables']['clients']['Row'];
+type CustomField = Database['public']['Tables']['custom_fields']['Row'];
 
 interface ClientFormProps {
   client?: Client;
@@ -25,9 +28,13 @@ const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; label: string }[] = 
 ];
 
 export function ClientForm({ client, onClose }: ClientFormProps) {
+  const navigate = useNavigate();
   const { refreshClients } = useClients();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Estado para o novo modal
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<{[key: string]: string}>({});
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -35,28 +42,71 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     payment_due_day: '',
     start_date: '',
     status: true,
-    payment_frequency: 'monthly' as PaymentFrequency,
-    device_key: client?.device_key || '',
-    mac_address: client?.mac_address || '',
-    app: client?.app || ''
+    payment_frequency: 'monthly' as PaymentFrequency
   });
+
+  useEffect(() => {
+    const fetchCustomFields = async () => {
+      if (user) {
+        const { data, error } = await supabase
+          .from('custom_fields')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('name', { ascending: true });
+
+        if (error) {
+          toast.error('Erro ao buscar campos personalizados.');
+          console.error(error);
+        } else {
+          setCustomFields(data);
+        }
+      }
+    };
+
+    fetchCustomFields();
+  }, [user]);
 
   useEffect(() => {
     if (client) {
       setFormData({
-        name: client.name || '',
+        name: client.name,
         phone: client.phone || '',
-        monthly_payment: client.monthly_payment ? Math.round(client.monthly_payment * 100) : 0, // Convertido para centavos
-        payment_due_day: client.payment_due_day?.toString() || '',
-        start_date: client.start_date ? formatToSP(client.start_date, 'yyyy-MM-dd') : '',
-        status: client.status ?? true,
-        payment_frequency: client.payment_frequency || 'monthly',
-        device_key: client?.device_key || '',
-        mac_address: client?.mac_address || '',
-        app: client?.app || ''
+        monthly_payment: client.monthly_payment * 100, // Convert to cents
+        payment_due_day: String(client.payment_due_day),
+        start_date: formatToSP(new Date(client.start_date), 'yyyy-MM-dd'),
+        status: client.status,
+        payment_frequency: client.payment_frequency,
       });
     }
   }, [client]);
+
+  useEffect(() => {
+    if (client && customFields.length > 0) {
+      const fetchCustomFieldValues = async () => {
+        const { data, error } = await supabase
+          .from('client_custom_field_values')
+          .select('field_id, value')
+          .eq('client_id', client.id);
+
+        if (error) {
+          toast.error('Erro ao buscar valores dos campos personalizados.');
+        } else {
+          const values = data.reduce((acc, item) => {
+            acc[item.field_id] = item.value;
+            return acc;
+          }, {} as {[key: string]: string});
+          setCustomFieldValues(values);
+        }
+      };
+
+      fetchCustomFieldValues();
+    }
+  }, [client, customFields]);
+
+  const handleSaveCustomField = (newField: CustomField) => {
+    setCustomFields(prevFields => [...prevFields, newField]);
+    setCustomFieldValues(prevValues => ({ ...prevValues, [newField.id]: '' }));
+  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
@@ -120,26 +170,66 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         next_payment_date: convertToUTC(nextPaymentDate.toISOString()),
         status: formData.status,
         payment_frequency: formData.payment_frequency,
-        user_id: user.id,
-        device_key: formData.device_key,
-        mac_address: formData.mac_address,
-        app: formData.app
+        user_id: user.id
       };
 
       let error;
+      let clientResult;
 
       if (client) {
-        ({ error } = await supabase
+        const { data, error: updateError } = await supabase
           .from('clients')
           .update(clientData)
-          .eq('id', client.id));
+          .eq('id', client.id)
+          .select()
+          .single();
+        error = updateError;
+        clientResult = data;
       } else {
-        ({ error } = await supabase
+        const { data, error: insertError } = await supabase
           .from('clients')
-          .insert([clientData]));
+          .insert([clientData])
+          .select()
+          .single();
+        error = insertError;
+        clientResult = data;
       }
 
       if (error) throw error;
+      if (!clientResult) throw new Error('Falha ao obter dados do cliente.');
+
+      // Prepara os valores para upsert e delete
+      const allValues = Object.entries(customFieldValues);
+      
+      const valuesToUpsert = allValues
+        .filter(([, value]) => value) // Filtra para valores não vazios
+        .map(([fieldId, value]) => ({
+          client_id: clientResult.id,
+          field_id: fieldId,
+          value: value,
+        }));
+
+      const fieldsToDelete = allValues
+        .filter(([, value]) => !value) // Filtra para valores vazios
+        .map(([fieldId]) => fieldId);
+
+      // Executa o upsert para os campos com valores
+      if (valuesToUpsert.length > 0) {
+        const { error: upsertError } = await supabase
+          .from('client_custom_field_values')
+          .upsert(valuesToUpsert, { onConflict: 'client_id, field_id' });
+        if (upsertError) throw upsertError;
+      }
+
+      // Executa o delete para os campos que foram limpos
+      if (fieldsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('client_custom_field_values')
+          .delete()
+          .eq('client_id', clientResult.id)
+          .in('field_id', fieldsToDelete);
+        if (deleteError) throw deleteError;
+      }
 
       await refreshClients();
       toast.success(client ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
@@ -153,10 +243,8 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           start_date: '',
           status: true,
           payment_frequency: 'monthly',
-          device_key: '',
-          mac_address: '',
-          app: ''
         });
+        setCustomFieldValues({});
         setIsOpen(false);
       } else if (onClose) {
         onClose();
@@ -268,47 +356,39 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         </p>
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="device_key">
-          Device Key
-        </label>
-        <input
-          id="device_key"
-          type="text"
-          value={formData.device_key || ''}
-          onChange={(e) => setFormData({ ...formData, device_key: e.target.value })}
-          maxLength={64}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="mac_address">
-          Endereço MAC
-        </label>
-        <input
-          id="mac_address"
-          type="text"
-          value={formData.mac_address || ''}
-          onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
-          maxLength={17}
-          placeholder="AA:BB:CC:DD:EE:FF"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="app">
-          App
-        </label>
-        <input
-          id="app"
-          type="text"
-          value={formData.app || ''}
-          onChange={(e) => setFormData({ ...formData, app: e.target.value })}
-          maxLength={36}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-        />
+      <div className="md:col-span-2">
+        {customFields.length > 0 ? (
+          <div>
+            <h3 className="text-md font-medium text-gray-800 mb-2">Campos Personalizados</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {customFields.map((field) => (
+                <div key={field.id}>
+                  <label className="block text-sm font-medium text-gray-700" htmlFor={`custom-field-${field.id}`}>
+                    {field.name}
+                  </label>
+                  <input
+                    id={`custom-field-${field.id}`}
+                    type="text"
+                    value={customFieldValues[field.id] || ''}
+                    onChange={(e) => setCustomFieldValues(prev => ({...prev, [field.id]: e.target.value}))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <PlusCircle className="h-5 w-5 mr-2" />
+              Adicionar Campo Personalizado
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center">
@@ -339,6 +419,13 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
             {client ? 'Atualizar' : 'Salvar'}
           </button>
       </div>
+
+      {isModalOpen && (
+        <AddCustomFieldModal
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveCustomField}
+        />
+      )}
     </form>
   );
 

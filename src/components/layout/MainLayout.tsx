@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import UserMenu from '../UserMenu';
 import { Users, BarChart, Calendar, Settings, MessageSquare } from 'lucide-react'; // Adicionado ícone de Configurações
@@ -26,12 +26,12 @@ const toasterConfig = {
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  currentView?: string;
-  onViewChange?: (view: string) => void;
 }
 
-export function MainLayout({ children, currentView = 'clients', onViewChange = () => {} }: MainLayoutProps) {
-  const { isAdmin, plano } = useAuth(); // Obter o status de admin e o plano
+export function MainLayout({ children }: MainLayoutProps) {
+  const { isAdmin } = useAuth(); // Obter o status de admin
+  const location = useLocation();
+  const { pathname } = location;
 
   // Listener para fechar notificações ao clique
   React.useEffect(() => {
@@ -70,11 +70,10 @@ export function MainLayout({ children, currentView = 'clients', onViewChange = (
                   <Link
                     to="/dashboard"
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      currentView === 'clients'
+                      pathname === '/dashboard'
                         ? 'bg-custom text-white hover:bg-custom-hover'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
-                    onClick={() => onViewChange('clients')}
                   >
                     <Users className="h-4 w-4 mr-2" />
                     Clientes
@@ -82,39 +81,45 @@ export function MainLayout({ children, currentView = 'clients', onViewChange = (
                   <Link
                     to="/monthly"
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      currentView === 'monthly'
+                      pathname === '/monthly'
                         ? 'bg-custom text-white hover:bg-custom-hover'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
-                     onClick={() => onViewChange('monthly')}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
                     Pagamentos do Mês
                   </Link>
-                  {(isAdmin || plano === 'pro' || plano === 'premium') && (
-                    <Link
-                      to="/reports"
-                      className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                        currentView === 'reports'
-                          ? 'bg-custom text-white hover:bg-custom-hover'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                       onClick={() => onViewChange('reports')}
-                    >
-                      <BarChart className="h-4 w-4 mr-2" />
-                      Relatórios
-                    </Link>
-                  )}
+                  <Link
+                    to="/campos-personalizados"
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      pathname === '/campos-personalizados'
+                        ? 'bg-custom text-white hover:bg-custom-hover'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Campos Personalizados
+                  </Link>
+                  <Link
+                    to="/reports"
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                      pathname === '/reports'
+                        ? 'bg-custom text-white hover:bg-custom-hover'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <BarChart className="h-4 w-4 mr-2" />
+                    Relatórios
+                  </Link>
                   {isAdmin && (
                     <>
                       <Link
                         to="/admin/chat"
                         className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                          currentView === 'admin-chat'
+                          pathname === '/admin/chat'
                             ? 'bg-custom text-white hover:bg-custom-hover'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
-                        onClick={() => onViewChange('admin-chat')}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Chat
@@ -122,11 +127,10 @@ export function MainLayout({ children, currentView = 'clients', onViewChange = (
                       <Link
                         to="/configuracoes"
                         className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                          currentView === 'configuracoes'
+                          pathname === '/configuracoes'
                             ? 'bg-custom text-white hover:bg-custom-hover'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
-                        onClick={() => onViewChange('configuracoes')}
                       >
                         <Settings className="h-4 w-4 mr-2" />
                         Configurações
@@ -135,7 +139,7 @@ export function MainLayout({ children, currentView = 'clients', onViewChange = (
                   )}
                 </div>
                 {/* Menu do usuário */}
-                <UserMenu currentView={currentView} onViewChange={onViewChange} />
+                <UserMenu />
               </div>
             </div>
           </div>

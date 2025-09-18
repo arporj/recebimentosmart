@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { isSameDay, addMonths, format, startOfMonth } from 'date-fns';
 import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
@@ -9,9 +9,16 @@ import { ClientForm } from './ClientForm';
 import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
 import type { Database } from '../types/supabase';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 type Payment = Database['public']['Tables']['payments']['Row'];
+type CustomField = Database['public']['Tables']['custom_fields']['Row'];
+type ClientCustomFieldValue = Database['public']['Tables']['client_custom_field_values']['Row'];
+
+interface ClientWithCustomFields extends Client {
+  custom_field_values?: { [key: string]: string };
+}
 
 const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
   monthly: 'Mensal',
@@ -126,6 +133,30 @@ export function ClientList() {
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [refreshPayments, setRefreshPayments] = useState(0);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [clientsWithCustomFields, setClientsWithCustomFields] = useState<ClientWithCustomFields[]>([]);
+
+  const { user } = useAuth();
+
+  const fetchCustomFields = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('custom_fields')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao carregar campos personalizados:', error);
+      toast.error('Erro ao carregar campos personalizados.');
+    } else {
+      setCustomFields(data);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchCustomFields();
+  }, [fetchCustomFields]);
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -144,7 +175,44 @@ export function ClientList() {
     fetchPayments();
   }, []);
 
-  const filteredClients = clients.filter(client => {
+  useEffect(() => {
+    const combineClientData = async () => {
+      if (clients.length === 0 || customFields.length === 0) {
+        setClientsWithCustomFields(clients);
+        return;
+      }
+
+      const clientIds = clients.map(c => c.id);
+      const { data: customValues, error } = await supabase
+        .from('client_custom_field_values')
+        .select('client_id, field_id, value')
+        .in('client_id', clientIds);
+
+      if (error) {
+        console.error('Erro ao buscar valores de campos personalizados:', error);
+        setClientsWithCustomFields(clients);
+        return;
+      }
+
+      const valuesMap = customValues.reduce((acc, cv) => {
+        if (!acc[cv.client_id]) {
+          acc[cv.client_id] = {};
+        }
+        acc[cv.client_id][cv.field_id] = cv.value;
+        return acc;
+      }, {} as { [clientId: string]: { [fieldId: string]: string } });
+
+      const combinedClients = clients.map(client => ({
+        ...client,
+        custom_field_values: valuesMap[client.id] || {},
+      }));
+      setClientsWithCustomFields(combinedClients);
+    };
+
+    combineClientData();
+  }, [clients, customFields]);
+
+  const filteredClients = clientsWithCustomFields.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' 
       ? true 
@@ -333,21 +401,14 @@ export function ClientList() {
                     <p className="flex items-center">
                       <span className="font-medium mr-1">Vencimento:</span> Dia {client.payment_due_day}
                     </p>
-                    {client.device_key && (
-                      <p className="flex items-center">
-                        <span className="font-medium mr-1">Device Key:</span> {client.device_key}
-                      </p>
-                    )}
-                    {client.mac_address && (
-                      <p className="flex items-center">
-                        <span className="font-medium mr-1">MAC:</span> {client.mac_address}
-                      </p>
-                    )}
-                    {client.app && (
-                      <p className="flex items-center">
-                        <span className="font-medium mr-1">App:</span> {client.app}
-                      </p>
-                    )}
+                    {customFields.map(field => {
+                      const value = client.custom_field_values?.[field.id];
+                      return value ? (
+                        <p key={field.id} className="flex items-center">
+                          <span className="font-medium mr-1">{field.name}:</span> {value}
+                        </p>
+                      ) : null;
+                    })}
                   </div>
 
                   {/* Períodos em atraso */}
