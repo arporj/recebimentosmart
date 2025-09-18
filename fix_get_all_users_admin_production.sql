@@ -26,22 +26,19 @@ BEGIN
     WITH latest_subscription AS (
         SELECT 
             s.user_id,
-            s.plan_name,
-            s.status,
-            s.end_date,
+            p.plano::TEXT as plan_name, -- Usa o plano do perfil já que a coluna não existe em subscriptions
+            CASE 
+                WHEN p.valid_until > NOW() THEN 'active'::TEXT
+                ELSE 'expired'::TEXT
+            END as status,
+            p.valid_until as end_date,
             -- Ordena as assinaturas para pegar a mais relevante primeiro
-            -- Prioriza 'active' e 'trialing', e depois a mais recente
             ROW_NUMBER() OVER(
                 PARTITION BY s.user_id 
-                ORDER BY 
-                    CASE s.status
-                        WHEN 'active' THEN 1
-                        WHEN 'trialing' THEN 2
-                        ELSE 3
-                    END,
-                    s.end_date DESC
+                ORDER BY s.subscription_date DESC
             ) as rn
         FROM public.subscriptions s
+        JOIN public.profiles p ON s.user_id = p.id
     )
     SELECT 
         u.id,
