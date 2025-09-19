@@ -84,10 +84,10 @@ const Configuracoes = () => {
       <h1 className="text-2xl font-bold mb-4">Configurações do Sistema</h1>
       <div className="space-y-4">
         {/* Card de Preços dos Planos */}
-        <div className="bg-white shadow sm:rounded-lg">
+        <div className="bg-white shadow sm:rounded-lg border border-secondary-100">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Preços dos Planos</h3>
-            <div className="mt-2 max-w-xl text-sm text-gray-500">
+            <h3 className="text-lg leading-6 font-medium text-neutral-900">Preços dos Planos</h3>
+            <div className="mt-2 max-w-xl text-sm text-neutral-500">
               <p>Defina o valor mensal para cada um dos planos de assinatura.</p>
             </div>
             <div className="mt-5 space-y-6">
@@ -96,7 +96,7 @@ const Configuracoes = () => {
               ) : (
                 <>
                   <div className="space-y-2">
-                    <label htmlFor="price-basico" className="block text-sm font-medium text-gray-700">Plano Básico (R$)</label>
+                    <label htmlFor="price-basico" className="block text-sm font-medium text-neutral-700">Plano Básico (R$)</label>
                     <CurrencyInput
                       id="price-basico"
                       value={prices.basico}
@@ -105,7 +105,7 @@ const Configuracoes = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="price-pro" className="block text-sm font-medium text-gray-700">Plano Pró (R$)</label>
+                    <label htmlFor="price-pro" className="block text-sm font-medium text-neutral-700">Plano Pró (R$)</label>
                     <CurrencyInput
                       id="price-pro"
                       value={prices.pro}
@@ -114,7 +114,7 @@ const Configuracoes = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="price-premium" className="block text-sm font-medium text-gray-700">Plano Premium (R$)</label>
+                    <label htmlFor="price-premium" className="block text-sm font-medium text-neutral-700">Plano Premium (R$)</label>
                     <CurrencyInput
                       id="price-premium"
                       value={prices.premium}
@@ -125,7 +125,7 @@ const Configuracoes = () => {
                   <button 
                     onClick={handleUpdatePrices} 
                     disabled={loading || !hasChanges}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50"
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-600 disabled:opacity-50"
                   >
                     {loading ? 'Salvando...' : 'Salvar Preços'}
                   </button>
@@ -136,10 +136,10 @@ const Configuracoes = () => {
         </div>
 
         {/* Card de Teste de Pagamento */}
-        <div className="bg-white shadow sm:rounded-lg">
+        <div className="bg-white shadow sm:rounded-lg border border-secondary-100">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Teste de Pagamento</h3>
-            <div className="mt-2 max-w-xl text-sm text-gray-500">
+            <h3 className="text-lg leading-6 font-medium text-neutral-900">Teste de Pagamento</h3>
+            <div className="mt-2 max-w-xl text-sm text-neutral-500">
               <p>Use esta seção para simular um pagamento com as credenciais de teste do Mercado Pago.</p>
             </div>
             <div className="mt-5">

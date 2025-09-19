@@ -61,25 +61,25 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
       <div className="relative">
         <button 
           ref={buttonRef}
-          className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex items-center space-x-2 p-2 rounded-md hover:bg-secondary-100 focus:outline-none focus:ring-2 focus:ring-accent-500"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-haspopup="true"
           aria-expanded={isMenuOpen}
         >
-          <User className="h-5 w-5 text-indigo-600" />
-          <span className="text-gray-700">{user?.user_metadata?.name || user?.email}</span>
+          <User className="h-5 w-5 text-accent-600" />
+          <span className="text-neutral-700">{user?.user_metadata?.name || user?.email}</span>
         </button>
         
         {isMenuOpen && (
           <div 
             ref={menuRef}
-            className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-50"
+            className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-secondary-100"
             role="menu"
           >
             <div className="py-2">
               <button
                 onClick={() => handleNavigation('payment')}
-                className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none font-bold"
+                className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none font-bold"
                 role="menuitem"
               >
                 <CreditCard className="h-4 w-4 mr-2 text-red-500" />
@@ -93,10 +93,10 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
                   setIsMenuOpen(false);
                   handleLogout();
                 }}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                className="flex items-center w-full px-4 py-2 text-sm text-neutral-700 hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none"
                 role="menuitem"
               >
-                <LogOut className="h-4 w-4 mr-2 text-gray-500" />
+                <LogOut className="h-4 w-4 mr-2 text-neutral-500" />
                 Sair
               </button>
             </div>

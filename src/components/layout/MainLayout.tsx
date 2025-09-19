@@ -48,11 +48,11 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <ChatProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-neutral-50">
         <Toaster {...toasterConfig} />
         
         {/* Navigation */}
-        <nav className="bg-white shadow-sm" style={{ zIndex: 100 }}>
+        <nav className="bg-white shadow-sm border-b border-secondary-100" style={{ zIndex: 100 }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex">
@@ -72,7 +72,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       pathname === '/dashboard'
                         ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
                     }`}
                   >
                     <Users className="h-4 w-4 mr-2" />
@@ -83,7 +83,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       pathname === '/monthly'
                         ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
                     }`}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
@@ -94,7 +94,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       pathname === '/campos-personalizados'
                         ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
                     }`}
                   >
                     <Settings className="h-4 w-4 mr-2" />
@@ -105,7 +105,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                       pathname === '/reports'
                         ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
                     }`}
                   >
                     <BarChart className="h-4 w-4 mr-2" />
@@ -118,7 +118,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                         className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                           pathname === '/admin/chat'
                             ? 'bg-custom text-white hover:bg-custom-hover'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
                         }`}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
@@ -129,7 +129,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                         className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
                           pathname === '/configuracoes'
                             ? 'bg-custom text-white hover:bg-custom-hover'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
                         }`}
                       >
                         <Settings className="h-4 w-4 mr-2" />
@@ -146,7 +146,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </nav>
 
         {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-neutral-50">
           {children}
         </main>
 
