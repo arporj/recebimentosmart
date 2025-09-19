@@ -52,10 +52,10 @@ export function MainLayout({ children }: MainLayoutProps) {
         <Toaster {...toasterConfig} />
         
         {/* Navigation */}
-        <nav className="bg-white shadow-sm border-b border-secondary-100" style={{ zIndex: 100 }}>
+        <nav className="bg-custom shadow-lg" style={{ zIndex: 100 }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
-              <div className="flex">
+              <div className="flex items-center">
                 <Link to="/dashboard" className="flex items-center">
                   <img
                     className="mx-auto h-12 w-auto"
@@ -65,78 +65,19 @@ export function MainLayout({ children }: MainLayoutProps) {
                 </Link>
               </div>
               <div className="flex items-center space-x-4">
-                {/* Botões de navegação principal */}
-                <div className="hidden md:flex md:space-x-4">
+                {/* Botão de Clientes */}
+                <div className="hidden md:flex">
                   <Link
                     to="/dashboard"
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
+                    className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md transition-colors ${
                       pathname === '/dashboard'
-                        ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
+                        ? 'bg-custom-hover text-white ring-2 ring-white/75'
+                        : 'text-white hover:bg-custom-hover hover:text-white'
                     }`}
                   >
-                    <Users className="h-4 w-4 mr-2" />
+                    <Users className="h-5 w-5 mr-2" />
                     Clientes
                   </Link>
-                  <Link
-                    to="/monthly"
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      pathname === '/monthly'
-                        ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
-                    }`}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Pagamentos do Mês
-                  </Link>
-                  <Link
-                    to="/campos-personalizados"
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      pathname === '/campos-personalizados'
-                        ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
-                    }`}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Campos Personalizados
-                  </Link>
-                  <Link
-                    to="/reports"
-                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                      pathname === '/reports'
-                        ? 'bg-custom text-white hover:bg-custom-hover'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
-                    }`}
-                  >
-                    <BarChart className="h-4 w-4 mr-2" />
-                    Relatórios
-                  </Link>
-                  {isAdmin && (
-                    <>
-                      <Link
-                        to="/admin/chat"
-                        className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                          pathname === '/admin/chat'
-                            ? 'bg-custom text-white hover:bg-custom-hover'
-                            : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
-                        }`}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Chat
-                      </Link>
-                      <Link
-                        to="/configuracoes"
-                        className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ${
-                          pathname === '/configuracoes'
-                            ? 'bg-custom text-white hover:bg-custom-hover'
-                            : 'bg-neutral-100 text-neutral-700 hover:bg-secondary-100'
-                        }`}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configurações
-                      </Link>
-                    </>
-                  )}
                 </div>
                 {/* Menu do usuário */}
                 <UserMenu />

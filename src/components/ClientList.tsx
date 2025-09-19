@@ -6,7 +6,7 @@ import { useClients } from '../contexts/ClientContext';
 import { PaymentModal } from './PaymentModal';
 import { PaymentHistory } from './PaymentHistory';
 import { ClientForm } from './ClientForm';
-import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
+import { formatToSP } from '../lib/dates';
 import type { Database } from '../types/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,7 +14,6 @@ import { useAuth } from '../contexts/AuthContext';
 type Client = Database['public']['Tables']['clients']['Row'];
 type Payment = Database['public']['Tables']['payments']['Row'];
 type CustomField = Database['public']['Tables']['custom_fields']['Row'];
-type ClientCustomFieldValue = Database['public']['Tables']['client_custom_field_values']['Row'];
 
 interface ClientWithCustomFields extends Client {
   custom_field_values?: { [key: string]: string };
@@ -28,15 +27,8 @@ const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
   annual: 'Anual'
 };
 
-const FREQUENCY_MONTHS = {
-  monthly: 1,
-  bimonthly: 2,
-  quarterly: 3,
-  semiannual: 6,
-  annual: 12
-};
+const FREQUENCY_MONTHS = { monthly: 1, bimonthly: 2, quarterly: 3, semiannual: 6, annual: 12 };
 
-// Gera períodos devidos conforme frequência (YYYY-MM)
 function gerarPeriodosDevidos(startDate: string, frequency: keyof typeof FREQUENCY_MONTHS): string[] {
   const mesesPorPeriodo = FREQUENCY_MONTHS[frequency];
   const periodos: string[] = [];
@@ -51,22 +43,16 @@ function gerarPeriodosDevidos(startDate: string, frequency: keyof typeof FREQUEN
   return periodos;
 }
 
-// Retorna períodos pendentes para o cliente
 function getPeriodosPendentes(client: Client, payments: Payment[]): string[] {
   const periodosDevidos = gerarPeriodosDevidos(client.start_date, client.payment_frequency);
-  const periodosPagos = payments
-    .filter(p => p.client_id === client.id && p.reference_month)
-    .map(p => p.reference_month!);
-
+  const periodosPagos = payments.filter(p => p.client_id === client.id && p.reference_month).map(p => p.reference_month!);
   return periodosDevidos.filter(periodo => !periodosPagos.includes(periodo));
 }
 
-// Retorna status do cliente para o filtro
 function getClientPaymentStatus(client: Client, payments: Payment[]): 'paid' | 'late' | 'due-today' {
   const pendentes = getPeriodosPendentes(client, payments);
   if (pendentes.length === 0) return 'paid';
 
-  // Pega o período pendente mais antigo
   const periodoMaisAntigo = pendentes[0];
   const [ano, mes] = periodoMaisAntigo.split('-').map(Number);
   const vencimento = new Date(ano, mes - 1, client.payment_due_day);
@@ -74,10 +60,9 @@ function getClientPaymentStatus(client: Client, payments: Payment[]): 'paid' | '
 
   if (isSameDay(vencimento, hoje)) return 'due-today';
   if (vencimento < hoje) return 'late';
-  return 'paid'; // Se o próximo vencimento é no futuro
+  return 'paid';
 }
 
-// Formata período YYYY-MM para "Mês/Ano"
 function formatarMesAno(yyyyMM: string) {
   if (!yyyyMM) return '';
   const [ano, mes] = yyyyMM.split('-');
@@ -92,27 +77,26 @@ interface DeleteModalProps {
 }
 
 function DeleteModal({ client, onClose, onConfirm }: DeleteModalProps) {
-  
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Confirmar Exclusão</h3>
-        <p className="text-sm text-gray-500 mb-6">
-          Tem certeza que deseja excluir o cliente <span className="font-medium text-gray-900">{client.name}</span>? 
+    <div className="fixed inset-0 bg-neutral-800/75 flex items-center justify-center p-4 z-50">
+      <div className="bg-neutral-50 rounded-lg shadow-xl p-6 max-w-md w-full">
+        <h3 className="text-lg font-semibold text-neutral-800 mb-4">Confirmar Exclusão</h3>
+        <p className="text-sm text-neutral-600 mb-6">
+          Tem certeza que deseja excluir o cliente <span className="font-bold text-neutral-800">{client.name}</span>? 
           Esta ação não pode ser desfeita e todos os pagamentos associados serão removidos.
         </p>
         <div className="flex justify-end space-x-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500 transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
           >
             Excluir
           </button>
@@ -140,12 +124,7 @@ export function ClientList() {
 
   const fetchCustomFields = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from('custom_fields')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name', { ascending: true });
-
+    const { data, error } = await supabase.from('custom_fields').select('*').eq('user_id', user.id).order('name', { ascending: true });
     if (error) {
       console.error('Erro ao carregar campos personalizados:', error);
       toast.error('Erro ao carregar campos personalizados.');
@@ -154,39 +133,29 @@ export function ClientList() {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchCustomFields();
-  }, [fetchCustomFields]);
+  useEffect(() => { fetchCustomFields(); }, [fetchCustomFields]);
 
   useEffect(() => {
     const fetchPayments = async () => {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*');
-      
+      const { data, error } = await supabase.from('payments').select('*');
       if (error) {
         console.error('Error fetching payments:', error);
         return;
       }
-      
       setPayments(data);
     };
-
     fetchPayments();
   }, []);
 
   useEffect(() => {
     const combineClientData = async () => {
-      if (clients.length === 0 || customFields.length === 0) {
+      if (clients.length === 0) {
         setClientsWithCustomFields(clients);
         return;
       }
 
       const clientIds = clients.map(c => c.id);
-      const { data: customValues, error } = await supabase
-        .from('client_custom_field_values')
-        .select('client_id, field_id, value')
-        .in('client_id', clientIds);
+      const { data: customValues, error } = await supabase.from('client_custom_field_values').select('client_id, field_id, value').in('client_id', clientIds);
 
       if (error) {
         console.error('Erro ao buscar valores de campos personalizados:', error);
@@ -195,17 +164,12 @@ export function ClientList() {
       }
 
       const valuesMap = customValues.reduce((acc, cv) => {
-        if (!acc[cv.client_id]) {
-          acc[cv.client_id] = {};
-        }
+        if (!acc[cv.client_id]) acc[cv.client_id] = {};
         acc[cv.client_id][cv.field_id] = cv.value;
         return acc;
       }, {} as { [clientId: string]: { [fieldId: string]: string } });
 
-      const combinedClients = clients.map(client => ({
-        ...client,
-        custom_field_values: valuesMap[client.id] || {},
-      }));
+      const combinedClients = clients.map(client => ({ ...client, custom_field_values: valuesMap[client.id] || {} }));
       setClientsWithCustomFields(combinedClients);
     };
 
@@ -214,15 +178,9 @@ export function ClientList() {
 
   const filteredClients = clientsWithCustomFields.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' 
-      ? true 
-      : statusFilter === 'active' ? client.status : !client.status;
-
+    const matchesStatus = statusFilter === 'all' ? true : statusFilter === 'active' ? client.status : !client.status;
     const clientStatus = getClientPaymentStatus(client, payments);
-    const matchesPayment = paymentFilter === 'all'
-      ? true
-      : paymentFilter === clientStatus;
-
+    const matchesPayment = paymentFilter === 'all' ? true : paymentFilter === clientStatus;
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
@@ -230,17 +188,7 @@ export function ClientList() {
     try {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
-
-      const { error } = await supabase
-        .from('payments')
-        .insert([{
-          client_id: clientId,
-          amount: monthlyPayment,
-          payment_date: paymentDate,
-          reference_month: referenceMonth,
-          user_id: userId
-        }]);
-
+      const { error } = await supabase.from('payments').insert([{ client_id: clientId, amount: monthlyPayment, payment_date: paymentDate, reference_month: referenceMonth, user_id: userId }]);
       if (error) throw error;
       
       await refreshClients();
@@ -249,7 +197,6 @@ export function ClientList() {
         setPayments(newPayments);
         setRefreshPayments(prev => prev + 1);
       }
-      
       toast.success('Pagamento registrado com sucesso!');
     } catch (error: any) {
       toast.error('Erro ao registrar pagamento: ' + error.message);
@@ -259,18 +206,12 @@ export function ClientList() {
 
   const handleDeleteClient = async (client: Client) => {
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', client.id);
-
+      const { error } = await supabase.from('clients').delete().eq('id', client.id);
       if (error) throw error;
 
       await refreshClients();
       const { data: newPayments, error: paymentsError } = await supabase.from('payments').select('*');
-      if (!paymentsError && newPayments) {
-        setPayments(newPayments);
-      }
+      if (!paymentsError && newPayments) setPayments(newPayments);
 
       toast.success('Cliente excluído com sucesso!');
       setDeletingClient(null);
@@ -285,24 +226,24 @@ export function ClientList() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
-          <div className="relative z-20"> {/* Ajuste o z-index para 20 */}
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
             <input
               type="text"
               placeholder="Buscar clientes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="pl-10 w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom"
             />
           </div>
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          className="rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom"
         >
           <option value="all">Todos os status</option>
           <option value="active">Ativos</option>
@@ -311,7 +252,7 @@ export function ClientList() {
         <select
           value={paymentFilter}
           onChange={(e) => setPaymentFilter(e.target.value as any)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          className="rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom"
         >
           <option value="all">Todos os pagamentos</option>
           <option value="paid">Em dia</option>
@@ -320,40 +261,37 @@ export function ClientList() {
         </select>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul role="list" className="divide-y divide-gray-200">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <ul role="list" className="divide-y divide-neutral-200">
           {filteredClients.map((client) => {
             const status = getClientPaymentStatus(client, payments);
             const isExpanded = expandedClient === client.id;
             const periodosPendentes = getPeriodosPendentes(client, payments);
 
             return (
-              <li key={client.id}>
+              <li key={client.id} className="hover:bg-secondary-50 transition-colors duration-150">
                 <div className="px-4 py-4 sm:px-6">
-                  {/* Layout principal - reorganizado para ser mais responsivo */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    {/* Nome do cliente e status */}
                     <div className="flex items-center mb-2 sm:mb-0">
                       {client.status ? (
-                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" title="Ativo" />
                       ) : (
-                        <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                        <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" title="Inativo" />
                       )}
                       <button
                         onClick={() => setEditingClient(client)}
-                        className="ml-2 text-sm font-medium text-gray-900 hover:text-indigo-600 focus:outline-none focus:underline truncate max-w-[150px] sm:max-w-xs"
-                        title={client.name} // Tooltip para nomes longos
+                        className="ml-3 text-sm font-medium text-neutral-800 hover:text-custom focus:outline-none focus:underline truncate max-w-[150px] sm:max-w-xs"
+                        title={client.name}
                       >
                         {client.name}
                       </button>
                     </div>
                     
-                    {/* Ações e status de pagamento - em linha em telas pequenas */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        status === 'late' ? 'bg-red-100 text-red-800' :
-                        status === 'due-today' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
+                        status === 'late' ? 'bg-red-100 text-red-700' :
+                        status === 'due-today' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
                       }`}>
                         {status === 'late' ? 'Em atraso' :
                         status === 'due-today' ? 'Vencendo hoje' :
@@ -362,67 +300,48 @@ export function ClientList() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => setSelectedClient(client)}
-                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-custom hover:bg-custom-hover"
+                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-custom hover:bg-custom-hover transition-colors"
                           title="Registrar Pagamento"
                         >
                           <DollarSign className="h-4 w-4" />
-                          <span className="hidden sm:inline ml-1">Pagamento</span>
+                          <span className="hidden sm:inline ml-1">Pagar</span>
                         </button>
                         <button
                           onClick={() => setDeletingClient(client)}
-                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 hover:bg-red-100"
+                          className="p-1 border border-transparent text-xs font-medium rounded-md text-neutral-500 hover:bg-red-100 hover:text-red-700 transition-colors"
                           title="Excluir Cliente"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => toggleClientExpansion(client.id)}
-                          className="inline-flex items-center text-gray-400 hover:text-gray-500"
+                          className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
                           title={isExpanded ? "Recolher" : "Expandir"}
                         >
-                          {isExpanded ? (
-                            <ChevronUp className="h-5 w-5" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5" />
-                          )}
+                          {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Informações do cliente - reorganizadas para melhor visualização em telas pequenas */}
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-500">
-                    <p className="flex items-center">
-                      <span className="font-medium mr-1">Valor:</span> R$ {client.monthly_payment.toFixed(2)}
-                    </p>
-                    <p className="flex items-center">
-                      <span className="font-medium mr-1">Frequência:</span> {PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}
-                    </p>
-                    <p className="flex items-center">
-                      <span className="font-medium mr-1">Vencimento:</span> Dia {client.payment_due_day}
-                    </p>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm text-neutral-600">
+                    <p><span className="font-medium text-neutral-800">Valor:</span> R$ {client.monthly_payment.toFixed(2)}</p>
+                    <p><span className="font-medium text-neutral-800">Frequência:</span> {PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}</p>
+                    <p><span className="font-medium text-neutral-800">Vencimento:</span> Dia {client.payment_due_day}</p>
                     {customFields.map(field => {
                       const value = client.custom_field_values?.[field.id];
-                      return value ? (
-                        <p key={field.id} className="flex items-center">
-                          <span className="font-medium mr-1">{field.name}:</span> {value}
-                        </p>
-                      ) : null;
+                      return value ? <p key={field.id}><span className="font-medium text-neutral-800">{field.name}:</span> {value}</p> : null;
                     })}
                   </div>
 
-                  {/* Períodos em atraso */}
                   {periodosPendentes.length > 0 && (
-                    <div className="mt-2 text-sm text-red-500">
-                      <p>
-                        <span className="font-medium">Em atraso:</span> {periodosPendentes.map(formatarMesAno).join(', ')}
-                      </p>
+                    <div className="mt-2 text-sm text-red-600">
+                      <p><span className="font-medium">Em atraso:</span> {periodosPendentes.map(formatarMesAno).join(', ')}</p>
                     </div>
                   )}
 
-                  {/* Histórico de pagamentos expandido */}
                   {isExpanded && (
-                    <div className="mt-4">
+                    <div className="mt-4 pt-4 border-t border-neutral-200">
                       <PaymentHistory client={client} refreshKey={refreshPayments} />
                     </div>
                   )}
@@ -433,28 +352,9 @@ export function ClientList() {
         </ul>
       </div>
 
-      {selectedClient && (
-        <PaymentModal
-          client={selectedClient}
-          onClose={() => setSelectedClient(null)}
-          onConfirm={registerPayment}
-        />
-      )}
-
-      {editingClient && (
-        <ClientForm
-          client={editingClient}
-          onClose={() => setEditingClient(null)}
-        />
-      )}
-
-      {deletingClient && (
-        <DeleteModal
-          client={deletingClient}
-          onClose={() => setDeletingClient(null)}
-          onConfirm={() => handleDeleteClient(deletingClient)}
-        />
-      )}
+      {selectedClient && <PaymentModal client={selectedClient} onClose={() => setSelectedClient(null)} onConfirm={registerPayment} />}
+      {editingClient && <ClientForm client={editingClient} onClose={() => setEditingClient(null)} />}
+      {deletingClient && <DeleteModal client={deletingClient} onClose={() => setDeletingClient(null)} onConfirm={() => handleDeleteClient(deletingClient)} />}
     </div>
   );
 }
