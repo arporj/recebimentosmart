@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Search, Edit, Star } from 'lucide-react';
+import { Search, Edit, Star, ArrowUp, ArrowDown } from 'lucide-react';
 import EditUserModal from './EditUserModal';
 
 // Interface atualizada para o perfil do usuário vindo da nova função RPC
@@ -14,6 +14,7 @@ export interface UserProfile {
   subscription_end_date: string | null;
   is_admin: boolean;
   created_at: string;
+  last_sign_in_at: string | null;
 }
 
 const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
@@ -84,6 +85,7 @@ const UserTable = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof UserProfile; direction: 'ascending' | 'descending' } | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -104,13 +106,48 @@ const UserTable = () => {
     fetchUsers();
   }, []);
 
-  const filteredUsers = useMemo(() => {
-    if (!searchTerm) return users;
-    return users.filter(user => 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [searchTerm, users]);
+  const sortedUsers = useMemo(() => {
+    let filteredUsers = users;
+    if (searchTerm) {
+      filteredUsers = users.filter(user => 
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+    
+    if (sortConfig !== null) {
+      return [...filteredUsers].sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        // Tratamento para valores nulos
+        if (aValue === null && bValue === null) return 0;
+        if (aValue === null) return sortConfig.direction === 'ascending' ? 1 : -1;
+        if (bValue === null) return sortConfig.direction === 'ascending' ? -1 : 1;
+        
+        // Comparação baseada no tipo de dados
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'ascending' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+        
+        // Para valores booleanos
+        if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+          return sortConfig.direction === 'ascending' 
+            ? (aValue === bValue ? 0 : aValue ? 1 : -1)
+            : (aValue === bValue ? 0 : aValue ? -1 : 1);
+        }
+        
+        // Fallback para outros tipos
+        return sortConfig.direction === 'ascending' 
+          ? (aValue > bValue ? 1 : -1) 
+          : (aValue < bValue ? 1 : -1);
+      });
+    }
+    
+    return filteredUsers;
+  }, [searchTerm, users, sortConfig]);
 
   const handleEditUser = (user: UserProfile) => {
     setSelectedUser(user);
@@ -124,6 +161,26 @@ const UserTable = () => {
     setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
     toast.success(`Usuário ${updatedUser.name || updatedUser.email} atualizado com sucesso!`);
     fetchUsers(); // Re-busca os dados para garantir consistência
+  };
+  
+  const handleSort = (key: keyof UserProfile) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    
+    setSortConfig({ key, direction });
+  };
+  
+  const getSortIcon = (key: keyof UserProfile) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return null;
+    }
+    
+    return sortConfig.direction === 'ascending' 
+      ? <ArrowUp className="h-4 w-4 inline ml-1" /> 
+      : <ArrowDown className="h-4 w-4 inline ml-1" />;
   };
 
   const handleMakePro = async (userId: string) => {
@@ -163,20 +220,46 @@ const UserTable = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expira em</th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('name')}
+              >
+                Usuário {getSortIcon('name')}
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('plan_name')}
+              >
+                Plano {getSortIcon('plan_name')}
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('subscription_status')}
+              >
+                Status {getSortIcon('subscription_status')}
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('subscription_end_date')}
+              >
+                Expira em {getSortIcon('subscription_end_date')}
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('last_sign_in_at')}
+              >
+                Último Login {getSortIcon('last_sign_in_at')}
+              </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-4">Carregando...</td></tr>
-            ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-4">Nenhum usuário encontrado.</td></tr>
+              <tr><td colSpan={6} className="text-center py-4">Carregando...</td></tr>
+            ) : sortedUsers.length === 0 ? (
+              <tr><td colSpan={6} className="text-center py-4">Nenhum usuário encontrado.</td></tr>
             ) : (
-              filteredUsers.map(user => (
+              sortedUsers.map(user => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
@@ -192,6 +275,9 @@ const UserTable = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {user.subscription_end_date ? new Date(user.subscription_end_date).toLocaleDateString('pt-BR') : 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : 'Nunca'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     {!user.plan_name && !user.is_admin && (
