@@ -93,7 +93,14 @@ const UserTable = () => {
       // Chama a nova função RPC que já inclui os dados da assinatura
       const { data, error } = await supabase.rpc('get_all_users_admin');
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Adiciona o campo last_sign_in_at caso não exista na resposta
+      const processedData = (data || []).map(user => ({
+        ...user,
+        last_sign_in_at: user.last_sign_in_at || null
+      }));
+      
+      setUsers(processedData);
     } catch (error: any) {
       console.error('Erro ao buscar usuários:', error);
       toast.error(error.message || 'Falha ao carregar usuários.');
