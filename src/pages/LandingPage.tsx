@@ -127,13 +127,24 @@ const LandingPage: React.FC = () => {
             <p className="text-neutral-600 mt-2">Ferramentas poderosas para impulsionar seu negócio.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 border border-neutral-100">
-                <div className="flex items-center justify-center h-16 w-16 rounded-full bg-custom/10 text-custom mx-auto mb-6">{feature.icon}</div>
-                <h4 className="text-xl font-bold text-neutral-900 mb-2 text-center">{feature.title}</h4>
-                <p className="text-neutral-600 text-center">{feature.description}</p>
-              </div>
-            ))}
+            {features.map((feature, index) => {
+              const isOdd = index % 2 !== 0;
+              return (
+                <div 
+                  key={index} 
+                  className={`p-8 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 border ${isOdd 
+                    ? 'bg-custom text-white border-transparent' 
+                    : 'bg-white text-neutral-800 border-neutral-100'}`}>
+                  <div className={`flex items-center justify-center h-16 w-16 rounded-full mx-auto mb-6 ${isOdd 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-custom/10 text-custom'}`}>
+                    {feature.icon}
+                  </div>
+                  <h4 className={`text-xl font-bold mb-2 text-center ${isOdd ? 'text-white' : 'text-neutral-900'}`}>{feature.title}</h4>
+                  <p className={`text-center ${isOdd ? 'text-white/90' : 'text-neutral-600'}`}>{feature.description}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
