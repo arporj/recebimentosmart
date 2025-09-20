@@ -164,12 +164,14 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
             </button>
 
             <button
-              onClick={() => handleNavigation('/change-password')}
-              className="flex items-center w-full px-4 py-2 text-sm text-neutral-700 hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none"
+              onClick={() => handleNavigation('/profile')}
+              className={`flex items-center w-full px-4 py-2 text-sm ${
+                pathname === '/profile' ? 'text-custom font-semibold' : 'text-neutral-700'
+              } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
               role="menuitem"
             >
-              <Lock className="h-4 w-4 mr-3 text-neutral-500" />
-              Trocar Senha
+              <User className="h-4 w-4 mr-3 text-neutral-500" />
+              Meu Perfil
             </button>
             
             <button

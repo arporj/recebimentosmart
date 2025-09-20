@@ -14,6 +14,11 @@ interface AuthContextType {
   signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateUserName: (name: string) => Promise<void>;
+  referralCode: string | null;
+  pixKey: string | null;
+  fetchReferralInfo: () => Promise<void>;
+  updatePixKey: (pixKey: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [plano, setPlano] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [pixKey, setPixKey] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
@@ -175,8 +182,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Função para buscar informações de indicação e PIX
+  const fetchReferralInfo = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('referral_code, pix_key')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setReferralCode(data.referral_code);
+        setPixKey(data.pix_key);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar informações de indicação:', error);
+    }
+  };
+
+  // Função para atualizar a chave PIX
+  const updatePixKey = async (newPixKey: string) => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pix_key: newPixKey })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      setPixKey(newPixKey);
+      toast.success('Chave PIX atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar chave PIX:', error);
+      toast.error('Não foi possível atualizar a chave PIX.');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para atualizar o nome do usuário
+  const updateUserName = async (name: string) => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      // Atualiza os metadados do usuário
+      const { error } = await supabase.auth.updateUser({
+        data: { name }
+      });
+      
+      if (error) throw error;
+      
+      // Atualiza o estado local
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          user_metadata: {
+            ...prev.user_metadata,
+            name
+          }
+        };
+      });
+      
+    } catch (error) {
+      console.error('Erro ao atualizar nome:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, hasFullAccess, isAdmin, plano, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      hasFullAccess, 
+      isAdmin, 
+      plano, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut, 
+      resetPassword,
+      updateUserName,
+      referralCode,
+      pixKey,
+      fetchReferralInfo,
+      updatePixKey
+    }}>
       {children}
     </AuthContext.Provider>
   );
