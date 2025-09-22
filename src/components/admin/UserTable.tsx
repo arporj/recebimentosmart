@@ -71,7 +71,7 @@ const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ st
 };
 
 export default function UserTable() {
-  const { impersonateUser } = useAuth();
+  const { startImpersonation } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,12 +173,10 @@ export default function UserTable() {
     }
   };
 
-  const handleImpersonateUser = async (userId: string) => {
+  const handleStartImpersonation = async (userId: string) => {
     try {
       setLoading(true);
-      // A função impersonateUser no AuthContext já faz a busca de dados do usuário
-      // e exibe o toast de sucesso, então apenas chamamos ela diretamente
-      await impersonateUser(userId);
+      await startImpersonation(userId);
     } catch (error: any) {
       console.error('Erro ao impersonar usuário:', error.message);
       toast.error('Erro ao acessar como este usuário');
@@ -289,15 +287,13 @@ export default function UserTable() {
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex items-center">
-                        <button
-                          onClick={() => handleImpersonateUser(user.id)}
-                          className="text-green-600 hover:text-green-900 mr-2 p-1 rounded hover:bg-green-100 flex items-center"
-                          title="Acessar como este usuário"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleStartImpersonation(user.id)}
+                        className="text-gray-400 hover:text-blue-600 mr-2 p-1 rounded hover:bg-blue-100 flex items-center transition-colors"
+                        title="Acessar como este usuário"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                       <div className="text-sm font-medium text-gray-900">{user.name || '-'}</div>
                     </div>
                   </td>
@@ -330,13 +326,6 @@ export default function UserTable() {
                       title="Tornar PRO"
                     >
                       <Star className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleImpersonateUser(user.id)}
-                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100"
-                      title="Acessar como este usuário"
-                    >
-                      <Eye className="h-5 w-5" />
                     </button>
                   </td>
                 </tr>

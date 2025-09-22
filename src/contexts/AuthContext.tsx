@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { addDays, differenceInDays, parseISO, isFuture } from 'date-fns';
+import { addDays, parseISO, isFuture } from 'date-fns';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -19,10 +19,11 @@ interface AuthContextType {
   pixKey: string | null;
   fetchReferralInfo: () => Promise<void>;
   updatePixKey: (pixKey: string) => Promise<void>;
-  // Funções de impersonação
+  // Funções de personificação
+  isImpersonating: boolean;
   impersonatedUser: User | null;
-  impersonateUser: (userId: string) => Promise<void>;
-  stopImpersonating: () => Promise<void>;
+  startImpersonation: (targetUserId: string) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,9 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [pixKey, setPixKey] = useState<string | null>(null);
-  // Estado para impersonação
+
+  // Estado para personificação
+  const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
-  const [originalUser, setOriginalUser] = useState<User | null>(null);
+  const [originalSession, setOriginalSession] = useState<Session | null>(null);
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
@@ -78,110 +81,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     };
 
+    const handleAuthChange = async (_event: string, session: Session | null) => {
+      const currentUser = session?.user ?? null;
+      await checkUserStatus(currentUser);
+
+      // Se a sessão mudar e não for a que estamos personificando, encerre a personificação.
+      if (isImpersonating && session?.access_token !== originalSession?.access_token && currentUser?.id !== impersonatedUser?.id) {
+        stopImpersonation();
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      checkUserStatus(session?.user ?? null);
+      handleAuthChange('INITIAL_SESSION', session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkUserStatus(session?.user ?? null);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isImpersonating, impersonatedUser, originalSession]);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');
         } else if (error.message.includes('Email not confirmed')) {
           throw new Error('Email não confirmado. Verifique sua caixa de entrada e confirme seu email.');
-        } else if (error.message.includes('Too many requests')) {
-          throw new Error('Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente.');
         } else {
           throw new Error(error.message || 'Erro ao fazer login. Tente novamente.');
         }
       }
-      
-      if (!data.user) {
-        throw new Error('Usuário não encontrado. Verifique suas credenciais.');
-      }
-      
+      if (!data.user) throw new Error('Usuário não encontrado. Verifique suas credenciais.');
       localStorage.setItem('loginTime', JSON.stringify(new Date().getTime()));
-      
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error('Erro inesperado ao fazer login. Tente novamente.');
-      }
+      if (error instanceof Error) throw error;
+      else throw new Error('Erro inesperado ao fazer login. Tente novamente.');
     }
   };
 
   const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: name,
-            referral_code: referralCode,
-          },
-        },
-      });
-      
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name, referral_code: referralCode } } });
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
-
-      setUser({
-        ...data.user,
-        user_metadata: {
-          ...data.user.user_metadata,
-          valid_until: validUntil,
-        },
-      });
-      setHasFullAccess(true);
-      
-      toast.success('Conta criada com sucesso!');
+      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
     } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Erro ao criar conta. Tente novamente.');
-      }
+      if (error instanceof Error) toast.error(error.message);
+      else toast.error('Erro ao criar conta. Tente novamente.');
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
+      await stopImpersonation(); // Garante que a personificação seja encerrada ao sair
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
       localStorage.removeItem('loginTime');
     } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } 
+      if (error instanceof Error) toast.error(error.message);
       throw error;
     }
   };
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email },
-      });
-
-      if (error) {
-        throw error;
-      }
-
+      const { error } = await supabase.functions.invoke('send-password-reset', { body: { email } });
+      if (error) throw error;
       toast.success('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
     } catch (error) {
       toast.error('Não foi possível enviar o e-mail. Verifique o endereço e tente novamente.');
@@ -189,19 +155,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função para buscar informações de indicação e PIX
   const fetchReferralInfo = async () => {
     if (!user) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('referral_code, pix_key')
-        .eq('id', user.id)
-        .single();
-      
+      const { data, error } = await supabase.from('profiles').select('referral_code, pix_key').eq('id', user.id).single();
       if (error) throw error;
-      
       if (data) {
         setReferralCode(data.referral_code);
         setPixKey(data.pix_key);
@@ -211,19 +169,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função para atualizar a chave PIX
   const updatePixKey = async (newPixKey: string) => {
     if (!user) return;
-    
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('profiles')
-        .update({ pix_key: newPixKey })
-        .eq('id', user.id);
-      
+      const { error } = await supabase.from('profiles').update({ pix_key: newPixKey }).eq('id', user.id);
       if (error) throw error;
-      
       setPixKey(newPixKey);
       toast.success('Chave PIX atualizada com sucesso!');
     } catch (error) {
@@ -235,32 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função para atualizar o nome do usuário
   const updateUserName = async (name: string) => {
     if (!user) return;
-    
     try {
       setLoading(true);
-      
-      // Atualiza os metadados do usuário
-      const { error } = await supabase.auth.updateUser({
-        data: { name }
-      });
-      
+      const { error } = await supabase.auth.updateUser({ data: { name } });
       if (error) throw error;
-      
-      // Atualiza o estado local
-      setUser(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          user_metadata: {
-            ...prev.user_metadata,
-            name
-          }
-        };
-      });
-      
+      setUser(prev => prev ? { ...prev, user_metadata: { ...prev.user_metadata, name } } : null);
     } catch (error) {
       console.error('Erro ao atualizar nome:', error);
       throw error;
@@ -269,127 +201,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função para impersonar um usuário
-  const impersonateUser = async (userId: string) => {
-    if (!user || !isAdmin) return;
-    
+  const startImpersonation = async (targetUserId: string) => {
+    if (!isAdmin) {
+      toast.error("Apenas administradores podem usar esta função.");
+      return;
+    }
     try {
       setLoading(true);
-      
-      // Buscar dados do usuário a ser impersonado usando a função RPC get_all_users_admin
-      // Esta função já tem verificação de permissão de admin e acessa auth.users
-      const { data: usersData, error: usersError } = await supabase.rpc('get_all_users_admin');
-      
-      if (usersError) throw usersError;
-      
-      // Encontrar o usuário específico pelo ID
-      const targetUser = usersData.find((u: any) => u.id === userId);
-      
-      if (!targetUser) throw new Error('Usuário não encontrado');
-      
-      // Buscar dados do perfil do usuário a ser impersonado
-      let profileData;
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle(); // Usando maybeSingle em vez de single para evitar erro PGRST116
-      
-      if (userError) throw userError;
-      
-      if (!userData) {
-        // Se o perfil não existe, vamos criá-lo usando a função RPC admin_create_user_profile
-        // Esta função tem SECURITY DEFINER e verifica se o chamador é admin
-        const userName = targetUser.name || targetUser.email?.split('@')[0] || 'Usuário';
-        const validUntil = new Date(new Date().setDate(new Date().getDate() + 7)).toISOString();
-        
-        // Chamar a função RPC para criar o perfil
-        const { data: newProfileData, error: createProfileError } = await supabase
-          .rpc('admin_create_user_profile', {
-            p_user_id: userId,
-            p_name: userName,
-            p_plano: 'basico',
-            p_valid_until: validUntil
-          });
-        
-        if (createProfileError) {
-          throw new Error(`Erro ao criar perfil do usuário: ${createProfileError.message}`);
-        }
-        
-        if (!newProfileData) {
-          throw new Error('Não foi possível criar o perfil do usuário');
-        }
-        
-        // Usar o novo perfil
-        profileData = newProfileData;
-      } else {
-        profileData = userData;
+      const { data: currentSessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !currentSessionData.session) {
+        throw new Error("Não foi possível obter a sessão atual do administrador.");
       }
-      
-      // Criar um objeto de usuário para impersonação
-      const impersonatedUserObj = {
-        id: userId,
-        email: targetUser.email,
-        user_metadata: {
-          name: targetUser.name
-        },
-        created_at: targetUser.created_at,
-        app_metadata: {}
-      } as User;
-      
-      // Guardar o usuário original
-      setOriginalUser(user);
-      
-      // Definir o usuário impersonado
-      setImpersonatedUser(impersonatedUserObj);
-      
-      toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
+      setOriginalSession(currentSessionData.session);
+
+      const { data, error } = await supabase.functions.invoke('impersonate-user', {
+        body: { targetUserId },
+      });
+
+      if (error) throw error;
+
+      const { accessToken, user: targetUser } = data;
+      await supabase.auth.setSession({ access_token: accessToken, refresh_token: currentSessionData.session.refresh_token });
+
+      setImpersonatedUser(targetUser);
+      setIsImpersonating(true);
+      toast.success(`Iniciando visualização como ${targetUser.email}`);
+
     } catch (error) {
-      console.error('Erro ao impersonar usuário:', error);
-      toast.error('Não foi possível acessar como este usuário.');
+      console.error("Erro ao iniciar personificação:", error);
+      toast.error((error as Error).message || "Não foi possível iniciar a visualização.");
+      await stopImpersonation(); // Limpa qualquer estado parcial
     } finally {
       setLoading(false);
     }
   };
-  
-  // Função para parar de impersonar
-  const stopImpersonating = async () => {
-    if (!impersonatedUser || !originalUser) return;
-    
+
+  const stopImpersonation = async () => {
+    if (!originalSession) return;
     try {
       setLoading(true);
-      
-      // Restaurar o usuário original
+      const { error } = await supabase.auth.setSession(originalSession);
+      if (error) throw error;
+
+      setOriginalSession(null);
       setImpersonatedUser(null);
-      
-      toast.success('Voltou para sua conta original');
+      setIsImpersonating(false);
+      toast.success("Retornando para a conta de administrador.");
     } catch (error) {
-      console.error('Erro ao voltar para usuário original:', error);
-      toast.error('Erro ao voltar para sua conta original.');
+      console.error("Erro ao parar personificação:", error);
+      toast.error("Não foi possível retornar à sua conta.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user: impersonatedUser || user, 
-      hasFullAccess, 
-      isAdmin, 
-      plano, 
-      loading, 
-      signIn, 
-      signUp, 
-      signOut, 
+    <AuthContext.Provider value={{
+      user,
+      hasFullAccess,
+      isAdmin: isAdmin && !isImpersonating, // Admin é true apenas se for o usuário original
+      plano,
+      loading,
+      signIn,
+      signUp,
+      signOut,
       resetPassword,
       updateUserName,
       referralCode,
       pixKey,
       fetchReferralInfo,
       updatePixKey,
+      isImpersonating,
       impersonatedUser,
-      impersonateUser,
-      stopImpersonating
+      startImpersonation,
+      stopImpersonation
     }}>
       {children}
     </AuthContext.Provider>
@@ -398,10 +283,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
   return context;
 }
