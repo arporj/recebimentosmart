@@ -145,13 +145,19 @@ function LoadingSpinner() {
   );
 }
 
+import { ChatProvider } from './contexts/ChatContext';
+
+// ... (código existente)
+
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Toaster {...toasterConfig} />
-        <AppRoutes />
-      </BrowserRouter>
+      <ChatProvider>
+        <BrowserRouter>
+          <Toaster {...toasterConfig} />
+          <AppRoutes />
+        </BrowserRouter>
+      </ChatProvider>
     </AuthProvider>
   );
 }

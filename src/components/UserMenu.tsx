@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Lock, MessageSquare, CreditCard, UserCheck, Users, Calendar, BarChart, Gift, Settings } from 'lucide-react';
+import { User, LogOut, Lock, MessageSquare, CreditCard, UserCheck, Users, Calendar, BarChart, Gift, Settings, UserX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,7 +9,7 @@ interface UserMenuProps {}
 
 // Exportação nomeada para corresponder à importação em App.tsx
 export const UserMenu: React.FC<UserMenuProps> = () => {
-  const { user, signOut, hasFullAccess, isAdmin } = useAuth();
+  const { user, signOut, hasFullAccess, isAdmin, impersonatedUser, stopImpersonating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
@@ -58,16 +58,31 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
   if (!hasFullAccess && !isAdmin) {
     return (
       <div className="relative">
-        <button 
-          ref={buttonRef}
-          className="flex items-center space-x-2 p-2 rounded-md text-white hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-haspopup="true"
-          aria-expanded={isMenuOpen}
-        >
-          <User className="h-5 w-5" />
-          <span>{user?.user_metadata?.name || user?.email}</span>
-        </button>
+        <div className="flex items-center">
+          {impersonatedUser && (
+            <button
+              onClick={stopImpersonating}
+              className="mr-2 flex items-center space-x-1 p-1 rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-white/75"
+              title="Voltar para sua conta"
+            >
+              <UserX className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs">Voltar</span>
+            </button>
+          )}
+          <button 
+            ref={buttonRef}
+            className={`flex items-center space-x-2 p-2 rounded-md text-white ${impersonatedUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
+          >
+            <User className="h-5 w-5" />
+            <span>{user?.user_metadata?.name || user?.email}</span>
+            {impersonatedUser && (
+              <span className="text-xs bg-white text-amber-600 px-1 py-0.5 rounded ml-1">(Impersonando)</span>
+            )}
+          </button>
+        </div>
         
         {isMenuOpen && (
           <div 
@@ -108,16 +123,31 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
   // Menu normal para usuários com período de teste ativo ou administradores
   return (
     <div className="relative">
-      <button 
-        ref={buttonRef}
-        className="flex items-center space-x-2 p-2 rounded-md text-white hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        aria-haspopup="true"
-        aria-expanded={isMenuOpen}
-      >
-        <User className="h-5 w-5" />
-        <span className="hidden sm:inline">{user?.user_metadata?.name || user?.email}</span>
-      </button>
+      <div className="flex items-center">
+        {impersonatedUser && (
+          <button
+            onClick={stopImpersonating}
+            className="mr-2 flex items-center space-x-1 p-1 rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-white/75"
+            title="Voltar para sua conta"
+          >
+            <UserX className="h-4 w-4" />
+            <span className="hidden sm:inline text-xs">Voltar</span>
+          </button>
+        )}
+        <button 
+          ref={buttonRef}
+          className={`flex items-center space-x-2 p-2 rounded-md text-white ${impersonatedUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-haspopup="true"
+          aria-expanded={isMenuOpen}
+        >
+          <User className="h-5 w-5" />
+          <span className="hidden sm:inline">{user?.user_metadata?.name || user?.email}</span>
+          {impersonatedUser && (
+            <span className="text-xs bg-white text-amber-600 px-1 py-0.5 rounded ml-1">(Impersonando)</span>
+          )}
+        </button>
+      </div>
       
       {isMenuOpen && (
         <div 

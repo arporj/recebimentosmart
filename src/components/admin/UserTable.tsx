@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Search, Edit, Star, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Edit, Star, ArrowUp, ArrowDown, Eye } from 'lucide-react';
 import EditUserModal from './EditUserModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Interface atualizada para o perfil do usuário vindo da nova função RPC
 export interface UserProfile {
@@ -40,6 +41,7 @@ const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
   );
 };
 
+
 const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ status, isAdmin }) => {
   if (isAdmin) {
     return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>;
@@ -50,111 +52,91 @@ const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ st
 
   const statusLower = status.toLowerCase();
   let colorClasses = 'bg-gray-100 text-gray-800';
-  let text = status.charAt(0).toUpperCase() + status.slice(1)
 
-  switch (statusLower) {
-    case 'active':
-      colorClasses = 'bg-green-100 text-green-800';
-      text = 'Ativo';
-      break;
-    case 'trialing':
-      colorClasses = 'bg-yellow-100 text-yellow-800';
-      text = 'Em Teste';
-      break;
-    case 'canceled':
-      colorClasses = 'bg-orange-100 text-orange-800';
-      text = 'Cancelado';
-      break;
-    case 'expired':
-    case 'past_due':
-      colorClasses = 'bg-red-100 text-red-800';
-      text = 'Expirado';
-      break;
+  if (statusLower === 'active' || statusLower === 'ativo') {
+    colorClasses = 'bg-green-100 text-green-800';
+  } else if (statusLower === 'inactive' || statusLower === 'inativo') {
+    colorClasses = 'bg-red-100 text-red-800';
+  } else if (statusLower === 'pending' || statusLower === 'pendente') {
+    colorClasses = 'bg-yellow-100 text-yellow-800';
+  } else if (statusLower === 'canceled' || statusLower === 'cancelado') {
+    colorClasses = 'bg-gray-100 text-gray-800';
   }
 
   return (
     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorClasses}`}>
-      {text}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 };
 
-
-const UserTable = () => {
+export default function UserTable() {
+  const { impersonateUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof UserProfile; direction: 'ascending' | 'descending' } | null>(null);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      // Chama a nova função RPC que já inclui os dados da assinatura
-      const { data, error } = await supabase.rpc('get_all_users_admin');
-      if (error) throw error;
-      
-      // Adiciona o campo last_sign_in_at caso não exista na resposta
-      const processedData = (data || []).map(user => ({
-        ...user,
-        last_sign_in_at: user.last_sign_in_at || null
-      }));
-      
-      setUsers(processedData);
-    } catch (error: any) {
-      console.error('Erro ao buscar usuários:', error);
-      toast.error(error.message || 'Falha ao carregar usuários.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const sortedUsers = useMemo(() => {
-    let filteredUsers = users;
-    if (searchTerm) {
-      filteredUsers = users.filter(user => 
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_all_users_admin');
+
+      if (error) {
+        throw error;
+      }
+
+      setUsers(data);
+    } catch (error: any) {
+      console.error('Erro ao buscar usuários:', error.message);
+      toast.error('Erro ao carregar usuários');
+    } finally {
+      setLoading(false);
     }
-    
-    if (sortConfig !== null) {
-      return [...filteredUsers].sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        
-        // Tratamento para valores nulos
-        if (aValue === null && bValue === null) return 0;
-        if (aValue === null) return sortConfig.direction === 'ascending' ? 1 : -1;
-        if (bValue === null) return sortConfig.direction === 'ascending' ? -1 : 1;
-        
-        // Comparação baseada no tipo de dados
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return sortConfig.direction === 'ascending' 
-            ? aValue.localeCompare(bValue) 
-            : bValue.localeCompare(aValue);
-        }
-        
-        // Para valores booleanos
-        if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
-          return sortConfig.direction === 'ascending' 
-            ? (aValue === bValue ? 0 : aValue ? 1 : -1)
-            : (aValue === bValue ? 0 : aValue ? -1 : 1);
-        }
-        
-        // Fallback para outros tipos
-        return sortConfig.direction === 'ascending' 
-          ? (aValue > bValue ? 1 : -1) 
-          : (aValue < bValue ? 1 : -1);
-      });
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
-    
-    return filteredUsers;
-  }, [searchTerm, users, sortConfig]);
+  };
+
+  const sortedUsers = [...users].sort((a, b) => {
+    let aValue: any = a[sortField as keyof UserProfile];
+    let bValue: any = b[sortField as keyof UserProfile];
+
+    // Handle null values
+    if (aValue === null) aValue = '';
+    if (bValue === null) bValue = '';
+
+    // Convert dates to timestamps for comparison
+    if (sortField === 'created_at' || sortField === 'last_sign_in_at') {
+      aValue = aValue ? new Date(aValue).getTime() : 0;
+      bValue = bValue ? new Date(bValue).getTime() : 0;
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const filteredUsers = sortedUsers.filter(user => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (user.name?.toLowerCase().includes(searchLower) || '') ||
+      user.email.toLowerCase().includes(searchLower) ||
+      (user.plan_name?.toLowerCase().includes(searchLower) || '')
+    );
+  });
 
   const handleEditUser = (user: UserProfile) => {
     setSelectedUser(user);
@@ -165,114 +147,162 @@ const UserTable = () => {
   };
 
   const handleUserUpdate = (updatedUser: UserProfile) => {
-    setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
-    toast.success(`Usuário ${updatedUser.name || updatedUser.email} atualizado com sucesso!`);
-    fetchUsers(); // Re-busca os dados para garantir consistência
-  };
-  
-  const handleSort = (key: keyof UserProfile) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    
-    setSortConfig({ key, direction });
-  };
-  
-  const getSortIcon = (key: keyof UserProfile) => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return null;
-    }
-    
-    return sortConfig.direction === 'ascending' 
-      ? <ArrowUp className="h-4 w-4 inline ml-1" /> 
-      : <ArrowDown className="h-4 w-4 inline ml-1" />;
+    setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
+    setSelectedUser(null);
+    toast.success('Usuário atualizado com sucesso!');
   };
 
   const handleMakePro = async (userId: string) => {
-    if (!window.confirm('Deseja realmente tornar este usuário um cliente Pró por 30 dias?')) return;
-
-    const toastId = toast.loading('Atualizando plano do usuário...');
     try {
-      const { error } = await supabase.rpc('admin_set_user_plan', {
-        user_id_to_update: userId,
-        new_plan_name: 'Pro'
+      setLoading(true);
+      const { data, error } = await supabase.rpc('admin_set_user_plan', {
+        user_id: userId,
+        new_plan: 'pro',
+        months: 1
       });
 
       if (error) throw error;
 
-      toast.success('Plano do usuário atualizado para Pró!', { id: toastId });
-      fetchUsers(); // Re-busca a lista de usuários para refletir a mudança
+      toast.success('Plano atualizado com sucesso!');
+      fetchUsers();
     } catch (error: any) {
-      console.error('Erro ao atualizar plano:', error);
-      toast.error(error.message || 'Não foi possível atualizar o plano.', { id: toastId });
+      console.error('Erro ao atualizar plano:', error.message);
+      toast.error('Erro ao atualizar plano');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleImpersonateUser = async (userId: string) => {
+    try {
+      setLoading(true);
+      // A função impersonateUser no AuthContext já faz a busca de dados do usuário
+      // e exibe o toast de sucesso, então apenas chamamos ela diretamente
+      await impersonateUser(userId);
+    } catch (error: any) {
+      console.error('Erro ao impersonar usuário:', error.message);
+      toast.error('Erro ao acessar como este usuário');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="relative w-full md:w-1/3">
-        <input
-          type="text"
-          placeholder="Buscar por nome ou e-mail..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+    <div className="bg-white shadow rounded-lg p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Gerenciar Usuários</h2>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Buscar usuários..."
+            className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+        </div>
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                 onClick={() => handleSort('name')}
               >
-                Usuário {getSortIcon('name')}
+                <div className="flex items-center">
+                  Nome {getSortIcon('name')}
+                </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort('email')}
+              >
+                <div className="flex items-center">
+                  Email {getSortIcon('email')}
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                 onClick={() => handleSort('plan_name')}
               >
-                Plano {getSortIcon('plan_name')}
+                <div className="flex items-center">
+                  Plano {getSortIcon('plan_name')}
+                </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                 onClick={() => handleSort('subscription_status')}
               >
-                Status {getSortIcon('subscription_status')}
+                <div className="flex items-center">
+                  Status {getSortIcon('subscription_status')}
+                </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('subscription_end_date')}
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort('created_at')}
               >
-                Expira em {getSortIcon('subscription_end_date')}
+                <div className="flex items-center">
+                  Criado em {getSortIcon('created_at')}
+                </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                 onClick={() => handleSort('last_sign_in_at')}
               >
-                Último Login {getSortIcon('last_sign_in_at')}
+                <div className="flex items-center">
+                  Último login {getSortIcon('last_sign_in_at')}
+                </div>
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-4">Carregando...</td></tr>
-            ) : sortedUsers.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-4">Nenhum usuário encontrado.</td></tr>
+              <tr>
+                <td colSpan={7} className="px-6 py-4 text-center">
+                  Carregando...
+                </td>
+              </tr>
+            ) : filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-4 text-center">
+                  Nenhum usuário encontrado
+                </td>
+              </tr>
             ) : (
-              sortedUsers.map(user => (
+              filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900">{user.name || 'Não informado'}</span>
-                      <span className="text-sm text-gray-500">{user.email}</span>
+                    <div className="flex items-center">
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => handleImpersonateUser(user.id)}
+                          className="text-green-600 hover:text-green-900 mr-2 p-1 rounded hover:bg-green-100 flex items-center"
+                          title="Acessar como este usuário"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">{user.name || '-'}</div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{user.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <PlanBadge plan={user.plan_name} />
@@ -281,23 +311,32 @@ const UserTable = () => {
                     <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.subscription_end_date ? new Date(user.subscription_end_date).toLocaleDateString('pt-BR') : 'N/A'}
+                    {new Date(user.created_at).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : 'Nunca'}
+                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    {!user.plan_name && !user.is_admin && (
-                       <button 
-                        onClick={() => handleMakePro(user.id)} 
-                        className="text-green-600 hover:text-green-900 p-1 rounded-md hover:bg-green-100 transition-colors"
-                        title="Tornar usuário Pró"
-                      >
-                        <Star className="h-5 w-5" />
-                      </button>
-                    )}
-                    <button onClick={() => handleEditUser(user)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded-md hover:bg-indigo-100 transition-colors" title="Editar Usuário">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 flex">
+                    <button
+                      onClick={() => handleEditUser(user)}
+                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100"
+                      title="Editar usuário"
+                    >
                       <Edit className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleMakePro(user.id)}
+                      className="text-yellow-600 hover:text-yellow-900 p-1 rounded hover:bg-yellow-100"
+                      title="Tornar PRO"
+                    >
+                      <Star className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleImpersonateUser(user.id)}
+                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100"
+                      title="Acessar como este usuário"
+                    >
+                      <Eye className="h-5 w-5" />
                     </button>
                   </td>
                 </tr>
@@ -316,6 +355,4 @@ const UserTable = () => {
       )}
     </div>
   );
-};
-
-export default UserTable;
+}

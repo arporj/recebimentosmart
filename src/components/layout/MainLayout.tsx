@@ -47,7 +47,6 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, []);
 
   return (
-    <ChatProvider>
       <div className="min-h-screen bg-neutral-50">
         <Toaster {...toasterConfig} />
         
@@ -87,7 +86,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </nav>
 
         {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-neutral-50">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:8 py-8 bg-neutral-50">
           {children}
         </main>
 
@@ -95,6 +94,5 @@ export function MainLayout({ children }: MainLayoutProps) {
         <ChatWidget />
         <ChatWindow />
       </div>
-    </ChatProvider>
   );
 }

@@ -19,6 +19,10 @@ interface AuthContextType {
   pixKey: string | null;
   fetchReferralInfo: () => Promise<void>;
   updatePixKey: (pixKey: string) => Promise<void>;
+  // Funções de impersonação
+  impersonatedUser: User | null;
+  impersonateUser: (userId: string) => Promise<void>;
+  stopImpersonating: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +35,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [pixKey, setPixKey] = useState<string | null>(null);
+  // Estado para impersonação
+  const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
+  const [originalUser, setOriginalUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
@@ -262,9 +269,111 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Função para impersonar um usuário
+  const impersonateUser = async (userId: string) => {
+    if (!user || !isAdmin) return;
+    
+    try {
+      setLoading(true);
+      
+      // Buscar dados do usuário a ser impersonado usando a função RPC get_all_users_admin
+      // Esta função já tem verificação de permissão de admin e acessa auth.users
+      const { data: usersData, error: usersError } = await supabase.rpc('get_all_users_admin');
+      
+      if (usersError) throw usersError;
+      
+      // Encontrar o usuário específico pelo ID
+      const targetUser = usersData.find((u: any) => u.id === userId);
+      
+      if (!targetUser) throw new Error('Usuário não encontrado');
+      
+      // Buscar dados do perfil do usuário a ser impersonado
+      let profileData;
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle(); // Usando maybeSingle em vez de single para evitar erro PGRST116
+      
+      if (userError) throw userError;
+      
+      if (!userData) {
+        // Se o perfil não existe, vamos criá-lo usando a função RPC admin_create_user_profile
+        // Esta função tem SECURITY DEFINER e verifica se o chamador é admin
+        const userName = targetUser.name || targetUser.email?.split('@')[0] || 'Usuário';
+        const validUntil = new Date(new Date().setDate(new Date().getDate() + 7)).toISOString();
+        
+        // Chamar a função RPC para criar o perfil
+        const { data: newProfileData, error: createProfileError } = await supabase
+          .rpc('admin_create_user_profile', {
+            p_user_id: userId,
+            p_name: userName,
+            p_plano: 'basico',
+            p_valid_until: validUntil
+          });
+        
+        if (createProfileError) {
+          throw new Error(`Erro ao criar perfil do usuário: ${createProfileError.message}`);
+        }
+        
+        if (!newProfileData) {
+          throw new Error('Não foi possível criar o perfil do usuário');
+        }
+        
+        // Usar o novo perfil
+        profileData = newProfileData;
+      } else {
+        profileData = userData;
+      }
+      
+      // Criar um objeto de usuário para impersonação
+      const impersonatedUserObj = {
+        id: userId,
+        email: targetUser.email,
+        user_metadata: {
+          name: targetUser.name
+        },
+        created_at: targetUser.created_at,
+        app_metadata: {}
+      } as User;
+      
+      // Guardar o usuário original
+      setOriginalUser(user);
+      
+      // Definir o usuário impersonado
+      setImpersonatedUser(impersonatedUserObj);
+      
+      toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
+    } catch (error) {
+      console.error('Erro ao impersonar usuário:', error);
+      toast.error('Não foi possível acessar como este usuário.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Função para parar de impersonar
+  const stopImpersonating = async () => {
+    if (!impersonatedUser || !originalUser) return;
+    
+    try {
+      setLoading(true);
+      
+      // Restaurar o usuário original
+      setImpersonatedUser(null);
+      
+      toast.success('Voltou para sua conta original');
+    } catch (error) {
+      console.error('Erro ao voltar para usuário original:', error);
+      toast.error('Erro ao voltar para sua conta original.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
-      user, 
+      user: impersonatedUser || user, 
       hasFullAccess, 
       isAdmin, 
       plano, 
@@ -277,7 +386,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       referralCode,
       pixKey,
       fetchReferralInfo,
-      updatePixKey
+      updatePixKey,
+      impersonatedUser,
+      impersonateUser,
+      stopImpersonating
     }}>
       {children}
     </AuthContext.Provider>
