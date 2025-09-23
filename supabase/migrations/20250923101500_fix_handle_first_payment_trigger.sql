@@ -1,3 +1,5 @@
+-- Migration: Corrige a criação do trigger on_new_subscription_trigger para evitar erro de "already exists"
+
 create or replace function public.handle_new_subscription()
 returns trigger as
 $$
@@ -15,6 +17,7 @@ end;
 $$
 language plpgsql security definer;
 
+DROP TRIGGER IF EXISTS on_new_subscription_trigger ON public.subscriptions;
 create trigger on_new_subscription_trigger
 after insert on public.subscriptions
 for each row

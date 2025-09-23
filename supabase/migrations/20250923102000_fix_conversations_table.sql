@@ -1,4 +1,6 @@
-CREATE TABLE conversations (
+-- Migration: Corrige a criação da tabela conversations e seus índices para evitar erro de "already exists"
+
+CREATE TABLE IF NOT EXISTS conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -6,8 +8,8 @@ CREATE TABLE conversations (
 );
 
 -- Indexes
-CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX idx_conversations_status ON conversations(status);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
 
 -- Comments
 COMMENT ON TABLE conversations IS 'Stores chat conversations between users and admins.';

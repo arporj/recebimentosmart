@@ -38,6 +38,6 @@ BEGIN
 
     RETURN profile_data;
 END;
-$$ LANGUAGE plpgsql;
+$$; -- Removido LANGUAGE plpgsql; da linha final
 
 COMMENT ON FUNCTION public.admin_create_user_profile IS 'Função para administradores criarem perfis de usuário, contornando as políticas RLS.';

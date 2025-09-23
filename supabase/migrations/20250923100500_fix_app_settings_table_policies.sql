@@ -1,4 +1,4 @@
--- supabase/migrations/0009_create_app_settings_table.sql
+-- Migration: Corrige a criação da tabela app_settings e suas políticas RLS para evitar erro de "already exists"
 
 -- 1. Criar a tabela para configurações globais da aplicação
 CREATE TABLE IF NOT EXISTS public.app_settings (
@@ -15,7 +15,7 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 -- Apenas administradores autenticados podem ler e modificar as configurações.
 -- Usamos a função `is_admin()` que verifica o custom claim, que por sua vez é definido por um trigger no perfil.
 
--- Primeiro, vamos garantir que a função is_admin exista. 
+-- Primeiro, vamos garantir que a função is_admin exista.
 -- Se ela já foi criada em outra migration, isso não causará erro.
 CREATE OR REPLACE FUNCTION public.is_admin(p_user_id UUID)
 RETURNS BOOLEAN AS $$
@@ -31,17 +31,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- Política para permitir que administradores leiam todas as configurações
-CREATE POLICY "Allow admins to read all settings" 
-ON public.app_settings 
-FOR SELECT 
-TO authenticated 
+DROP POLICY IF EXISTS "Allow admins to read all settings" ON public.app_settings;
+CREATE POLICY "Allow admins to read all settings"
+ON public.app_settings
+FOR SELECT
+TO authenticated
 USING (is_admin(auth.uid()));
 
 -- Política para permitir que administradores modifiquem todas as configurações
-CREATE POLICY "Allow admins to update settings" 
-ON public.app_settings 
-FOR UPDATE 
-TO authenticated 
+DROP POLICY IF EXISTS "Allow admins to update settings" ON public.app_settings;
+CREATE POLICY "Allow admins to update settings"
+ON public.app_settings
+FOR UPDATE
+TO authenticated
 USING (is_admin(auth.uid()));
 
 -- 3. Inserir a configuração inicial do preço da assinatura

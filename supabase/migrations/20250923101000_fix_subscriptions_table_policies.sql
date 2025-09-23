@@ -1,4 +1,4 @@
--- supabase/migrations/0014_create_subscriptions_table.sql
+-- Migration: Corrige a criação da tabela subscriptions e suas políticas RLS para evitar erro de "already exists"
 
 -- 1. Criar a tabela para registrar pagamentos de assinatura do SaaS
 CREATE TABLE IF NOT EXISTS public.subscriptions (
@@ -16,17 +16,19 @@ ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- 2. Políticas de Acesso
 -- Apenas administradores podem ler todos os registros de assinatura.
-CREATE POLICY "Allow admins to read all subscriptions" 
-ON public.subscriptions 
-FOR SELECT 
-TO authenticated 
+DROP POLICY IF EXISTS "Allow admins to read all subscriptions" ON public.subscriptions;
+CREATE POLICY "Allow admins to read all subscriptions"
+ON public.subscriptions
+FOR SELECT
+TO authenticated
 USING (is_admin(auth.uid()));
 
 -- Usuários podem ver suas próprias assinaturas (opcional, mas bom para um futuro "histórico de pagamentos")
-CREATE POLICY "Allow users to read their own subscriptions" 
-ON public.subscriptions 
-FOR SELECT 
-TO authenticated 
+DROP POLICY IF EXISTS "Allow users to read their own subscriptions" ON public.subscriptions;
+CREATE POLICY "Allow users to read their own subscriptions"
+ON public.subscriptions
+FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id);
 
 -- Ninguém pode apagar ou alterar registros diretamente (apenas via funções seguras se necessário)
