@@ -297,34 +297,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (userError) throw userError;
       
+      // Se o perfil não foi encontrado (userData é null), isso é um erro na lógica de impersonação
+      // pois a função admin_create_user_profile não deve ser chamada para criar perfis aqui.
+      // A criação de perfis deve ser tratada pelo trigger handle_new_user.
       if (!userData) {
-        // Se o perfil não existe, vamos criá-lo usando a função RPC admin_create_user_profile
-        // Esta função tem SECURITY DEFINER e verifica se o chamador é admin
-        const userName = targetUser.name || targetUser.email?.split('@')[0] || 'Usuário';
-        const validUntil = new Date(new Date().setDate(new Date().getDate() + 7)).toISOString();
-        
-        // Chamar a função RPC para criar o perfil
-        const { data: newProfileData, error: createProfileError } = await supabase
-          .rpc('admin_create_user_profile', {
-            p_user_id: userId,
-            p_name: userName,
-            p_plano: 'basico',
-            p_valid_until: validUntil
-          });
-        
-        if (createProfileError) {
-          throw new Error(`Erro ao criar perfil do usuário: ${createProfileError.message}`);
-        }
-        
-        if (!newProfileData) {
-          throw new Error('Não foi possível criar o perfil do usuário');
-        }
-        
-        // Usar o novo perfil
-        profileData = newProfileData;
-      } else {
-        profileData = userData;
+        throw new Error('Perfil do usuário a ser impersonado não encontrado. Verifique a RLS ou a criação do perfil.');
       }
+      profileData = userData;
       
       // Criar um objeto de usuário para impersonação
       const impersonatedUserObj = {
