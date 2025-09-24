@@ -29,6 +29,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+
   const [user, setUser] = useState<User | null>(null);
   const [hasFullAccess, setHasFullAccess] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
