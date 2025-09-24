@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { addDays, differenceInDays, parseISO, isFuture } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -323,6 +324,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setImpersonatedUser(impersonatedUserObj);
       
       toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
+
+      // Redirecionar para a tela de clientes
+      navigate('/clients');
     } catch (error) {
       console.error('Erro ao impersonar usuário:', error);
       toast.error('Não foi possível acessar como este usuário.');
