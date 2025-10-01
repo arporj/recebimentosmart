@@ -30,7 +30,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-
   const [user, setUser] = useState<User | null>(null);
   const [hasFullAccess, setHasFullAccess] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -327,8 +326,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
 
-      // Redirecionar para a tela de clientes
-      navigate('/clients');
+      // Redirecionar para o dashboard
+      navigate('/dashboard');
     } catch (error) {
       console.error('Erro ao impersonar usuário:', error);
       toast.error('Não foi possível acessar como este usuário.');
