@@ -7,7 +7,8 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
-const mercadoPagoRoutes = require('./routes/mercadoPago'); // Novas rotas
+const mercadoPagoRouter = require('./routes/mercadoPago');
+const pagarMeRouter = require('./routes/pagarMe'); // Novas rotas
 
 // Inicializar o app Express
 const app = express();
@@ -42,6 +43,7 @@ app.get('/', (req, res) => {
 // Montar rotas
 app.use('/api', authRoutes);
 app.use('/api/mp', mercadoPagoRoutes); // Usando as novas rotas do Mercado Pago
+app.use('/api/pagarme', pagarMeRouter);
 
 // Porta do servidor
 const PORT = process.env.PORT || 3000;

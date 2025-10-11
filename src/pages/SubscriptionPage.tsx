@@ -8,6 +8,7 @@ import axios from 'axios';
 import { format, parseISO, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../lib/utils';
+import PagarMePayment from '../components/PagarMePayment'; // Importa o novo componente
 
 // Tipagem para os dados recebidos da RPC
 interface Plan {
@@ -36,8 +37,6 @@ const SubscriptionPage = () => {
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>('basico'); // Inicializar com plano básico como padrão
   
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
-  const [pixCode, setPixCode] = useState('');
-  const [pixQrCode, setPixQrCode] = useState('');
   const [currentExternalReference, setCurrentExternalReference] = useState<string | null>(null);
 
   // Busca os dados iniciais da página
@@ -149,47 +148,6 @@ const SubscriptionPage = () => {
     
     return finalValue;
   }, [selectedPlan, pageData]);
-
-  const generatePayment = async () => {
-    if (!selectedPlan || !pageData || finalAmount <= 0) {
-        toast.error("Selecione um plano e verifique o valor antes de pagar.");
-        return;
-    }
-
-    setLoading(true);
-    setPaymentStatus('pending');
-    
-    // Encontrar o nome formatado do plano para a descrição
-    const planName = pageData.plans.find(plan => {
-      const planNameLower = plan.name.toLowerCase();
-      return planNameLower === selectedPlan || 
-             (selectedPlan === 'basico' && planNameLower === 'básico') || 
-             (selectedPlan === 'pro' && planNameLower === 'pró');
-    })?.name || selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1);
-
-    const paymentPayload = {
-        amount: finalAmount,
-        description: `Assinatura Plano ${planName} - RecebimentoSmart`,
-        userId: user?.id,
-        customerData: { email: user?.email },
-        metadata: { plan: selectedPlan }
-    };
-
-    try {
-        const response = await axios.post('/api/mp/generate-payment-mp', paymentPayload);
-        if (!response.data?.success) throw new Error(response.data?.message || 'Erro ao gerar pagamento');
-        
-        setPixCode(response.data.pixQrCode);
-        setPixQrCode(response.data.pixQrCodeBase64);
-        setCurrentExternalReference(response.data.externalReference);
-        toast.success('QR Code PIX gerado! Aguardando confirmação...');
-    } catch (error: any) {
-        toast.error(`Falha ao gerar pagamento: ${error.message}`);
-        setPaymentStatus('failed');
-    } finally {
-        setLoading(false);
-    }
-  };
 
   const renderCurrentPlan = () => {
     if (!pageData || !pageData.user) return null;
@@ -311,22 +269,6 @@ const SubscriptionPage = () => {
     );
   }
 
-  // A função renderPaymentArea (com PIX) pode ser mantida, mas adaptada para usar `finalAmount`
-  const renderPaymentArea = () => {
-    // ... (UI para exibir QR Code e botão de pagar, usando `finalAmount`)
-    return (
-        <div>
-            <button
-                onClick={generatePayment}
-                disabled={loading || !selectedPlan || finalAmount <= 0}
-                className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-accent-600 hover:bg-accent-700 mt-4 disabled:opacity-50"
-            >
-                {loading ? 'Processando...' : `Pagar ${formatCurrency(finalAmount)}`}
-            </button>
-        </div>
-    )
-  }
-
   if (loading) {
     return <p className="text-center text-neutral-500">Carregando...</p>;
   }
@@ -336,16 +278,38 @@ const SubscriptionPage = () => {
   }
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border border-secondary-100">
-      <div className="flex items-center mb-4">
-        <CreditCard className="h-6 w-6 text-accent-600 mr-2" />
-        <h1 className="text-2xl font-bold text-neutral-800">Faça sua Assinatura</h1>
-      </div>
-      
-      {renderPlanSelection()}
-      {renderPaymentSummary()}
-      {renderPaymentArea()}
+    <div className="min-h-screen bg-gray-50 text-gray-800 p-4 sm:p-8">
+      <div className="max-w-5xl mx-auto">
+        {pageData && paymentStatus !== 'completed' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Coluna de Planos e Pagamento */}
+            <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex items-center mb-6">
+                <CreditCard className="h-6 w-6 text-accent-600 mr-3" />
+                <h1 className="text-2xl font-bold text-neutral-800">Faça sua Assinatura</h1>
+              </div>
 
+              {renderCurrentPlan()}
+
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">1. Escolha seu Plano</h2>
+              {renderPlanSelection()}
+              
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento</h3>
+                <PagarMePayment amount={finalAmount * 100} />
+              </div>
+            </div>
+
+            {/* Coluna de Resumo */}
+            <div className="bg-white p-6 rounded-lg shadow-sm h-fit sticky top-8">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Resumo do Pedido</h2>
+              {renderPaymentSummary()}
+            </div>
+          </div>
+        ) : (
+          <p className="text-center text-neutral-500">Não foi possível carregar os dados da assinatura.</p>
+        )}
+      </div>
     </div>
   );
 };

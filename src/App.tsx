@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ClientList } from './components/ClientList';
 import { ClientForm } from './components/ClientForm';
@@ -12,6 +12,7 @@ import { ResetPasswordPage } from './components/reset-password';
 import { ForgotPasswordPage } from './components/forgot-password';
 import { MainLayout } from './components/layout/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute'; // Importa a nova rota protegida
+import { PagarmeProvider } from './contexts/PagarmeContext';
 
 // Importar os novos componentes
 import FeedbackForm from './components/FeedbackForm';
@@ -147,12 +148,13 @@ function LoadingSpinner() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
-        <Toaster {...toasterConfig} />
-        <AppRoutes />
+        <ClientProvider>
+          <AppRoutes />
+        </ClientProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 }
 
