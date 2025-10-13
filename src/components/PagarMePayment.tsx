@@ -150,9 +150,9 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
       </div>
       <button
         onClick={handlePayment}
-        disabled={!isFormValid || loading}
+        disabled={!isFormValid || loading || !pagarme}
         className={`w-full font-bold py-2 px-4 rounded-md transition-colors ${
-          !isFormValid || loading
+          !isFormValid || loading || !pagarme
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-accent-600 text-white hover:bg-accent-700'
         }`}
