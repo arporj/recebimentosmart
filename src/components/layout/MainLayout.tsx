@@ -87,9 +87,26 @@ export function MainLayout({ children }: MainLayoutProps) {
         </nav>
 
         {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-neutral-50">
+        <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-neutral-50 w-full">
           {children}
         </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t border-neutral-200 py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-neutral-500">
+            <img
+              src="https://horizons-cdn.hostinger.com/5781d7fb-b7cc-4bb3-80b5-c52f16421b3b/045c5f7576e02237edd915ee1af176f2.png"
+              alt="ARRC Sistemas Logo"
+              className="h-10 mx-auto mb-3"
+            />
+            <p className="mb-1">
+              Feito com ❤️ pela ARRC Sistemas
+            </p>
+            <p className="text-xs">
+              © 2025 ARRC Sistemas. Todos os direitos reservados.
+            </p>
+          </div>
+        </footer>
 
         {/* Chat Components */}
         <ChatWidget />

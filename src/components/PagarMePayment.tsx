@@ -11,7 +11,7 @@ declare global {
 }
 
 const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
-  const [pagarme, setPagarme] = useState<any>(null);
+  const [pagarmeClient, setPagarmeClient] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [cardNumber, setCardNumber] = useState<string>('');
   const [cardHolderName, setCardHolderName] = useState<string>('');
@@ -20,14 +20,31 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   useEffect(() => {
-    const checkPagarme = () => {
+    const initPagarme = () => {
       if (window.pagarme) {
-        setPagarme(window.pagarme);
+        console.log('Pagar.me script loaded.');
+        const encryptionKey = import.meta.env.VITE_PAGARME_ENCRYPTION_KEY;
+        if (!encryptionKey) {
+          console.error('VITE_PAGARME_ENCRYPTION_KEY is not set.');
+          alert('A chave de criptografia do Pagar.me não está configurada.');
+          return;
+        }
+        
+        window.pagarme.connect({ encryption_key: encryptionKey })
+          .then((client: any) => {
+            console.log('Pagar.me client connected successfully.');
+            setPagarmeClient(client);
+          })
+          .catch((error: any) => {
+            console.error('Error connecting to Pagar.me:', error);
+          });
+
       } else {
-        setTimeout(checkPagarme, 500);
+        console.log('Pagar.me script not found, retrying...');
+        setTimeout(initPagarme, 500);
       }
     };
-    checkPagarme();
+    initPagarme();
   }, []);
 
   useEffect(() => {
@@ -61,8 +78,8 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
 
   const handlePayment = async () => {
     setLoading(true);
-    if (!pagarme) {
-      alert('Pagar.me script not loaded yet.');
+    if (!pagarmeClient) {
+      alert('Cliente Pagar.me não inicializado.');
       setLoading(false);
       return;
     }
@@ -75,40 +92,16 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
     };
 
     try {
-      const encryptionKey = import.meta.env.VITE_PAGARME_ENCRYPTION_KEY;
-      if (!encryptionKey) {
-        console.error('VITE_PAGARME_ENCRYPTION_KEY is not set.');
-        alert('A chave de criptografia do Pagar.me não está configurada.');
-        setLoading(false);
-        return;
-      }
-
-      const client = await pagarme.client.connect({ encryption_key: encryptionKey });
-      const cardToken = await client.cards.createToken(card);
+      const cardToken = await pagarmeClient.cards.createToken(card);
 
       console.log('Card token created:', cardToken);
 
-      // Substitua pela sua lógica de chamada de API
-      // const response = await fetch('/api/pagarme/create-payment', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ amount, card_token: cardToken }),
-      // });
-
-      // const data = await response.json();
-
-      // if (response.ok) {
-      //   alert('Payment successful!');
-      // } else {
-      //   alert(`Payment failed: ${data.error}`);
-      // }
-      alert('Simulação de pagamento bem-sucedida! Token: ' + cardToken.id); // Simulação
+      // Lógica de chamada de API para criar o pagamento
+      alert('Simulação de pagamento bem-sucedida! Token: ' + cardToken.id);
 
     } catch (error) {
       console.error('Error processing payment:', error);
-      alert('Error processing payment.');
+      alert('Erro ao processar o pagamento.');
     } finally {
       setLoading(false);
     }
@@ -150,9 +143,9 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
       </div>
       <button
         onClick={handlePayment}
-        disabled={!isFormValid || loading || !pagarme}
+        disabled={!isFormValid || loading || !pagarmeClient}
         className={`w-full font-bold py-2 px-4 rounded-md transition-colors ${
-          !isFormValid || loading || !pagarme
+          !isFormValid || loading || !pagarmeClient
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-accent-600 text-white hover:bg-accent-700'
         }`}
