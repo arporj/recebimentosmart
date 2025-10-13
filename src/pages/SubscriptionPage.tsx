@@ -1,152 +1,49 @@
 // src/pages/SubscriptionPage.tsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { CreditCard, CheckCircle, Gift, Star, Clock, ArrowRight } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import toast from 'react-hot-toast';
-import axios from 'axios';
+import React, { useState, useMemo, useEffect } from 'react';
+import { CreditCard, CheckCircle, Gift } from 'lucide-react';
+import { useSubscription } from '../contexts/SubscriptionContext'; // Importa o hook do contexto
 import { format, parseISO, isFuture } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../lib/utils';
-import PagarMePayment from '../components/PagarMePayment'; // Importa o novo componente
-
-// Tipagem para os dados recebidos da RPC
-interface Plan {
-  name: string;
-  price_monthly: number;
-  features?: string[];
-}
-
-interface UserData {
-  credits: number;
-  plan: string;
-  valid_until: string;
-}
-
-interface PageData {
-  plans: Plan[];
-  user: UserData;
-}
+import PagarMePayment from '../components/PagarMePayment';
 
 type PlanName = 'basico' | 'pro' | 'premium';
 
 const SubscriptionPage = () => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [pageData, setPageData] = useState<PageData | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<PlanName | null>('basico'); // Inicializar com plano básico como padrão
-  
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
-  const [currentExternalReference, setCurrentExternalReference] = useState<string | null>(null);
+  const { loading, pageData, paymentStatus } = useSubscription(); // Usa o contexto
+  const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
 
-  // Busca os dados iniciais da página
+  // Define o plano padrão quando os dados são carregados
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      setLoading(true);
-      try {
-        console.log('Buscando dados da página de assinatura...');
-        
-        // Criar dados padrão para garantir que a página seja renderizada corretamente
-        const defaultData: PageData = {
-          plans: [
-            { name: 'Básico', price_monthly: 19.90 },
-            { name: 'Pró', price_monthly: 39.90 },
-            { name: 'Premium', price_monthly: 59.90 }
-          ],
-          user: {
-            credits: 0,
-            plan: 'trial',
-            valid_until: ''
-          }
-        };
-        
-        // Tentar buscar dados do servidor
-        const { data, error } = await supabase.rpc('get_subscription_page_data');
-        
-        if (error) {
-          console.error('Erro na RPC get_subscription_page_data:', error);
-          console.log('Usando dados padrão devido ao erro');
-          setPageData(defaultData);
-          return;
-        }
-        
-        console.log('Dados recebidos:', data);
-        
-        // Verificar se os dados estão no formato esperado
-        if (!data) {
-          console.error('Dados recebidos em formato inválido:', data);
-          console.log('Usando dados padrão devido a dados inválidos');
-          setPageData(defaultData);
-          return;
-        }
-        
-        // Garantir que os planos estejam definidos
-        if (!data.plans || !Array.isArray(data.plans) || data.plans.length === 0) {
-          console.warn('Planos não encontrados ou em formato inválido, usando valores padrão');
-          data.plans = defaultData.plans;
-        }
-        
-        // Garantir que os dados do usuário estejam definidos
-        if (!data.user) {
-          console.warn('Dados do usuário não encontrados, usando valores padrão');
-          data.user = defaultData.user;
-        }
-        
-        setPageData(data);
-
-        // Se o usuário já tem um plano ativo, marca como pagamento completo
-        if (data.user && data.user.plan !== 'trial' && data.user.valid_until && isFuture(parseISO(data.user.valid_until))) {
-          setPaymentStatus('completed');
-        }
-
-      } catch (error: any) {
-        console.error('Erro completo:', error);
-        toast.error(`Erro ao carregar dados: ${error.message}`);
-      } finally {
-        setLoading(false);
+    if (pageData && !selectedPlan) {
+      const basicPlan = pageData.plans.find(p => p.name.toLowerCase() === 'básico');
+      if (basicPlan) {
+        setSelectedPlan('basico');
+      } else if (pageData.plans.length > 0) {
+        const firstPlanKey = pageData.plans[0].name.toLowerCase() as PlanName;
+        setSelectedPlan(firstPlanKey);
       }
-    };
-    fetchData();
-  }, [user]);
-
-  // Lógica de polling para verificar o status do pagamento (semelhante à anterior)
-  useEffect(() => {
-    // ... (a lógica de polling pode ser mantida como estava, verificando a tabela de transações)
-  }, [paymentStatus, currentExternalReference]);
+    }
+  }, [pageData, selectedPlan]);
 
   const finalAmount = useMemo(() => {
-    console.log('Calculando valor final, selectedPlan:', selectedPlan, 'pageData:', pageData);
-    
-    if (!selectedPlan) {
-      console.log('Nenhum plano selecionado');
+    if (!selectedPlan || !pageData) {
       return 0;
     }
     
-    if (!pageData) {
-      console.log('pageData é null ou undefined');
-      return 0;
-    }
-    
-    // Encontrar o plano selecionado no array de planos
+    const planMapping: Record<string, PlanName> = {
+      'básico': 'basico',
+      'pró': 'pro',
+    };
+
     const selectedPlanObj = pageData.plans.find(plan => {
-      const planName = plan.name.toLowerCase();
-      return planName === selectedPlan || 
-             (selectedPlan === 'basico' && planName === 'básico') || 
-             (selectedPlan === 'pro' && planName === 'pró');
+      const planKey = planMapping[plan.name.toLowerCase()] || plan.name.toLowerCase() as PlanName;
+      return planKey === selectedPlan;
     });
     
-    // Obter o preço do plano selecionado
     const planPrice = selectedPlanObj ? selectedPlanObj.price_monthly : 0;
-    
-    // Usar 0 como valor padrão para créditos se não estiverem disponíveis
     const userCredits = pageData.user?.credits || 0;
     
-    console.log('Preço do plano:', planPrice, 'Créditos do usuário:', userCredits);
-    const finalValue = Math.max(0, planPrice - userCredits);
-    console.log('Valor final calculado:', finalValue);
-    
-    return finalValue;
+    return Math.max(0, planPrice - userCredits);
   }, [selectedPlan, pageData]);
 
   const renderCurrentPlan = () => {
@@ -166,28 +63,14 @@ const SubscriptionPage = () => {
   };
 
   const handlePlanSelection = (plan: PlanName) => {
-    console.log('Plano selecionado:', plan);
     setSelectedPlan(plan);
   }
 
   const renderPlanSelection = () => {
-    console.log('Renderizando seleção de planos, pageData:', pageData);
-    
-    // Se não tiver dados, mostrar mensagem de carregamento
-    if (!pageData) {
-      console.log('pageData é null ou undefined');
-      return <p className="text-neutral-500">Carregando informações dos planos...</p>;
-    }
-    
-    // Verificar se temos planos disponíveis
-    if (!pageData.plans || !Array.isArray(pageData.plans) || pageData.plans.length === 0) {
-      console.log('Nenhum plano disponível');
+    if (!pageData || !pageData.plans || pageData.plans.length === 0) {
       return <p className="text-neutral-500">Nenhum plano disponível no momento.</p>;
     }
     
-    console.log('Planos disponíveis:', pageData.plans);
-    
-    // Mapear os nomes dos planos para as chaves internas
     const planMapping: Record<string, PlanName> = {
       'básico': 'basico',
       'pró': 'pro',
@@ -197,10 +80,8 @@ const SubscriptionPage = () => {
     return (
       <div className="space-y-4 mb-6">
         {pageData.plans.map(plan => {
-          // Normalizar o nome do plano para o formato interno
           const planKey = planMapping[plan.name.toLowerCase()] || plan.name.toLowerCase() as PlanName;
           const price = plan.price_monthly;
-          console.log(`Preço do plano ${plan.name}:`, price);
           
           return (
             <div 
@@ -218,34 +99,23 @@ const SubscriptionPage = () => {
   };
 
   const renderPaymentSummary = () => {
-    console.log('Renderizando resumo de pagamento, selectedPlan:', selectedPlan, 'pageData:', pageData);
-    
-    if (!selectedPlan) {
-      console.log('Nenhum plano selecionado para mostrar resumo');
+    if (!selectedPlan || !pageData) {
       return null;
     }
     
-    if (!pageData) {
-      console.log('pageData é null ou undefined');
-      return null;
-    }
-    
-    // Encontrar o plano selecionado no array de planos
+    const planMapping: Record<string, PlanName> = {
+      'básico': 'basico',
+      'pró': 'pro',
+    };
+
     const selectedPlanObj = pageData.plans.find(plan => {
-      const planName = plan.name.toLowerCase();
-      return planName === selectedPlan || 
-             (selectedPlan === 'basico' && planName === 'básico') || 
-             (selectedPlan === 'pro' && planName === 'pró');
+      const planKey = planMapping[plan.name.toLowerCase()] || plan.name.toLowerCase() as PlanName;
+      return planKey === selectedPlan;
     });
     
-    // Obter o preço do plano selecionado
     const planPrice = selectedPlanObj ? selectedPlanObj.price_monthly : 0;
     const planDisplayName = selectedPlanObj ? selectedPlanObj.name : selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1);
-    
-    // Usar 0 como valor padrão para créditos se não estiverem disponíveis
     const userCredits = pageData.user?.credits || 0;
-    
-    console.log('Resumo - Preço do plano:', planPrice, 'Créditos do usuário:', userCredits);
 
     return (
         <div className="mb-6 p-4 border border-secondary-200 rounded-md bg-neutral-50 space-y-2">
@@ -282,7 +152,6 @@ const SubscriptionPage = () => {
       <div className="max-w-5xl mx-auto">
         {pageData && paymentStatus !== 'completed' ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Coluna de Planos e Pagamento */}
             <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center mb-6">
                 <CreditCard className="h-6 w-6 text-accent-600 mr-3" />
@@ -300,7 +169,6 @@ const SubscriptionPage = () => {
               </div>
             </div>
 
-            {/* Coluna de Resumo */}
             <div className="bg-white p-6 rounded-lg shadow-sm h-fit sticky top-8">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Resumo do Pedido</h2>
               {renderPaymentSummary()}

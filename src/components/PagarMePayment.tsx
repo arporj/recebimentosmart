@@ -40,11 +40,14 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
           });
 
       } else {
-        console.log('Pagar.me script not found, retrying...');
-        setTimeout(initPagarme, 500);
+        console.error('Pagar.me script not found. Please check if the script is loaded.');
       }
     };
-    initPagarme();
+
+    // O script é carregado de forma síncrona, mas vamos dar um pequeno tempo para garantir que ele esteja disponível
+    const timeoutId = setTimeout(initPagarme, 100);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {

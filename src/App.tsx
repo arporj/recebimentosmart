@@ -12,7 +12,7 @@ import { ResetPasswordPage } from './components/reset-password';
 import { ForgotPasswordPage } from './components/forgot-password';
 import { MainLayout } from './components/layout/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute'; // Importa a nova rota protegida
-import { PagarmeProvider } from './contexts/PagarmeContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext'; // Importa o novo provider
 
 // Importar os novos componentes
 import FeedbackForm from './components/FeedbackForm';
@@ -60,7 +60,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner />;;
   }
   
   if (!user) {
@@ -150,9 +150,11 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <ClientProvider>
-          <AppRoutes />
-        </ClientProvider>
+        <SubscriptionProvider>
+          <ClientProvider>
+            <AppRoutes />
+          </ClientProvider>
+        </SubscriptionProvider>
       </AuthProvider>
     </Router>
   );
