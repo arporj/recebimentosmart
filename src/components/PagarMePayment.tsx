@@ -12,7 +12,7 @@ declare global {
 }
 
 const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
-  const scriptStatus = useScript('https://assets.pagar.me/pagarme-js/4.1/pagarme.min.js');
+  const scriptStatus = useScript('https://assets.pagar.me/pagarme-js/4/pagarme.min.js');
   const [pagarmeClient, setPagarmeClient] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [cardNumber, setCardNumber] = useState<string>('');

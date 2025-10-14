@@ -1,5 +1,5 @@
 // src/contexts/SubscriptionContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { isFuture, parseISO } from 'date-fns';
@@ -38,15 +38,10 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
+  const hasFetched = useRef(false); // Ref para controlar a busca inicial
 
   const fetchData = useCallback(async () => {
     if (!user) return;
-    
-    // Não recarregar se já tivermos os dados e o status for 'completed'
-    if (pageData && paymentStatus === 'completed') {
-        setLoading(false);
-        return;
-    }
 
     setLoading(true);
     try {
@@ -101,18 +96,20 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, [user, pageData, paymentStatus]);
+  }, [user]);
 
   useEffect(() => {
-    if (user && !pageData) {
+    if (user && !hasFetched.current) {
+      hasFetched.current = true;
       fetchData();
     } else if (!user) {
       // Limpar dados quando o usuário deslogar
       setPageData(null);
       setLoading(true);
       setPaymentStatus('idle');
+      hasFetched.current = false; // Resetar para a próxima sessão
     }
-  }, [user, pageData, fetchData]);
+  }, [user, fetchData]);
 
   return (
     <SubscriptionContext.Provider value={{ loading, pageData, paymentStatus, setPaymentStatus, fetchData }}>
