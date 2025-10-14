@@ -22,7 +22,9 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   useEffect(() => {
+    console.log('Pagar.me script status:', scriptStatus);
     if (scriptStatus === 'ready') {
+      console.log('Pagar.me script is ready, connecting...');
       const encryptionKey = import.meta.env.VITE_PAGARME_ENCRYPTION_KEY;
       if (!encryptionKey) {
         console.error('VITE_PAGARME_ENCRYPTION_KEY is not set.');

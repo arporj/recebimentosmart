@@ -1,5 +1,5 @@
 // src/contexts/SubscriptionContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { isFuture, parseISO } from 'date-fns';
@@ -39,7 +39,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
     
     // Não recarregar se já tivermos os dados e o status for 'completed'
@@ -101,7 +101,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, pageData, paymentStatus]);
 
   useEffect(() => {
     if (user && !pageData) {

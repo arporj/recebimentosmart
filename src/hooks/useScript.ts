@@ -4,47 +4,30 @@ import { useState, useEffect } from 'react';
 type ScriptStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 function useScript(src: string): ScriptStatus {
-  const [status, setStatus] = useState<ScriptStatus>(src ? 'loading' : 'idle');
+  const [status, setStatus] = useState<ScriptStatus>(() => {
+    if (typeof window === 'undefined') {
+      return 'loading'; // SSR
+    }
+    const existingScript = document.querySelector(`script[src="${src}"]`);
+    return existingScript ? 'ready' : 'loading';
+  });
 
   useEffect(() => {
-    if (!src) {
-      setStatus('idle');
-      return;
-    }
+    if (status === 'ready') return;
 
-    let script = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => setStatus('ready');
+    script.onerror = () => setStatus('error');
 
-    if (!script) {
-      script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.setAttribute('data-status', 'loading');
-      document.body.appendChild(script);
-
-      const setAttributeFromEvent = (event: Event) => {
-        script.setAttribute('data-status', event.type === 'load' ? 'ready' : 'error');
-      };
-
-      script.addEventListener('load', setAttributeFromEvent);
-      script.addEventListener('error', setAttributeFromEvent);
-    } else {
-      setStatus(script.getAttribute('data-status') as ScriptStatus || 'loading');
-    }
-
-    const setStateFromEvent = (event: Event) => {
-      setStatus(event.type === 'load' ? 'ready' : 'error');
-    };
-
-    script.addEventListener('load', setStateFromEvent);
-    script.addEventListener('error', setStateFromEvent);
+    document.body.appendChild(script);
 
     return () => {
-      if (script) {
-        script.removeEventListener('load', setStateFromEvent);
-        script.removeEventListener('error', setStateFromEvent);
-      }
+      // Limpeza opcional: remover o script quando o componente desmontar
+      // document.body.removeChild(script);
     };
-  }, [src]);
+  }, [src, status]);
 
   return status;
 }
