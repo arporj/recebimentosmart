@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useScript from '../hooks/useScript';
 
 interface PagarMePaymentProps {
   amount: number;
@@ -11,6 +12,7 @@ declare global {
 }
 
 const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
+  const scriptStatus = useScript('https://assets.pagar.me/pagarme-js/4.1/pagarme.min.js');
   const [pagarmeClient, setPagarmeClient] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [cardNumber, setCardNumber] = useState<string>('');
@@ -20,35 +22,24 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   useEffect(() => {
-    const initPagarme = () => {
-      if (window.pagarme) {
-        console.log('Pagar.me script loaded.');
-        const encryptionKey = import.meta.env.VITE_PAGARME_ENCRYPTION_KEY;
-        if (!encryptionKey) {
-          console.error('VITE_PAGARME_ENCRYPTION_KEY is not set.');
-          alert('A chave de criptografia do Pagar.me não está configurada.');
-          return;
-        }
-        
-        window.pagarme.connect({ encryption_key: encryptionKey })
-          .then((client: any) => {
-            console.log('Pagar.me client connected successfully.');
-            setPagarmeClient(client);
-          })
-          .catch((error: any) => {
-            console.error('Error connecting to Pagar.me:', error);
-          });
-
-      } else {
-        console.error('Pagar.me script not found. Please check if the script is loaded.');
+    if (scriptStatus === 'ready') {
+      const encryptionKey = import.meta.env.VITE_PAGARME_ENCRYPTION_KEY;
+      if (!encryptionKey) {
+        console.error('VITE_PAGARME_ENCRYPTION_KEY is not set.');
+        alert('A chave de criptografia do Pagar.me não está configurada.');
+        return;
       }
-    };
-
-    // O script é carregado de forma síncrona, mas vamos dar um pequeno tempo para garantir que ele esteja disponível
-    const timeoutId = setTimeout(initPagarme, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
+      
+      window.pagarme.connect({ encryption_key: encryptionKey })
+        .then((client: any) => {
+          console.log('Pagar.me client connected successfully.');
+          setPagarmeClient(client);
+        })
+        .catch((error: any) => {
+          console.error('Error connecting to Pagar.me:', error);
+        });
+    }
+  }, [scriptStatus]);
 
   useEffect(() => {
     const validateForm = () => {

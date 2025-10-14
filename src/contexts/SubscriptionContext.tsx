@@ -104,15 +104,15 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && !pageData) {
       fetchData();
-    } else {
+    } else if (!user) {
       // Limpar dados quando o usuário deslogar
       setPageData(null);
       setLoading(true);
       setPaymentStatus('idle');
     }
-  }, [user]);
+  }, [user, pageData, fetchData]);
 
   return (
     <SubscriptionContext.Provider value={{ loading, pageData, paymentStatus, setPaymentStatus, fetchData }}>
