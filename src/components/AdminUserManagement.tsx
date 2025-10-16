@@ -35,7 +35,7 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="p-6 bg-gray-50 h-screen flex flex-col">
+    <div className="p-6 bg-gray-50 flex flex-col h-full">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Administrativo</h1>
 
       {/* Seção de KPIs */}

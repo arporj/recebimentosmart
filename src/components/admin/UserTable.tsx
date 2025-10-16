@@ -157,7 +157,7 @@ export default function UserTable() {
       setLoading(true);
       const { data, error } = await supabase.rpc('admin_set_user_plan', {
         user_id_to_update: userId,
-        new_plan_name: 'pro'
+        new_plan_name: 'Pró'
       });
 
       if (error) throw error;
