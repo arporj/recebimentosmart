@@ -156,9 +156,8 @@ export default function UserTable() {
     try {
       setLoading(true);
       const { data, error } = await supabase.rpc('admin_set_user_plan', {
-        user_id: userId,
-        new_plan: 'pro',
-        months: 1
+        user_id_to_update: userId,
+        new_plan_name: 'pro'
       });
 
       if (error) throw error;
@@ -176,8 +175,6 @@ export default function UserTable() {
   const handleImpersonateUser = async (userId: string) => {
     try {
       setLoading(true);
-      // A função impersonateUser no AuthContext já faz a busca de dados do usuário
-      // e exibe o toast de sucesso, então apenas chamamos ela diretamente
       await impersonateUser(userId);
     } catch (error: any) {
       console.error('Erro ao impersonar usuário:', error.message);
@@ -193,9 +190,8 @@ export default function UserTable() {
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Gerenciar Usuários</h2>
+    <div className="flex flex-col flex-grow h-full">
+      <div className="flex justify-end items-center mb-4">
         <div className="relative">
           <input
             type="text"
@@ -208,13 +204,13 @@ export default function UserTable() {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-auto flex-grow">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('name')}
               >
                 <div className="flex items-center">
@@ -223,7 +219,7 @@ export default function UserTable() {
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('email')}
               >
                 <div className="flex items-center">
@@ -232,7 +228,7 @@ export default function UserTable() {
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('plan_name')}
               >
                 <div className="flex items-center">
@@ -241,7 +237,7 @@ export default function UserTable() {
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('subscription_status')}
               >
                 <div className="flex items-center">
@@ -250,7 +246,7 @@ export default function UserTable() {
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('created_at')}
               >
                 <div className="flex items-center">
@@ -259,14 +255,14 @@ export default function UserTable() {
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('last_sign_in_at')}
               >
                 <div className="flex items-center">
                   Último login {getSortIcon('last_sign_in_at')}
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">
                 Ações
               </th>
             </tr>

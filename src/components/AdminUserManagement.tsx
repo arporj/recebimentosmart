@@ -35,7 +35,7 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 h-screen flex flex-col">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Administrativo</h1>
 
       {/* Seção de KPIs */}
@@ -62,11 +62,10 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {/* Seção de Gestão */}
-      <div className="grid grid-cols-1 gap-8">
-        {/* Coluna Principal: Tabela de Usuários */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold text-gray-700 mb-4">Gerenciar Usuários</h2>
+      {/* Seção de Gestão - Modificada para Flexbox */}
+      <div className="flex-grow grid grid-cols-1">
+        <div className="bg-white p-6 rounded-lg shadow-md flex flex-col">
+          {/* O UserTable agora vai preencher este container */}
           <UserTable />
         </div>
       </div>
