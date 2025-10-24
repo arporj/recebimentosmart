@@ -1,17 +1,78 @@
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
-// Configuração do Supabase e Mercado Pago (usando variáveis de ambiente do Netlify)
+// --- Configurações ---
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const mercadoPagoAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || 'https://api.mercadopago.com';
-const webhookUrl = process.env.WEBHOOK_URL; // URL do webhook para o Mercado Pago
-
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// Funções Auxiliares (copiadas do server.cjs)
+// Mercado Pago
+const mercadoPagoAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || 'https://api.mercadopago.com';
+const webhookUrl = process.env.WEBHOOK_URL;
+
+// Banco Inter
+const INTER_API_URL = process.env.INTER_API_URL || 'https://cdpj-sandbox.partners.uatinter.co';
+const INTER_CLIENT_ID = process.env.INTER_CLIENT_ID;
+const INTER_CLIENT_SECRET = process.env.INTER_CLIENT_SECRET;
+const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
+
+// --- Lógica do Banco Inter ---
+
+// Caminhos para os certificados do cliente
+const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
+const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
+
+let clientCertContent = null;
+let clientKeyContent = null;
+
+try {
+  clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
+  clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
+  console.log('Certificados do cliente Inter carregados com sucesso.');
+} catch (err) {
+  console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
+}
+
+// Agente HTTPS com os certificados
+const httpsAgent = new https.Agent({
+  cert: clientCertContent,
+  key: clientKeyContent,
+  passphrase: ''
+});
+
+// Função para obter o token de autenticação do Inter
+async function getInterToken() {
+  if (!clientCertContent || !clientKeyContent) {
+    throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
+  }
+  try {
+    const response = await axios.post(
+      `${INTER_API_URL}/oauth/v2/token`,
+      new URLSearchParams({
+        client_id: INTER_CLIENT_ID,
+        client_secret: INTER_CLIENT_SECRET,
+        grant_type: 'client_credentials',
+        scope: 'boleto-cobranca.write boleto-cobranca.read'
+      }),
+      {
+        httpsAgent,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+    return response.data.access_token;
+  } catch (error) {
+    console.error('Erro ao obter token do Inter:', error.response?.data || error.message);
+    throw new Error('Falha na autenticação com o Inter');
+  }
+}
+
+
+// --- Funções Auxiliares (Mercado Pago) ---
 function createPixPaymentPayload(amount, description, payer, externalReference) {
   return { transaction_amount: amount, description, payment_method_id: 'pix', payer, external_reference: externalReference };
 }
@@ -36,7 +97,7 @@ async function saveTransactionAssociation(externalReference, userId, amount, des
 exports.handler = async (event, context) => {
   console.log('Requisição recebida na Netlify Function api.js');
   console.log('event.path:', event.path);
-  // Permite requisições OPTIONS para CORS
+  
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -49,16 +110,107 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const path = event.path.replace(/^\/api\//, ''); // Remove /api/ from the start
+  const path = event.path.replace(/^\/api\//, '');
   const segments = path.split('/').filter(Boolean);
   console.log('path (after replace): ', path);
   console.log('segments: ', segments);
 
   switch (segments[0]) {
+    case 'generate-pix':
+        if (event.httpMethod === 'POST') {
+            try {
+                const { amount, userId } = JSON.parse(event.body);
+
+                if (!amount || !userId) {
+                    return { statusCode: 400, body: JSON.stringify({ error: 'Amount and userId are required' }) };
+                }
+
+                const { data: profile, error: profileError } = await supabaseAdmin
+                    .from('profiles')
+                    .select('cpf_cnpj')
+                    .eq('id', userId)
+                    .single();
+
+                if (profileError || !profile) {
+                    console.error('Erro ao buscar perfil do usuário:', profileError);
+                    return { statusCode: 404, body: JSON.stringify({ error: 'Usuário não encontrado' }) };
+                }
+                
+                if (!profile.cpf_cnpj) {
+                    return { statusCode: 400, body: JSON.stringify({ error: 'CPF/CNPJ do usuário não encontrado.' }) };
+                }
+
+                const token = await getInterToken();
+
+                const seuNumero = `TX_${userId.substring(0, 8)}_${Date.now()}`;
+                const dataVencimento = new Date();
+                dataVencimento.setDate(dataVencimento.getDate() + 1);
+
+                const cobrancaBody = {
+                    seuNumero: seuNumero,
+                    valorNominal: parseFloat(amount),
+                    dataVencimento: dataVencimento.toISOString().split('T')[0],
+                    numDiasBaixa: 0,
+                    pagador: {
+                        cpfCnpj: profile.cpf_cnpj.replace(/[^0-9]/g, ''), // Garante apenas números
+                        tipoPessoa: profile.cpf_cnpj.replace(/[^0-9]/g, '').length === 11 ? 'FISICA' : 'JURIDICA'
+                    }
+                };
+
+                const responseCobranca = await axios.post(
+                    `${INTER_API_URL}/cobranca/v3/cobrancas`,
+                    cobrancaBody,
+                    {
+                        httpsAgent,
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'x-conta-corrente': INTER_CONTA_CORRENTE,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                const { codigoSolicitacao, pix } = responseCobranca.data;
+
+                if (!codigoSolicitacao || !pix) {
+                    return { statusCode: 500, body: JSON.stringify({ error: 'Resposta inválida da API do Inter' }) };
+                }
+
+                const { error: insertError } = await supabaseAdmin
+                    .from('pix_transactions')
+                    .insert([{
+                        user_id: userId,
+                        amount: amount,
+                        transaction_id: codigoSolicitacao,
+                        status: 'PENDING',
+                    }]);
+
+                if (insertError) {
+                    console.error('Erro ao salvar transação PIX:', insertError);
+                    return { statusCode: 500, body: JSON.stringify({ error: 'Falha ao salvar dados da transação' }) };
+                }
+
+                return {
+                    statusCode: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transactionId: codigoSolicitacao,
+                        qrCodeText: pix.qrCode,
+                        qrCodeImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pix.qrCode)}`
+                    })
+                };
+
+            } catch (error) {
+                console.error('Erro ao gerar cobrança PIX:', error.response?.data || error.message);
+                return { statusCode: 500, body: JSON.stringify({ error: 'Erro interno do servidor ao gerar PIX' }) };
+            }
+        }
+        break;
+
     case 'payment-details':
       if (event.httpMethod === 'GET' && segments[1]) {
         const userId = segments[1];
-        const baseFee = 35.00; // Valor base da mensalidade
+        const baseFee = 35.00; 
 
         try {
           const { data: credits, error: creditsError } = await supabaseAdmin
@@ -221,10 +373,9 @@ exports.handler = async (event, context) => {
     case 'mp-webhook':
       if (event.httpMethod === 'POST') {
         try {
-          const { topic, id } = JSON.parse(event.body); // topic: 'payment', id: payment_id
+          const { topic, id } = JSON.parse(event.body); 
 
           if (topic === 'payment') {
-            // 1. Buscar detalhes do pagamento no Mercado Pago
             const response = await axios.get(
               `${mercadoPagoBaseUrl}/v1/payments/${id}`,
               {
@@ -236,11 +387,9 @@ exports.handler = async (event, context) => {
 
             const payment = response.data;
 
-            // 2. Verificar se o pagamento foi aprovado
             if (payment.status === 'approved') {
               const externalReference = payment.external_reference;
 
-              // 3. Encontrar a transação associada no nosso banco de dados
               const { data: transaction, error: transactionError } = await supabaseAdmin
                 .from('payment_transactions')
                 .select('*')
@@ -256,7 +405,6 @@ exports.handler = async (event, context) => {
               }
 
               if (transaction) {
-                // 4. Atualizar o status da transação para COMPLETED
                 const { error: updateError } = await supabaseAdmin
                   .from('payment_transactions')
                   .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
@@ -270,19 +418,14 @@ exports.handler = async (event, context) => {
                   };
                 }
 
-                // 5. Inserir/Atualizar registro na tabela 'subscriptions'
-                // Assumindo que 'subscriptions' tem user_id, start_date, end_date, status, plan_id
-                // E que 'start_date' pode ser a data do pagamento
                 const { error: subscriptionError } = await supabaseAdmin
                   .from('subscriptions')
                   .insert({
                     user_id: transaction.user_id,
-                    start_date: new Date().toISOString(), // Data do pagamento
-                    end_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(), // 1 mês de validade
+                    start_date: new Date().toISOString(), 
+                    end_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(), 
                     status: 'active',
-                    plan_id: 'monthly_plan', // Assumindo um plano padrão
-                    // Nota: 'amount' e 'payment_id' não estão no schema atual de 'subscriptions'
-                    // Se forem necessários, uma migração de DB será preciso.
+                    plan_id: 'monthly_plan', 
                   });
 
                 if (subscriptionError) {
