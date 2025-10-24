@@ -42,9 +42,11 @@ try {
 const httpsAgent = new https.Agent({
   cert: clientCertContent,
   key: clientKeyContent,
-  ca: clientCertContent, // Adiciona o próprio certificado como CA
   passphrase: ''
 });
+
+// Força o uso do agente customizado globalmente para todas as requisições https
+https.globalAgent = httpsAgent;
 
 // Função para obter o token de autenticação do Inter
 async function getInterToken() {
@@ -61,7 +63,7 @@ async function getInterToken() {
         scope: 'boleto-cobranca.write boleto-cobranca.read'
       }),
       {
-        httpsAgent,
+        // O httpsAgent é removido daqui para usar o global
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       }
     );
