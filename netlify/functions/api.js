@@ -23,9 +23,9 @@ const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
 
 // --- Lógica do Banco Inter ---
 
-// Caminhos para os certificados do cliente
-const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
-const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
+// Caminhos para os certificados do cliente (formato PEM)
+const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.pem');
+const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client-key.pem');
 
 let clientCertContent = null;
 let clientKeyContent = null;
