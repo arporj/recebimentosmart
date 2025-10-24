@@ -119,9 +119,11 @@ exports.handler = async (event, context) => {
     case 'generate-pix':
         if (event.httpMethod === 'POST') {
             try {
+                console.log('generate-pix: body recebido:', event.body);
                 const { amount, userId } = JSON.parse(event.body);
 
                 if (!amount || !userId) {
+                    console.error('generate-pix: Erro - Amount ou userId faltando.');
                     return { statusCode: 400, body: JSON.stringify({ error: 'Amount and userId are required' }) };
                 }
 
@@ -131,12 +133,15 @@ exports.handler = async (event, context) => {
                     .eq('id', userId)
                     .single();
 
+                console.log('generate-pix: Perfil do Supabase:', profile);
+
                 if (profileError || !profile) {
-                    console.error('Erro ao buscar perfil do usuário:', profileError);
+                    console.error('generate-pix: Erro ao buscar perfil do usuário:', profileError);
                     return { statusCode: 404, body: JSON.stringify({ error: 'Usuário não encontrado' }) };
                 }
                 
                 if (!profile.cpf_cnpj) {
+                    console.error('generate-pix: Erro - CPF/CNPJ do usuário não encontrado no perfil.');
                     return { statusCode: 400, body: JSON.stringify({ error: 'CPF/CNPJ do usuário não encontrado.' }) };
                 }
 
