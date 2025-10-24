@@ -66,20 +66,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const createdAt = parseISO(currentUser.created_at);
             const trialEndDate = addDays(createdAt, trialDays);
 
-            // Prioridade 1: Verificar se o CPF/CNPJ está preenchido
+            // Lógica de redirecionamento centralizada
             if (!profile.cpf_cnpj && location.pathname !== '/profile') {
               toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
               navigate('/profile');
-              // Interrompe a execução para evitar outros redirecionamentos
-              return; 
+              return;
             }
 
             const hasPaidAccess = profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false;
             const isInTrial = isFuture(trialEndDate);
+            const currentHasFullAccess = hasPaidAccess || isInTrial;
 
-            setHasFullAccess(hasPaidAccess || isInTrial);
+            setHasFullAccess(currentHasFullAccess);
             setIsAdmin(profile.is_admin || false);
             setPlano(profile.plano || 'basico');
+
+            if (!currentHasFullAccess && !profile.is_admin && location.pathname !== '/payment') {
+              navigate('/payment');
+              return;
+            }
           } else {
             setHasFullAccess(false);
             setIsAdmin(false);
@@ -105,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]); // Removido location.pathname para evitar loops de redirecionamento
+  }, [navigate, location.pathname]); // Adicionado location.pathname de volta
 
   const signIn = async (email: string, password: string) => {
     try {

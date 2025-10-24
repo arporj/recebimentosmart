@@ -17,16 +17,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3. Se o usuário é admin, permite o acesso a qualquer rota, ignorando o status de acesso.
-  if (isAdmin) {
-    return <>{children}</>;
-  }
-
-  // 4. Se não é admin e não tem acesso total, redireciona para a página de pagamento.
-  if (!hasFullAccess && location.pathname !== '/payment') {
-    return <Navigate to="/payment" replace />;
-  }
-
-  // 5. Se o usuário está logado e tem acesso total (ou é admin), permite o acesso.
+  // 3. Se o usuário está logado, permite o acesso.
   return <>{children}</>;
 }
