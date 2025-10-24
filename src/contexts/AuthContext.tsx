@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [location.pathname, navigate]); // Adicionado location.pathname e navigate como dependências
+  }, [navigate]); // Removido location.pathname para evitar loops de redirecionamento
 
   const signIn = async (email: string, password: string) => {
     try {
