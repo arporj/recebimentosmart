@@ -1,15 +1,16 @@
 // src/pages/SubscriptionPage.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { CreditCard, CheckCircle, Gift } from 'lucide-react';
-import { useSubscription } from '../contexts/SubscriptionContext'; // Importa o hook do contexto
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { useAuth } from '../contexts/AuthContext'; // Importa o useAuth
 import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../lib/utils';
-
 
 type PlanName = 'basico' | 'pro' | 'premium';
 
 const SubscriptionPage = () => {
-  const { loading, pageData, paymentStatus, fetchData } = useSubscription(); // Usa o contexto
+  const { loading, pageData, paymentStatus, fetchData } = useSubscription();
+  const { user } = useAuth(); // Obtém o usuário do AuthContext
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [pixData, setPixData] = useState<{ qrCodeText: string; qrCodeImageUrl: string; transactionId: string } | null>(null);
   const [generatingPix, setGeneratingPix] = useState(false);
@@ -22,7 +23,6 @@ const SubscriptionPage = () => {
       try {
         const response = await fetch(`/api/get-pix-status?transactionId=${pixData.transactionId}`);
         if (!response.ok) {
-          // Para de tentar se a transação não for encontrada (404) ou houver outro erro
           console.error('Erro ao buscar status do PIX, parando polling.');
           clearInterval(intervalId);
           return;
@@ -32,19 +32,17 @@ const SubscriptionPage = () => {
 
         if (data.status === 'COMPLETED') {
           clearInterval(intervalId);
-          setPixData(null); // Limpa os dados do PIX da tela
+          setPixData(null);
           toast.success('Pagamento confirmado com sucesso!');
-          fetchData(); // Atualiza os dados da assinatura para refletir o novo status
+          fetchData();
         }
-        // Se o status for PENDING, o polling continua
 
       } catch (error) {
         console.error('Erro no polling do status do PIX:', error);
-        clearInterval(intervalId); // Para em caso de erro de rede
+        clearInterval(intervalId);
       }
-    }, 3000); // Verifica a cada 3 segundos
+    }, 3000);
 
-    // Limpa o intervalo quando o componente é desmontado ou pixData muda
     return () => clearInterval(intervalId);
   }, [pixData, fetchData]);
 
@@ -84,7 +82,7 @@ const SubscriptionPage = () => {
   }, [selectedPlan, pageData]);
 
   const handleGeneratePix = async () => {
-    if (!pageData || !pageData.user || finalAmount <= 0) return;
+    if (!user || finalAmount <= 0) return; // Verifica se o usuário existe
 
     setGeneratingPix(true);
     try {
@@ -93,7 +91,7 @@ const SubscriptionPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount: finalAmount, userId: pageData.user.id }),
+        body: JSON.stringify({ amount: finalAmount, userId: user.id }), // Usa user.id do useAuth
       });
 
       if (!response.ok) {
