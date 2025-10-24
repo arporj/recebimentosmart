@@ -11,6 +11,8 @@ type PlanName = 'basico' | 'pro' | 'premium';
 const SubscriptionPage = () => {
   const { loading, pageData, paymentStatus } = useSubscription(); // Usa o contexto
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
+  const [pixData, setPixData] = useState<{ qrCodeText: string; qrCodeImageUrl: string; transactionId: string } | null>(null);
+  const [generatingPix, setGeneratingPix] = useState(false);
 
   // Define o plano padrão quando os dados são carregados
   useEffect(() => {
@@ -45,6 +47,33 @@ const SubscriptionPage = () => {
     
     return Math.max(0, planPrice - userCredits);
   }, [selectedPlan, pageData]);
+
+  const handleGeneratePix = async () => {
+    if (!pageData || !pageData.user || finalAmount <= 0) return;
+
+    setGeneratingPix(true);
+    try {
+      const response = await fetch('/api/generate-pix', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: finalAmount, userId: pageData.user.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PIX');
+      }
+
+      const data = await response.json();
+      setPixData(data);
+    } catch (error) {
+      console.error('Error generating PIX:', error);
+      alert('Erro ao gerar PIX. Tente novamente.');
+    } finally {
+      setGeneratingPix(false);
+    }
+  };
 
   const renderCurrentPlan = () => {
     if (!pageData || !pageData.user) return null;
@@ -165,7 +194,25 @@ const SubscriptionPage = () => {
               
               <div className="mt-8">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento</h3>
-                <PagarMePayment amount={finalAmount * 100} />
+                {!pixData ? (
+                  <div className="space-y-4">
+                    <button
+                      onClick={handleGeneratePix}
+                      disabled={generatingPix || finalAmount <= 0}
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generatingPix ? 'Gerando PIX...' : 'Pagar com PIX'}
+                    </button>
+                    <PagarMePayment amount={finalAmount * 100} />
+                  </div>
+                ) : (
+                  <div className="text-center p-4 border border-green-200 bg-green-50 rounded-md">
+                    <p className="font-semibold text-green-700 mb-2">Escaneie o QR Code para pagar:</p>
+                    <img src={pixData.qrCodeImageUrl} alt="QR Code PIX" className="mx-auto mb-4" />
+                    <p className="text-sm text-green-600 break-all">Ou copie e cole: <span className="font-mono font-bold">{pixData.qrCodeText}</span></p>
+                    <p className="text-xs text-green-500 mt-2">Aguardando confirmação do pagamento...</p>
+                  </div>
+                )}
               </div>
             </div>
 
