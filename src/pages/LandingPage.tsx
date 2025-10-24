@@ -188,6 +188,11 @@ const LandingPage: React.FC = () => {
                 {tier.popular && (
                   <div className="absolute top-0 -translate-y-1/2 bg-custom text-white text-sm font-bold px-4 py-1 rounded-full right-8 shadow-md">Mais Popular</div>
                 )}
+                {tier.name === 'Premium' && (
+                  <div className="absolute inset-0 bg-gray-200 bg-opacity-80 flex items-center justify-center rounded-xl z-10">
+                    <span className="text-2xl font-bold text-gray-600 transform -rotate-12">Em breve</span>
+                  </div>
+                )}
                 <div className="flex-grow">
                   <div className="flex items-center justify-center h-16 w-16 rounded-full bg-custom/10 text-custom mx-auto mb-6 shadow-sm">
                     <tier.icon size={32} />
@@ -207,7 +212,11 @@ const LandingPage: React.FC = () => {
                   </ul>
                 </div>
                 <div className="mt-8">
-                  <Link to="/cadastro" className={`w-full block text-center font-bold py-3 px-6 rounded-lg transition-colors shadow-md ${tier.popular ? 'bg-custom text-white hover:bg-custom-hover' : 'bg-white text-custom border border-custom hover:bg-secondary-50'}`}>
+                  <Link 
+                    to={tier.name === 'Premium' ? '#' : '/cadastro'} 
+                    className={`w-full block text-center font-bold py-3 px-6 rounded-lg transition-colors shadow-md ${tier.popular ? 'bg-custom text-white hover:bg-custom-hover' : 'bg-white text-custom border border-custom hover:bg-secondary-50'} ${tier.name === 'Premium' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={(e) => tier.name === 'Premium' && e.preventDefault()}
+                  >
                     Começar Agora
                   </Link>
                 </div>
