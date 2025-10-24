@@ -66,9 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const createdAt = parseISO(currentUser.created_at);
             const trialEndDate = addDays(createdAt, trialDays);
 
-            const hasPaidAccess = profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false;
-            const isInTrial = isFuture(trialEndDate);
-
             // Prioridade 1: Verificar se o CPF/CNPJ está preenchido
             if (!profile.cpf_cnpj && location.pathname !== '/profile') {
               toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
