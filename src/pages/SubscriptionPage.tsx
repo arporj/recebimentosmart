@@ -4,7 +4,7 @@ import { CreditCard, CheckCircle, Gift } from 'lucide-react';
 import { useSubscription } from '../contexts/SubscriptionContext'; // Importa o hook do contexto
 import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../lib/utils';
-import PagarMePayment from '../components/PagarMePayment';
+
 
 type PlanName = 'basico' | 'pro' | 'premium';
 
@@ -238,7 +238,7 @@ const SubscriptionPage = () => {
                     >
                       {generatingPix ? 'Gerando PIX...' : 'Pagar com PIX'}
                     </button>
-                    <PagarMePayment amount={finalAmount * 100} />
+
                   </div>
                 ) : (
                   <div className="text-center p-4 border border-green-200 bg-green-50 rounded-md">
