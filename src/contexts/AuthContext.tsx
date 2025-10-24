@@ -75,8 +75,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Lógica de redirecionamento se CPF/CNPJ estiver faltando
             if (!profile.cpf_cnpj && location.pathname !== '/profile') {
-              toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+              // Verifica se o toast já foi exibido para evitar múltiplos popups
+              if (!localStorage.getItem('cpfCnpjRedirectToastShown')) {
+                toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+                localStorage.setItem('cpfCnpjRedirectToastShown', 'true');
+              }
               navigate('/profile');
+            } else if (profile.cpf_cnpj && localStorage.getItem('cpfCnpjRedirectToastShown')) {
+              // Limpa o flag se o CPF/CNPJ foi preenchido
+              localStorage.removeItem('cpfCnpjRedirectToastShown');
             }
 
           } else {
