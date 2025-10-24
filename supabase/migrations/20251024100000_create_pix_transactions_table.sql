@@ -1,0 +1,1 @@
+-- This migration is intentionally left empty as the table already exists.
