@@ -42,6 +42,7 @@ try {
 const httpsAgent = new https.Agent({
   cert: clientCertContent,
   key: clientKeyContent,
+  ca: clientCertContent, // Adiciona o próprio certificado como CA
   passphrase: ''
 });
 
