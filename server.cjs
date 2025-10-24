@@ -81,6 +81,8 @@ app.post('/api/pagarme/create-payment', async (req, res) => {
 
 // --- Iniciar Servidor ---
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 // Middleware para processar o corpo raw da requisição para o webhook do Inter
 const rawBodySaver = (req, res, buf, encoding) => {
@@ -91,6 +93,18 @@ const rawBodySaver = (req, res, buf, encoding) => {
 
 app.use('/webhooks/inter', express.raw({ verify: rawBodySaver, type: '*/*' }));
 
+// Caminho para o certificado CA do Inter
+const interCaCertPath = path.join(__dirname, 'certs', 'ca.crt');
+let caCertificateContent = null;
+
+try {
+  caCertificateContent = fs.readFileSync(interCaCertPath, 'utf8');
+  console.log('Certificado CA do Inter carregado com sucesso.');
+} catch (err) {
+  console.error('ERRO: Não foi possível carregar o certificado CA do Inter do caminho:', interCaCertPath, err);
+  // Em produção, você pode querer encerrar o processo ou desabilitar o webhook
+}
+
 // Função para verificar a assinatura do webhook do Banco Inter (manter comentada se não houver certificado)
 function verifyInterWebhookSignature(req) {
   try {
@@ -100,16 +114,15 @@ function verifyInterWebhookSignature(req) {
       return false;
     }
 
-    const caCertificate = process.env.INTER_CA_CERTIFICATE_CONTENT;
-    if (!caCertificate) {
-      console.error('Certificado CA do Inter não configurado');
-      return false; // Em produção, isso deve ser um erro fatal
+    if (!caCertificateContent) {
+      console.error('Certificado CA do Inter não carregado. Verificação de assinatura desabilitada.');
+      return false;
     }
 
     const verify = crypto.createVerify('SHA256');
     verify.update(req.rawBody);
 
-    const isValid = verify.verify(caCertificate, signature, 'base64');
+    const isValid = verify.verify(caCertificateContent, signature, 'base64');
 
     if (!isValid) {
       console.error('Assinatura do webhook inválida');

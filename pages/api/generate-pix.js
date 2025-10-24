@@ -1,9 +1,10 @@
 
 // pages/api/generate-pix.js
-import { supabase } from '../../src/lib/supabase';
+import { supabase } '../../src/lib/supabase';
 import axios from 'axios';
 import https from 'https';
 import fs from 'fs';
+import path from 'path';
 
 // --- Configurações do Banco Inter (devem vir de variáveis de ambiente) ---
 const INTER_API_URL = process.env.INTER_API_URL || 'https://cdpj-sandbox.partners.uatinter.co';
@@ -11,18 +12,35 @@ const INTER_CLIENT_ID = process.env.INTER_CLIENT_ID;
 const INTER_CLIENT_SECRET = process.env.INTER_CLIENT_SECRET;
 const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
 
-// Caminhos para os certificados (em produção, use o conteúdo das variáveis de ambiente)
-const CERT_PATH = process.env.INTER_CERT_PATH; // ex: './certs/cert.pem'
-const KEY_PATH = process.env.INTER_KEY_PATH;   // ex: './certs/key.pem'
+// Caminhos para os certificados do cliente (devem ser colocados em netlify/functions/certs/)
+const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt'); // Assumindo client.crt
+const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');   // Assumindo client.key
+
+let clientCertContent = null;
+let clientKeyContent = null;
+
+try {
+  clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
+  clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
+  console.log('Certificados do cliente Inter carregados com sucesso.');
+} catch (err) {
+  console.error('ERRO: Não foi possível carregar os certificados do cliente Inter do caminho:', err);
+  // Em produção, você pode querer encerrar o processo ou desabilitar a função
+}
 
 // Agente HTTPS com os certificados do Inter
 const httpsAgent = new https.Agent({
-  pfx: fs.readFileSync(CERT_PATH),
-  passphrase: ''
+  cert: clientCertContent,
+  key: clientKeyContent,
+  passphrase: '' // Se sua chave privada tiver uma senha, coloque-a aqui
 });
 
 // Função para obter o token de autenticação do Inter
 async function getInterToken() {
+  if (!clientCertContent || !clientKeyContent) {
+    throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
+  }
+
   try {
     const response = await axios.post(
       `${INTER_API_URL}/oauth/v2/token`,
@@ -33,7 +51,7 @@ async function getInterToken() {
         scope: 'boleto-cobranca.write boleto-cobranca.read'
       }),
       {
-        https:Agent,
+        httpsAgent,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       }
     );
