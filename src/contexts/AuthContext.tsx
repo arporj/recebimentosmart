@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsAdmin(profile.is_admin || false);
             setPlano(profile.plano || 'basico');
 
-            if (!currentHasFullAccess && !profile.is_admin && location.pathname !== '/payment') {
+            if (!currentHasFullAccess && !profile.is_admin && location.pathname !== '/payment' && location.pathname !== '/profile') {
               navigate('/payment');
               return;
             }

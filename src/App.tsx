@@ -115,8 +115,10 @@ function AppRoutes() {
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
-          <Route path="/payment" element={<ProtectedRoute><MainLayout><SubscriptionPage /></MainLayout></ProtectedRoute>} />
           <Route path="/campos-personalizados" element={<ProtectedRoute><MainLayout><CamposPersonalizados /></MainLayout></ProtectedRoute>} />
+
+          {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
+          <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />
 
           {/* Rotas de retorno do pagamento */}
           <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
