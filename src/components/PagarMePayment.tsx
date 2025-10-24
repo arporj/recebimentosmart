@@ -24,22 +24,39 @@ const PagarMePayment: React.FC<PagarMePaymentProps> = ({ amount }) => {
   useEffect(() => {
     console.log('Pagar.me script status:', scriptStatus);
     if (scriptStatus === 'ready') {
-      console.log('Pagar.me script is ready, connecting...');
+      console.log('Pagar.me script is ready, attempting to connect...');
       const encryptionKey = import.meta.env.VITE_PAGARME_ENCRYPTION_KEY;
       if (!encryptionKey) {
         console.error('VITE_PAGARME_ENCRYPTION_KEY is not set.');
         alert('A chave de criptografia do Pagar.me não está configurada.');
         return;
       }
-      
-      window.pagarme.connect({ encryption_key: encryptionKey })
-        .then((client: any) => {
-          console.log('Pagar.me client connected successfully.');
-          setPagarmeClient(client);
-        })
-        .catch((error: any) => {
-          console.error('Error connecting to Pagar.me:', error);
-        });
+
+      let attempts = 0;
+      const maxAttempts = 20; // Tentar por até 20 * 200ms = 4 segundos
+      const intervalTime = 200; // Verificar a cada 200ms
+
+      const connectPagarme = setInterval(() => {
+        if (window.pagarme && typeof window.pagarme.connect === 'function') {
+          clearInterval(connectPagarme);
+          window.pagarme.connect({ encryption_key: encryptionKey })
+            .then((client: any) => {
+              console.log('Pagar.me client connected successfully.');
+              setPagarmeClient(client);
+            })
+            .catch((error: any) => {
+              console.error('Error connecting to Pagar.me:', error);
+              alert('Erro ao conectar com o Pagar.me. Verifique o console.');
+            });
+        } else if (attempts >= maxAttempts) {
+          clearInterval(connectPagarme);
+          console.error('Timeout: window.pagarme.connect não disponível após múltiplas tentativas.');
+          alert('Erro: Pagar.me não carregou corretamente. Tente novamente.');
+        }
+        attempts++;
+      }, intervalTime);
+
+      return () => clearInterval(connectPagarme);
     }
   }, [scriptStatus]);
 
