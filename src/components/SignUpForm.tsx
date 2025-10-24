@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, User, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User, ArrowLeft, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface SignUpFormProps {
@@ -13,6 +13,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    cpf_cnpj: '',
     password: '',
     confirmPassword: ''
   });
@@ -23,6 +24,14 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name) newErrors.name = 'Nome é obrigatório.';
+    
+    const cpfCnpj = formData.cpf_cnpj.replace(/[^0-9]/g, '');
+    if (!cpfCnpj) {
+      newErrors.cpf_cnpj = 'CPF/CNPJ é obrigatório.';
+    } else if (cpfCnpj.length !== 11 && cpfCnpj.length !== 14) {
+      newErrors.cpf_cnpj = 'CPF/CNPJ inválido. Deve conter 11 ou 14 dígitos.';
+    }
+
     if (!formData.email) {
       newErrors.email = 'Email é obrigatório.';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -44,7 +53,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode
       setErrors(newErrors);
     } else {
       setErrors({});
-      onSubmit(formData);
+      // Envia o CPF/CNPJ apenas com os dígitos
+      onSubmit({ ...formData, cpf_cnpj: formData.cpf_cnpj.replace(/[^0-9]/g, '') });
     }
   };
 
@@ -92,6 +102,17 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode
               <input id="name" type="text" required value={formData.name} onChange={handleChange} placeholder="Seu nome completo" className={`pl-10 block w-full rounded-md ${errors.name ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-custom focus:ring-custom sm:text-sm`} />
             </div>
             {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="cpf_cnpj" className="block text-sm font-medium text-gray-700">CPF ou CNPJ</label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FileText className="h-5 w-5 text-gray-400" />
+              </div>
+              <input id="cpf_cnpj" type="text" required value={formData.cpf_cnpj} onChange={handleChange} placeholder="Seu CPF ou CNPJ" className={`pl-10 block w-full rounded-md ${errors.cpf_cnpj ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-custom focus:ring-custom sm:text-sm`} />
+            </div>
+            {errors.cpf_cnpj && <p className="mt-2 text-sm text-red-600">{errors.cpf_cnpj}</p>}
           </div>
 
           <div>

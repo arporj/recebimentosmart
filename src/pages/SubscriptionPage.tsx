@@ -9,10 +9,45 @@ import PagarMePayment from '../components/PagarMePayment';
 type PlanName = 'basico' | 'pro' | 'premium';
 
 const SubscriptionPage = () => {
-  const { loading, pageData, paymentStatus } = useSubscription(); // Usa o contexto
+  const { loading, pageData, paymentStatus, fetchData } = useSubscription(); // Usa o contexto
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [pixData, setPixData] = useState<{ qrCodeText: string; qrCodeImageUrl: string; transactionId: string } | null>(null);
   const [generatingPix, setGeneratingPix] = useState(false);
+
+  // Efeito para polling do status do PIX
+  useEffect(() => {
+    if (!pixData) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/get-pix-status?transactionId=${pixData.transactionId}`);
+        if (!response.ok) {
+          // Para de tentar se a transação não for encontrada (404) ou houver outro erro
+          console.error('Erro ao buscar status do PIX, parando polling.');
+          clearInterval(intervalId);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'COMPLETED') {
+          clearInterval(intervalId);
+          setPixData(null); // Limpa os dados do PIX da tela
+          toast.success('Pagamento confirmado com sucesso!');
+          fetchData(); // Atualiza os dados da assinatura para refletir o novo status
+        }
+        // Se o status for PENDING, o polling continua
+
+      } catch (error) {
+        console.error('Erro no polling do status do PIX:', error);
+        clearInterval(intervalId); // Para em caso de erro de rede
+      }
+    }, 3000); // Verifica a cada 3 segundos
+
+    // Limpa o intervalo quando o componente é desmontado ou pixData muda
+    return () => clearInterval(intervalId);
+  }, [pixData, fetchData]);
+
 
   // Define o plano padrão quando os dados são carregados
   useEffect(() => {

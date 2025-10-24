@@ -80,6 +80,104 @@ app.post('/api/pagarme/create-payment', async (req, res) => {
 
 
 // --- Iniciar Servidor ---
+const crypto = require('crypto');
+
+// Middleware para processar o corpo raw da requisição para o webhook do Inter
+const rawBodySaver = (req, res, buf, encoding) => {
+  if (buf && buf.length) {
+    req.rawBody = buf.toString(encoding || 'utf8');
+  }
+};
+
+app.use('/webhooks/inter', express.raw({ verify: rawBodySaver, type: '*/*' }));
+
+// Função para verificar a assinatura do webhook do Banco Inter (manter comentada se não houver certificado)
+function verifyInterWebhookSignature(req) {
+  try {
+    const signature = req.headers['x-inter-signature'];
+    if (!signature) {
+      console.error('Assinatura do webhook ausente');
+      return false;
+    }
+
+    const caCertificate = process.env.INTER_CA_CERTIFICATE_CONTENT;
+    if (!caCertificate) {
+      console.error('Certificado CA do Inter não configurado');
+      return false; // Em produção, isso deve ser um erro fatal
+    }
+
+    const verify = crypto.createVerify('SHA256');
+    verify.update(req.rawBody);
+
+    const isValid = verify.verify(caCertificate, signature, 'base64');
+
+    if (!isValid) {
+      console.error('Assinatura do webhook inválida');
+    }
+
+    return isValid;
+  } catch (error) {
+    console.error('Erro ao verificar a assinatura do webhook:', error);
+    return false;
+  }
+}
+
+app.post('/webhooks/inter', async (req, res) => {
+  console.log('Webhook do Inter recebido.');
+
+  // Descomente a linha abaixo quando o certificado estiver configurado
+  // if (!verifyInterWebhookSignature(req)) {
+  //   return res.status(401).json({ error: 'Assinatura inválida' });
+  // }
+
+  try {
+    const body = JSON.parse(req.rawBody);
+
+    if (!body.pix || !Array.isArray(body.pix)) {
+      return res.status(400).json({ error: 'Payload de PIX inválido' });
+    }
+
+    for (const pix of body.pix) {
+      const { endToEndId, status } = pix;
+
+      if (!endToEndId) {
+        console.warn('Entrada PIX sem endToEndId, pulando:', pix);
+        continue;
+      }
+
+      if (status !== 'CONCLUIDO' && status !== 'CONFIRMADO') {
+        console.log(`Status do PIX é '${status}', não 'CONCLUIDO'. Pulando.`);
+        continue;
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('pix_transactions')
+        .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
+        .eq('transaction_id', endToEndId)
+        .select('user_id');
+
+      if (error) {
+        console.error('Erro ao atualizar a transação PIX:', error);
+        continue; // Continua para o próximo item do array
+      }
+
+      if (data && data.length > 0) {
+        console.log(`Transação ${endToEndId} atualizada para COMPLETED.`);
+        const userId = data[0].user_id;
+        // TODO: Adicionar lógica pós-pagamento, como renovar a assinatura do usuário.
+        console.log(`Pagamento confirmado para o usuário: ${userId}`);
+      } else {
+        console.warn(`Nenhuma transação encontrada com o endToEndId: ${endToEndId}`);
+      }
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Erro ao processar o webhook do Inter:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor de API rodando na porta ${PORT}`);
 });

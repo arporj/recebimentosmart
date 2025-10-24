@@ -3,7 +3,14 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { addDays, differenceInDays, parseISO, isFuture } from 'date-fns';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+interface ProfileData {
+  valid_until: string | null;
+  is_admin: boolean;
+  plano: string | null;
+  cpf_cnpj: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -12,7 +19,7 @@ interface AuthContextType {
   plano: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
+  signUp: (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
@@ -30,6 +37,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation(); // Adicionado para verificar a rota atual
   const [user, setUser] = useState<User | null>(null);
   const [hasFullAccess, setHasFullAccess] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -47,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('valid_until, is_admin, plano')
+            .select('valid_until, is_admin, plano, cpf_cnpj')
             .eq('id', currentUser.id)
             .single();
 
@@ -64,6 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setHasFullAccess(hasPaidAccess || isInTrial);
             setIsAdmin(profile.is_admin || false);
             setPlano(profile.plano || 'basico');
+
+            // Lógica de redirecionamento se CPF/CNPJ estiver faltando
+            if (!profile.cpf_cnpj && location.pathname !== '/configuracoes') {
+              toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+              navigate('/configuracoes');
+            }
+
           } else {
             setHasFullAccess(false);
             setIsAdmin(false);
@@ -89,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [location.pathname, navigate]); // Adicionado location.pathname e navigate como dependências
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -125,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
+  const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -134,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             name: name,
             referral_code: referralCode,
+            cpf_cnpj: cpf_cnpj,
           },
         },
       });

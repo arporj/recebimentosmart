@@ -50,7 +50,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       const defaultData: PageData = {
         plans: [
           { name: 'Básico', price_monthly: 19.90 },
-          { name: 'Pró', price_monthly: 39.90 },
+          { name: 'Pró', price: 39.90 },
           { name: 'Premium', price_monthly: 59.90 }
         ],
         user: {
