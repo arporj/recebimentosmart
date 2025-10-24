@@ -48,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Estado para impersonação
   const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
-  const redirectHandledRef = useRef(false); // Adicionado para controlar o redirecionamento
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
@@ -70,22 +69,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const hasPaidAccess = profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false;
             const isInTrial = isFuture(trialEndDate);
 
+            // Prioridade 1: Verificar se o CPF/CNPJ está preenchido
+            if (!profile.cpf_cnpj && location.pathname !== '/profile') {
+              toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+              navigate('/profile');
+              // Interrompe a execução para evitar outros redirecionamentos
+              return; 
+            }
+
+            const hasPaidAccess = profile.valid_until ? isFuture(parseISO(profile.valid_until)) : false;
+            const isInTrial = isFuture(trialEndDate);
+
             setHasFullAccess(hasPaidAccess || isInTrial);
             setIsAdmin(profile.is_admin || false);
             setPlano(profile.plano || 'basico');
-
-            // Lógica de redirecionamento se CPF/CNPJ estiver faltando
-            if (!profile.cpf_cnpj && location.pathname !== '/profile') {
-              if (!redirectHandledRef.current) {
-                toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-                navigate('/profile');
-                redirectHandledRef.current = true; // Marca que o redirecionamento foi tratado
-              }
-            } else if (profile.cpf_cnpj) {
-              // Se o CPF/CNPJ foi preenchido, reseta o flag
-              redirectHandledRef.current = false;
-            }
-
           } else {
             setHasFullAccess(false);
             setIsAdmin(false);
