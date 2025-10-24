@@ -74,9 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setPlano(profile.plano || 'basico');
 
             // Lógica de redirecionamento se CPF/CNPJ estiver faltando
-            if (!profile.cpf_cnpj && location.pathname !== '/configuracoes') {
+            if (!profile.cpf_cnpj && location.pathname !== '/profile') {
               toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-              navigate('/configuracoes');
+              navigate('/profile');
             }
 
           } else {
