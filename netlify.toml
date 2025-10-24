@@ -21,6 +21,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["express", "serverless-http", "axios", "uuid", "@supabase/supabase-js", "cors", "crypto"]
+  included_files = ["netlify/functions/certs/**"]
   # Explicitly define the express-api function
   # This is usually not needed if functions are in the functions directory
   # but can help with dependency issues.
