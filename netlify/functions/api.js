@@ -32,20 +32,26 @@ function loadInterCertificates( ) {
 
   try {
     // Caminhos para os certificados do cliente
-    const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
-    const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
-    const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
+    // const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
+    // const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
+    // const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
 
-    const clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
     const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
     const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
+    
+    // Processa a cadeia de certificados (ca.crt)
+    const caCertificates = caCertContent.split(/(?=-----BEGIN CERTIFICATE-----)/g)
+      .filter(cert => cert.trim() !== '');
 
     // Agente HTTPS com os certificados
     httpsAgent = new https.Agent({
       cert: clientCertContent,
       key: clientKeyContent,
       passphrase: '',
-      ca: caCertContent, // CORREÇÃO SSL: Adiciona o CA para confiança
+      ca: caCertificates, // Passa o array de certificados
+      secureProtocol: 'TLSv1_2_method', // Força o uso de TLS 1.2
+      minVersion: 'TLSv1.2',
+      maxVersion: 'TLSv1.2',
     } );
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
