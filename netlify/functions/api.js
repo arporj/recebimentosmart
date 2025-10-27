@@ -24,15 +24,17 @@ const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
 // --- Lógica do Banco Inter ---
 
 // Caminhos para os certificados do cliente
-const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
 const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
+const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt'); // NOVO
 
 let clientCertContent = null;
 let clientKeyContent = null;
+let caCertContent = null; // NOVO
 
 try {
   clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
   clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
+  caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8'); // NOVO
   console.log('Certificados do cliente Inter carregados com sucesso.');
 } catch (err) {
   console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
@@ -43,14 +45,14 @@ const httpsAgent = new https.Agent({
   cert: clientCertContent,
   key: clientKeyContent,
   passphrase: '',
-  rejectUnauthorized: false // ATENÇÃO: APENAS PARA DIAGNÓSTICO
-});
+  ca: caCertContent, // CORRIGIDO: Adiciona o certificado CA para confiança
+} );
 
-// Força o uso do agente customizado globalmente para todas as requisições https
-https.globalAgent = httpsAgent;
+// O uso global do https.Agent será removido para evitar efeitos colaterais.
+// A configuração será passada explicitamente para as requisições do Inter.
 
 // Função para obter o token de autenticação do Inter
-async function getInterToken() {
+async function getInterToken( ) {
   if (!clientCertContent || !clientKeyContent) {
     throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
   }
@@ -64,10 +66,10 @@ async function getInterToken() {
         scope: 'boleto-cobranca.write boleto-cobranca.read'
       }),
       {
-        // O httpsAgent é removido daqui para usar o global
+        httpsAgent, // CORRIGIDO: Passa o agente explicitamente
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       }
-    );
+     );
     return response.data.access_token;
   } catch (error) {
     console.error('Erro ao obter token do Inter:', error.response?.data || error.message);
