@@ -50,7 +50,7 @@ function loadInterCertificates( ) {
       key: clientKeyContent,
       passphrase: '',
       ca: caCertificates, // Passa o array de certificados
-      secureProtocol: 'TLSv1_2_method', // Força o uso de TLS 1.2
+
       minVersion: 'TLSv1.2',
       maxVersion: 'TLSv1.2',
     } );
