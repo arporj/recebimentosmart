@@ -23,39 +23,47 @@ const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
 
 // --- Lógica do Banco Inter ---
 
-// Caminhos para os certificados do cliente
-const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
-const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt'); // NOVO
+// Variáveis para armazenar o conteúdo dos certificados e o agente HTTPS
+let httpsAgent = null;
 
-let clientCertContent = null;
-let clientKeyContent = null;
-let caCertContent = null; // NOVO
+// Função para carregar os certificados e criar o agente HTTPS
+function loadInterCertificates( ) {
+  if (httpsAgent ) return; // Já carregado
 
-try {
-  clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
-  clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
-  caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8'); // NOVO
-  console.log('Certificados do cliente Inter carregados com sucesso.');
-} catch (err) {
-  console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
+  try {
+    // Caminhos para os certificados do cliente
+    const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
+    const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
+    const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
+
+    const clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
+    const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
+    const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
+
+    // Agente HTTPS com os certificados
+    httpsAgent = new https.Agent({
+      cert: clientCertContent,
+      key: clientKeyContent,
+      passphrase: '',
+      ca: caCertContent, // CORREÇÃO SSL: Adiciona o CA para confiança
+    } );
+
+    console.log('Certificados do cliente Inter carregados com sucesso.');
+  } catch (err) {
+    // CORREÇÃO DE ESCOPO: O erro de carregamento agora lança uma exceção que será capturada
+    console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
+    throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
+  }
 }
 
-// Agente HTTPS com os certificados
-const httpsAgent = new https.Agent({
-  cert: clientCertContent,
-  key: clientKeyContent,
-  passphrase: '',
-  ca: caCertContent, // CORRIGIDO: Adiciona o certificado CA para confiança
-} );
 
 // O uso global do https.Agent será removido para evitar efeitos colaterais.
 // A configuração será passada explicitamente para as requisições do Inter.
 
 // Função para obter o token de autenticação do Inter
-async function getInterToken( ) {
-  if (!clientCertContent || !clientKeyContent) {
-    throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
-  }
+async function getInterToken() {
+  loadInterCertificates(); // CORREÇÃO DE ESCOPO: Garante que os certificados estão carregados e o agente criado
+  
   try {
     const response = await axios.post(
       `${INTER_API_URL}/oauth/v2/token`,
@@ -66,7 +74,7 @@ async function getInterToken( ) {
         scope: 'boleto-cobranca.write boleto-cobranca.read'
       }),
       {
-        httpsAgent, // CORRIGIDO: Passa o agente explicitamente
+        httpsAgent, // CORREÇÃO SSL: Passa o agente explicitamente
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       }
      );
@@ -76,6 +84,7 @@ async function getInterToken( ) {
     throw new Error('Falha na autenticação com o Inter');
   }
 }
+
 
 
 // --- Funções Auxiliares (Mercado Pago) ---
