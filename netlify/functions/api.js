@@ -51,8 +51,8 @@ function loadInterCertificates( ) {
       passphrase: '',
       ca: caCertificates, // Passa o array de certificados
 
-      minVersion: 'TLSv1.2',
-      maxVersion: 'TLSv1.2',
+      //minVersion: 'TLSv1.2',
+      //maxVersion: 'TLSv1.2',
     } );
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
