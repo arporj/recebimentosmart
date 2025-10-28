@@ -36,23 +36,29 @@ function loadInterCertificates( ) {
     const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
     const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
 
+    // ...
     const clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
     const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
     const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
-    
-    // Processa a cadeia de certificados (ca.crt)
-    const caCertificates = caCertContent.split(/(?=-----BEGIN CERTIFICATE-----)/g)
-      .filter(cert => cert.trim() !== '');
+
+    // O erro 'tlsv1 alert unknown ca' (alerta 48) é o servidor rejeitando o nosso certificado.
+    // Isso sugere que a cadeia do certificado do cliente está incompleta.
+    // O caCertContent (assumindo que é o certificado intermediário ou raiz) será concatenado ao clientCertContent.
+    // O `ca` no https.Agent é para o cliente validar o servidor. O erro é do servidor.
+    // Portanto, o `ca.crt` deve ser incluído na cadeia de certificados do cliente.
+    const clientCertChain = clientCertContent + '\n' + caCertContent;
 
     // Agente HTTPS com os certificados
     httpsAgent = new https.Agent({
-      cert: clientCertContent,
+      cert: clientCertChain, // Agora usa a cadeia completa
       key: clientKeyContent,
       passphrase: '',
-      ca: caCertificates, // Passa o array de certificados. Necessário para o cliente confiar no servidor Inter.
+      // ca: caCertificates, // Removido. O certificado CA está sendo concatenado ao certificado do cliente.
       rejectUnauthorized: false, // Adicionado para depuração
       secureProtocol: 'TLSv1_2_method', // Força o uso do TLS 1.2, requisito comum do Inter.
     } );
+    // ...
+
 
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
