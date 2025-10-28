@@ -145,13 +145,24 @@ exports.handler = async (event, context) => {
         if (event.httpMethod === 'POST') {
             try {
                 console.log('generate-pix: body recebido:', event.body);
-                const { amount, userId } = JSON.parse(event.body);
+                const { amount, userId, payerInfo } = JSON.parse(event.body);
 
-                if (!amount || !userId) {
-                    console.error('generate-pix: Erro - Amount ou userId faltando.');
-                    return { statusCode: 400, body: JSON.stringify({ error: 'Amount and userId are required' }) };
+                if (!amount || !userId || !payerInfo) {
+                    console.error('generate-pix: Erro - Faltando amount, userId ou payerInfo.');
+                    return { statusCode: 400, body: JSON.stringify({ error: 'Amount, userId, and payerInfo are required' }) };
                 }
 
+                // Validação dos campos obrigatórios do pagador recebidos no corpo
+                const requiredPayerFields = ['name', 'address', 'city', 'state', 'zip_code'];
+                const missingPayerFields = requiredPayerFields.filter(field => !payerInfo[field]);
+
+                if (missingPayerFields.length > 0) {
+                    const errorMsg = `Dados do pagador incompletos na requisição. Campos faltando: ${missingPayerFields.join(', ')}`;
+                    console.error(`generate-pix: Erro - ${errorMsg}`);
+                    return { statusCode: 400, body: JSON.stringify({ error: errorMsg }) };
+                }
+
+                // Busca apenas o CPF/CNPJ do perfil, que é obrigatório e não deve vir do front-end por segurança.
                 const { data: profile, error: profileError } = await supabaseAdmin
                     .from('profiles')
                     .select('cpf_cnpj')
@@ -172,7 +183,7 @@ exports.handler = async (event, context) => {
 
                 const token = await getInterToken();
 
-                const seuNumero = `TX_${userId.substring(0, 8)}_${Date.now()}`;
+                const seuNumero = uuidv4().substring(0, 15);
                 const dataVencimento = new Date();
                 dataVencimento.setDate(dataVencimento.getDate() + 1);
 
@@ -182,8 +193,13 @@ exports.handler = async (event, context) => {
                     dataVencimento: dataVencimento.toISOString().split('T')[0],
                     numDiasBaixa: 0,
                     pagador: {
-                        cpfCnpj: profile.cpf_cnpj.replace(/[^0-9]/g, ''), // Garante apenas números
-                        tipoPessoa: profile.cpf_cnpj.replace(/[^0-9]/g, '').length === 11 ? 'FISICA' : 'JURIDICA'
+                        cpfCnpj: profile.cpf_cnpj.replace(/[^0-9]/g, ''),
+                        tipoPessoa: profile.cpf_cnpj.replace(/[^0-9]/g, '').length === 11 ? 'FISICA' : 'JURIDICA',
+                        nome: payerInfo.name,
+                        endereco: payerInfo.address,
+                        cidade: payerInfo.city,
+                        uf: payerInfo.state,
+                        cep: payerInfo.zip_code.replace(/[^0-9]/g, '')
                     }
                 };
 

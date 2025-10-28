@@ -14,6 +14,21 @@ const SubscriptionPage = () => {
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [pixData, setPixData] = useState<{ qrCodeText: string; qrCodeImageUrl: string; transactionId: string } | null>(null);
   const [generatingPix, setGeneratingPix] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [payerInfo, setPayerInfo] = useState({
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+  });
+
+  // Preenche o nome do pagador com o nome do perfil do usuário
+  useEffect(() => {
+    if (pageData?.user?.name) {
+      setPayerInfo(prev => ({ ...prev, name: pageData.user.name }));
+    }
+  }, [pageData]);
 
   // Efeito para polling do status do PIX
   useEffect(() => {
@@ -33,7 +48,8 @@ const SubscriptionPage = () => {
         if (data.status === 'COMPLETED') {
           clearInterval(intervalId);
           setPixData(null);
-          toast.success('Pagamento confirmado com sucesso!');
+          // idealmente, usar um sistema de toast aqui
+          alert('Pagamento confirmado com sucesso!');
           fetchData();
         }
 
@@ -82,7 +98,7 @@ const SubscriptionPage = () => {
   }, [selectedPlan, pageData]);
 
   const handleGeneratePix = async () => {
-    if (!user || finalAmount <= 0) return; // Verifica se o usuário existe
+    if (!user || finalAmount <= 0) return;
 
     setGeneratingPix(true);
     try {
@@ -91,18 +107,19 @@ const SubscriptionPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount: finalAmount, userId: user.id }), // Usa user.id do useAuth
+        body: JSON.stringify({ amount: finalAmount, userId: user.id, payerInfo }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate PIX');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate PIX');
       }
 
       const data = await response.json();
       setPixData(data);
     } catch (error) {
       console.error('Error generating PIX:', error);
-      alert('Erro ao gerar PIX. Tente novamente.');
+      alert(`Erro ao gerar PIX: ${(error as Error).message}`);
     } finally {
       setGeneratingPix(false);
     }
@@ -229,14 +246,69 @@ const SubscriptionPage = () => {
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento</h3>
                 {!pixData ? (
                   <div className="space-y-4">
-                    <button
-                      onClick={handleGeneratePix}
-                      disabled={generatingPix || finalAmount <= 0}
-                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {generatingPix ? 'Gerando PIX...' : 'Pagar com PIX'}
-                    </button>
-
+                    {!showAddressForm ? (
+                      <button
+                        onClick={() => setShowAddressForm(true)}
+                        disabled={finalAmount <= 0}
+                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Pagar com PIX
+                      </button>
+                    ) : (
+                      <div className="p-4 border rounded-md bg-neutral-50">
+                        <h4 className="font-semibold mb-4">Dados do Pagador</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                          <input
+                            type="text"
+                            placeholder="Nome Completo"
+                            value={payerInfo.name}
+                            onChange={(e) => setPayerInfo({...payerInfo, name: e.target.value})}
+                            className="p-2 border rounded-md w-full"
+                          />
+                          <input
+                            type="text"
+                            placeholder="CEP"
+                            value={payerInfo.zip_code}
+                            onChange={(e) => setPayerInfo({...payerInfo, zip_code: e.target.value})}
+                            className="p-2 border rounded-md w-full"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Endereço, Nro"
+                            value={payerInfo.address}
+                            onChange={(e) => setPayerInfo({...payerInfo, address: e.target.value})}
+                            className="p-2 border rounded-md w-full col-span-1 sm:col-span-2"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Cidade"
+                            value={payerInfo.city}
+                            onChange={(e) => setPayerInfo({...payerInfo, city: e.target.value})}
+                            className="p-2 border rounded-md w-full"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Estado (UF)"
+                            value={payerInfo.state}
+                            onChange={(e) => setPayerInfo({...payerInfo, state: e.target.value})}
+                            className="p-2 border rounded-md w-full"
+                          />
+                        </div>
+                        <button
+                          onClick={handleGeneratePix}
+                          disabled={generatingPix || Object.values(payerInfo).some(v => v === '')}
+                          className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {generatingPix ? 'Gerando PIX...' : 'Confirmar e Gerar PIX'}
+                        </button>
+                        <button
+                          onClick={() => setShowAddressForm(false)}
+                          className="w-full mt-2 text-sm text-neutral-600 hover:underline"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center p-4 border border-green-200 bg-green-50 rounded-md">
