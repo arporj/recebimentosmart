@@ -225,7 +225,29 @@ exports.handler = async (event, context) => {
 
                 console.log('generate-pix: Resposta da API do Inter:', responseCobranca.data);
 
-                const { codigoSolicitacao, pix } = responseCobranca.data;
+                let { codigoSolicitacao, pix } = responseCobranca.data;
+
+                // Se o objeto PIX não vier na resposta inicial, busca em seguida.
+                if (codigoSolicitacao && !pix) {
+                    console.log('generate-pix: Objeto PIX não encontrado na resposta inicial. Buscando separadamente...');
+                    try {
+                        const pixResponse = await axios.get(
+                            `${INTER_API_URL}/cobranca/v3/cobrancas/${codigoSolicitacao}/pix`,
+                            {
+                                httpsAgent,
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'x-conta-corrente': INTER_CONTA_CORRENTE,
+                                }
+                            }
+                        );
+                        console.log('generate-pix: Resposta da busca por PIX:', pixResponse.data);
+                        pix = pixResponse.data; // Atribui o objeto pix retornado
+                    } catch (pixError) {
+                        console.error('generate-pix: Erro ao buscar dados do PIX separadamente:', pixError.response?.data || pixError.message);
+                        // Mantém o fluxo, mas o erro de 'pix' indefinido será capturado abaixo
+                    }
+                }
 
                 if (!codigoSolicitacao || !pix) {
                     console.error('generate-pix: Erro - Resposta inválida da API do Inter. Conteúdo:', responseCobranca.data);
