@@ -50,6 +50,7 @@ function loadInterCertificates( ) {
       key: clientKeyContent,
       passphrase: '',
       ca: caCertificates, // Passa o array de certificados
+      rejectUnauthorized: false, // Adicionado para depuração
 
       //minVersion: 'TLSv1.2',
       //maxVersion: 'TLSv1.2',
