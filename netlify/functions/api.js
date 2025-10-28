@@ -232,7 +232,6 @@ exports.handler = async (event, context) => {
                                 httpsAgent,
                                 headers: {
                                     'Authorization': `Bearer ${token}`,
-                                    'x-conta-corrente': INTER_CONTA_CORRENTE,
                                 }
                             }
                         );
