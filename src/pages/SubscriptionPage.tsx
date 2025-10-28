@@ -14,7 +14,6 @@ const SubscriptionPage = () => {
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [pixData, setPixData] = useState<{ qrCodeText: string; qrCodeImageUrl: string; transactionId: string } | null>(null);
   const [generatingPix, setGeneratingPix] = useState(false);
-  const [showAddressForm, setShowAddressForm] = useState(false);
   const [payerInfo, setPayerInfo] = useState({
     name: '',
     address: '',
@@ -245,16 +244,6 @@ const SubscriptionPage = () => {
               <div className="mt-8">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento</h3>
                 {!pixData ? (
-                  <div className="space-y-4">
-                    {!showAddressForm ? (
-                      <button
-                        onClick={() => setShowAddressForm(true)}
-                        disabled={finalAmount <= 0}
-                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Pagar com PIX
-                      </button>
-                    ) : (
                       <div className="p-4 border rounded-md bg-neutral-50">
                         <h4 className="font-semibold mb-4">Dados do Pagador</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -291,6 +280,7 @@ const SubscriptionPage = () => {
                             placeholder="Estado (UF)"
                             value={payerInfo.state}
                             onChange={(e) => setPayerInfo({...payerInfo, state: e.target.value})}
+                            maxLength={2}
                             className="p-2 border rounded-md w-full"
                           />
                         </div>
@@ -301,15 +291,7 @@ const SubscriptionPage = () => {
                         >
                           {generatingPix ? 'Gerando PIX...' : 'Confirmar e Gerar PIX'}
                         </button>
-                        <button
-                          onClick={() => setShowAddressForm(false)}
-                          className="w-full mt-2 text-sm text-neutral-600 hover:underline"
-                        >
-                          Cancelar
-                        </button>
                       </div>
-                    )}
-                  </div>
                 ) : (
                   <div className="text-center p-4 border border-green-200 bg-green-50 rounded-md">
                     <p className="font-semibold text-green-700 mb-2">Escaneie o QR Code para pagar:</p>
