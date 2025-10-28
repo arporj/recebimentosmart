@@ -45,15 +45,10 @@ function loadInterCertificates( ) {
     // O erro 'tlsv1 alert unknown ca' geralmente ocorre em mTLS quando o servidor não confia no certificado do cliente.
     // A correção é enviar a cadeia de certificados completa, concatenando o certificado do cliente com o da CA.
     httpsAgent = new https.Agent({
-      cert: clientCertContent + '\n' + caCertContent,
+      cert: clientCertContent,
       key: clientKeyContent,
       passphrase: '',
-      // A propriedade 'ca' é usada para o cliente validar o servidor.
-      // Manter para garantir que confiamos no certificado do servidor do Inter.
       ca: caCertContent,
-      // Força o uso do TLS 1.2, um requisito comum em APIs financeiras.
-      secureProtocol: 'TLSv1_2_method',
-      // Desativar a validação do certificado do servidor é necessário para os ambientes do Inter.
       rejectUnauthorized: false,
     });
 
