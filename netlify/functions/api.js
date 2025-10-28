@@ -75,7 +75,6 @@ async function getInterToken() {
   loadInterCertificates(); // CORREÇÃO DE ESCOPO: Garante que os certificados estão carregados e o agente criado
   
   try {
-    console.log(`Attempting to get Inter token. Client ID present: ${!!INTER_CLIENT_ID}, Client Secret present: ${!!INTER_CLIENT_SECRET}`);
     const response = await axios.post(
       `${INTER_API_URL}/oauth/v2/token`,
       new URLSearchParams({
