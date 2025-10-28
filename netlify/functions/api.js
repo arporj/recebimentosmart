@@ -16,7 +16,7 @@ const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || 'https://api.mer
 const webhookUrl = process.env.WEBHOOK_URL;
 
 // Banco Inter
-const INTER_API_URL = process.env.INTER_API_URL || 'https://cdpj-sandbox.partners.uatinter.co';
+const INTER_API_URL = 'https://cdpj.partners.bancointer.com.br'; // APONTANDO DIRETAMENTE PARA PRODUÇÃO
 const INTER_CLIENT_ID = process.env.INTER_CLIENT_ID;
 const INTER_CLIENT_SECRET = process.env.INTER_CLIENT_SECRET;
 const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
@@ -41,22 +41,21 @@ function loadInterCertificates( ) {
     const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
     const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
 
-    // O erro 'tlsv1 alert unknown ca' (alerta 48) é o servidor rejeitando o nosso certificado.
-    // Isso sugere que a cadeia do certificado do cliente está incompleta.
-    // O caCertContent (assumindo que é o certificado intermediário ou raiz) será concatenado ao clientCertContent.
-    // O `ca` no https.Agent é para o cliente validar o servidor. O erro é do servidor.
-    // Portanto, o `ca.crt` deve ser incluído na cadeia de certificados do cliente.
-    const caCertificates = caCertContent;
-
     // Agente HTTPS com os certificados
+    // O erro 'tlsv1 alert unknown ca' geralmente ocorre em mTLS quando o servidor não confia no certificado do cliente.
+    // A correção é enviar a cadeia de certificados completa, concatenando o certificado do cliente com o da CA.
     httpsAgent = new https.Agent({
-      cert: clientCertContent,
+      cert: clientCertContent + '\n' + caCertContent,
       key: clientKeyContent,
       passphrase: '',
-      ca: caCertificates, // Passa o conteúdo completo do CA. Necessário para o cliente confiar no servidor Inter.
-      rejectUnauthorized: false, // Adicionado para depuração
-      secureProtocol: 'TLSv1_2_method', // Força o uso do TLS 1.2, requisito comum do Inter.
-    } );
+      // A propriedade 'ca' é usada para o cliente validar o servidor.
+      // Manter para garantir que confiamos no certificado do servidor do Inter.
+      ca: caCertContent,
+      // Força o uso do TLS 1.2, um requisito comum em APIs financeiras.
+      secureProtocol: 'TLSv1_2_method',
+      // Em produção, a validação do certificado do servidor DEVE ser feita.
+      rejectUnauthorized: true,
+    });
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
     
