@@ -233,7 +233,8 @@ exports.handler = async (event, context) => {
                                 httpsAgent,
                                 headers: {
                                     'Authorization': `Bearer ${token}`,
-                                }
+                                },
+                                timeout: 15000,
                             }
                         );
                         console.log('generate-pix: Resposta da busca por PIX:', pixResponse.data);
