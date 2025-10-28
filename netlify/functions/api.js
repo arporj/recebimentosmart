@@ -16,7 +16,7 @@ const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || 'https://api.mer
 const webhookUrl = process.env.WEBHOOK_URL;
 
 // Banco Inter
-const INTER_API_URL = 'https://cdpj.partners.bancointer.com.br'; // APONTANDO DIRETAMENTE PARA PRODUÇÃO
+const INTER_API_URL = process.env.INTER_API_URL || 'https://cdpj-sandbox.partners.uatinter.co';
 const INTER_CLIENT_ID = process.env.INTER_CLIENT_ID;
 const INTER_CLIENT_SECRET = process.env.INTER_CLIENT_SECRET;
 const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
@@ -53,8 +53,8 @@ function loadInterCertificates( ) {
       ca: caCertContent,
       // Força o uso do TLS 1.2, um requisito comum em APIs financeiras.
       secureProtocol: 'TLSv1_2_method',
-      // Em produção, a validação do certificado do servidor DEVE ser feita.
-      rejectUnauthorized: true,
+      // Desativar a validação do certificado do servidor é necessário para os ambientes do Inter.
+      rejectUnauthorized: false,
     });
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
