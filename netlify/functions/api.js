@@ -81,7 +81,7 @@ async function getInterToken() {
         client_id: INTER_CLIENT_ID,
         client_secret: INTER_CLIENT_SECRET,
         grant_type: 'client_credentials',
-        scope: 'boleto-cobranca.write boleto-cobranca.read'
+        scope: 'cobranca.read cobranca.write pix.read pix.write'
       }),
       {
         httpsAgent, // CORREÇÃO SSL: Passa o agente explicitamente
