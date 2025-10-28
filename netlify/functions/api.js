@@ -49,12 +49,11 @@ function loadInterCertificates( ) {
       cert: clientCertContent,
       key: clientKeyContent,
       passphrase: '',
-      //ca: caCertificates, // Passa o array de certificados
+      ca: caCertificates, // Passa o array de certificados. Necessário para o cliente confiar no servidor Inter.
       rejectUnauthorized: false, // Adicionado para depuração
-
-      //minVersion: 'TLSv1.2',
-      //maxVersion: 'TLSv1.2',
+      secureProtocol: 'TLSv1_2_method', // Força o uso do TLS 1.2, requisito comum do Inter.
     } );
+
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
   } catch (err) {
