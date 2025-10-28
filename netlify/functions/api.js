@@ -50,6 +50,7 @@ function loadInterCertificates( ) {
       passphrase: '',
       ca: caCertContent,
       rejectUnauthorized: false,
+      keepAlive: false,
     });
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
