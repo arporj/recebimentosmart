@@ -46,22 +46,20 @@ function loadInterCertificates( ) {
     // O caCertContent (assumindo que é o certificado intermediário ou raiz) será concatenado ao clientCertContent.
     // O `ca` no https.Agent é para o cliente validar o servidor. O erro é do servidor.
     // Portanto, o `ca.crt` deve ser incluído na cadeia de certificados do cliente.
-    const clientCertChain = clientCertContent + '\n' + caCertContent;
+    const caCertificates = caCertContent;
 
     // Agente HTTPS com os certificados
     httpsAgent = new https.Agent({
-      cert: clientCertChain, // Agora usa a cadeia completa
+      cert: clientCertContent,
       key: clientKeyContent,
       passphrase: '',
-      // ca: caCertificates, // Removido. O certificado CA está sendo concatenado ao certificado do cliente.
+      ca: caCertificates, // Passa o conteúdo completo do CA. Necessário para o cliente confiar no servidor Inter.
       rejectUnauthorized: false, // Adicionado para depuração
       secureProtocol: 'TLSv1_2_method', // Força o uso do TLS 1.2, requisito comum do Inter.
     } );
-    // ...
-
-
 
     console.log('Certificados do cliente Inter carregados com sucesso.');
+    
   } catch (err) {
     // CORREÇÃO DE ESCOPO: O erro de carregamento agora lança uma exceção que será capturada
     console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
