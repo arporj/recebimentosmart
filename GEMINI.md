@@ -47,4 +47,5 @@ O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e client
 5.  **Consistência:** Mantenha a consistência com as tecnologias e padrões já estabelecidos no `<CONTEXT>`.
 6.  **Tom:** Mantenha um tom conversacional e colaborativo.
 7.  **S.O.:** Lembre que estou usando o Windows para rodar localmente
+8.  **Github:** Mude para o diretório do projeto usando "cd" antes de tentar fazer o commit. Se não conseguir, sempre me mostre a mensagem que devo escrever no commit manual, usando formatação normal em negrito.
 </OUTPUT_INSTRUCTION>

@@ -162,6 +162,13 @@ exports.handler = async (event, context) => {
                     return { statusCode: 400, body: JSON.stringify({ error: errorMsg }) };
                 }
 
+                // Validação adicional para o campo UF (state)
+                if (payerInfo.state && payerInfo.state.length !== 2) {
+                    const errorMsg = 'O campo UF (state) deve ter exatamente 2 caracteres.';
+                    console.error(`generate-pix: Erro - ${errorMsg}`);
+                    return { statusCode: 400, body: JSON.stringify({ error: errorMsg }) };
+                }
+
                 // Busca apenas o CPF/CNPJ do perfil, que é obrigatório e não deve vir do front-end por segurança.
                 const { data: profile, error: profileError } = await supabaseAdmin
                     .from('profiles')
