@@ -223,9 +223,12 @@ exports.handler = async (event, context) => {
                     }
                 );
 
+                console.log('generate-pix: Resposta da API do Inter:', responseCobranca.data);
+
                 const { codigoSolicitacao, pix } = responseCobranca.data;
 
                 if (!codigoSolicitacao || !pix) {
+                    console.error('generate-pix: Erro - Resposta inválida da API do Inter. Conteúdo:', responseCobranca.data);
                     return { statusCode: 500, body: JSON.stringify({ error: 'Resposta inválida da API do Inter' }) };
                 }
 
