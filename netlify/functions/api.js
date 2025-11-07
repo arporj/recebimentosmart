@@ -21,76 +21,76 @@ const INTER_CLIENT_ID = process.env.INTER_CLIENT_ID;
 const INTER_CLIENT_SECRET = process.env.INTER_CLIENT_SECRET;
 const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
 
-// --- Lógica do Banco Inter ---
+// --- Lógica do Banco Inter (COMENTADO) ---
 
 // Variáveis para armazenar o conteúdo dos certificados e o agente HTTPS
-let httpsAgent = null;
+// let httpsAgent = null;
 
 // Função para carregar os certificados e criar o agente HTTPS
-function loadInterCertificates( ) {
-  if (httpsAgent ) return; // Já carregado
+// function loadInterCertificates( ) {
+//   if (httpsAgent ) return; // Já carregado
 
-  try {
-    // Caminhos para os certificados do cliente
-    const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
-    const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
-    const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
+//   try {
+//     // Caminhos para os certificados do cliente
+//     const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
+//     const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
+//     const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
 
-    // ...
-    const clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
-    const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
-    const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
+//     // ...
+//     const clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
+//     const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
+//     const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
 
-    // Agente HTTPS com os certificados
-    // O erro 'tlsv1 alert unknown ca' geralmente ocorre em mTLS quando o servidor não confia no certificado do cliente.
-    // A correção é enviar a cadeia de certificados completa, concatenando o certificado do cliente com o da CA.
-    httpsAgent = new https.Agent({
-      cert: clientCertContent + '\n' + caCertContent,
-      key: clientKeyContent,
-      passphrase: '',
-      ca: caCertContent,
-      secureProtocol: 'TLSv1_2_method',
-      rejectUnauthorized: false,
-      keepAlive: false,
-    });
+//     // Agente HTTPS com os certificados
+//     // O erro 'tlsv1 alert unknown ca' geralmente ocorre em mTLS quando o servidor não confia no certificado do cliente.
+//     // A correção é enviar a cadeia de certificados completa, concatenando o certificado do cliente com o da CA.
+//     httpsAgent = new https.Agent({
+//       cert: clientCertContent + '\n' + caCertContent,
+//       key: clientKeyContent,
+//       passphrase: '',
+//       ca: caCertContent,
+//       secureProtocol: 'TLSv1_2_method',
+//       rejectUnauthorized: false,
+//       keepAlive: false,
+//     });
 
-    console.log('Certificados do cliente Inter carregados com sucesso.');
+//     console.log('Certificados do cliente Inter carregados com sucesso.');
     
-  } catch (err) {
-    // CORREÇÃO DE ESCOPO: O erro de carregamento agora lança uma exceção que será capturada
-    console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
-    throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
-  }
-}
+//   } catch (err) {
+//     // CORREÇÃO DE ESCOPO: O erro de carregamento agora lança uma exceção que será capturada
+//     console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
+//     throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
+//   }
+// }
 
 
-// O uso global do https.Agent será removido para evitar efeitos colaterais.
-// A configuração será passada explicitamente para as requisições do Inter.
+// // O uso global do https.Agent será removido para evitar efeitos colaterais.
+// // A configuração será passada explicitamente para as requisições do Inter.
 
-// Função para obter o token de autenticação do Inter
-async function getInterToken() {
-  loadInterCertificates(); // CORREÇÃO DE ESCOPO: Garante que os certificados estão carregados e o agente criado
+// // Função para obter o token de autenticação do Inter
+// async function getInterToken() {
+//   loadInterCertificates(); // CORREÇÃO DE ESCOPO: Garante que os certificados estão carregados e o agente criado
   
-  try {
-    const response = await axios.post(
-      `${INTER_API_URL}/oauth/v2/token`,
-      new URLSearchParams({
-        client_id: INTER_CLIENT_ID,
-        client_secret: INTER_CLIENT_SECRET,
-        grant_type: 'client_credentials',
-        scope: 'boleto-cobranca.write boleto-cobranca.read'
-      }),
-      {
-        httpsAgent, // CORREÇÃO SSL: Passa o agente explicitamente
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      }
-     );
-    return response.data.access_token;
-  } catch (error) {
-    console.error('Erro ao obter token do Inter:', error.response?.data || error.message);
-    throw new Error('Falha na autenticação com o Inter');
-  }
-}
+//   try {
+//     const response = await axios.post(
+//       `${INTER_API_URL}/oauth/v2/token`,
+//       new URLSearchParams({
+//         client_id: INTER_CLIENT_ID,
+//         client_secret: INTER_CLIENT_SECRET,
+//         grant_type: 'client_credentials',
+//         scope: 'boleto-cobranca.write boleto-cobranca.read'
+//       }),
+//       {
+//         httpsAgent, // CORREÇÃO SSL: Passa o agente explicitamente
+//         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+//       }
+//      );
+//     return response.data.access_token;
+//   } catch (error) {
+//     console.error('Erro ao obter token do Inter:', error.response?.data || error.message);
+//     throw new Error('Falha na autenticação com o Inter');
+//   }
+// }
 
 
 
@@ -144,112 +144,62 @@ exports.handler = async (event, context) => {
                 console.log('generate-pix: body recebido:', event.body);
                 const { amount, userId, payerInfo } = JSON.parse(event.body);
 
-                if (!amount || !userId || !payerInfo) {
-                    console.error('generate-pix: Erro - Faltando amount, userId ou payerInfo.');
-                    return { statusCode: 400, body: JSON.stringify({ error: 'Amount, userId, and payerInfo are required' }) };
+                if (!amount || !userId) {
+                    return { statusCode: 400, body: JSON.stringify({ error: 'Amount and userId are required' }) };
                 }
 
-                // Validação dos campos obrigatórios do pagador recebidos no corpo
-                const requiredPayerFields = ['name', 'address', 'city', 'state', 'zip_code'];
-                const missingPayerFields = requiredPayerFields.filter(field => !payerInfo[field]);
-
-                if (missingPayerFields.length > 0) {
-                    const errorMsg = `Dados do pagador incompletos na requisição. Campos faltando: ${missingPayerFields.join(', ')}`;
-                    console.error(`generate-pix: Erro - ${errorMsg}`);
-                    return { statusCode: 400, body: JSON.stringify({ error: errorMsg }) };
-                }
-
-                // Validação adicional para o campo UF (state)
-                if (payerInfo.state && payerInfo.state.length !== 2) {
-                    const errorMsg = 'O campo UF (state) deve ter exatamente 2 caracteres.';
-                    console.error(`generate-pix: Erro - ${errorMsg}`);
-                    return { statusCode: 400, body: JSON.stringify({ error: errorMsg }) };
-                }
-
-                // Busca apenas o CPF/CNPJ do perfil, que é obrigatório e não deve vir do front-end por segurança.
                 const { data: profile, error: profileError } = await supabaseAdmin
                     .from('profiles')
-                    .select('cpf_cnpj')
+                    .select('cpf_cnpj, full_name, email')
                     .eq('id', userId)
                     .single();
 
-                console.log('generate-pix: Perfil do Supabase:', profile);
-
                 if (profileError || !profile) {
-                    console.error('generate-pix: Erro ao buscar perfil do usuário:', profileError);
+                    console.error('Erro ao buscar perfil do usuário:', profileError);
                     return { statusCode: 404, body: JSON.stringify({ error: 'Usuário não encontrado' }) };
                 }
-                
-                if (!profile.cpf_cnpj) {
-                    console.error('generate-pix: Erro - CPF/CNPJ do usuário não encontrado no perfil.');
-                    return { statusCode: 400, body: JSON.stringify({ error: 'CPF/CNPJ do usuário não encontrado.' }) };
-                }
 
-                const token = await getInterToken();
+                const pagarmeApi = axios.create({
+                    baseURL: 'https://api.pagar.me/core/v5',
+                    headers: {
+                        'Authorization': `Basic ${Buffer.from(process.env.PAGARME_API_KEY + ':').toString('base64')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-                const seuNumero = uuidv4().substring(0, 15);
-                const dataVencimento = new Date();
-                dataVencimento.setDate(dataVencimento.getDate() + 1);
+                const expires_in = 3600; // 1 hora
 
                 const cobrancaBody = {
-                    seuNumero: seuNumero,
-                    valorNominal: parseFloat(amount),
-                    dataVencimento: dataVencimento.toISOString().split('T')[0],
-                    numDiasBaixa: 0,
-                    pagador: {
-                        cpfCnpj: profile.cpf_cnpj.replace(/[^0-9]/g, ''),
-                        tipoPessoa: profile.cpf_cnpj.replace(/[^0-9]/g, '').length === 11 ? 'FISICA' : 'JURIDICA',
-                        nome: payerInfo.name,
-                        endereco: payerInfo.address,
-                        cidade: payerInfo.city,
-                        uf: payerInfo.state,
-                        cep: payerInfo.zip_code.replace(/[^0-9]/g, '')
-                    }
+                    customer: {
+                        name: profile.full_name || 'Nome não informado',
+                        email: profile.email,
+                        document: profile.cpf_cnpj,
+                        type: 'individual'
+                    },
+                    items: [{
+                        amount: Math.round(amount * 100),
+                        description: 'Pagamento Assinatura Anual',
+                        quantity: 1,
+                    }],
+                    payments: [{
+                        payment_method: 'pix',
+                        pix: {
+                            expires_in: expires_in,
+                            additional_information: [
+                                { name: 'Referente a', value: 'Assinatura Anual' }
+                            ]
+                        }
+                    }]
                 };
 
-                const responseCobranca = await axios.post(
-                    `${INTER_API_URL}/cobranca/v3/cobrancas`,
-                    cobrancaBody,
-                    {
-                        httpsAgent,
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'x-conta-corrente': INTER_CONTA_CORRENTE,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
+                const responseCobranca = await pagarmeApi.post('/orders', cobrancaBody);
 
-                console.log('generate-pix: Resposta da API do Inter:', responseCobranca.data);
+                const { id: transactionId, charges } = responseCobranca.data;
+                const qrCodeData = charges[0].last_transaction.qr_code;
+                const qrCodeImageUrl = charges[0].last_transaction.qr_code_url;
 
-                let { codigoSolicitacao, pix } = responseCobranca.data;
-
-                // Se o objeto PIX não vier na resposta inicial, busca em seguida.
-                if (codigoSolicitacao && !pix) {
-                    console.log('generate-pix: Objeto PIX não encontrado na resposta inicial. Buscando separadamente...');
-                    try {
-                        console.log(`generate-pix: Tentando GET PIX para codigoSolicitacao: ${codigoSolicitacao}`);
-                        const pixResponse = await axios.get(
-                            `${INTER_API_URL}/cobranca/v3/cobrancas/${codigoSolicitacao}/pix`,
-                            {
-                                httpsAgent,
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                },
-                                timeout: 15000,
-                            }
-                        );
-                        console.log('generate-pix: Resposta da busca por PIX:', pixResponse.data);
-                        pix = pixResponse.data; // Atribui o objeto pix retornado
-                    } catch (pixError) {
-                        console.error('generate-pix: Erro ao buscar dados do PIX separadamente:', pixError.response?.data || pixError.message, 'Código do erro:', pixError.code);
-                        // Mantém o fluxo, mas o erro de 'pix' indefinido será capturado abaixo
-                    }
-                }
-
-                if (!codigoSolicitacao || !pix) {
-                    console.error('generate-pix: Erro - Resposta inválida da API do Inter. Conteúdo:', responseCobranca.data);
-                    return { statusCode: 500, body: JSON.stringify({ error: 'Resposta inválida da API do Inter' }) };
+                if (!transactionId || !qrCodeData) {
+                    return { statusCode: 500, body: JSON.stringify({ error: 'Resposta inválida da API do Pagar.me' }) };
                 }
 
                 const { error: insertError } = await supabaseAdmin
@@ -257,8 +207,11 @@ exports.handler = async (event, context) => {
                     .insert([{
                         user_id: userId,
                         amount: amount,
-                        transaction_id: codigoSolicitacao,
+                        transaction_id: transactionId,
                         status: 'PENDING',
+                        qr_code: qrCodeData,
+                        qr_code_url: qrCodeImageUrl,
+                        expires_at: new Date(new Date().getTime() + expires_in * 1000).toISOString(),
                     }]);
 
                 if (insertError) {
@@ -270,9 +223,9 @@ exports.handler = async (event, context) => {
                     statusCode: 200,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        transactionId: codigoSolicitacao,
-                        qrCodeText: pix.qrCode,
-                        qrCodeImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pix.qrCode)}`
+                        transactionId: transactionId,
+                        qrCodeText: qrCodeData,
+                        qrCodeImageUrl: qrCodeImageUrl
                     })
                 };
 
@@ -527,6 +480,47 @@ exports.handler = async (event, context) => {
             statusCode: 500,
             body: JSON.stringify({ message: 'Erro interno do servidor' }),
           };
+        }
+      }
+      break;
+
+    case 'pagarme-webhook':
+      if (event.httpMethod === 'POST') {
+        try {
+          const signature = event.headers['x-hub-signature'];
+          if (!signature) {
+            return { statusCode: 401, body: JSON.stringify({ error: 'Assinatura inválida' }) };
+          }
+
+          const [algorithm, signed] = signature.split('=');
+          const expectedSignature = crypto
+            .createHmac(algorithm, process.env.PAGARME_API_KEY)
+            .update(event.body, 'utf8')
+            .digest('hex');
+
+          if (!crypto.timingSafeEqual(Buffer.from(signed), Buffer.from(expectedSignature))) {
+            return { statusCode: 401, body: JSON.stringify({ error: 'Assinatura inválida' }) };
+          }
+
+          const { id: orderId, charges } = JSON.parse(event.body);
+          const status = charges[0].last_transaction.status;
+
+          if (status === 'paid') {
+            const { error: updateError } = await supabaseAdmin
+              .from('pix_transactions')
+              .update({ status: 'PAID' })
+              .eq('transaction_id', orderId);
+
+            if (updateError) {
+              console.error('Erro ao atualizar status do pagamento:', updateError);
+              return { statusCode: 500, body: JSON.stringify({ error: 'Erro ao processar pagamento' }) };
+            }
+          }
+
+          return { statusCode: 200, body: JSON.stringify({ received: true }) };
+        } catch (error) {
+          console.error('Erro no webhook do Pagar.me:', error.response?.data || error.message);
+          return { statusCode: 500, body: JSON.stringify({ message: 'Erro interno do servidor' }) };
         }
       }
       break;
