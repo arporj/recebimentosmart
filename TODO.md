@@ -8,13 +8,17 @@ Este arquivo serve para rastrear tarefas, bugs de baixa prioridade e melhorias q
   - **Descrição:** O fluxo de backend para o primeiro pagamento foi implementado, incluindo o webhook do Mercado Pago e a inserção na tabela `subscriptions`.
   - **Status:** Concluído (Backend).
 
+- [x] **Melhorar página de administração de usuários e corrigir impersonação**
+  - **Descrição:** A página de administração de usuários (`/admin/users`) precisa ser melhorada. A funcionalidade de "impersonar" (acessar como outro usuário) não está funcionando corretamente; ao clicar no ícone, o sistema não atualiza a visualização para a do usuário selecionado.
+  - **Status:** Concluído. A lógica de impersonação no `AuthContext.tsx` foi corrigida para garantir que o estado da aplicação (dados do usuário, permissões, etc.) seja completamente atualizado para refletir o usuário impersonado.
+
 - [ ] **Melhorar feedback visual e exibição de próximo vencimento (Frontend)**
   - **Descrição:** Na tela de pagamentos, o usuário precisa de feedback visual claro após iniciar o pagamento (ex: "Aguardando confirmação...") e a data do próximo vencimento deve ser exibida e atualizada dinamicamente.
   - **Ação Sugerida:** Implementar polling na tabela `payment_transactions` para o `externalReference` e atualizar o `PaymentIntegration.tsx` para exibir o status e a data de vencimento.
 
 - [ ] **Corrigir erro de Roteamento: `No routes matched location "/cadastro"`**
   - **Descrição:** O console do navegador exibe um aviso de que a rota `/cadastro` não foi encontrada. Isso provavelmente ocorre durante a navegação após o registro ou login.
-  - **Ação Sugerida:** Investigar o código de roteamento (provavelmente em `App.tsx` e os componentes de página) para encontrar onde a navegação para `/cadastro` está sendo chamada e corrigir para a rota correta (ex: `/login` ou a página principal da aplicação após o login).
+  - **Status:** A causa raiz (race condition após o signup) foi identificada e a lógica no `AuthContext.tsx` foi ajustada. O comportamento deve ser verificado.
 
 ## Melhorias na Integração com Mercado Pago
 

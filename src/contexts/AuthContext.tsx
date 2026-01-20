@@ -48,11 +48,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Estado para impersonação
   const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
+  const [originalUserAccess, setOriginalUserAccess] = useState({
+    hasFullAccess: false,
+    isAdmin: false,
+    plano: null as string | null,
+  });
 
   useEffect(() => {
     const checkUserStatus = async (currentUser: User | null) => {
+      if (impersonatedUser) return;
+
       if (currentUser) {
         try {
+          // Atualiza a última vez que o usuário foi visto
+          const lastUpdate = localStorage.getItem('lastSeenUpdate');
+          const now = new Date().getTime();
+          // Atualiza a cada 5 minutos
+          if (!lastUpdate || (now - parseInt(lastUpdate)) > 300000) { 
+            await supabase.rpc('update_last_seen');
+            localStorage.setItem('lastSeenUpdate', now.toString());
+          }
+
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('valid_until, is_admin, plano, cpf_cnpj')
@@ -66,10 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const createdAt = parseISO(currentUser.created_at);
             const trialEndDate = addDays(createdAt, trialDays);
 
-            // Lógica de redirecionamento centralizada
             if (!profile.cpf_cnpj && location.pathname !== '/profile') {
               toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
               navigate('/profile');
+              setLoading(false);
               return;
             }
 
@@ -83,7 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (!currentHasFullAccess && !profile.is_admin && location.pathname !== '/payment' && location.pathname !== '/profile') {
               navigate('/payment');
-              return;
             }
           } else {
             setHasFullAccess(false);
@@ -96,6 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(false);
           setPlano(null);
         }
+      } else {
+        setHasFullAccess(false);
+        setIsAdmin(false);
+        setPlano(null);
       }
       setUser(currentUser);
       setLoading(false);
@@ -110,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, location.pathname]); // Adicionado location.pathname de volta
+  }, [navigate, location.pathname, impersonatedUser]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -162,16 +181,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error || !data.user) throw error || new Error('Erro ao criar conta');
 
-      setUser({
-        ...data.user,
-        user_metadata: {
-          ...data.user.user_metadata,
-          valid_until: validUntil,
-        },
-      });
-      setHasFullAccess(true);
+      // O setUser e setHasFullAccess não são mais necessários aqui,
+      // pois o onAuthStateChange cuidará disso após a confirmação do e-mail.
       
-      toast.success('Conta criada com sucesso!');
+      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -184,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      await stopImpersonating(); // Garante que a impersonação seja encerrada ao sair
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -300,56 +314,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      // Buscar dados do usuário a ser impersonado usando a função RPC get_all_users_admin
-      // Esta função já tem verificação de permissão de admin e acessa auth.users
-      const { data: usersData, error: usersError } = await supabase.rpc('get_all_users_admin');
-      
-      if (usersError) throw usersError;
-      
-      // Encontrar o usuário específico pelo ID
-      const targetUser = usersData.find((u: any) => u.id === userId);
-      
+      const { data: targetUserData, error: rpcError } = await supabase.rpc('get_all_users_admin');
+      if (rpcError) throw rpcError;
+
+      const targetUser = targetUserData.find((u: any) => u.id === userId);
       if (!targetUser) throw new Error('Usuário não encontrado');
-      
-      // Buscar dados do perfil do usuário a ser impersonado
-      let profileData;
-      const { data: userData, error: userError } = await supabase
+
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle(); // Usando maybeSingle em vez de single para evitar erro PGRST116
+        .single();
       
-      if (userError) throw userError;
-      
-      // Se o perfil não foi encontrado (userData é null), isso é um erro na lógica de impersonação
-      // pois a função admin_create_user_profile não deve ser chamada para criar perfis aqui.
-      // A criação de perfis deve ser tratada pelo trigger handle_new_user.
-      if (!userData) {
-        throw new Error('Perfil do usuário a ser impersonado não encontrado. Verifique a RLS ou a criação do perfil.');
-      }
-      profileData = userData;
-      
+      if (profileError) throw profileError;
+
+      // Guardar o usuário e estado de acesso original
+      setOriginalUser(user);
+      setOriginalUserAccess({ hasFullAccess, isAdmin, plano });
+
       // Criar um objeto de usuário para impersonação
-      const impersonatedUserObj = {
+      const impersonatedUserObj: User = {
         id: userId,
         email: targetUser.email,
-        user_metadata: {
-          name: targetUser.name
-        },
+        user_metadata: { name: targetUser.name, ...profileData },
         created_at: targetUser.created_at,
-        app_metadata: {}
-      } as User;
+        app_metadata: {},
+        aud: '',
+        role: '',
+      };
       
-      // Guardar o usuário original
-      setOriginalUser(user);
-      
-      // Definir o usuário impersonado
+      // Definir o usuário impersonado e seu estado de acesso
       setImpersonatedUser(impersonatedUserObj);
+      const trialDays = 7;
+      const createdAt = parseISO(impersonatedUserObj.created_at);
+      const trialEndDate = addDays(createdAt, trialDays);
+      const hasPaidAccess = profileData.valid_until ? isFuture(parseISO(profileData.valid_until)) : false;
+      const isInTrial = isFuture(trialEndDate);
+      
+      setHasFullAccess(hasPaidAccess || isInTrial);
+      setIsAdmin(profileData.is_admin || false);
+      setPlano(profileData.plano || 'basico');
       
       toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
-
-      // Redirecionar para o dashboard
       navigate('/dashboard');
+
     } catch (error) {
       console.error('Erro ao impersonar usuário:', error);
       toast.error('Não foi possível acessar como este usuário.');
@@ -365,10 +373,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      // Restaurar o usuário original
+      // Restaurar o usuário e estado de acesso original
       setImpersonatedUser(null);
+      setUser(originalUser);
+      setHasFullAccess(originalUserAccess.hasFullAccess);
+      setIsAdmin(originalUserAccess.isAdmin);
+      setPlano(originalUserAccess.plano);
+
+      setOriginalUser(null);
+      setOriginalUserAccess({ hasFullAccess: false, isAdmin: false, plano: null });
       
       toast.success('Voltou para sua conta original');
+      navigate('/admin/users');
+
     } catch (error) {
       console.error('Erro ao voltar para usuário original:', error);
       toast.error('Erro ao voltar para sua conta original.');

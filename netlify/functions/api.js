@@ -142,7 +142,7 @@ exports.handler = async (event, context) => {
         if (event.httpMethod === 'POST') {
             try {
                 console.log('generate-pix: body recebido:', event.body);
-                const { amount, userId, payerInfo } = JSON.parse(event.body);
+                const { amount, userId } = JSON.parse(event.body);
 
                 if (!amount || !userId) {
                     return { statusCode: 400, body: JSON.stringify({ error: 'Amount and userId are required' }) };
@@ -150,7 +150,7 @@ exports.handler = async (event, context) => {
 
                 const { data: profile, error: profileError } = await supabaseAdmin
                     .from('profiles')
-                    .select('cpf_cnpj, full_name, email')
+                    .select('cpf_cnpj, name, email')
                     .eq('id', userId)
                     .single();
 
@@ -171,7 +171,7 @@ exports.handler = async (event, context) => {
 
                 const cobrancaBody = {
                     customer: {
-                        name: profile.full_name || 'Nome não informado',
+                        name: profile.name || 'Nome não informado',
                         email: profile.email,
                         document: profile.cpf_cnpj,
                         type: 'individual'

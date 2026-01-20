@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Search, Edit, Star, ArrowUp, ArrowDown, Eye } from 'lucide-react';
-import EditUserModal from './EditUserModal';
+import { Search, ArrowUp, ArrowDown, MoreVertical } from 'lucide-react';
+import UserDetailsModal from './UserDetailsModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Interface atualizada para o perfil do usuário vindo da nova função RPC
@@ -71,12 +71,11 @@ const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ st
 };
 
 export default function UserTable() {
-  const { impersonateUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortField, setSortField] = useState<string>('last_sign_in_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
@@ -114,14 +113,12 @@ export default function UserTable() {
     let aValue: any = a[sortField as keyof UserProfile];
     let bValue: any = b[sortField as keyof UserProfile];
 
-    // Handle null values
-    if (aValue === null) aValue = '';
-    if (bValue === null) bValue = '';
+    if (aValue === null) aValue = sortDirection === 'asc' ? Infinity : -Infinity;
+    if (bValue === null) bValue = sortDirection === 'asc' ? Infinity : -Infinity;
 
-    // Convert dates to timestamps for comparison
     if (sortField === 'created_at' || sortField === 'last_sign_in_at') {
-      aValue = aValue ? new Date(aValue).getTime() : 0;
-      bValue = bValue ? new Date(bValue).getTime() : 0;
+      aValue = aValue ? new Date(aValue).getTime() : aValue;
+      bValue = bValue ? new Date(bValue).getTime() : bValue;
     }
 
     if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -138,7 +135,7 @@ export default function UserTable() {
     );
   });
 
-  const handleEditUser = (user: UserProfile) => {
+  const handleOpenModal = (user: UserProfile) => {
     setSelectedUser(user);
   };
 
@@ -147,41 +144,8 @@ export default function UserTable() {
   };
 
   const handleUserUpdate = (updatedUser: UserProfile) => {
-    setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
-    setSelectedUser(null);
-    toast.success('Usuário atualizado com sucesso!');
-  };
-
-  const handleMakePro = async (userId: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.rpc('admin_set_user_plan', {
-        user_id_to_update: userId,
-        new_plan_name: 'pro'
-      });
-
-      if (error) throw error;
-
-      toast.success('Plano atualizado com sucesso!');
-      fetchUsers();
-    } catch (error: any) {
-      console.error('Erro ao atualizar plano:', error.message);
-      toast.error('Erro ao atualizar plano');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImpersonateUser = async (userId: string) => {
-    try {
-      setLoading(true);
-      await impersonateUser(userId);
-    } catch (error: any) {
-      console.error('Erro ao impersonar usuário:', error.message);
-      toast.error('Erro ao acessar como este usuário');
-    } finally {
-      setLoading(false);
-    }
+    setUsers(users.map(user => user.id === updatedUser.id ? { ...user, ...updatedUser } : user));
+    fetchUsers(); // Re-fetch to ensure data consistency
   };
 
   const getSortIcon = (field: string) => {
@@ -220,15 +184,6 @@ export default function UserTable() {
               <th 
                 scope="col" 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
-                onClick={() => handleSort('email')}
-              >
-                <div className="flex items-center">
-                  Email {getSortIcon('email')}
-                </div>
-              </th>
-              <th 
-                scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('plan_name')}
               >
                 <div className="flex items-center">
@@ -247,22 +202,13 @@ export default function UserTable() {
               <th 
                 scope="col" 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
-                onClick={() => handleSort('created_at')}
-              >
-                <div className="flex items-center">
-                  Criado em {getSortIcon('created_at')}
-                </div>
-              </th>
-              <th 
-                scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('last_sign_in_at')}
               >
                 <div className="flex items-center">
                   Último login {getSortIcon('last_sign_in_at')}
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">
                 Ações
               </th>
             </tr>
@@ -270,13 +216,13 @@ export default function UserTable() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center">
+                <td colSpan={5} className="px-6 py-4 text-center">
                   Carregando...
                 </td>
               </tr>
             ) : filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center">
+                <td colSpan={5} className="px-6 py-4 text-center">
                   Nenhum usuário encontrado
                 </td>
               </tr>
@@ -284,21 +230,8 @@ export default function UserTable() {
               filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex items-center">
-                        <button
-                          onClick={() => handleImpersonateUser(user.id)}
-                          className="text-green-600 hover:text-green-900 mr-2 p-1 rounded hover:bg-green-100 flex items-center"
-                          title="Acessar como este usuário"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">{user.name || '-'}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="text-sm font-medium text-gray-900">{user.name || '-'}</div>
+                    <div className="text-sm text-gray-500 md:hidden">{user.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <PlanBadge plan={user.plan_name} />
@@ -307,32 +240,15 @@ export default function UserTable() {
                     <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 flex">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => handleEditUser(user)}
-                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100"
-                      title="Editar usuário"
+                      onClick={() => handleOpenModal(user)}
+                      className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-100"
+                      title="Ver Detalhes"
                     >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleMakePro(user.id)}
-                      className="text-yellow-600 hover:text-yellow-900 p-1 rounded hover:bg-yellow-100"
-                      title="Tornar PRO"
-                    >
-                      <Star className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleImpersonateUser(user.id)}
-                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100"
-                      title="Acessar como este usuário"
-                    >
-                      <Eye className="h-5 w-5" />
+                      <MoreVertical className="h-5 w-5" />
                     </button>
                   </td>
                 </tr>
@@ -343,7 +259,7 @@ export default function UserTable() {
       </div>
 
       {selectedUser && (
-        <EditUserModal 
+        <UserDetailsModal 
           user={selectedUser} 
           onClose={handleCloseModal} 
           onUserUpdate={handleUserUpdate}
