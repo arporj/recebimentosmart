@@ -4,6 +4,7 @@ import { Users, Wallet, CircleDollarSign, AlertTriangle } from 'lucide-react';
 import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
 import { isBefore, isSameMonth, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import Plot from 'react-plotly.js';
+import { useAuth } from '../contexts/AuthContext';
 
 type Client = {
   id: string;
@@ -62,6 +63,7 @@ export function Reports() {
     formatToSP(getCurrentSPDate(), 'yyyy-MM')
   );
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   // Indicadores
   const [expectedRevenue, setExpectedRevenue] = useState(0);
@@ -72,15 +74,16 @@ export function Reports() {
 
   useEffect(() => {
     async function fetchData() {
+      if (!user) return;
       setLoading(true);
-      const { data: clientsData } = await supabase.from('clients').select('*');
-      const { data: paymentsData } = await supabase.from('payments').select('*');
+      const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', user.id);
+      const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
       setClients(clientsData || []);
       setPayments(paymentsData || []);
       setLoading(false);
     }
     fetchData();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (clients.length > 0) {

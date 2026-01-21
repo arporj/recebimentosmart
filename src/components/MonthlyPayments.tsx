@@ -60,11 +60,20 @@ const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
   annual: 'Anual',
 };
 
+import { useAuth } from '../contexts/AuthContext';
+import { useCallback } from 'react';
+
+// ... (rest of the imports)
+
+// ... (type definitions)
+
+
 export function MonthlyPayments() {
   const { clients, refreshClients } = useClients();
   const [selectedDate, setSelectedDate] = useState(getCurrentSPDate());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const { user } = useAuth();
 
   // Resumos
   const [expectedRevenue, setExpectedRevenue] = useState(0);
@@ -101,13 +110,15 @@ export function MonthlyPayments() {
   }
 
   // Busca pagamentos do mês selecionado
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
+    if(!user) return;
     const periodStart = startOfMonth(selectedDate);
     const periodEnd = endOfMonth(selectedDate);
 
     const { data, error } = await supabase
       .from('payments')
       .select('id, amount, payment_date, client_id, clients(name, next_payment_date)')
+      .eq('user_id', user.id)
       .gte('payment_date', periodStart.toISOString())
       .lte('payment_date', periodEnd.toISOString())
       .order('payment_date', { ascending: false });
@@ -161,13 +172,13 @@ export function MonthlyPayments() {
       });
 
     setPaymentsList([...pagos, ...pendentesOuAtrasados].sort((a, b) => (a.payment_date < b.payment_date ? 1 : -1)));
-  };
+  }, [user, selectedDate, clients, today]);
 
   // Resumos e cards
   useEffect(() => {
     fetchPayments();
     // eslint-disable-next-line
-  }, [clients, selectedDate]);
+  }, [clients, selectedDate, fetchPayments]);
 
   useEffect(() => {
     calculateRevenueAndSummary();

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/supabase';
+import { useAuth } from './AuthContext';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 
@@ -13,12 +14,18 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
 export function ClientProvider({ children }: { children: React.ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
+  const { user } = useAuth();
 
-  const refreshClients = async () => {
+  const refreshClients = useCallback(async () => {
+    if (!user) {
+      setClients([]);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -26,11 +33,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error fetching clients:', error);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     refreshClients();
-  }, []);
+  }, [refreshClients]);
 
   return (
     <ClientContext.Provider value={{ clients, refreshClients }}>

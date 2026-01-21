@@ -9,7 +9,7 @@ interface UserMenuProps {}
 
 // Exportação nomeada para corresponder à importação em App.tsx
 export const UserMenu: React.FC<UserMenuProps> = () => {
-  const { user, signOut, hasFullAccess, isAdmin, impersonatedUser, stopImpersonating } = useAuth();
+  const { user, signOut, hasFullAccess, isAdmin, originalUser, stopImpersonating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
@@ -59,7 +59,7 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
     return (
       <div className="relative">
         <div className="flex items-center">
-          {impersonatedUser && (
+          {originalUser && (
             <button
               onClick={stopImpersonating}
               className="mr-2 flex items-center space-x-1 p-1 rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-white/75"
@@ -71,14 +71,14 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
           )}
           <button 
             ref={buttonRef}
-            className={`flex items-center space-x-2 p-2 rounded-md text-white ${impersonatedUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
+            className={`flex items-center space-x-2 p-2 rounded-md text-white ${originalUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-haspopup="true"
             aria-expanded={isMenuOpen}
           >
             <User className="h-5 w-5" />
             <span>{user?.user_metadata?.name || user?.email}</span>
-            {impersonatedUser && (
+            {originalUser && (
               <span className="text-xs bg-white text-amber-600 px-1 py-0.5 rounded ml-1">(Impersonando)</span>
             )}
           </button>
@@ -124,7 +124,7 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
   return (
     <div className="relative">
       <div className="flex items-center">
-        {impersonatedUser && (
+        {originalUser && (
           <button
             onClick={stopImpersonating}
             className="mr-2 flex items-center space-x-1 p-1 rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-white/75"
@@ -136,14 +136,14 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
         )}
         <button 
           ref={buttonRef}
-          className={`flex items-center space-x-2 p-2 rounded-md text-white ${impersonatedUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
+          className={`flex items-center space-x-2 p-2 rounded-md text-white ${originalUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-haspopup="true"
           aria-expanded={isMenuOpen}
         >
           <User className="h-5 w-5" />
           <span className="hidden sm:inline">{user?.user_metadata?.name || user?.email}</span>
-          {impersonatedUser && (
+          {originalUser && (
             <span className="text-xs bg-white text-amber-600 px-1 py-0.5 rounded ml-1">(Impersonando)</span>
           )}
         </button>
@@ -234,7 +234,7 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
             </div>
 
             {/* Seção do Administrador */}
-            {isAdmin && (
+            {isAdmin && !originalUser && (
               <div className="border-t border-secondary-200 pt-1 mt-1">
                 <span className="px-4 py-2 text-xs font-bold text-neutral-400 block">Admin</span>
                 <button
@@ -288,6 +288,5 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
     </div>
   );
 };
-
 // Mantendo também a exportação default para compatibilidade
 export default UserMenu;

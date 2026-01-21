@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -14,11 +14,7 @@ export function CustomFieldsManager() {
   const [editingField, setEditingField] = useState<CustomField | null>(null);
   const [editingFieldName, setEditingFieldName] = useState('');
 
-  useEffect(() => {
-    fetchFields();
-  }, []);
-
-  const fetchFields = async () => {
+  const fetchFields = useCallback(async () => {
     if (!user) return;
     const { data, error } = await supabase
       .from('custom_fields')
@@ -31,7 +27,11 @@ export function CustomFieldsManager() {
     } else {
       setFields(data);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchFields();
+  }, [fetchFields]);
 
   const handleAddField = async () => {
     if (newFieldName.trim() === '' || !user) return;
