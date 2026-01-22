@@ -37,9 +37,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUserUpda
       onUserUpdate({ ...user, valid_until: validUntil, is_admin: isAdmin });
       onClose();
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
-      toast.error(error.message || 'Falha ao atualizar o usuário.');
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar o usuário.';
+      toast.error(message);
     } finally {
       setUpdating(false);
     }

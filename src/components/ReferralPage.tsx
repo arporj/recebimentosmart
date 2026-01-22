@@ -67,7 +67,7 @@ const ReferralPage = () => {
         setCopied(true);
         toast.success('Link de indicação copiado!');
         setTimeout(() => setCopied(false), 2000);
-      } catch (_error) {
+      } catch {
         toast.error('Falha ao copiar o link.');
       }
     }
@@ -81,7 +81,7 @@ const ReferralPage = () => {
           text: 'Conheça o RecebimentoSmart! Um sistema completo para gerenciar seus recebimentos.',
           url: stats.referralLink,
         });
-      } catch (_error) {
+      } catch {
         copyToClipboard();
       }
     } else {

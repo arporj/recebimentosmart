@@ -23,7 +23,7 @@ export function ForgotPasswordPage() {
     try {
       await resetPassword(email);
       setSubmitted(true);
-    } catch (error) {
+    } catch {
       // O AuthContext já exibe um toast de erro
     } finally {
       setLoading(false);

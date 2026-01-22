@@ -132,7 +132,7 @@ serve(async (req) => {
           const validUntilDate = parseISO(profile.valid_until);
           // Usuários com assinatura válida (data no futuro) OU expirada há no máximo 2 meses
           return isFuture(validUntilDate) || validUntilDate >= twoMonthsAgo;
-        } catch (e) {
+        } catch {
           console.warn(`Data 'valid_until' inválida para o perfil ${profile.id}: ${profile.valid_until}`);
           return false;
         }

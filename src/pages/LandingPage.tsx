@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, ArrowRight, BarChart, Users, Zap, DollarSign, ShieldCheck, Rocket } from 'lucide-react';
+import { CheckCircle, BarChart, Users, Zap, DollarSign, ShieldCheck, Rocket } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 
@@ -16,7 +16,7 @@ const initialTiers = [
       'Notificação por e-mail',
       'Dashboard simples',
     ],
-    icon: (props: any) => <Users {...props} />,
+    icon: (props: React.ComponentProps<'svg'>) => <Users {...props} />,
     popular: false,
   },
   {
@@ -28,7 +28,7 @@ const initialTiers = [
       'Análises de performance',
       'Suporte via chat',
     ],
-    icon: (props: any) => <BarChart {...props} />,
+    icon: (props: React.ComponentProps<'svg'>) => <BarChart {...props} />,
     popular: true,
   },
   {
@@ -40,7 +40,7 @@ const initialTiers = [
       'Suporte prioritário',
       'Acesso antecipado a recursos',
     ],
-    icon: (props: any) => <Zap {...props} />,
+    icon: (props: React.ComponentProps<'svg'>) => <Zap {...props} />,
     popular: false,
   },
 ];

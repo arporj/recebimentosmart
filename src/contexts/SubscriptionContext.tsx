@@ -66,9 +66,10 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         setPaymentStatus('idle');
       }
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao buscar dados da assinatura:', error);
-      toast.error(`Erro ao carregar dados: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Erro ao carregar dados: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -85,6 +86,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSubscription = () => {
   const context = useContext(SubscriptionContext);
   if (context === undefined) {

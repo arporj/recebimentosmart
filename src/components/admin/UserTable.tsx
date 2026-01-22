@@ -3,7 +3,6 @@ import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { Search, ArrowUp, ArrowDown, MoreVertical } from 'lucide-react';
 import UserDetailsModal from './UserDetailsModal';
-import { useAuth } from '../../contexts/AuthContext';
 
 // Interface atualizada para o perfil do usuário vindo da nova função RPC
 export interface UserProfile {
@@ -92,8 +91,9 @@ export default function UserTable() {
       }
 
       setUsers(data);
-    } catch (error: any) {
-      console.error('Erro ao buscar usuários:', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('Erro ao buscar usuários:', message);
       toast.error('Erro ao carregar usuários');
     } finally {
       setLoading(false);
@@ -110,8 +110,8 @@ export default function UserTable() {
   };
 
   const sortedUsers = [...users].sort((a, b) => {
-    let aValue: any = a[sortField as keyof UserProfile];
-    let bValue: any = b[sortField as keyof UserProfile];
+    let aValue = a[sortField as keyof UserProfile];
+    let bValue = b[sortField as keyof UserProfile];
 
     if (aValue === null) aValue = sortDirection === 'asc' ? Infinity : -Infinity;
     if (bValue === null) bValue = sortDirection === 'asc' ? Infinity : -Infinity;

@@ -3,7 +3,6 @@ import { toast } from 'react-hot-toast';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { supabase } from '../lib/supabase';
 import TestPaymentButton from '../components/TestPaymentButton';
-import { CustomFieldsManager } from '../components/CustomFieldsManager';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import { FileText } from 'lucide-react'; // Import FileText icon
 
@@ -71,8 +70,9 @@ const Configuracoes = () => {
           }
         }
 
-      } catch (error: any) {
-        toast.error(error.message || 'Não foi possível carregar os dados.');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Não foi possível carregar os dados.';
+        toast.error(message);
         console.error('Erro ao buscar dados:', error);
       } finally {
         setLoading(false);
@@ -138,8 +138,9 @@ const Configuracoes = () => {
       toast.success('CPF/CNPJ atualizado com sucesso!');
       // Optionally, refresh auth context to update hasFullAccess if needed
       fetchReferralInfo(); // This will re-fetch profile data in AuthContext
-    } catch (error: any) {
-      toast.error(error.message || 'Falha ao atualizar CPF/CNPJ.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar CPF/CNPJ.';
+      toast.error(message);
       console.error('Erro ao atualizar CPF/CNPJ:', error);
     } finally {
       setLoading(false);

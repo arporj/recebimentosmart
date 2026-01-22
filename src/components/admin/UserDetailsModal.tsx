@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { X, Calendar, Shield, Eye, User, Mail, CheckCircle } from 'lucide-react';
+import { X, Calendar, Shield, Eye, CheckCircle } from 'lucide-react';
 import { UserProfile } from './UserTable';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -30,7 +30,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
         const { data, error } = await supabase.rpc('get_all_plans_with_prices');
         if (error) throw error;
         setPlans(data);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Erro ao buscar planos:', error);
         toast.error('Falha ao carregar os planos.');
       }
@@ -43,8 +43,8 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       setUpdating(true);
       await impersonateUser(user.id);
       onClose();
-    } catch (error: any) {
-      console.error('Erro ao impersonar usuário:', error.message);
+    } catch (error) {
+      console.error('Erro ao impersonar usuário:', error instanceof Error ? error.message : error);
       toast.error('Erro ao acessar como este usuário');
     } finally {
       setUpdating(false);
@@ -74,9 +74,10 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       toast.success('Usuário atualizado com sucesso!');
       onClose();
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
-      toast.error(error.message || 'Falha ao atualizar o usuário.');
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar o usuário.';
+      toast.error(message);
     } finally {
       setUpdating(false);
     }

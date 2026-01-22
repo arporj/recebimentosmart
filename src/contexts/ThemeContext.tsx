@@ -109,9 +109,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user?.user_metadata?.theme) {
-      setCurrentTheme(themes[user.user_metadata.theme] || themes.default);
+      const newTheme = themes[user.user_metadata.theme] || themes.default;
+      if (currentTheme.id !== newTheme.id) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCurrentTheme(newTheme);
+      }
     }
-  }, [user]);
+  }, [user, currentTheme]);
 
   const setTheme = (themeId: string) => {
     const theme = themes[themeId] || themes.default;
@@ -129,6 +133,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {

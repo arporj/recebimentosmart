@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Save, User, Lock, FileText } from 'lucide-react'; // Import FileText icon
+import { Save, User, Lock } from 'lucide-react'; // Import FileText icon
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; // Import supabase
@@ -46,6 +46,7 @@ const UserProfileSettings = () => {
       setIsEditingName(false);
       toast.success('Nome atualizado com sucesso!');
     } catch (error) {
+      console.error(error);
       toast.error('Erro ao atualizar o nome.');
     }
   };

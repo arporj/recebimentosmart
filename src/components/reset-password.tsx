@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { Eye, EyeOff } from 'lucide-react';
@@ -14,7 +14,6 @@ export function ResetPasswordPage() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const hash = window.location.hash;

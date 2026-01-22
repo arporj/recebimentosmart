@@ -120,31 +120,127 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   const signIn = async (email: string, password: string) => {
-    // ... same as before
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success('Login realizado com sucesso!');
+      navigate('/dashboard');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao fazer login';
+      toast.error(message);
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string) => {
-    // ... same as before
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, cpf_cnpj, referral_code: referralCode }
+        }
+      });
+      if (error) throw error;
+      toast.success('Cadastro realizado com sucesso! Verifique seu e-mail.');
+      navigate('/login');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao cadastrar';
+      toast.error(message);
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
-    // ... same as before
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+      navigate('/login');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetPassword = async (email: string) => {
-    // ... same as before
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success('E-mail de recuperação enviado!');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao enviar e-mail';
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchReferralInfo = async () => {
-    // ... same as before
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('referral_code, pix_key')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      if (data) {
+        setReferralCode(data.referral_code);
+        setPixKey(data.pix_key);
+      }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const updatePixKey = async (newPixKey: string) => {
-    // ... same as before
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pix_key: newPixKey })
+        .eq('id', user.id);
+      if (error) throw error;
+      setPixKey(newPixKey);
+      toast.success('Chave PIX atualizada!');
+    } catch (error) {
+      toast.error('Erro ao atualizar chave PIX');
+      console.error(error);
+    }
   };
 
   const updateUserName = async (name: string) => {
-    // ... same as before
+    if (!user) return;
+    try {
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { name }
+      });
+      if (authError) throw authError;
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ name })
+        .eq('id', user.id);
+      if (profileError) throw profileError;
+
+      toast.success('Nome atualizado!');
+      setUser(prev => prev ? { ...prev, user_metadata: { ...prev.user_metadata, name } } : null);
+    } catch (error) {
+      toast.error('Erro ao atualizar nome');
+      console.error(error);
+    }
   };
 
   const impersonateUser = async (userId: string) => {
@@ -153,7 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const { data: targetUserData, error: rpcError } = await supabase.rpc('get_all_users_admin');
       if (rpcError) throw rpcError;
-      const targetUser = targetUserData.find((u: any) => u.id === userId);
+      const targetUser = targetUserData.find((u: { id: string, email?: string, name?: string, created_at?: string }) => u.id === userId);
       if (!targetUser) throw new Error('Usuário não encontrado');
       
       const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -216,6 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

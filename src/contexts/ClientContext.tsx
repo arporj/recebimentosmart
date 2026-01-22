@@ -46,6 +46,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useClients() {
   const context = useContext(ClientContext);
   if (context === undefined) {

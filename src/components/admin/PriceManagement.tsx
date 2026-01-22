@@ -60,9 +60,10 @@ const PriceManagement = () => {
 
       setPrice(newPriceNumber);
       toast.success(data || 'Preço atualizado com sucesso!');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao atualizar preço:', error);
-      toast.error(error.message || 'Falha ao atualizar o preço.');
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar o preço.';
+      toast.error(message);
     } finally {
       setUpdating(false);
     }

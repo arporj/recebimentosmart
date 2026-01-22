@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import UserMenu from '../UserMenu';
-import { Users, BarChart, Calendar, Settings, MessageSquare } from 'lucide-react'; // Adicionado ícone de Configurações
+import { Users } from 'lucide-react'; // Adicionado ícone de Configurações
 import { useAuth } from '../../contexts/AuthContext'; // Importar o hook de autenticação
 import { ChatProvider } from '../../contexts/ChatContext';
 import { ChatWidget } from '../chat/ChatWidget';
@@ -30,7 +30,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const { isAdmin } = useAuth(); // Obter o status de admin
+  useAuth(); // Obter o status de admin
   const location = useLocation();
   const { pathname } = location;
 
