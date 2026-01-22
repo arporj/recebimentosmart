@@ -23,7 +23,7 @@ const AdminDashboard = () => {
         const { data, error } = await supabase.rpc('get_admin_dashboard_kpis');
         if (error) throw error;
         setKpiData(data);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Erro ao buscar KPIs:', error);
         toast.error('Falha ao carregar as métricas do dashboard.');
       } finally {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { UserPlus, X, PlusCircle } from 'lucide-react';
@@ -117,7 +117,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
   };
 
   const handleDueDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
+    const value = e.target.value.replace(/\D/g, '');
     const day = parseInt(value);
     if (!value || (day >= 1 && day <= 31)) {
       setFormData({ ...formData, payment_due_day: value });

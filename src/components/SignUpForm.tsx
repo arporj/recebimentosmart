@@ -2,8 +2,15 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, User, ArrowLeft, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+type SignUpData = {
+  name: string;
+  email: string;
+  cpf_cnpj: string;
+  password: string;
+};
+
 interface SignUpFormProps {
-  onSubmit: (formData: any) => void;
+  onSubmit: (formData: SignUpData) => void;
   loading: boolean;
   referralCode: string | null;
   referrerName: string | null;
@@ -54,7 +61,12 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode
     } else {
       setErrors({});
       // Envia o CPF/CNPJ apenas com os dígitos
-      onSubmit({ ...formData, cpf_cnpj: formData.cpf_cnpj.replace(/[^0-9]/g, '') });
+      onSubmit({
+        name: formData.name,
+        email: formData.email,
+        cpf_cnpj: formData.cpf_cnpj.replace(/[^0-9]/g, ''),
+        password: formData.password
+      });
     }
   };
 

@@ -42,7 +42,7 @@ const FeedbackForm = () => {
       };
       
       // Enviar para a Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('send_feedback_email', {
+      const { error } = await supabase.functions.invoke('send_feedback_email', {
         body: feedbackData,
       });
 

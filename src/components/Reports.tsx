@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Users, Wallet, CircleDollarSign, AlertTriangle } from 'lucide-react';
 import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
-import { isBefore, isSameMonth, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { isBefore, isSameMonth, startOfMonth, subMonths, addMonths } from 'date-fns';
 import Plot from 'react-plotly.js';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -22,16 +22,8 @@ type Payment = {
   payment_date: string;
 };
 
-const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
-  monthly: 'Mensal',
-  bimonthly: 'Bimestral',
-  quarterly: 'Trimestral',
-  semiannual: 'Semestral',
-  annual: 'Anual'
-};
-
 // Card de resumo
-function ResumoCard({ title, value, icon: Icon, color, format = 'string' }: { title: string, value: any, icon: any, color: string, format?: 'string' | 'currency' | 'integer' }) {
+function ResumoCard({ title, value, icon: Icon, color, format = 'string' }: { title: string, value: string | number, icon: React.ElementType, color: string, format?: 'string' | 'currency' | 'integer' }) {
   const formatValue = () => {
     if (typeof value !== 'number') return value;
 

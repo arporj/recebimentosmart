@@ -44,7 +44,7 @@ const ChangePassword: React.FC = () => {
       toast.success('Senha alterada com sucesso!');
       setPassword('');
       setConfirmPassword('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao alterar senha:', error);
       toast.error('Erro ao alterar senha. Tente novamente.');
     } finally {

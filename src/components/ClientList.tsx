@@ -6,7 +6,7 @@ import { useClients } from '../contexts/ClientContext';
 import { PaymentModal } from './PaymentModal';
 import { PaymentHistory } from './PaymentHistory';
 import { ClientForm } from './ClientForm';
-import { formatToSP } from '../lib/dates';
+
 import type { Database } from '../types/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -198,8 +198,12 @@ export function ClientList() {
         setRefreshPayments(prev => prev + 1);
       }
       toast.success('Pagamento registrado com sucesso!');
-    } catch (error: any) {
-      toast.error('Erro ao registrar pagamento: ' + error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error('Erro ao registrar pagamento: ' + error.message);
+      } else {
+        toast.error('Erro ao registrar pagamento: ' + String(error));
+      }
       console.error(error);
     }
   }
@@ -242,7 +246,7 @@ export function ClientList() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
           className="rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom"
         >
           <option value="all">Todos os status</option>
@@ -251,7 +255,7 @@ export function ClientList() {
         </select>
         <select
           value={paymentFilter}
-          onChange={(e) => setPaymentFilter(e.target.value as any)}
+          onChange={(e) => setPaymentFilter(e.target.value as 'all' | 'paid' | 'late' | 'due-today')}
           className="rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom"
         >
           <option value="all">Todos os pagamentos</option>

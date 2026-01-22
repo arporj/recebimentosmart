@@ -5,7 +5,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
 
 export function LoginForm() {
-  const { signIn, resetPassword } = useAuth();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,20 +30,7 @@ export function LoginForm() {
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
 
-    try {
-      await resetPassword(email);
-      toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      toast.error('Erro ao enviar email de recuperação.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Removido o showSignUp e showResetPassword como estados de renderização condicional aqui
   // A navegação para /cadastro e /forgot-password será feita via react-router-dom

@@ -1,14 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Lock, MessageSquare, CreditCard, UserCheck, Users, Calendar, BarChart, Gift, Settings, UserX } from 'lucide-react';
+import { User, LogOut, MessageSquare, CreditCard, UserCheck, Calendar, BarChart, Gift, Settings, UserX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-// Interface para as props do componente
-interface UserMenuProps {}
-
 // Exportação nomeada para corresponder à importação em App.tsx
-export const UserMenu: React.FC<UserMenuProps> = () => {
+export const UserMenu: React.FC = () => {
   const { user, signOut, hasFullAccess, isAdmin, originalUser, stopImpersonating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

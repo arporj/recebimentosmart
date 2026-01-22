@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+
 import { ClientList } from './components/ClientList';
 import { ClientForm } from './components/ClientForm';
 import { Reports } from './components/Reports';
@@ -29,31 +29,7 @@ import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
 import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do admin
 
-// Configuração global do Toaster
-const toasterConfig = {
-  position: "top-right" as const,
-  toastOptions: {
-    duration: 4000,
-    style: {
-      zIndex: 50,
-      marginTop: '70px',
-      marginRight: '16px',
-      cursor: 'pointer',
-    },
-    success: {
-      style: {
-        background: '#10B981',
-        color: 'white',
-      },
-    },
-    error: {
-      style: {
-        background: '#EF4444',
-        color: 'white',
-      },
-    },
-  }
-};
+
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {

@@ -13,7 +13,7 @@ interface PaymentModalProps {
 
 export function PaymentModal({ client, onClose, onConfirm }: PaymentModalProps) {
   const [paymentDate, setPaymentDate] = useState(formatToSP(new Date(), 'yyyy-MM-dd'));
-  const [error, setError] = useState<string | null>(null);
+  
   const [referenceMonth, setReferenceMonth] = useState(formatToSP(new Date(), 'yyyy-MM'));
 
   const handleSubmit = async (e: React.FormEvent) => {

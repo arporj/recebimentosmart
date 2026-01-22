@@ -42,8 +42,12 @@ export function AddCustomFieldModal({ onClose, onSave }: AddCustomFieldModalProp
       toast.success('Campo personalizado adicionado com sucesso!');
       onSave(newField);
       onClose();
-    } catch (error: any) {
-      toast.error(`Erro ao adicionar campo: ${error.message}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(`Erro ao adicionar campo: ${error.message}`);
+      } else {
+        toast.error(`Erro ao adicionar campo: ${String(error)}`);
+      }
     } finally {
       setIsLoading(false);
     }

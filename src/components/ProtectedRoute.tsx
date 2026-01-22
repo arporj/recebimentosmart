@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Este componente envolve as rotas que exigem autenticação e acesso total.
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, hasFullAccess, isAdmin, loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   // 1. Enquanto o estado de autenticação está carregando, não renderiza nada.

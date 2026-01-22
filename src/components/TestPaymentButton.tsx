@@ -34,10 +34,14 @@ const TestPaymentButton: React.FC = () => {
         throw new Error(data.message || 'Não foi possível iniciar o checkout.');
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.dismiss();
       console.error('Erro ao criar preferência:', error);
-      toast.error(error.message || 'Ocorreu um erro inesperado.');
+      let errorMessage = 'Ocorreu um erro inesperado.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast.error(errorMessage);
     } finally {
       // O setLoading não será setado para false aqui, pois a página será redirecionada
     }

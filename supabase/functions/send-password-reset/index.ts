@@ -50,7 +50,7 @@ function createResetEmailHtml(resetLink) {
     &lt;/html&gt;
   `;
 }
-serve(async (req)=&gt;{
+serve(async function(req) {
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: corsHeaders

@@ -1,6 +1,6 @@
 
 // pages/api/generate-pix.js
-import { supabase } '../../src/lib/supabase';
+import { supabase } from '../../src/lib/supabase';
 import axios from 'axios';
 import https from 'https';
 import fs from 'fs';

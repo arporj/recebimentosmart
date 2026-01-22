@@ -1,9 +1,9 @@
 // Webhook para receber notificações de pagamento PIX do Banco Inter
-const express = require('express');
-const crypto = require('crypto');
-const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import express from 'express';
+import crypto from 'crypto';
+import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
+import 'dotenv/config';
 
 // Configuração do Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -157,4 +157,4 @@ router.post('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

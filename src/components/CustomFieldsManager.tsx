@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -14,24 +14,24 @@ export function CustomFieldsManager() {
   const [editingField, setEditingField] = useState<CustomField | null>(null);
   const [editingFieldName, setEditingFieldName] = useState('');
 
-  const fetchFields = useCallback(async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from('custom_fields')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name', { ascending: true });
-
-    if (error) {
-      toast.error('Erro ao carregar campos personalizados.');
-    } else {
-      setFields(data);
-    }
-  }, [user]);
-
   useEffect(() => {
+    const fetchFields = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('custom_fields')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name', { ascending: true });
+
+      if (error) {
+        toast.error('Erro ao carregar campos personalizados.');
+      } else {
+        setFields(data);
+      }
+    };
+
     fetchFields();
-  }, [fetchFields]);
+  }, [user]);
 
   const handleAddField = async () => {
     if (newFieldName.trim() === '' || !user) return;

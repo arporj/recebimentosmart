@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useClients } from '../contexts/ClientContext';
 import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
 import {
@@ -34,10 +34,12 @@ import { PaymentModal } from './PaymentModal';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import type { Database } from '../types/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 type ViewMode = 'today' | 'month';
 type PaymentStatus = 'pago' | 'pendente' | 'atrasado' | 'a-vencer' | 'vencendo-hoje';
+type ExtratoFilter = 'todos' | 'pago' | 'pendente' | 'atrasado';
 
 type ClientData = {
   name: string;
@@ -49,7 +51,17 @@ type PaymentWithClient = {
   amount: number;
   payment_date: string;
   client_id: string;
-  clients: ClientData;
+  clients: ClientData | null;
+};
+
+type PaymentListItem = {
+  id: string;
+  payment_date: string;
+  client_id: string;
+  client_name: string;
+  amount: number;
+  status: PaymentStatus;
+  vencimento: string | null;
 };
 
 const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
@@ -59,9 +71,6 @@ const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
   semiannual: 'Semestral',
   annual: 'Anual',
 };
-
-import { useAuth } from '../contexts/AuthContext';
-import { useCallback } from 'react';
 
 // ... (rest of the imports)
 
@@ -80,16 +89,16 @@ export function MonthlyPayments() {
   const [receivedRevenue, setReceivedRevenue] = useState(0);
   const [activeClientsCount, setActiveClientsCount] = useState(0);
   const [lateClientsCount, setLateClientsCount] = useState(0);
-  const [paymentsList, setPaymentsList] = useState<any[]>([]);
-  const [extratoFilter, setExtratoFilter] = useState<'todos' | 'pago' | 'pendente' | 'atrasado'>('todos');
+  const [paymentsList, setPaymentsList] = useState<PaymentListItem[]>([]);
+  const [extratoFilter, setExtratoFilter] = useState<ExtratoFilter>('todos');
   const [pagosNoMes, setPagosNoMes] = useState<PaymentWithClient[]>([]);
 
-  const isCurrentMonth = isSameMonth(selectedDate, getCurrentSPDate());
+  
   const today = startOfDay(getCurrentSPDate());
   const fiveDaysLater = endOfDay(addDays(today, 5));
 
   // Função para status do cliente no mês selecionado
-  function getClientPaymentStatus(client: Client, pagos: PaymentWithClient[], today: Date, selectedMonth: Date): PaymentStatus | null {
+  const getClientPaymentStatus = useCallback((client: Client, pagos: PaymentWithClient[], todayDate: Date, selectedMonth: Date): PaymentStatus | null => {
     if (!client.status || !client.next_payment_date) return null;
     const nextPayment = toSPDate(client.next_payment_date);
 
@@ -103,11 +112,11 @@ export function MonthlyPayments() {
     );
 
     if (paymentDone) return 'pago';
-    if (isBefore(nextPayment, today)) return 'atrasado';
-    if (isSameDay(nextPayment, today)) return 'vencendo-hoje';
-    if (isAfter(nextPayment, today)) return 'a-vencer';
+    if (isBefore(nextPayment, todayDate)) return 'atrasado';
+    if (isSameDay(nextPayment, todayDate)) return 'vencendo-hoje';
+    if (isAfter(nextPayment, todayDate)) return 'a-vencer';
     return null;
-  }
+  }, []);
 
   // Busca pagamentos do mês selecionado
   const fetchPayments = useCallback(async () => {
@@ -128,17 +137,18 @@ export function MonthlyPayments() {
       return;
     }
 
-    setPagosNoMes((data || []) as PaymentWithClient[]);
+    const fetchedPayments = (data || []) as PaymentWithClient[];
+    setPagosNoMes(fetchedPayments);
 
     // Monta lista para extrato (pagos + pendentes/atrasados)
-    const pagos = (data || []).map((p: any) => ({
+    const pagos: PaymentListItem[] = fetchedPayments.map((p) => ({
       id: p.id,
       payment_date: p.payment_date,
       client_id: p.client_id,
       client_name: p.clients?.name || '',
       amount: p.amount,
       status: 'pago' as PaymentStatus,
-      vencimento: p.clients?.next_payment_date,
+      vencimento: p.clients?.next_payment_date || null,
     }));
 
     // Pendentes/atrasados: clientes do mês que não têm pagamento registrado
@@ -149,7 +159,7 @@ export function MonthlyPayments() {
     });
 
     const pagosIds = pagos.map(p => p.client_id + formatToSP(p.payment_date, 'yyyy-MM-dd'));
-    const pendentesOuAtrasados = periodClients
+    const pendentesOuAtrasados: PaymentListItem[] = periodClients
       .filter(client => {
         const vencimentoKey = client.id + formatToSP(client.next_payment_date!, 'yyyy-MM-dd');
         return !pagosIds.includes(vencimentoKey);
@@ -162,7 +172,7 @@ export function MonthlyPayments() {
         if (isAfter(nextPayment, today)) status = 'a-vencer';
         return {
           id: client.id + client.next_payment_date,
-          payment_date: client.next_payment_date,
+          payment_date: client.next_payment_date!,
           client_id: client.id,
           client_name: client.name,
           amount: client.monthly_payment,
@@ -174,18 +184,7 @@ export function MonthlyPayments() {
     setPaymentsList([...pagos, ...pendentesOuAtrasados].sort((a, b) => (a.payment_date < b.payment_date ? 1 : -1)));
   }, [user, selectedDate, clients, today]);
 
-  // Resumos e cards
-  useEffect(() => {
-    fetchPayments();
-    // eslint-disable-next-line
-  }, [clients, selectedDate, fetchPayments]);
-
-  useEffect(() => {
-    calculateRevenueAndSummary();
-    // eslint-disable-next-line
-  }, [clients, pagosNoMes, selectedDate]);
-
-  const calculateRevenueAndSummary = () => {
+  const calculateRevenueAndSummary = useCallback(() => {
     // Receita esperada: clientes com vencimento no mês selecionado
     const expectedClients = clients.filter(client => {
       if (!client.status || !client.next_payment_date) return false;
@@ -208,7 +207,16 @@ export function MonthlyPayments() {
 
     // Clientes ativos no mês selecionado
     setActiveClientsCount(expectedClients.length);
-  };
+  }, [clients, pagosNoMes, selectedDate, getClientPaymentStatus, today]);
+
+  // Resumos e cards
+  useEffect(() => {
+    fetchPayments();
+  }, [clients, selectedDate, fetchPayments]);
+
+  useEffect(() => {
+    calculateRevenueAndSummary();
+  }, [calculateRevenueAndSummary]);
 
   // Cards de pagamentos (usando status)
   const clientsWithStatus = clients.map(client => ({
@@ -300,7 +308,7 @@ export function MonthlyPayments() {
                         Valor: R$ {client.monthly_payment.toFixed(2)} ({PAYMENT_FREQUENCY_LABELS[client.payment_frequency]})
                       </p>
                       <p className="text-xs text-gray-400">
-                        Próximo vencimento: {formatToSP(client.next_payment_date, 'dd/MM/yyyy')}
+                        Próximo vencimento: {client.next_payment_date ? formatToSP(client.next_payment_date, 'dd/MM/yyyy') : ''}
                       </p>
                     </div>
                   </div>
@@ -504,7 +512,7 @@ export function MonthlyPayments() {
             <select
               className="border border-gray-300 rounded p-1 text-sm focus:border-custom focus:ring-custom"
               value={extratoFilter}
-              onChange={e => setExtratoFilter(e.target.value as any)}
+              onChange={e => setExtratoFilter(e.target.value as ExtratoFilter)}
             >
               <option value="todos">Todos</option>
               <option value="pago">Pagos</option>
@@ -532,7 +540,7 @@ export function MonthlyPayments() {
               )}
               {filteredPayments.map((payment) => (
                 <tr key={payment.id}>
-                  <td className="px-4 py-2">{formatToSP(payment.payment_date, 'dd/MM/yyyy')}</td>
+                  <td className="px-4 py-2">{payment.vencimento ? formatToSP(payment.vencimento, 'dd/MM/yyyy') : ''}</td>
                   <td className="px-4 py-2">{payment.client_name}</td>
                   <td className="px-4 py-2">R$ {payment.amount.toFixed(2)}</td>
                   <td className="px-4 py-2">
