@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (originalUser) return; // Do not run when impersonating
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -84,7 +84,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', currentUser.id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao buscar perfil:', error);
+          // Se não encontrar perfil, não fazemos throw, pois o usuário existe no Auth.
+          // Pode ser necessário criar o perfil ou lidar com isso.
+        }
 
         const trialDays = 7;
         const createdAt = parseISO(currentUser.created_at);
@@ -99,17 +103,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!originalUser) {
           if (!profile?.cpf_cnpj && location.pathname !== '/profile') {
-            toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-            navigate('/profile');
+             toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+             navigate('/profile');
           } else if (!currentHasFullAccess && !profile?.is_admin && location.pathname !== '/payment' && location.pathname !== '/profile') {
-            navigate('/payment');
+             navigate('/payment');
           }
         }
-      } catch (err) {
-        console.error('Erro ao buscar perfil do usuário:', err);
-        setHasFullAccess(false);
-        setIsAdmin(false);
-        setPlano(null);
+
+      } catch (error) {
+        console.error('Erro geral em checkUserStatus:', error);
       } finally {
         setLoading(false);
       }
@@ -130,8 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login';
       toast.error(message);
       console.error(error);
-    } finally {
-      setLoading(false);
+      setLoading(false); 
     }
   };
 

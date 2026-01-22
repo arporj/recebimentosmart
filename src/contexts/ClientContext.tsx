@@ -28,7 +28,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id)
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching clients:', error);
+        throw error;
+      }
+      
       setClients(data || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
