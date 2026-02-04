@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Recebimento Smart</string>
+    <string name="title_activity_main">Recebimento Smart</string>
+    <string name="package_name">com.recebimentosmart.app</string>
+    <string name="custom_url_scheme">com.recebimentosmart.app</string>
+</resources>

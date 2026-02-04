@@ -189,6 +189,14 @@ router.post('/generate-payment-mp', async (req, res) => {
         });
 
         const payment = response.data;
+
+        // ATUALIZAÇÃO IMPORTANTE: Salvar o ID do pagamento (charge_id) imediatamente no banco
+        // para garantir que o polling funcione mesmo se o webhook atrasar
+        await supabase
+            .from("payment_transactions")
+            .update({ charge_id: payment.id.toString(), payment_method: 'pix' })
+            .eq("reference_id", externalReference);
+
         const responseData = {
             success: true,
             paymentId: payment.id,
@@ -471,11 +479,10 @@ router.post('/process-card', async (req, res) => {
             installments: 1,
             notification_url: webhookUrl || undefined
         };
-        // Usar access token do vendedor de teste fornecido
-        const TEST_SELLER_ACCESS_TOKEN = "TEST-6058466609332947-072217-b82dec033b5106f14bdb573acc981ed9-6402098";
+        // Usar access token configurado no ambiente
         const response = await axios.post(`${mercadoPagoBaseUrl}/v1/payments`, paymentPayload, {
             headers: {
-                Authorization: `Bearer ${TEST_SELLER_ACCESS_TOKEN}`,
+                Authorization: `Bearer ${mercadoPagoAccessToken}`,
                 'Content-Type': 'application/json',
             },
         });

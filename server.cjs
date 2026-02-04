@@ -24,9 +24,122 @@ if (!supabaseUrl || !supabaseServiceRoleKey || !mercadoPagoAccessToken) {
   process.exit(1); // Encerra o servidor se a configuração for inválida
 }
 
+const mercadoPagoRoutes = require('./server/routes/mercadoPago');
+
 // --- Middlewares ---
 app.use(cors());
 app.use(express.json());
+
+// --- Rotas ---
+app.use('/api/mercado-pago', mercadoPagoRoutes);
+
+// Rota genérica para verificar status do pagamento (com verificação ativa no MP)
+app.get('/api/get-payment-status/:paymentId', async (req, res) => {
+  const { paymentId } = req.params;
+  try {
+    // 1. Busca status atual no banco
+    const { data: transaction, error } = await supabaseAdmin
+      .from('payment_transactions')
+      .select('*')
+      .or(`charge_id.eq.${paymentId},reference_id.eq.${paymentId}`)
+      .single();
+
+    if (error) throw error;
+    
+    let currentStatus = transaction.status;
+
+    // 2. Se estiver pendente, verifica na API do Mercado Pago
+    if (currentStatus === 'PENDING' || currentStatus === 'pending') {
+      try {
+         // Tenta buscar pelo ID do pagamento (se for numérico) ou external_reference
+         // Se paymentId for numérico, assume que é ID do MP. Se for UUID, assume reference.
+         // No caso do PIX gerado, paymentId geralmente é o ID do MP.
+         
+         const isMpId = /^\d+$/.test(paymentId);
+         let mpPaymentId = isMpId ? paymentId : transaction.charge_id;
+
+         if (mpPaymentId) {
+             console.log(`Verificando status atualizado no Mercado Pago para ID: ${mpPaymentId}`);
+             const mpResponse = await axios.get(`${mercadoPagoBaseUrl}/v1/payments/${mpPaymentId}`, {
+                 headers: {
+                     Authorization: `Bearer ${mercadoPagoAccessToken}`
+                 }
+             });
+
+             const mpStatus = mpResponse.data.status;
+             
+             // Se o status mudou, atualiza o banco
+             if (mpStatus && mpStatus !== currentStatus) {
+                 console.log(`Status atualizado via polling: ${currentStatus} -> ${mpStatus}`);
+                 currentStatus = mpStatus;
+                 
+                 // Atualiza transação
+                 await supabaseAdmin
+                     .from('payment_transactions')
+                     .update({ status: mpStatus })
+                     .eq('id', transaction.id);
+
+                 // Se aprovado, executa lógica de liberação (simplificada aqui, idealmente reutilizar a função do webhook)
+                 if (mpStatus === 'approved') {
+                     // Verifica se já existe pagamento registrado na tabela payments
+                     const { data: existingPayment } = await supabaseAdmin
+                         .from('payments')
+                         .select('id')
+                         .eq('transaction_id', mpPaymentId.toString())
+                         .single();
+
+                     if (!existingPayment) {
+                         const { error: insertPaymentError } = await supabaseAdmin.from("payments").insert({ 
+                             user_id: transaction.user_id, 
+                             amount: transaction.amount, 
+                             status: "completed", 
+                             transaction_id: mpPaymentId.toString(), 
+                             payment_method: transaction.payment_method || 'pix', 
+                             reference_id: transaction.reference_id 
+                         });
+                         
+                         if (!insertPaymentError) {
+                             // Atualiza perfil e créditos
+                             const newExpiryDate = new Date();
+                             newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+                             
+                             // Tenta extrair o plano da descrição ou usa padrão
+                             const paidPlan = transaction.description.includes('Pró') ? 'pro' : 
+                                            transaction.description.includes('Premium') ? 'premium' : 'basico';
+
+                             await supabaseAdmin.from('profiles').update({ 
+                                 valid_until: newExpiryDate.toISOString(),
+                                 plano: paidPlan
+                             }).eq('id', transaction.user_id);
+                             
+                             await supabaseAdmin.rpc('grant_referral_credit', {
+                                 referred_user_id: transaction.user_id,
+                                 paid_plan: paidPlan
+                             });
+                         }
+                     }
+                 }
+             }
+         }
+      } catch (mpError) {
+          console.error('Erro ao consultar API do Mercado Pago:', mpError.response?.data || mpError.message);
+          // Não falha a requisição, retorna o status que tem no banco
+      }
+    }
+    
+    // Mapear status do Mercado Pago para o frontend
+    const statusMap = {
+      'approved': 'COMPLETED',
+      'pending': 'PENDING',
+      'rejected': 'FAILED'
+    };
+
+    res.json({ status: statusMap[currentStatus] || currentStatus });
+  } catch (error) {
+    console.error('Erro ao buscar status:', error);
+    res.status(500).json({ error: 'Erro ao buscar status' });
+  }
+});
 
 // --- Cliente Supabase ---
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);

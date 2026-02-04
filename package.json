@@ -11,6 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.1",
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
     "@mercadopago/sdk-js": "^0.0.3",
     "@supabase/supabase-js": "^2.91.0",
     "@types/uuid": "^10.0.0",

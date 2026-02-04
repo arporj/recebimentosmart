@@ -48,9 +48,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.warn("Erro na verificação de sessão (pode ser ignorado se não estiver logado):", error.message);
+        if (error.message.includes("Refresh Token")) {
+           // Token inválido, limpar estado local
+           setUser(null);
+           supabase.auth.signOut().catch(() => {});
+        }
+      } else {
+        setUser(data.session?.user ?? null);
+      }
       setLoading(false);
+    }).catch(err => {
+       console.error("Erro inesperado ao buscar sessão:", err);
+       setLoading(false);
     });
 
     return () => subscription.unsubscribe();

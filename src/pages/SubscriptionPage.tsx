@@ -12,55 +12,6 @@ const SubscriptionPage = () => {
   const { loading, pageData, paymentStatus, fetchData } = useSubscription();
   const { user } = useAuth(); // Obtém o usuário do AuthContext
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
-  const [pixData, setPixData] = useState<{ qrCodeText: string; qrCodeImageUrl: string; transactionId: string } | null>(null);
-  const [generatingPix, setGeneratingPix] = useState(false);
-  const [payerInfo, setPayerInfo] = useState({
-    name: '',
-    address: '',
-    city: '',
-    state: '',
-    zip_code: '',
-  });
-
-  // Preenche o nome do pagador com o nome do perfil do usuário
-  useEffect(() => {
-    if (pageData?.user?.name) {
-      setPayerInfo(prev => ({ ...prev, name: pageData.user.name }));
-    }
-  }, [pageData]);
-
-  // Efeito para polling do status do PIX
-  useEffect(() => {
-    if (!pixData) return;
-
-    const intervalId = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/get-pix-status?transactionId=${pixData.transactionId}`);
-        if (!response.ok) {
-          console.error('Erro ao buscar status do PIX, parando polling.');
-          clearInterval(intervalId);
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.status === 'COMPLETED') {
-          clearInterval(intervalId);
-          setPixData(null);
-          // idealmente, usar um sistema de toast aqui
-          alert('Pagamento confirmado com sucesso!');
-          fetchData();
-        }
-
-      } catch (error) {
-        console.error('Erro no polling do status do PIX:', error);
-        clearInterval(intervalId);
-      }
-    }, 3000);
-
-    return () => clearInterval(intervalId);
-  }, [pixData, fetchData]);
-
 
   // Define o plano padrão quando os dados são carregados
   useEffect(() => {
@@ -95,34 +46,6 @@ const SubscriptionPage = () => {
     
     return Math.max(0, planPrice - userCredits);
   }, [selectedPlan, pageData]);
-
-  const handleGeneratePix = async () => {
-    if (!user || finalAmount <= 0) return;
-
-    setGeneratingPix(true);
-    try {
-      const response = await fetch('/api/generate-pix', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ amount: finalAmount, userId: user.id, payerInfo }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate PIX');
-      }
-
-      const data = await response.json();
-      setPixData(data);
-    } catch (error) {
-      console.error('Error generating PIX:', error);
-      alert(`Erro ao gerar PIX: ${(error as Error).message}`);
-    } finally {
-      setGeneratingPix(false);
-    }
-  };
 
   const renderCurrentPlan = () => {
     if (!pageData || !pageData.user) return null;
@@ -242,64 +165,43 @@ const SubscriptionPage = () => {
               {renderPlanSelection()}
               
               <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento</h3>
-                {!pixData ? (
-                      <div className="p-4 border rounded-md bg-neutral-50">
-                        <h4 className="font-semibold mb-4">Dados do Pagador</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                          <input
-                            type="text"
-                            placeholder="Nome Completo"
-                            value={payerInfo.name}
-                            onChange={(e) => setPayerInfo({...payerInfo, name: e.target.value})}
-                            className="p-2 border rounded-md w-full"
-                          />
-                          <input
-                            type="text"
-                            placeholder="CEP"
-                            value={payerInfo.zip_code}
-                            onChange={(e) => setPayerInfo({...payerInfo, zip_code: e.target.value})}
-                            className="p-2 border rounded-md w-full"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Endereço, Nro"
-                            value={payerInfo.address}
-                            onChange={(e) => setPayerInfo({...payerInfo, address: e.target.value})}
-                            className="p-2 border rounded-md w-full col-span-1 sm:col-span-2"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Cidade"
-                            value={payerInfo.city}
-                            onChange={(e) => setPayerInfo({...payerInfo, city: e.target.value})}
-                            className="p-2 border rounded-md w-full"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Estado (UF)"
-                            value={payerInfo.state}
-                            onChange={(e) => setPayerInfo({...payerInfo, state: e.target.value})}
-                            maxLength={2}
-                            className="p-2 border rounded-md w-full"
-                          />
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento via PIX</h3>
+                <div className="p-6 border border-green-200 bg-green-50 rounded-md">
+                    <div className="text-center mb-6">
+                        <p className="font-semibold text-green-800 mb-2 text-lg">Envie o pagamento para a chave PIX abaixo:</p>
+                        <div className="bg-white p-4 rounded border-2 border-dashed border-green-300 inline-block mb-2">
+                            <p className="font-mono text-2xl font-bold text-gray-800 select-all">
+                                48.338.563/0001-99
+                            </p>
                         </div>
-                        <button
-                          onClick={handleGeneratePix}
-                          disabled={generatingPix || Object.values(payerInfo).some(v => v === '')}
-                          className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        <p className="text-sm text-green-700">CNPJ - Recebimento Smart</p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-md border border-green-100">
+                        <h4 className="font-bold text-gray-700 mb-2 flex items-center">
+                            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                            Instruções:
+                        </h4>
+                        <ol className="list-decimal list-inside space-y-2 text-gray-600 text-sm">
+                            <li>Abra o aplicativo do seu banco.</li>
+                            <li>Escolha a opção de pagamento via PIX.</li>
+                            <li>Insira a chave PIX acima ou escaneie (se houver QR Code disponível).</li>
+                            <li>Confirme o valor referente ao plano escolhido: <span className="font-bold text-gray-800">{formatCurrency(finalAmount)}</span>.</li>
+                            <li>Envie o comprovante para o suporte para liberação imediata.</li>
+                        </ol>
+                    </div>
+
+                    <div className="mt-6 text-center">
+                        <a 
+                            href={`https://wa.me/5511999999999?text=Olá, realizei o pagamento da assinatura do plano ${selectedPlan} no valor de ${formatCurrency(finalAmount)}. Segue o comprovante.`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 md:py-4 md:text-lg md:px-10 transition-transform transform hover:scale-105"
                         >
-                          {generatingPix ? 'Gerando PIX...' : 'Confirmar e Gerar PIX'}
-                        </button>
-                      </div>
-                ) : (
-                  <div className="text-center p-4 border border-green-200 bg-green-50 rounded-md">
-                    <p className="font-semibold text-green-700 mb-2">Escaneie o QR Code para pagar:</p>
-                    <img src={pixData.qrCodeImageUrl} alt="QR Code PIX" className="mx-auto mb-4" />
-                    <p className="text-sm text-green-600 break-all">Ou copie e cole: <span className="font-mono font-bold">{pixData.qrCodeText}</span></p>
-                    <p className="text-xs text-green-500 mt-2">Aguardando confirmação do pagamento...</p>
-                  </div>
-                )}
+                            Enviar Comprovante via WhatsApp
+                        </a>
+                    </div>
+                </div>
               </div>
             </div>
 

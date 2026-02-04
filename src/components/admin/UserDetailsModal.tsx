@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { X, Calendar, Shield, Eye, CheckCircle } from 'lucide-react';
+import { X, Calendar, Shield, Eye, CheckCircle, DollarSign } from 'lucide-react';
 import { UserProfile } from './UserTable';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,6 +23,11 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
   const [selectedPlan, setSelectedPlan] = useState<string>(user.plan_name || '');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [updating, setUpdating] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [userCredits, setUserCredits] = useState<number>(0);
+  const [useCredits, setUseCredits] = useState(true);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -37,6 +42,77 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
     };
     fetchPlans();
   }, []);
+
+  useEffect(() => {
+    const fetchCredits = async () => {
+        if (!showPaymentForm) return;
+        try {
+            const { data, error } = await supabase.rpc('get_full_referral_stats', { p_user_id: user.id });
+            if (error) throw error;
+            if (data && data.length > 0) {
+                setUserCredits(data[0].available_credits || 0);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar créditos:', error);
+        }
+    };
+    fetchCredits();
+  }, [user.id, showPaymentForm]);
+
+  useEffect(() => {
+    if (selectedPlan && plans.length > 0) {
+      const plan = plans.find(p => p.name === selectedPlan);
+      if (plan) {
+        const price = plan.price_monthly;
+        // Cada crédito vale 20% do valor do plano. Máximo de 5 créditos (100%).
+        const creditsToUse = useCredits ? Math.min(userCredits, 5) : 0;
+        const discount = creditsToUse * (price * 0.20);
+        setPaymentAmount(Math.max(0, price - discount));
+      }
+    }
+  }, [selectedPlan, plans, userCredits, useCredits]);
+
+  const handleRegisterPayment = async () => {
+    try {
+      setUpdating(true);
+      
+      const plan = plans.find(p => p.name === selectedPlan);
+      const planPrice = plan ? plan.price_monthly : 0;
+      const creditsToUse = (useCredits && planPrice > 0) ? Math.min(userCredits, 5) : 0;
+
+      const { data, error } = await supabase.rpc('register_manual_payment', {
+        p_user_id: user.id,
+        p_payment_date: paymentDate,
+        p_amount: paymentAmount,
+        p_plan_name: selectedPlan,
+        p_credits_used: creditsToUse
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success('Pagamento registrado e validade atualizada!');
+        // Update local user object to reflect changes immediately in UI if possible, 
+        // but onUserUpdate callback is better
+        const updatedUser = { 
+          ...user, 
+          subscription_end_date: data.new_valid_until,
+          plan_name: selectedPlan,
+          subscription_status: new Date(data.new_valid_until) > new Date() ? 'active' : 'expired'
+        };
+        onUserUpdate(updatedUser);
+        setShowPaymentForm(false);
+      } else {
+        toast.error('Erro ao registrar pagamento: ' + data.error);
+      }
+    } catch (error: any) {
+      console.error('Erro ao registrar pagamento:', error);
+      toast.error('Erro ao registrar pagamento: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setUpdating(false);
+    }
+  };
+
 
   const handleImpersonate = async () => {
     try {
@@ -140,22 +216,115 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
             </div>
           </div>
 
+          {showPaymentForm && (
+            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mt-4">
+              <h3 className="font-semibold text-gray-700 mb-3 flex items-center">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Registrar Pagamento Manual
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Data do Pagamento</label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
+                    className="w-full p-2 border border-gray-300 rounded text-sm"
+                  />
+                </div>
+              </div>
+              
+              {userCredits > 0 && (
+                <div className="mt-3 bg-green-50 p-3 rounded border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="useCredits"
+                        checked={useCredits}
+                        onChange={(e) => setUseCredits(e.target.checked)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="useCredits" className="ml-2 block text-sm text-gray-700">
+                        Abater com créditos de indicação
+                      </label>
+                    </div>
+                    <span className="text-sm font-bold text-green-700">
+                      Disponível: {userCredits} {userCredits === 1 ? 'crédito' : 'créditos'}
+                    </span>
+                  </div>
+                  {useCredits && (
+                    <div className="mt-1 ml-6">
+                      <p className="text-xs text-green-600">
+                        Cada crédito concede 20% de desconto no plano escolhido.
+                      </p>
+                      <p className="text-xs text-green-600">
+                        Serão utilizados {Math.min(userCredits, 5)} créditos para reduzir o valor em {(Math.min(userCredits, 5) * 20).toFixed(0)}%.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end mt-3 space-x-2">
+                 <button
+                  type="button"
+                  onClick={() => setShowPaymentForm(false)}
+                  className="px-3 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegisterPayment}
+                  disabled={updating}
+                  className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  {updating ? 'Processando...' : 'Confirmar Pagamento'}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row justify-between items-center pt-4 space-y-4 md:space-y-0">
-            <button
-              type="button"
-              onClick={handleImpersonate}
-              disabled={updating}
-              className="w-full md:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50"
-            >
-              <Eye className="h-5 w-5 mr-2" />
-              Acessar como Usuário
-            </button>
+            <div className="flex space-x-2 w-full md:w-auto">
+                <button
+                type="button"
+                onClick={handleImpersonate}
+                disabled={updating}
+                className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 disabled:opacity-50"
+                >
+                <Eye className="h-5 w-5 mr-2" />
+                Acessar
+                </button>
+                {!showPaymentForm && (
+                    <button
+                    type="button"
+                    onClick={() => setShowPaymentForm(true)}
+                    disabled={updating}
+                    className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50"
+                    >
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Pagamento
+                    </button>
+                )}
+            </div>
             <div className="flex space-x-4">
               <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                Cancelar
+                Fechar
               </button>
               <button type="submit" disabled={updating} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
-                {updating ? 'Salvando...' : 'Salvar'}
+                {updating ? 'Salvando...' : 'Salvar Dados'}
               </button>
             </div>
           </div>
