@@ -21,6 +21,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
   const { impersonateUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(user.is_admin);
   const [selectedPlan, setSelectedPlan] = useState<string>(user.plan_name || '');
+  const [validUntil, setValidUntil] = useState(user.subscription_end_date ? new Date(user.subscription_end_date).toISOString().split('T')[0] : '');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [updating, setUpdating] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -133,11 +134,26 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
     try {
       // Atualiza o plano
-      const { error: planError } = await supabase.rpc('admin_set_user_plan', {
-        user_id_to_update: user.id,
-        new_plan_name: selectedPlan
-      });
-      if (planError) throw planError;
+      if (selectedPlan !== user.plan_name) {
+          const { error: planError } = await supabase.rpc('admin_set_user_plan', {
+            user_id_to_update: user.id,
+            new_plan_name: selectedPlan
+          });
+          if (planError) throw planError;
+      }
+
+      // Atualiza a validade manualmente (garantindo que sobrescreve qualquer padrão do plano)
+       if (validUntil) {
+           // Define a data para o final do dia selecionado (23:59:59) para garantir que o dia inteiro seja válido
+           const date = new Date(validUntil);
+           date.setHours(23, 59, 59, 999);
+           
+           const { error: validityError } = await supabase.rpc('admin_update_user_validity', {
+               p_user_id: user.id,
+               new_valid_until: date.toISOString()
+           });
+           if (validityError) throw validityError;
+       }
 
       // Atualiza o status de admin
       const { error: adminStatusError } = await supabase.rpc('admin_update_user_admin_status', {
@@ -146,7 +162,12 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       });
       if (adminStatusError) throw adminStatusError;
 
-      onUserUpdate({ ...user, plan_name: selectedPlan, is_admin: isAdmin });
+      onUserUpdate({ 
+          ...user, 
+          plan_name: selectedPlan, 
+          is_admin: isAdmin,
+          subscription_end_date: validUntil ? new Date(validUntil).toISOString() : user.subscription_end_date
+      });
       toast.success('Usuário atualizado com sucesso!');
       onClose();
 
@@ -174,7 +195,16 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-gray-500" /> <strong>Válido até:</strong> {user.subscription_end_date ? new Date(user.subscription_end_date).toLocaleDateString('pt-BR') : '-'}</div>
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+              <strong>Válido até:</strong>
+              <input 
+                type="date" 
+                value={validUntil} 
+                onChange={(e) => setValidUntil(e.target.value)}
+                className="ml-2 p-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
             <div className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-gray-500" /> <strong>Cadastro:</strong> {new Date(user.created_at).toLocaleDateString('pt-BR')}</div>
             <div className="flex items-center col-span-2"><Calendar className="h-4 w-4 mr-2 text-gray-500" /> <strong>Último Login:</strong> {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '-'}</div>
           </div>
