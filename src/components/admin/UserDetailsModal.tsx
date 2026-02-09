@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { X, Calendar, Shield, Eye, CheckCircle, DollarSign } from 'lucide-react';
 import { UserProfile } from './UserTable';
 import { useAuth } from '../../contexts/AuthContext';
+import { CurrencyInput } from '../ui/CurrencyInput';
 
 interface Plan {
   name: string;
@@ -282,11 +283,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Valor (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
+                    onValueChange={setPaymentAmount}
                     className="w-full p-2 border border-gray-300 rounded text-sm"
                   />
                 </div>
