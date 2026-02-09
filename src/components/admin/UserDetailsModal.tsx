@@ -6,10 +6,14 @@ import { UserProfile } from './UserTable';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface Plan {
-  id: string;
   name: string;
   price_monthly: number;
 }
+
+// Função auxiliar para normalizar strings (remover acentos e case insensitive)
+const normalizeString = (str: string) => {
+  return str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+};
 
 interface UserDetailsModalProps {
   user: UserProfile;
@@ -62,13 +66,22 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
   useEffect(() => {
     if (selectedPlan && plans.length > 0) {
-      const plan = plans.find(p => p.name.toLowerCase() === selectedPlan.toLowerCase());
+      // Normaliza o nome do plano selecionado e busca na lista
+      const normalizedSelected = normalizeString(selectedPlan);
+      const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
+      
       if (plan) {
+        // Garante que o preço seja tratado como número, mesmo que venha como string
         const price = Number(plan.price_monthly) || 0;
+        
         // Cada crédito vale 20% do valor do plano. Máximo de 5 créditos (100%).
-        const creditsToUse = useCredits ? Math.min(userCredits, 5) : 0;
+        const creditsToUse = useCredits ? Math.min(userCredits || 0, 5) : 0;
         const discount = creditsToUse * (price * 0.20);
         setPaymentAmount(Math.max(0, price - discount));
+      } else {
+        // Se não encontrar o plano (ex: plano antigo/inválido), tenta setar 0
+        console.warn(`Plano não encontrado: ${selectedPlan}`);
+        setPaymentAmount(0);
       }
     }
   }, [selectedPlan, plans, userCredits, useCredits]);
@@ -77,9 +90,10 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
     try {
       setUpdating(true);
       
-      const plan = plans.find(p => p.name.toLowerCase() === selectedPlan.toLowerCase());
+      const normalizedSelected = normalizeString(selectedPlan);
+      const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
       const planPrice = plan ? plan.price_monthly : 0;
-      const creditsToUse = (useCredits && planPrice > 0) ? Math.min(userCredits, 5) : 0;
+      const creditsToUse = (useCredits && planPrice > 0) ? Math.min(userCredits || 0, 5) : 0;
 
       const { data, error } = await supabase.rpc('register_manual_payment', {
         p_user_id: user.id,
@@ -135,7 +149,8 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
     try {
       // Atualiza o plano
       if (selectedPlan !== user.plan_name) {
-          const plan = plans.find(p => p.name.toLowerCase() === selectedPlan.toLowerCase());
+          const normalizedSelected = normalizeString(selectedPlan);
+          const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
           const normalizedPlanName = plan ? plan.name : selectedPlan;
 
           const { error: planError } = await supabase.rpc('admin_set_user_plan', {
@@ -226,7 +241,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
                 {plans.filter(p => p.name !== 'Premium').map((p, index) => (
-                  <option key={`${p.id}-${index}`} value={p.name}>{p.name}</option>
+                  <option key={`${p.name}-${index}`} value={p.name}>{p.name}</option>
                 ))}
               </select>
             </div>
