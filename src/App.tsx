@@ -43,7 +43,7 @@ function ProRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
   
-  const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.toLowerCase()));
+  const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.trim().toLowerCase()));
   
   if (!isProOrAdmin) {
     return <Navigate to="/payment" replace />;

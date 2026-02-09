@@ -11,7 +11,7 @@ export const UserMenu: React.FC = () => {
   const location = useLocation();
   const { pathname } = location;
   
-  const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.toLowerCase()));
+  const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.trim().toLowerCase()));
   
   // Estado para controlar a visibilidade do menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);

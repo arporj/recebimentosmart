@@ -15,7 +15,6 @@ const initialTiers = [
       'Até 20 clientes',
       'Gestão de cobranças',
       'Dashboard simples',
-      'Notificação por e-mail',
     ],
     icon: (props: React.ComponentProps<'svg'>) => <Users {...props} />,
     popular: false,
