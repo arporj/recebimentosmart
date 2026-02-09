@@ -57,7 +57,7 @@ const SubscriptionPage = () => {
       if (finalAmount > 0) {
         try {
           // Utilizando o CNPJ da empresa como chave PIX (apenas números)
-          const pixKey = '48338563000199'; 
+          const pixKey = '37905181000105'; 
           const payload = generatePixCopyPaste(
             pixKey,
             finalAmount,
@@ -245,7 +245,7 @@ const SubscriptionPage = () => {
                             <p className="text-sm text-green-800 mb-2">Ou use a chave PIX manual:</p>
                             <div className="bg-white p-3 rounded border border-dashed border-green-300 inline-block">
                                 <p className="font-mono text-xl font-bold text-gray-800 select-all">
-                                    48.338.563/0001-99
+                                    37.905.181/0001-05
                                 </p>
                             </div>
                             <p className="text-xs text-green-700 mt-1">CNPJ - Recebimento Smart</p>
@@ -268,7 +268,7 @@ const SubscriptionPage = () => {
 
                     <div className="mt-6 text-center">
                         <a 
-                            href={`https://wa.me/5511999999999?text=Olá, realizei o pagamento da assinatura do plano ${selectedPlan} no valor de ${formatCurrency(finalAmount)}. Segue o comprovante.`} 
+                            href={`https://wa.me/5521967621494?text=Olá, realizei o pagamento da assinatura do plano ${selectedPlan} no valor de ${formatCurrency(finalAmount)}. Segue o comprovante.`} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 md:py-4 md:text-lg md:px-10 transition-transform transform hover:scale-105"
