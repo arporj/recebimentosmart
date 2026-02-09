@@ -28,8 +28,8 @@ const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; label: string }[] = 
 ];
 
 export function ClientForm({ client, onClose }: ClientFormProps) {
-  const { refreshClients } = useClients();
-  const { user } = useAuth();
+  const { clients, refreshClients } = useClients();
+  const { user, plano } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
@@ -140,6 +140,14 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     
     try {
       if (!user) throw new Error('Usuário não autenticado');
+
+      // Verificação do limite do plano Básico
+      if (!client && (plano === 'Básico' || plano === 'basico')) {
+         // O limite é de 20 clientes para o plano Básico
+         if (clients.length >= 20) {
+             throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
+         }
+      }
       if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
         throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
       }

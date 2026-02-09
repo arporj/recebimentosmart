@@ -94,9 +94,10 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         <Footer />
 
-        {/* Chat Components */}
+        {/* Chat Components - Disabled temporarily
         <ChatWidget />
         <ChatWindow />
+        */}
       </div>
     </ChatProvider>
   );

@@ -106,13 +106,12 @@ const SubscriptionPage = () => {
     
     const planMapping: Record<string, PlanName> = {
       'básico': 'basico',
-      'pró': 'pro',
-      'premium': 'premium'
+      'pró': 'pro'
     };
     
     return (
       <div className="space-y-4 mb-6">
-        {pageData.plans.map(plan => {
+        {pageData.plans.filter(p => p.name.toLowerCase() !== 'premium').map(plan => {
           const planKey = planMapping[plan.name.toLowerCase()] || plan.name.toLowerCase() as PlanName;
           const price = plan.price_monthly;
           

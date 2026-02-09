@@ -6,10 +6,12 @@ import toast from 'react-hot-toast';
 
 // Exportação nomeada para corresponder à importação em App.tsx
 export const UserMenu: React.FC = () => {
-  const { user, signOut, hasFullAccess, isAdmin, originalUser, stopImpersonating } = useAuth();
+  const { user, signOut, hasFullAccess, isAdmin, originalUser, stopImpersonating, plano } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
+  
+  const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.toLowerCase()));
   
   // Estado para controlar a visibilidade do menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -166,6 +168,7 @@ export const UserMenu: React.FC = () => {
                 Pagamentos do Mês
               </button>
 
+              {isProOrAdmin && (
               <button
                 onClick={() => handleNavigation('/reports')}
                 className={`flex items-center w-full px-4 py-2 text-sm ${
@@ -176,9 +179,11 @@ export const UserMenu: React.FC = () => {
                 <BarChart className="h-4 w-4 mr-3 text-neutral-500" />
                 Relatórios
               </button>
+              )}
             </div>
 
             {/* Itens de Configuração e Conta */}
+            {isProOrAdmin && (
             <button
               onClick={() => handleNavigation('/campos-personalizados')}
               className={`flex items-center w-full px-4 py-2 text-sm ${
@@ -189,6 +194,7 @@ export const UserMenu: React.FC = () => {
               <Settings className="h-4 w-4 mr-3 text-neutral-500" />
               Campos Personalizados
             </button>
+            )}
 
             <button
               onClick={() => handleNavigation('/profile')}

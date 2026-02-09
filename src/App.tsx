@@ -31,6 +31,27 @@ import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do a
 
 
 
+// Componente para rotas do plano Pró ou superior
+function ProRoute({ children }: { children: React.ReactNode }) {
+  const { user, plano, isAdmin, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.toLowerCase()));
+  
+  if (!isProOrAdmin) {
+    return <Navigate to="/payment" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
@@ -86,12 +107,12 @@ function AppRoutes() {
           {/* Rotas Protegidas (requerem login) */}
           <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
           <Route path="/monthly" element={<ProtectedRoute><MainLayout><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><MainLayout><ClientProvider><Reports /></ClientProvider></MainLayout></ProtectedRoute>} />
+          <Route path="/reports" element={<ProRoute><MainLayout><ClientProvider><Reports /></ClientProvider></MainLayout></ProRoute>} />
           <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackForm /></MainLayout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
-          <Route path="/campos-personalizados" element={<ProtectedRoute><MainLayout><CamposPersonalizados /></MainLayout></ProtectedRoute>} />
+          <Route path="/campos-personalizados" element={<ProRoute><MainLayout><CamposPersonalizados /></MainLayout></ProRoute>} />
 
           {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
           <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />

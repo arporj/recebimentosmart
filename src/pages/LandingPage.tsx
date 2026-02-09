@@ -31,18 +31,6 @@ const initialTiers = [
     icon: (props: React.ComponentProps<'svg'>) => <BarChart {...props} />,
     popular: true,
   },
-  {
-    name: 'Premium',
-    price: '--,--',
-    features: [
-      'Tudo do plano Pro',
-      'Notificação por WhatsApp',
-      'Suporte prioritário',
-      'Acesso antecipado a recursos',
-    ],
-    icon: (props: React.ComponentProps<'svg'>) => <Zap {...props} />,
-    popular: false,
-  },
 ];
 
 const LandingPage: React.FC = () => {
