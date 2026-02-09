@@ -12,9 +12,10 @@ const initialTiers = [
     name: 'Básico',
     price: '--,--',
     features: [
-      'Controle de usuários',
-      'Notificação por e-mail',
+      'Até 20 clientes',
+      'Gestão de cobranças',
       'Dashboard simples',
+      'Notificação por e-mail',
     ],
     icon: (props: React.ComponentProps<'svg'>) => <Users {...props} />,
     popular: false,
@@ -23,13 +24,25 @@ const initialTiers = [
     name: 'Pro',
     price: '--,--',
     features: [
-      'Tudo do plano Básico',
+      'Clientes ilimitados',
       'Relatórios detalhados',
+      'Campos personalizados',
       'Análises de performance',
-      'Suporte via chat',
     ],
     icon: (props: React.ComponentProps<'svg'>) => <BarChart {...props} />,
     popular: true,
+  },
+  {
+    name: 'Premium',
+    price: '--,--',
+    features: [
+      'Tudo do plano Pró',
+      'Notificação por WhatsApp',
+      'Suporte prioritário',
+      'Múltiplos usuários',
+    ],
+    icon: (props: React.ComponentProps<'svg'>) => <Zap {...props} />,
+    popular: false,
   },
 ];
 
