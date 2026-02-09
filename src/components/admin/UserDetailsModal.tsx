@@ -282,10 +282,11 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Valor (R$)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Valor</label>
                   <CurrencyInput
-                    value={paymentAmount}
-                    onValueChange={setPaymentAmount}
+                    value={Math.round(paymentAmount * 100)}
+                    onValueChange={(val) => setPaymentAmount(val / 100)}
+                    showSymbol={false}
                     className="w-full p-2 border border-gray-300 rounded text-sm"
                   />
                 </div>

@@ -6,11 +6,12 @@ import { useCurrencyMask, parseCurrency } from '../../hooks/useCurrencyMask';
 interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   value: number;
   onValueChange: (value: number) => void;
+  showSymbol?: boolean;
 }
 
 export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ value, onValueChange, ...props }, ref) => {
-    const { displayValue, handleChange, setValue } = useCurrencyMask(value);
+  ({ value, onValueChange, showSymbol = true, ...props }, ref) => {
+    const { displayValue, handleChange, setValue } = useCurrencyMask(value, { showSymbol });
 
     // Sincroniza o estado interno se o valor externo mudar.
     React.useEffect(() => {

@@ -1,7 +1,7 @@
 // src/hooks/useCurrencyMask.ts
 import { useState, useCallback } from 'react';
 
-export const formatCurrency = (value: number): string => {
+export const formatCurrency = (value: number, showSymbol: boolean = true): string => {
   if (typeof value !== 'number' || isNaN(value)) {
     return ''; 
   }
@@ -9,7 +9,7 @@ export const formatCurrency = (value: number): string => {
   const numberValue = value / 100; // Assume que o valor está em centavos
 
   return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
+    style: showSymbol ? 'currency' : 'decimal',
     currency: 'BRL',
     minimumFractionDigits: 2, // Garante sempre 2 casas decimais
     maximumFractionDigits: 2,
@@ -22,9 +22,12 @@ export const parseCurrency = (value: string): number => {
     return parseInt(numericValue, 10);
 };
 
+interface UseCurrencyMaskOptions {
+  showSymbol?: boolean;
+}
 
-export const useCurrencyMask = (initialValue: number = 0) => {
-  const [displayValue, setDisplayValue] = useState<string>(() => formatCurrency(initialValue));
+export const useCurrencyMask = (initialValue: number = 0, options: UseCurrencyMaskOptions = { showSymbol: true }) => {
+  const [displayValue, setDisplayValue] = useState<string>(() => formatCurrency(initialValue, options.showSymbol));
   const [numericValue, setNumericValue] = useState<number>(initialValue);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,13 +35,13 @@ export const useCurrencyMask = (initialValue: number = 0) => {
     const newNumericValue = parseCurrency(rawValue);
     
     setNumericValue(newNumericValue);
-    setDisplayValue(formatCurrency(newNumericValue));
-  }, []);
+    setDisplayValue(formatCurrency(newNumericValue, options.showSymbol));
+  }, [options.showSymbol]);
 
   const setValue = useCallback((value: number) => {
     setNumericValue(value);
-    setDisplayValue(formatCurrency(value));
-  }, []);
+    setDisplayValue(formatCurrency(value, options.showSymbol));
+  }, [options.showSymbol]);
 
 
   return {
