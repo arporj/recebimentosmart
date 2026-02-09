@@ -163,8 +163,11 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
       // Atualiza a validade manualmente (garantindo que sobrescreve qualquer padrão do plano)
        if (validUntil) {
-           // Define a data para o final do dia selecionado (23:59:59) para garantir que o dia inteiro seja válido
-           const date = new Date(validUntil);
+           // Parse a data considerando o fuso horário local para garantir que seja o dia correto
+           const [year, month, day] = validUntil.split('-').map(Number);
+           const date = new Date(year, month - 1, day);
+           
+           // Define a data para o final do dia selecionado (23:59:59) no horário local
            date.setHours(23, 59, 59, 999);
            
            const { error: validityError } = await supabase.rpc('admin_update_user_validity', {
