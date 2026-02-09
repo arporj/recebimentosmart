@@ -105,7 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const trialDays = 7;
         const createdAt = parseISO(currentUser.created_at);
         const trialEndDate = addDays(createdAt, trialDays);
-        const hasPaidAccess = profile?.valid_until ? isFuture(parseISO(profile.valid_until)) : false;
+        
+        // Verificação mais robusta de validade
+        const validUntilDate = profile?.valid_until ? new Date(profile.valid_until) : null;
+        const hasPaidAccess = validUntilDate && !isNaN(validUntilDate.getTime()) 
+          ? validUntilDate > new Date() 
+          : false;
+
         const isInTrial = isFuture(trialEndDate);
         const currentHasFullAccess = hasPaidAccess || isInTrial;
 
@@ -118,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
              toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
              navigate('/profile');
           } else if (!currentHasFullAccess && !profile?.is_admin && location.pathname !== '/payment' && location.pathname !== '/profile') {
+             // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
              navigate('/payment');
           }
         }
