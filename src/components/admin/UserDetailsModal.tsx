@@ -306,6 +306,51 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
                 </div>
               )}
 
+              {/* Seção de PIX */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                 {!qrCodeUrl ? (
+                    <button
+                      type="button"
+                      onClick={handleGeneratePix}
+                      className="flex items-center justify-center w-full px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-4"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Gerar QR Code PIX
+                    </button>
+                 ) : (
+                    <div className="flex flex-col items-center space-y-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-sm font-medium text-gray-700">Escaneie para pagar com PIX:</p>
+                        <img src={qrCodeUrl} alt="QR Code PIX" className="w-48 h-48" />
+                        
+                        <div className="w-full">
+                            <p className="text-xs text-gray-500 mb-1 text-center">Pix Copia e Cola:</p>
+                            <div className="flex mt-1">
+                                <input 
+                                    type="text" 
+                                    readOnly 
+                                    value={pixCopyPaste || ''} 
+                                    className="block w-full text-xs text-gray-500 bg-gray-100 border-gray-300 rounded-l-md focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={copyToClipboard}
+                                    className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 shadow-sm text-xs font-medium rounded-r-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { setQrCodeUrl(null); setPixCopyPaste(null); }}
+                            className="text-xs text-red-600 hover:text-red-800 underline"
+                        >
+                            Limpar QR Code
+                        </button>
+                    </div>
+                 )}
+              </div>
+
               <div className="flex justify-end mt-3 space-x-2">
                  <button
                   type="button"

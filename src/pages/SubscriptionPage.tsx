@@ -1,10 +1,13 @@
 // src/pages/SubscriptionPage.tsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { CreditCard, CheckCircle, Gift } from 'lucide-react';
+import { CreditCard, CheckCircle, Gift, Copy } from 'lucide-react';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { useAuth } from '../contexts/AuthContext'; // Importa o useAuth
 import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../lib/utils';
+import { generatePixCopyPaste } from '../lib/pix';
+import QRCode from 'qrcode';
+import toast from 'react-hot-toast';
 
 type PlanName = 'basico' | 'pro' | 'premium';
 
@@ -12,6 +15,8 @@ const SubscriptionPage = () => {
   const { loading, pageData, paymentStatus, fetchData } = useSubscription();
   const { user } = useAuth(); // Obtém o usuário do AuthContext
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
 
   // Define o plano padrão quando os dados são carregados
   useEffect(() => {
@@ -46,6 +51,33 @@ const SubscriptionPage = () => {
     
     return Math.max(0, planPrice - userCredits);
   }, [selectedPlan, pageData]);
+
+  useEffect(() => {
+    const generateQR = async () => {
+      if (finalAmount > 0) {
+        try {
+          // Utilizando o CNPJ da empresa como chave PIX (apenas números)
+          const pixKey = '48338563000199'; 
+          const payload = generatePixCopyPaste(
+            pixKey,
+            finalAmount,
+            'Recebimento Smart',
+            'Sao Paulo'
+          );
+          setPixCopyPaste(payload);
+          const url = await QRCode.toDataURL(payload);
+          setQrCodeUrl(url);
+        } catch (error) {
+          console.error('Erro ao gerar QR Code:', error);
+          toast.error('Erro ao gerar o QR Code para pagamento.');
+        }
+      } else {
+          setQrCodeUrl(null);
+          setPixCopyPaste(null);
+      }
+    };
+    generateQR();
+  }, [finalAmount]);
 
   const renderCurrentPlan = () => {
     if (!pageData || !pageData.user) return null;
@@ -168,13 +200,56 @@ const SubscriptionPage = () => {
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Realize o Pagamento via PIX</h3>
                 <div className="p-6 border border-green-200 bg-green-50 rounded-md">
                     <div className="text-center mb-6">
-                        <p className="font-semibold text-green-800 mb-2 text-lg">Envie o pagamento para a chave PIX abaixo:</p>
-                        <div className="bg-white p-4 rounded border-2 border-dashed border-green-300 inline-block mb-2">
-                            <p className="font-mono text-2xl font-bold text-gray-800 select-all">
-                                48.338.563/0001-99
-                            </p>
+                        <p className="font-semibold text-green-800 mb-4 text-lg">Escaneie o QR Code abaixo:</p>
+                        
+                        {qrCodeUrl ? (
+                            <div className="flex flex-col items-center justify-center mb-6">
+                                <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                                    <img src={qrCodeUrl} alt="QR Code PIX" className="w-48 h-48" />
+                                </div>
+                                <p className="text-sm text-gray-500 mt-2">Abra o app do seu banco e escolha "Pagar com Pix"</p>
+                            </div>
+                        ) : (
+                             <div className="flex flex-col items-center justify-center mb-6 h-48 w-48 mx-auto bg-gray-200 rounded-lg animate-pulse">
+                                <span className="text-gray-400 text-xs">Carregando QR Code...</span>
+                             </div>
+                        )}
+
+                        {pixCopyPaste && (
+                            <div className="mb-6 w-full max-w-md mx-auto">
+                                <p className="text-sm text-gray-600 mb-1 text-left font-medium">Pix Copia e Cola:</p>
+                                <div className="flex shadow-sm">
+                                    <input 
+                                        type="text" 
+                                        readOnly 
+                                        value={pixCopyPaste} 
+                                        className="block w-full text-xs text-gray-500 bg-white border-gray-300 rounded-l-md focus:ring-green-500 focus:border-green-500"
+                                        onClick={(e) => e.currentTarget.select()}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(pixCopyPaste);
+                                            toast.success('Código PIX copiado!');
+                                        }}
+                                        className="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 text-sm font-medium rounded-r-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                        title="Copiar código"
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-6 pt-6 border-t border-green-200">
+                            <p className="text-sm text-green-800 mb-2">Ou use a chave PIX manual:</p>
+                            <div className="bg-white p-3 rounded border border-dashed border-green-300 inline-block">
+                                <p className="font-mono text-xl font-bold text-gray-800 select-all">
+                                    48.338.563/0001-99
+                                </p>
+                            </div>
+                            <p className="text-xs text-green-700 mt-1">CNPJ - Recebimento Smart</p>
                         </div>
-                        <p className="text-sm text-green-700">CNPJ - Recebimento Smart</p>
                     </div>
 
                     <div className="bg-white p-4 rounded-md border border-green-100">
