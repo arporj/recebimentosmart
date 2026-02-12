@@ -18,6 +18,7 @@ export function FeedbackDetails({ feedback, onBack, isAdminView = false }: Feedb
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,6 +118,49 @@ export function FeedbackDetails({ feedback, onBack, isAdminView = false }: Feedb
     }
   };
 
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!isAdminView || updatingStatus) return;
+
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({ 
+          status: newStatus,
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('id', feedback.id);
+
+      if (error) throw error;
+      
+      // Update local feedback object if needed or refresh
+      toast.success(`Status atualizado para ${newStatus}`);
+      
+      // We also add a system message to the chat
+      await supabase
+        .from('feedback_messages')
+        .insert({
+          feedback_id: feedback.id,
+          sender_id: user?.id,
+          message: `O status do feedback foi alterado para: ${
+            newStatus === 'open' ? 'Aberto' :
+            newStatus === 'in_progress' ? 'Em Análise' :
+            newStatus === 'resolved' ? 'Resolvido' : 'Fechado'
+          }`
+        });
+
+      // Instead of manual refresh, the realtime subscription will handle it if we refresh the parent
+      // But since we are in the details view, we can just let the parent refresh when we go back
+      // or we can reload the page data if we want.
+      // For now, let's just trigger a reload of messages which is already happening via realtime
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      toast.error('Erro ao atualizar status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px] bg-white rounded-lg shadow overflow-hidden">
       {/* Header */}
@@ -142,15 +186,30 @@ export function FeedbackDetails({ feedback, onBack, isAdminView = false }: Feedb
             </p>
           </div>
         </div>
-        <div className={`px-2 py-1 rounded text-xs font-medium uppercase ${
-            feedback.status === 'open' ? 'bg-green-100 text-green-800' :
-            feedback.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-            feedback.status === 'resolved' ? 'bg-blue-100 text-blue-800' :
-            'bg-gray-100 text-gray-800'
-        }`}>
-            {feedback.status === 'open' ? 'Aberto' :
-             feedback.status === 'in_progress' ? 'Em Análise' :
-             feedback.status === 'resolved' ? 'Resolvido' : 'Fechado'}
+        <div className="flex items-center gap-4">
+          {isAdminView && (
+            <select
+              value={feedback.status}
+              onChange={(e) => handleUpdateStatus(e.target.value)}
+              disabled={updatingStatus}
+              className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-custom disabled:opacity-50"
+            >
+              <option value="open">Aberto</option>
+              <option value="in_progress">Em Análise</option>
+              <option value="resolved">Resolvido</option>
+              <option value="closed">Fechado</option>
+            </select>
+          )}
+          <div className={`px-2 py-1 rounded text-xs font-medium uppercase ${
+              feedback.status === 'open' ? 'bg-green-100 text-green-800' :
+              feedback.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+              feedback.status === 'resolved' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+          }`}>
+              {feedback.status === 'open' ? 'Aberto' :
+               feedback.status === 'in_progress' ? 'Em Análise' :
+               feedback.status === 'resolved' ? 'Resolvido' : 'Fechado'}
+          </div>
         </div>
       </div>
 

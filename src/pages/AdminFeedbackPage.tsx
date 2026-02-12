@@ -9,7 +9,7 @@ export default function AdminFeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'open'>('unread');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'closed'>('unread');
 
   useEffect(() => {
     fetchFeedbacks();
@@ -27,6 +27,8 @@ export default function AdminFeedbackPage() {
         query = query.eq('has_unread_admin', true);
       } else if (filter === 'open') {
         query = query.eq('status', 'open');
+      } else if (filter === 'closed') {
+        query = query.eq('status', 'closed');
       }
 
       const { data, error } = await query;
@@ -99,6 +101,14 @@ export default function AdminFeedbackPage() {
             }`}
           >
             Abertos
+          </button>
+          <button
+            onClick={() => setFilter('closed')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              filter === 'closed' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Fechados
           </button>
           <button
             onClick={() => setFilter('all')}
