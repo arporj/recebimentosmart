@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 
 const SP_TIMEZONE = 'America/Sao_Paulo';
 
-export function formatToSP(date: Date | string | null, formatStr: string): string {
+export function formatToSP(date: Date | string | null, formatStr: string = 'dd/MM/yyyy HH:mm'): string {
   if (!date) return 'Nunca';
   
   try {
@@ -14,8 +14,11 @@ export function formatToSP(date: Date | string | null, formatStr: string): strin
     // Convert UTC to São Paulo time without modifying the actual time
     const spDate = utcToZonedTime(dateObj, SP_TIMEZONE);
     
-    // Format the date
-    return format(spDate, formatStr, { locale: ptBR });
+    // Format the date, escaping single letters if they are intended to be literal
+    // or ensuring the format string is valid for date-fns
+    const safeFormatStr = formatStr.replace(/(^|[^'])n([^']|$)/g, "$1'n'$2");
+    
+    return format(spDate, safeFormatStr, { locale: ptBR });
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'Data inválida';

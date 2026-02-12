@@ -90,20 +90,26 @@ BEGIN
 
     -- Invoke edge function to send email
     -- We use the existing send_feedback_email function
-    PERFORM net.http_post(
-        url := 'https://kwdweztilsoxxcgudtsz.supabase.co/functions/v1/send_feedback_email',
-        headers := jsonb_build_object(
-            'Content-Type', 'application/json',
-            'Authorization', 'Bearer ' || current_setting('request.headers')::jsonb->>'apikey'
-        ),
-        body := jsonb_build_object(
-            'from', v_user_email,
-            'name', COALESCE(v_user_name, v_user_email),
-            'type', NEW.type,
-            'subject', NEW.subject,
-            'comment', 'Um novo feedback foi aberto no sistema. Acesse o painel administrativo para responder.'
-        )
-    );
+    -- Note: We use a safe check for the apikey header to avoid errors if not present
+    BEGIN
+        PERFORM net.http_post(
+            url := 'https://kwdweztilsoxxcgudtsz.supabase.co/functions/v1/send_feedback_email',
+            headers := jsonb_build_object(
+                'Content-Type', 'application/json',
+                'Authorization', 'Bearer ' || COALESCE((SELECT (current_setting('request.headers', true)::jsonb)->>'apikey'), '')
+            ),
+            body := jsonb_build_object(
+                'from', v_user_email,
+                'name', COALESCE(v_user_name, v_user_email),
+                'type', NEW.type,
+                'subject', NEW.subject,
+                'comment', 'Um novo feedback foi aberto no sistema. Acesse o painel administrativo para responder.'
+            )
+        );
+    EXCEPTION WHEN OTHERS THEN
+        -- If email fails, don't block the feedback creation
+        RAISE WARNING 'Falha ao enviar e-mail de notificação: %', SQLERRM;
+    END;
 
     RETURN NEW;
 END;

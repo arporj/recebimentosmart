@@ -185,7 +185,7 @@ export function FeedbackDetails({ feedback, onBack, isAdminView = false }: Feedb
                        {isMe ? 'Você' : (isAdminView ? 'Usuário' : 'Suporte')}
                     </span>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                   <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
                     {formatToSP(msg.created_at, 'dd/MM HH:mm')}
                   </p>
