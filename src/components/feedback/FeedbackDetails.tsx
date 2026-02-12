@@ -1,0 +1,222 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, ArrowLeft, User, ShieldCheck } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { formatToSP } from '../../lib/dates';
+import type { Feedback, FeedbackMessage } from '../../types/feedback';
+import toast from 'react-hot-toast';
+
+interface FeedbackDetailsProps {
+  feedback: Feedback;
+  onBack: () => void;
+  isAdminView?: boolean;
+}
+
+export function FeedbackDetails({ feedback, onBack, isAdminView = false }: FeedbackDetailsProps) {
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<FeedbackMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchMessages();
+    markAsRead();
+    
+    // Subscribe to new messages
+    const subscription = supabase
+      .channel(`feedback_messages:${feedback.id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'feedback_messages',
+        filter: `feedback_id=eq.${feedback.id}`
+      }, (payload) => {
+        const newMsg = payload.new as FeedbackMessage;
+        setMessages(prev => [...prev, newMsg]);
+        scrollToBottom();
+        // If message is not mine, mark as read
+        if (newMsg.sender_id !== user?.id) {
+          markAsRead();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [feedback.id]);
+
+  const fetchMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('feedback_messages')
+        .select('*')
+        .eq('feedback_id', feedback.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setMessages(data || []);
+      scrollToBottom();
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
+      toast.error('Erro ao carregar mensagens');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async () => {
+    if (!user) return;
+    
+    try {
+      // If user is admin, we mark 'has_unread_admin' as false
+      // If user is regular, we mark 'has_unread_user' as false
+      const updateData = isAdminView 
+        ? { has_unread_admin: false }
+        : { has_unread_user: false };
+
+      await supabase
+        .from('feedbacks')
+        .update(updateData)
+        .eq('id', feedback.id);
+        
+    } catch (error) {
+      console.error('Erro ao marcar como lido:', error);
+    }
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !user) return;
+
+    setSending(true);
+    try {
+      const { error } = await supabase
+        .from('feedback_messages')
+        .insert({
+          feedback_id: feedback.id,
+          sender_id: user.id,
+          message: newMessage.trim()
+        });
+
+      if (error) throw error;
+      setNewMessage('');
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      toast.error('Erro ao enviar mensagem');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px] bg-white rounded-lg shadow overflow-hidden">
+      {/* Header */}
+      <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center">
+          <button 
+            onClick={onBack}
+            className="mr-3 p-1 rounded-full hover:bg-gray-200 text-gray-500"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              {feedback.subject}
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                feedback.type === 'Crítica' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {feedback.type}
+              </span>
+            </h2>
+            <p className="text-xs text-gray-500">
+              ID: {feedback.id.slice(0, 8)} • Criado em {formatToSP(feedback.created_at)}
+            </p>
+          </div>
+        </div>
+        <div className={`px-2 py-1 rounded text-xs font-medium uppercase ${
+            feedback.status === 'open' ? 'bg-green-100 text-green-800' :
+            feedback.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+            feedback.status === 'resolved' ? 'bg-blue-100 text-blue-800' :
+            'bg-gray-100 text-gray-800'
+        }`}>
+            {feedback.status === 'open' ? 'Aberto' :
+             feedback.status === 'in_progress' ? 'Em Análise' :
+             feedback.status === 'resolved' ? 'Resolvido' : 'Fechado'}
+        </div>
+      </div>
+
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+        {loading ? (
+          <div className="flex justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-custom"></div>
+          </div>
+        ) : messages.length === 0 ? (
+          <p className="text-center text-gray-500 my-8">Nenhuma mensagem ainda.</p>
+        ) : (
+          messages.map((msg) => {
+            const isMe = msg.sender_id === user?.id;
+            return (
+              <div 
+                key={msg.id} 
+                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+              >
+                <div 
+                  className={`max-w-[70%] rounded-lg p-3 shadow-sm ${
+                    isMe 
+                      ? 'bg-custom text-white rounded-tr-none' 
+                      : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {!isMe && (
+                      isAdminView ? <User className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3 text-custom" />
+                    )}
+                    <span className={`text-xs font-medium ${isMe ? 'text-blue-100' : 'text-gray-500'}`}>
+                       {isMe ? 'Você' : (isAdminView ? 'Usuário' : 'Suporte')}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                  <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
+                    {formatToSP(msg.created_at, 'dd/MM HH:mm')}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="p-4 bg-white border-t border-gray-200">
+        <form onSubmit={handleSendMessage} className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Digite sua mensagem..."
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-custom"
+            disabled={sending}
+          />
+          <button
+            type="submit"
+            disabled={sending || !newMessage.trim()}
+            className="bg-custom text-white p-2 rounded-lg hover:bg-custom-hover disabled:opacity-50 transition-colors"
+          >
+            <Send className="h-5 w-5" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

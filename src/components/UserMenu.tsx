@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, MessageSquare, CreditCard, UserCheck, Calendar, BarChart, Gift, Settings, UserX } from 'lucide-react';
+import { User, LogOut, MessageSquare, CreditCard, UserCheck, Calendar, BarChart, Gift, Settings, UserX, Inbox } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 // Exportação nomeada para corresponder à importação em App.tsx
 export const UserMenu: React.FC = () => {
@@ -15,8 +16,60 @@ export const UserMenu: React.FC = () => {
   
   // Estado para controlar a visibilidade do menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [unreadUserFeedback, setUnreadUserFeedback] = useState(false);
+  const [unreadAdminFeedback, setUnreadAdminFeedback] = useState(false);
+  
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (user) {
+      checkUnreadFeedbacks();
+      
+      // Subscribe to changes
+      const subscription = supabase
+        .channel('feedback_updates')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'feedbacks' 
+        }, () => {
+          checkUnreadFeedbacks();
+        })
+        .subscribe();
+        
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [user, isAdmin]);
+
+  const checkUnreadFeedbacks = async () => {
+    if (!user) return;
+
+    try {
+      // Check user unread
+      const { count: userCount } = await supabase
+        .from('feedbacks')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('has_unread_user', true);
+        
+      setUnreadUserFeedback((userCount || 0) > 0);
+
+      // Check admin unread if admin
+      if (isAdmin) {
+        const { count: adminCount } = await supabase
+          .from('feedbacks')
+          .select('id', { count: 'exact', head: true })
+          .eq('has_unread_admin', true);
+          
+        setUnreadAdminFeedback((adminCount || 0) > 0);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar feedbacks:', error);
+    }
+  };
 
   // Fechar o menu quando clicar fora dele
   useEffect(() => {
@@ -180,7 +233,43 @@ export const UserMenu: React.FC = () => {
                 Relatórios
               </button>
               )}
+
+              <button
+                onClick={() => handleNavigation('/feedback')}
+                className={`flex items-center w-full px-4 py-2 text-sm ${
+                  pathname === '/feedback' ? 'text-custom font-semibold' : 'text-neutral-700'
+                } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                role="menuitem"
+              >
+                <div className="relative mr-3">
+                  <MessageSquare className="h-4 w-4 text-neutral-500" />
+                  {unreadUserFeedback && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+                  )}
+                </div>
+                Críticas e Sugestões
+              </button>
             </div>
+
+            {isAdmin && (
+              <div className="border-b border-secondary-200 pb-1 mb-1">
+                <button
+                  onClick={() => handleNavigation('/admin/feedbacks')}
+                  className={`flex items-center w-full px-4 py-2 text-sm ${
+                    pathname === '/admin/feedbacks' ? 'text-custom font-semibold' : 'text-neutral-700'
+                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                  role="menuitem"
+                >
+                  <div className="relative mr-3">
+                    <Inbox className="h-4 w-4 text-neutral-500" />
+                    {unreadAdminFeedback && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+                    )}
+                  </div>
+                  Gestão de Feedbacks
+                </button>
+              </div>
+            )}
 
             {/* Itens de Configuração e Conta */}
             {isProOrAdmin && (

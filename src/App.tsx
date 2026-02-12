@@ -15,7 +15,8 @@ import { ProtectedRoute } from './components/ProtectedRoute'; // Importa a nova 
 import { SubscriptionProvider } from './contexts/SubscriptionContext'; // Importa o novo provider
 
 // Importar os novos componentes
-import FeedbackForm from './components/FeedbackForm';
+import FeedbackPage from './pages/FeedbackPage';
+import AdminFeedbackPage from './pages/AdminFeedbackPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
@@ -108,7 +109,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
           <Route path="/monthly" element={<ProtectedRoute><MainLayout><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
           <Route path="/reports" element={<ProRoute><MainLayout><ClientProvider><Reports /></ClientProvider></MainLayout></ProRoute>} />
-          <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackForm /></MainLayout></ProtectedRoute>} />
+          <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackPage /></MainLayout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
@@ -123,6 +124,7 @@ function AppRoutes() {
 
           {/* Rotas de Admin */}
           <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
+          <Route path="/admin/feedbacks" element={<AdminRoute><MainLayout><AdminFeedbackPage /></MainLayout></AdminRoute>} />
           <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
           
