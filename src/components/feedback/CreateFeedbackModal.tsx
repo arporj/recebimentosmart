@@ -19,19 +19,19 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!subject.trim()) {
       toast.error('Por favor, informe um assunto');
       return;
     }
-    
+
     if (!comment.trim()) {
       toast.error('Por favor, escreva seu comentário');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       if (!user) throw new Error('Usuário não autenticado');
 
@@ -62,10 +62,22 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
 
       if (messageError) throw messageError;
 
+      // 3. Enviar notificação por email (Edge Function)
+      // Não bloqueamos o fluxo se falhar o envio de email
+      supabase.functions.invoke('send_feedback_email', {
+        body: {
+          from: user.email,
+          name: user.user_metadata?.name || user.email,
+          type: type,
+          subject: subject,
+          comment: comment
+        }
+      }).catch(err => console.error('Falha ao enviar notificação de feedback:', err));
+
       toast.success('Seu feedback foi enviado com sucesso!');
       onSuccess();
       onClose();
-      
+
     } catch (error: any) {
       console.error('Erro ao enviar feedback:', error);
       toast.error('Erro ao enviar feedback: ' + (error.message || 'Erro desconhecido'));
@@ -85,7 +97,7 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
         </button>
 
         <h2 className="text-xl font-bold text-gray-900 mb-4">Novo Feedback</h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -104,7 +116,7 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
                   <ChevronDown className="h-5 w-5 text-gray-400" />
                 )}
               </button>
-              
+
               {showDropdown && (
                 <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300">
                   <ul>
@@ -131,7 +143,7 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
               )}
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
               Assunto
@@ -146,7 +158,7 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
               required
             />
           </div>
-          
+
           <div>
             <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-1">
               Mensagem
@@ -161,7 +173,7 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
               required
             />
           </div>
-          
+
           <div className="pt-2">
             <button
               type="submit"
