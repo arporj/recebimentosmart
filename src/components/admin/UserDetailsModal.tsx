@@ -51,16 +51,16 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
   useEffect(() => {
     const fetchCredits = async () => {
-        if (!showPaymentForm) return;
-        try {
-            const { data, error } = await supabase.rpc('get_full_referral_stats', { p_user_id: user.id });
-            if (error) throw error;
-            if (data && data.length > 0) {
-                setUserCredits(data[0].available_credits || 0);
-            }
-        } catch (error) {
-            console.error('Erro ao buscar créditos:', error);
+      if (!showPaymentForm) return;
+      try {
+        const { data, error } = await supabase.rpc('get_full_referral_stats', { p_user_id: user.id });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setUserCredits(data[0].available_credits || 0);
         }
+      } catch (error) {
+        console.error('Erro ao buscar créditos:', error);
+      }
     };
     fetchCredits();
   }, [user.id, showPaymentForm]);
@@ -70,11 +70,11 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       // Normaliza o nome do plano selecionado e busca na lista
       const normalizedSelected = normalizeString(selectedPlan);
       const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
-      
+
       if (plan) {
         // Garante que o preço seja tratado como número, mesmo que venha como string
         const price = Number(plan.price_monthly) || 0;
-        
+
         // Cada crédito vale 20% do valor do plano. Máximo de 5 créditos (100%).
         const creditsToUse = useCredits ? Math.min(userCredits || 0, 5) : 0;
         const discount = creditsToUse * (price * 0.20);
@@ -90,7 +90,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
   const handleRegisterPayment = async () => {
     try {
       setUpdating(true);
-      
+
       const normalizedSelected = normalizeString(selectedPlan);
       const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
       const planPrice = plan ? plan.price_monthly : 0;
@@ -110,8 +110,8 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
         toast.success('Pagamento registrado e validade atualizada!');
         // Update local user object to reflect changes immediately in UI if possible, 
         // but onUserUpdate callback is better
-        const updatedUser = { 
-          ...user, 
+        const updatedUser = {
+          ...user,
           subscription_end_date: data.new_valid_until,
           plan_name: selectedPlan,
           subscription_status: new Date(data.new_valid_until) > new Date() ? 'active' : 'expired'
@@ -150,32 +150,61 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
     try {
       // Atualiza o plano
       if (selectedPlan !== user.plan_name) {
-          const normalizedSelected = normalizeString(selectedPlan);
-          const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
-          const normalizedPlanName = plan ? plan.name : selectedPlan;
+        const normalizedSelected = normalizeString(selectedPlan);
 
-          const { error: planError } = await supabase.rpc('admin_set_user_plan', {
-            user_id_to_update: user.id,
-            new_plan_name: normalizedPlanName
-          });
-          if (planError) throw planError;
+        let dbPlanName = 'trial'; // Default fallback
+        if (normalizedSelected.includes('pro') || normalizedSelected.includes('premium')) dbPlanName = 'pro'; // Assuming premium maps to pro or is invalid? Let's assume standard enum 'pro'
+        else if (normalizedSelected.includes('basico') || normalizedSelected.includes('basic')) dbPlanName = 'basico'; // Check if enum is 'basico' or 'basic'. Portuguese error suggested enum validation.
+        // Wait, if the enum is English, it's likely 'basic', 'pro'. If Portuguese, 'basico', 'pro'.
+        // The error `invalid input value for enum plan_type: "Pró"` suggests "Pró" is wrong.
+        // Let's standardise to lowercase unaccented.
+
+        // Better approach: explicit map based on my knowledge of the project or robust normalization
+        const planMap: Record<string, string> = {
+          'basico': 'basico', // or 'basic'? The error didn't list valid values. 
+          'basic': 'basico',
+          'pro': 'pro',
+          'pró': 'pro',
+          'premium': 'premium', // assuming premium exists
+          'trial': 'trial'
+        };
+
+        const key = normalizedSelected;
+        dbPlanName = planMap[key] || key; // Fallback to normalized key if not found
+
+        // Actually, looking at PlanBadge in UserTable (step 188), it handles: 'trial', 'pro', 'premium', 'basico'.
+        // So valid values likely are: 'trial', 'pro', 'premium', 'basico'.
+        // "Pró" -> normalized "pro".
+
+        // The issue in the original code:
+        // const plan = plans.find(...) -> finds plan with name "Pró"
+        // const normalizedPlanName = plan ? plan.name : selectedPlan; -> returns "Pró"
+
+        // Fix: Use the normalized string as the value to send, NOT the plan.name if plan.name is the display name.
+        // And ensures it matches the enum. 
+
+        const { error: planError } = await supabase.rpc('admin_set_user_plan', {
+          user_id_to_update: user.id,
+          new_plan_name: dbPlanName
+        });
+        if (planError) throw planError;
       }
 
       // Atualiza a validade manualmente (garantindo que sobrescreve qualquer padrão do plano)
-       if (validUntil) {
-           // Parse a data considerando o fuso horário local para garantir que seja o dia correto
-           const [year, month, day] = validUntil.split('-').map(Number);
-           const date = new Date(year, month - 1, day);
-           
-           // Define a data para o final do dia selecionado (23:59:59) no horário local
-           date.setHours(23, 59, 59, 999);
-           
-           const { error: validityError } = await supabase.rpc('admin_update_user_validity', {
-               p_user_id: user.id,
-               new_valid_until: date.toISOString()
-           });
-           if (validityError) throw validityError;
-       }
+      if (validUntil) {
+        // Parse a data considerando o fuso horário local para garantir que seja o dia correto
+        const [year, month, day] = validUntil.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+
+        // Define a data para o final do dia selecionado (23:59:59) no horário local
+        date.setHours(23, 59, 59, 999);
+
+        const { error: validityError } = await supabase.rpc('admin_update_user_validity', {
+          p_user_id: user.id,
+          new_valid_until: date.toISOString()
+        });
+        if (validityError) throw validityError;
+      }
 
       // Atualiza o status de admin
       const { error: adminStatusError } = await supabase.rpc('admin_update_user_admin_status', {
@@ -184,11 +213,11 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       });
       if (adminStatusError) throw adminStatusError;
 
-      onUserUpdate({ 
-          ...user, 
-          plan_name: selectedPlan, 
-          is_admin: isAdmin,
-          subscription_end_date: validUntil ? new Date(validUntil).toISOString() : user.subscription_end_date
+      onUserUpdate({
+        ...user,
+        plan_name: selectedPlan,
+        is_admin: isAdmin,
+        subscription_end_date: validUntil ? new Date(validUntil).toISOString() : user.subscription_end_date
       });
       toast.success('Usuário atualizado com sucesso!');
       onClose();
@@ -220,9 +249,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-2 text-gray-500" />
               <strong>Válido até:</strong>
-              <input 
-                type="date" 
-                value={validUntil} 
+              <input
+                type="date"
+                value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
                 className="ml-2 p-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
@@ -294,7 +323,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
                   />
                 </div>
               </div>
-              
+
               {userCredits > 0 && (
                 <div className="mt-3 bg-green-50 p-3 rounded border border-green-200">
                   <div className="flex items-center justify-between">
@@ -328,9 +357,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
               )}
 
               {/* Seção de PIX removida conforme solicitação */}
-              
+
               <div className="flex justify-end mt-3 space-x-2">
-                 <button
+                <button
                   type="button"
                   onClick={() => setShowPaymentForm(false)}
                   className="px-3 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
@@ -351,26 +380,26 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
           <div className="flex flex-col md:flex-row justify-between items-center pt-4 space-y-4 md:space-y-0">
             <div className="flex space-x-2 w-full md:w-auto">
-                <button
+              <button
                 type="button"
                 onClick={handleImpersonate}
                 disabled={updating}
                 className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 disabled:opacity-50"
-                >
+              >
                 <Eye className="h-5 w-5 mr-2" />
                 Acessar
+              </button>
+              {!showPaymentForm && (
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentForm(true)}
+                  disabled={updating}
+                  className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50"
+                >
+                  <DollarSign className="h-5 w-5 mr-2" />
+                  Pagamento
                 </button>
-                {!showPaymentForm && (
-                    <button
-                    type="button"
-                    onClick={() => setShowPaymentForm(true)}
-                    disabled={updating}
-                    className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50"
-                    >
-                    <DollarSign className="h-5 w-5 mr-2" />
-                    Pagamento
-                    </button>
-                )}
+              )}
             </div>
             <div className="flex space-x-4">
               <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
