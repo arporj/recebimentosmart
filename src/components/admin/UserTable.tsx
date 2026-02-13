@@ -15,6 +15,7 @@ export interface UserProfile {
   is_admin: boolean;
   created_at: string;
   last_sign_in_at: string | null;
+  valid_until: string | null;
 }
 
 const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
@@ -110,20 +111,31 @@ export default function UserTable() {
   };
 
   const sortedUsers = [...users].sort((a, b) => {
-    let aValue = a[sortField as keyof UserProfile];
-    let bValue = b[sortField as keyof UserProfile];
+    const aValueOriginal = a[sortField as keyof UserProfile];
+    const bValueOriginal = b[sortField as keyof UserProfile];
 
-    if (aValue === null) aValue = sortDirection === 'asc' ? Infinity : -Infinity;
-    if (bValue === null) bValue = sortDirection === 'asc' ? Infinity : -Infinity;
+    // Handle null values
+    if (aValueOriginal === null && bValueOriginal === null) return 0;
+    if (aValueOriginal === null) return sortDirection === 'asc' ? 1 : -1;
+    if (bValueOriginal === null) return sortDirection === 'asc' ? -1 : 1;
 
-    if (sortField === 'created_at' || sortField === 'last_sign_in_at') {
-      aValue = aValue ? new Date(aValue).getTime() : aValue;
-      bValue = bValue ? new Date(bValue).getTime() : bValue;
+    let compareResult = 0;
+
+    if (sortField === 'created_at' || sortField === 'last_sign_in_at' || sortField === 'valid_until') {
+      const dateA = new Date(aValueOriginal as string).getTime();
+      const dateB = new Date(bValueOriginal as string).getTime();
+      compareResult = dateA - dateB;
+    } else if (typeof aValueOriginal === 'string' && typeof bValueOriginal === 'string') {
+      compareResult = aValueOriginal.localeCompare(bValueOriginal);
+    } else if (typeof aValueOriginal === 'boolean' && typeof bValueOriginal === 'boolean') {
+      compareResult = (aValueOriginal === bValueOriginal) ? 0 : aValueOriginal ? -1 : 1;
+    } else {
+      // Fallback
+      if (aValueOriginal < bValueOriginal) compareResult = -1;
+      else if (aValueOriginal > bValueOriginal) compareResult = 1;
     }
 
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
+    return sortDirection === 'asc' ? compareResult : -compareResult;
   });
 
   const filteredUsers = sortedUsers.filter(user => {
@@ -172,8 +184,8 @@ export default function UserTable() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th 
-                scope="col" 
+              <th
+                scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('name')}
               >
@@ -181,8 +193,8 @@ export default function UserTable() {
                   Nome {getSortIcon('name')}
                 </div>
               </th>
-              <th 
-                scope="col" 
+              <th
+                scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('plan_name')}
               >
@@ -190,8 +202,8 @@ export default function UserTable() {
                   Plano {getSortIcon('plan_name')}
                 </div>
               </th>
-              <th 
-                scope="col" 
+              <th
+                scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('subscription_status')}
               >
@@ -199,8 +211,8 @@ export default function UserTable() {
                   Status {getSortIcon('subscription_status')}
                 </div>
               </th>
-              <th 
-                scope="col" 
+              <th
+                scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('last_sign_in_at')}
               >
@@ -259,9 +271,9 @@ export default function UserTable() {
       </div>
 
       {selectedUser && (
-        <UserDetailsModal 
-          user={selectedUser} 
-          onClose={handleCloseModal} 
+        <UserDetailsModal
+          user={selectedUser}
+          onClose={handleCloseModal}
           onUserUpdate={handleUserUpdate}
         />
       )}

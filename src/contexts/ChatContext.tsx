@@ -38,7 +38,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw new Error(`Supabase error fetching conversation: ${error.message}`);
       }
-      
+
       const currentConversation = data && data.length > 0 ? data[0] : null;
       setConversation(currentConversation);
       return currentConversation;
@@ -62,7 +62,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) throw new Error(`Supabase error creating conversation: ${error.message}`);
-      
+
       setConversation(data);
       return data;
     } catch (error) {
@@ -73,7 +73,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!user || !conversation) return;
+    if (!user?.id || !conversation?.id || !isOpen) return;
 
     const fetchMessages = async () => {
       setLoading(true);
@@ -97,7 +97,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const channel = supabase
       .channel(`messages:${conversation.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` }, 
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` },
         (payload) => {
           const newMessage = payload.new as Message;
           setMessages((prev) => [...prev, newMessage]);
@@ -117,7 +117,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
 
-  }, [user, conversation, isOpen]);
+  }, [user?.id, conversation?.id, isOpen]);
 
   useEffect(() => {
     if (user) {

@@ -35,6 +35,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUserUpda
 
       // Atualiza o estado local e fecha o modal
       onUserUpdate({ ...user, valid_until: validUntil, is_admin: isAdmin });
+      toast.success('Usuário atualizado com sucesso. As alterações terão efeito no próximo login.');
       onClose();
 
     } catch (error) {
@@ -67,7 +68,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUserUpda
               <Calendar className="h-4 w-4 mr-2" />
               Válido Até
             </label>
-            <input 
+            <input
               id="valid-until"
               type="date"
               value={validUntil}
@@ -82,7 +83,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUserUpda
               Administrador
             </label>
             <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-              <input 
+              <input
                 type="checkbox"
                 id="is-admin"
                 checked={isAdmin}
