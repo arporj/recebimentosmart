@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Search, Filter, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { MessageSquare, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatToSP } from '../lib/dates';
 import type { Feedback } from '../types/feedback';
@@ -13,28 +13,33 @@ export default function AdminFeedbackPage() {
 
   useEffect(() => {
     fetchFeedbacks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('feedbacks')
-        .select('*, user:user_id(email, user_metadata)')
-        .order('last_activity_at', { ascending: false });
-
-      if (filter === 'unread') {
-        query = query.eq('has_unread_admin', true);
-      } else if (filter === 'open') {
-        query = query.eq('status', 'open');
-      } else if (filter === 'closed') {
-        query = query.eq('status', 'closed');
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc('get_admin_feedbacks');
 
       if (error) throw error;
-      setFeedbacks(data || []);
+
+      let filteredData = data || [];
+
+      if (filter === 'unread') {
+        filteredData = filteredData.filter((f: any) => f.has_unread_admin);
+      } else if (filter === 'open') {
+        filteredData = filteredData.filter((f: any) => f.status === 'open');
+      } else if (filter === 'closed') {
+        filteredData = filteredData.filter((f: any) => f.status === 'closed');
+      }
+
+      // Map user_data to user to match expected structure
+      const mappedData = filteredData.map((f: any) => ({
+        ...f,
+        user: f.user_data // Map RPC user_data to user property expected by UI
+      }));
+
+      setFeedbacks(mappedData);
     } catch (error) {
       console.error('Erro ao buscar feedbacks:', error);
     } finally {
@@ -65,12 +70,12 @@ export default function AdminFeedbackPage() {
   if (selectedFeedback) {
     return (
       <div className="p-6">
-        <FeedbackDetails 
-          feedback={selectedFeedback} 
+        <FeedbackDetails
+          feedback={selectedFeedback}
           onBack={() => {
             setSelectedFeedback(null);
             fetchFeedbacks();
-          }} 
+          }}
           isAdminView={true}
         />
       </div>
@@ -84,37 +89,33 @@ export default function AdminFeedbackPage() {
           <h1 className="text-2xl font-bold text-gray-900">Gestão de Feedbacks</h1>
           <p className="text-gray-500 text-sm mt-1">Gerencie críticas e sugestões dos usuários.</p>
         </div>
-        
+
         <div className="flex bg-white rounded-lg shadow-sm p-1 border border-gray-200">
           <button
             onClick={() => setFilter('unread')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'unread' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${filter === 'unread' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Não Lidos
           </button>
           <button
             onClick={() => setFilter('open')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'open' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${filter === 'open' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Abertos
           </button>
           <button
             onClick={() => setFilter('closed')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'closed' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${filter === 'closed' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Fechados
           </button>
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'all' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${filter === 'all' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Todos
           </button>
@@ -149,9 +150,8 @@ export default function AdminFeedbackPage() {
                         <p className={`text-sm font-medium truncate ${feedback.has_unread_admin ? 'text-gray-900 font-bold' : 'text-gray-700'}`}>
                           {feedback.subject}
                         </p>
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          feedback.type === 'Crítica' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${feedback.type === 'Crítica' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
                           {feedback.type}
                         </span>
                       </div>
@@ -164,7 +164,7 @@ export default function AdminFeedbackPage() {
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex flex-col">
                         <p className="flex items-center text-sm text-gray-500">
-                          <span className="font-medium mr-1">Usuário:</span> 
+                          <span className="font-medium mr-1">Usuário:</span>
                           {/* @ts-ignore - Supabase join returns user object */}
                           {feedback.user?.user_metadata?.name || feedback.user?.email || 'Desconhecido'}
                         </p>
