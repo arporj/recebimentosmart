@@ -9,12 +9,37 @@ export default function AdminFeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'closed'>('unread');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'in_progress' | 'closed'>('unread');
 
   useEffect(() => {
     fetchFeedbacks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  // Subscribe to changes
+  useEffect(() => {
+    const subscription = supabase
+      .channel('admin_feedback_list')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'feedbacks'
+      }, () => {
+        fetchFeedbacks();
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'feedback_messages'
+      }, () => {
+        fetchFeedbacks();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const fetchFeedbacks = async () => {
     try {
@@ -29,6 +54,8 @@ export default function AdminFeedbackPage() {
         filteredData = filteredData.filter((f: any) => f.has_unread_admin);
       } else if (filter === 'open') {
         filteredData = filteredData.filter((f: any) => f.status === 'open');
+      } else if (filter === 'in_progress') {
+        filteredData = filteredData.filter((f: any) => f.status === 'in_progress');
       } else if (filter === 'closed') {
         filteredData = filteredData.filter((f: any) => f.status === 'closed');
       }
@@ -104,6 +131,13 @@ export default function AdminFeedbackPage() {
               }`}
           >
             Abertos
+          </button>
+          <button
+            onClick={() => setFilter('in_progress')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${filter === 'in_progress' ? 'bg-custom text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            Em Análise
           </button>
           <button
             onClick={() => setFilter('closed')}

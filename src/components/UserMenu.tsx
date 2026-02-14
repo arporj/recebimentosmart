@@ -11,33 +11,33 @@ export const UserMenu: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
-  
+
   const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.trim().toLowerCase()));
-  
+
   // Estado para controlar a visibilidade do menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadUserFeedback, setUnreadUserFeedback] = useState(false);
   const [unreadAdminFeedback, setUnreadAdminFeedback] = useState(false);
-  
+
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (user) {
       checkUnreadFeedbacks();
-      
+
       // Subscribe to changes
       const subscription = supabase
         .channel('feedback_updates')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'feedbacks' 
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'feedbacks'
         }, () => {
           checkUnreadFeedbacks();
         })
         .subscribe();
-        
+
       return () => {
         subscription.unsubscribe();
       };
@@ -54,7 +54,7 @@ export const UserMenu: React.FC = () => {
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('has_unread_user', true);
-        
+
       setUnreadUserFeedback((userCount || 0) > 0);
 
       // Check admin unread if admin
@@ -63,7 +63,7 @@ export const UserMenu: React.FC = () => {
           .from('feedbacks')
           .select('id', { count: 'exact', head: true })
           .eq('has_unread_admin', true);
-          
+
         setUnreadAdminFeedback((adminCount || 0) > 0);
       }
     } catch (error) {
@@ -75,9 +75,9 @@ export const UserMenu: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        menuRef.current && 
+        menuRef.current &&
         !menuRef.current.contains(event.target as Node) &&
-        buttonRef.current && 
+        buttonRef.current &&
         !buttonRef.current.contains(event.target as Node)
       ) {
         setIsMenuOpen(false);
@@ -121,7 +121,7 @@ export const UserMenu: React.FC = () => {
               <span className="hidden sm:inline text-xs">Voltar</span>
             </button>
           )}
-          <button 
+          <button
             ref={buttonRef}
             className={`flex items-center space-x-2 p-2 rounded-md text-white ${originalUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -135,9 +135,9 @@ export const UserMenu: React.FC = () => {
             )}
           </button>
         </div>
-        
+
         {isMenuOpen && (
-          <div 
+          <div
             ref={menuRef}
             className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-secondary-100"
             role="menu"
@@ -151,9 +151,9 @@ export const UserMenu: React.FC = () => {
                 <CreditCard className="h-4 w-4 mr-2 text-red-500" />
                 Sua Assinatura
               </button>
-              
+
               <hr className="my-1" />
-              
+
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -186,7 +186,7 @@ export const UserMenu: React.FC = () => {
             <span className="hidden sm:inline text-xs">Voltar</span>
           </button>
         )}
-        <button 
+        <button
           ref={buttonRef}
           className={`flex items-center space-x-2 p-2 rounded-md text-white ${originalUser ? 'bg-amber-600' : ''} hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-white/75`}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -198,11 +198,14 @@ export const UserMenu: React.FC = () => {
           {originalUser && (
             <span className="text-xs bg-white text-amber-600 px-1 py-0.5 rounded ml-1">(Impersonando)</span>
           )}
+          {(unreadUserFeedback || unreadAdminFeedback) && (
+            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 border-2 border-custom rounded-full"></span>
+          )}
         </button>
       </div>
-      
+
       {isMenuOpen && (
-        <div 
+        <div
           ref={menuRef}
           className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-secondary-200"
           role="menu"
@@ -212,9 +215,8 @@ export const UserMenu: React.FC = () => {
             <div className="border-b border-secondary-200 pb-1 mb-1">
               <button
                 onClick={() => handleNavigation('/monthly')}
-                className={`flex items-center w-full px-4 py-2 text-sm ${
-                  pathname === '/monthly' ? 'text-custom font-semibold' : 'text-neutral-700'
-                } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/monthly' ? 'text-custom font-semibold' : 'text-neutral-700'
+                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
                 role="menuitem"
               >
                 <Calendar className="h-4 w-4 mr-3 text-neutral-500" />
@@ -222,23 +224,21 @@ export const UserMenu: React.FC = () => {
               </button>
 
               {isProOrAdmin && (
-              <button
-                onClick={() => handleNavigation('/reports')}
-                className={`flex items-center w-full px-4 py-2 text-sm ${
-                  pathname === '/reports' ? 'text-custom font-semibold' : 'text-neutral-700'
-                } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
-                role="menuitem"
-              >
-                <BarChart className="h-4 w-4 mr-3 text-neutral-500" />
-                Relatórios
-              </button>
+                <button
+                  onClick={() => handleNavigation('/reports')}
+                  className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/reports' ? 'text-custom font-semibold' : 'text-neutral-700'
+                    } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                  role="menuitem"
+                >
+                  <BarChart className="h-4 w-4 mr-3 text-neutral-500" />
+                  Relatórios
+                </button>
               )}
 
               <button
                 onClick={() => handleNavigation('/feedback')}
-                className={`flex items-center w-full px-4 py-2 text-sm ${
-                  pathname === '/feedback' ? 'text-custom font-semibold' : 'text-neutral-700'
-                } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/feedback' ? 'text-custom font-semibold' : 'text-neutral-700'
+                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
                 role="menuitem"
               >
                 <div className="relative mr-3">
@@ -255,9 +255,8 @@ export const UserMenu: React.FC = () => {
               <div className="border-b border-secondary-200 pb-1 mb-1">
                 <button
                   onClick={() => handleNavigation('/admin/feedbacks')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    pathname === '/admin/feedbacks' ? 'text-custom font-semibold' : 'text-neutral-700'
-                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                  className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/admin/feedbacks' ? 'text-custom font-semibold' : 'text-neutral-700'
+                    } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
                   role="menuitem"
                 >
                   <div className="relative mr-3">
@@ -273,29 +272,27 @@ export const UserMenu: React.FC = () => {
 
             {/* Itens de Configuração e Conta */}
             {isProOrAdmin && (
-            <button
-              onClick={() => handleNavigation('/campos-personalizados')}
-              className={`flex items-center w-full px-4 py-2 text-sm ${
-                pathname === '/campos-personalizados' ? 'text-custom font-semibold' : 'text-neutral-700'
-              } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
-              role="menuitem"
-            >
-              <Settings className="h-4 w-4 mr-3 text-neutral-500" />
-              Campos Personalizados
-            </button>
+              <button
+                onClick={() => handleNavigation('/campos-personalizados')}
+                className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/campos-personalizados' ? 'text-custom font-semibold' : 'text-neutral-700'
+                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                role="menuitem"
+              >
+                <Settings className="h-4 w-4 mr-3 text-neutral-500" />
+                Campos Personalizados
+              </button>
             )}
 
             <button
               onClick={() => handleNavigation('/profile')}
-              className={`flex items-center w-full px-4 py-2 text-sm ${
-                pathname === '/profile' ? 'text-custom font-semibold' : 'text-neutral-700'
-              } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+              className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/profile' ? 'text-custom font-semibold' : 'text-neutral-700'
+                } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
               role="menuitem"
             >
               <User className="h-4 w-4 mr-3 text-neutral-500" />
               Meu Perfil
             </button>
-            
+
             <button
               onClick={() => handleNavigation('/payment')}
               className="flex items-center w-full px-4 py-2 text-sm text-neutral-700 hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none"
@@ -339,9 +336,8 @@ export const UserMenu: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleNavigation('/admin/chat')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    pathname === '/admin/chat' ? 'text-custom font-semibold' : 'text-neutral-700'
-                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                  className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/admin/chat' ? 'text-custom font-semibold' : 'text-neutral-700'
+                    } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
                   role="menuitem"
                 >
                   <MessageSquare className="h-4 w-4 mr-3 text-neutral-500" />
@@ -349,9 +345,8 @@ export const UserMenu: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleNavigation('/configuracoes')}
-                  className={`flex items-center w-full px-4 py-2 text-sm ${
-                    pathname === '/configuracoes' ? 'text-custom font-semibold' : 'text-neutral-700'
-                  } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
+                  className={`flex items-center w-full px-4 py-2 text-sm ${pathname === '/configuracoes' ? 'text-custom font-semibold' : 'text-neutral-700'
+                    } hover:bg-secondary-100 focus:bg-secondary-100 focus:outline-none`}
                   role="menuitem"
                 >
                   <Settings className="h-4 w-4 mr-3 text-neutral-500" />
@@ -359,7 +354,7 @@ export const UserMenu: React.FC = () => {
                 </button>
               </div>
             )}
-            
+
             {/* Logout */}
             <div className="border-t border-secondary-200 pt-1 mt-1">
               <button

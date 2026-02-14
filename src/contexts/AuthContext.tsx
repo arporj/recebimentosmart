@@ -20,7 +20,7 @@ interface AuthContextType {
   pixKey: string | null;
   fetchReferralInfo: () => Promise<void>;
   updatePixKey: (pixKey: string) => Promise<void>;
-  impersonatedUser: User | null;
+  originalUser: User | null;
   impersonateUser: (userId: string) => Promise<void>;
   stopImpersonating: () => Promise<void>;
 }
@@ -52,17 +52,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.warn("Erro na verificação de sessão (pode ser ignorado se não estiver logado):", error.message);
         if (error.message.includes("Refresh Token")) {
-           // Token inválido, limpar estado local
-           setUser(null);
-           supabase.auth.signOut().catch(() => {});
+          // Token inválido, limpar estado local
+          setUser(null);
+          supabase.auth.signOut().catch(() => { });
         }
       } else {
         setUser(data.session?.user ?? null);
       }
       setLoading(false);
     }).catch(err => {
-       console.error("Erro inesperado ao buscar sessão:", err);
-       setLoading(false);
+      console.error("Erro inesperado ao buscar sessão:", err);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -105,11 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const trialDays = 7;
         const createdAt = parseISO(currentUser.created_at);
         const trialEndDate = addDays(createdAt, trialDays);
-        
+
         // Verificação mais robusta de validade
         const validUntilDate = profile?.valid_until ? new Date(profile.valid_until) : null;
-        const hasPaidAccess = validUntilDate && !isNaN(validUntilDate.getTime()) 
-          ? validUntilDate > new Date() 
+        const hasPaidAccess = validUntilDate && !isNaN(validUntilDate.getTime())
+          ? validUntilDate > new Date()
           : false;
 
         const isInTrial = isFuture(trialEndDate);
@@ -121,11 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!originalUser) {
           if (!profile?.cpf_cnpj && location.pathname !== '/profile') {
-             toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-             navigate('/profile');
+            toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+            navigate('/profile');
           } else if (!currentHasFullAccess && !profile?.is_admin && location.pathname !== '/payment' && location.pathname !== '/profile') {
-             // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
-             navigate('/payment');
+            // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
+            navigate('/payment');
           }
         }
 
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login';
       toast.error(message);
       console.error(error);
-      setLoading(false); 
+      setLoading(false);
     }
   };
 
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: { name }
       });
       if (authError) throw authError;
-      
+
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ name })
@@ -271,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (rpcError) throw rpcError;
       const targetUser = targetUserData.find((u: { id: string, email?: string, name?: string, created_at?: string }) => u.id === userId);
       if (!targetUser) throw new Error('Usuário não encontrado');
-      
+
       const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (profileError) throw profileError;
 
@@ -286,9 +286,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         aud: '',
         role: '',
       };
-      
+
       setUser(impersonatedUserObj);
-      
+
       toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
       navigate('/dashboard');
     } catch (error) {

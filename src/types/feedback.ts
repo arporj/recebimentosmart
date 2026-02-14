@@ -20,7 +20,7 @@ export interface Feedback {
 export interface FeedbackMessage {
   id: string;
   feedback_id: string;
-  sender_id: string;
+  sender_id: string | null;
   message: string;
   created_at: string;
 }
