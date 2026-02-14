@@ -18,6 +18,23 @@ export function FeedbackList() {
   useEffect(() => {
     if (user) {
       fetchFeedbacks();
+
+      // Subscribe to changes
+      const subscription = supabase
+        .channel('user_feedback_list')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'feedbacks',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          fetchFeedbacks();
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [user]);
 
@@ -61,12 +78,12 @@ export function FeedbackList() {
 
   if (selectedFeedback) {
     return (
-      <FeedbackDetails 
-        feedback={selectedFeedback} 
+      <FeedbackDetails
+        feedback={selectedFeedback}
         onBack={() => {
           setSelectedFeedback(null);
           fetchFeedbacks(); // Refresh list on return
-        }} 
+        }}
       />
     );
   }
@@ -118,9 +135,8 @@ export function FeedbackList() {
                         <p className={`text-sm font-medium truncate ${feedback.has_unread_user ? 'text-gray-900 font-bold' : 'text-gray-700'}`}>
                           {feedback.subject}
                         </p>
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          feedback.type === 'Crítica' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${feedback.type === 'Crítica' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
                           {feedback.type}
                         </span>
                         {feedback.has_unread_user && (

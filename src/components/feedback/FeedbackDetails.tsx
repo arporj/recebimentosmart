@@ -12,8 +12,9 @@ interface FeedbackDetailsProps {
   isAdminView?: boolean;
 }
 
-export function FeedbackDetails({ feedback, onBack, isAdminView = false }: FeedbackDetailsProps) {
+export function FeedbackDetails({ feedback: initialFeedback, onBack, isAdminView = false }: FeedbackDetailsProps) {
   const { user } = useAuth();
+  const [feedback, setFeedback] = useState<Feedback>(initialFeedback);
   const [messages, setMessages] = useState<FeedbackMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,12 +23,16 @@ export function FeedbackDetails({ feedback, onBack, isAdminView = false }: Feedb
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setFeedback(initialFeedback);
+  }, [initialFeedback]);
+
+  useEffect(() => {
     fetchMessages();
     markAsRead();
 
-    // Subscribe to new messages
+    // Subscribe to new messages and feedback updates
     const subscription = supabase
-      .channel(`feedback_messages:${feedback.id}`)
+      .channel(`feedback_details:${feedback.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -37,18 +42,25 @@ export function FeedbackDetails({ feedback, onBack, isAdminView = false }: Feedb
         const newMsg = payload.new as FeedbackMessage;
         setMessages(prev => [...prev, newMsg]);
         scrollToBottom();
-        // If message is not mine, mark as read
-        // If message is not mine, mark as read
-        // For system messages (sender_id is null), we only mark read if we didn't trigger it (sender_id != user.id is not enough check if null)
-        // But the previous subscription returned 'newMsg' which has sender_id.
+
         if (newMsg.sender_id !== user?.id && newMsg.sender_id !== null) {
           markAsRead();
         } else if (newMsg.sender_id === null) {
-          // System message. We should mark as read just in case, or let the user see it.
-          // Usually system message needs to be seen.
-          // Check if it's relevant to me? simpler to just mark read if I see it.
           markAsRead();
         }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'feedbacks',
+        filter: `id=eq.${feedback.id}`
+      }, (payload) => {
+        const updatedFeedback = payload.new as Feedback;
+        setFeedback(prev => ({ ...prev, ...updatedFeedback }));
+        toast.success(`Status atualizado externamente para ${updatedFeedback.status === 'open' ? 'Aberto' :
+            updatedFeedback.status === 'in_progress' ? 'Em Análise' :
+              updatedFeedback.status === 'resolved' ? 'Resolvido' : 'Fechado'
+          }`);
       })
       .subscribe();
 
