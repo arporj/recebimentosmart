@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -166,6 +166,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
       if (error) throw error;
+
+      // Enviar notificação de novo usuário para o admin
+      if (data.user) {
+        supabase.functions.invoke('send-notification-email', {
+          body: {
+            recipientEmail: 'contato@recebimentosmart.com.br',
+            subject: `Novo Usuário Cadastrado: ${name}`,
+            htmlContent: `
+              <h2>Novo Cadastro no Sistema</h2>
+              <p>Um novo usuário acabou de se cadastrar:</p>
+              <ul>
+                <li><strong>Nome:</strong> ${name}</li>
+                <li><strong>E-mail:</strong> ${email}</li>
+                <li><strong>CPF/CNPJ:</strong> ${cpf_cnpj}</li>
+                <li><strong>ID:</strong> ${data.user.id}</li>
+                <li><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</li>
+              </ul>
+            `
+          }
+        }).catch(err => console.error('Erro ao enviar notificação de novo usuário:', err));
+      }
+
       toast.success('Cadastro realizado com sucesso! Verifique seu e-mail.');
       navigate('/login');
     } catch (error) {

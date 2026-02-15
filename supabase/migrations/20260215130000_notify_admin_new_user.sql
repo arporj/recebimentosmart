@@ -1,0 +1,2 @@
+-- Migration cancelled. Logic moved to client-side (AuthContext.tsx) to maintain consistency.
+-- This file is intentionally left effectively empty to avoid applying the trigger.
