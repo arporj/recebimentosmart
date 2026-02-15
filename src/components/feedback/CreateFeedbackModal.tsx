@@ -66,7 +66,8 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
       // Não bloqueamos o fluxo se falhar o envio de email
       supabase.functions.invoke('send_feedback_email', {
         body: {
-          feedback_id: feedback.id
+          feedback_id: feedback.id,
+          origin: window.location.origin
         }
       }).catch(err => console.error('Falha ao enviar notificação de feedback:', err));
 

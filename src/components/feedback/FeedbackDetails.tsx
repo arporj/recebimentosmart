@@ -134,7 +134,8 @@ export function FeedbackDetails({ feedback: initialFeedback, onBack, isAdminView
       // Enviar notificação por email
       supabase.functions.invoke('send_feedback_email', {
         body: {
-          feedback_id: feedback.id
+          feedback_id: feedback.id,
+          origin: window.location.origin
         }
       }).catch(err => console.error('Falha ao enviar notificação de feedback:', err));
     } catch (error) {
