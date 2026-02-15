@@ -30,13 +30,15 @@ export function ForgotPasswordPage() {
     }
   };
 
+
+
   if (submitted) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
         <div className="bg-white p-8 rounded shadow-md w-full max-w-md text-center">
           <h2 className="text-2xl font-bold mb-6">Email Enviado</h2>
           <p className="mb-6">
-            Enviamos um email de recuperação para <strong>{email}</strong>. 
+            Enviamos um email de recuperação para <strong>{email}</strong>.
             Por favor, verifique sua caixa de entrada e siga as instruções.
           </p>
           <p className="text-sm text-gray-500 mb-6">
@@ -80,7 +82,7 @@ export function ForgotPasswordPage() {
               placeholder="Digite seu email cadastrado"
             />
           </div>
-          
+
           <button
             type="submit"
             disabled={loading}
@@ -88,8 +90,10 @@ export function ForgotPasswordPage() {
           >
             {loading ? 'Enviando...' : 'Enviar link de recuperação'}
           </button>
+
+
         </form>
-        
+
         <div className="mt-4 text-center">
           <Link to="/login" className="text-sm text-custom hover:text-custom-hover">
             Voltar para o login

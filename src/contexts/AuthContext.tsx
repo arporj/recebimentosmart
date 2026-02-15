@@ -194,10 +194,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = async (email: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email,
+          redirectTo: `${window.location.origin}/reset-password`
+        }
       });
+
       if (error) throw error;
+      if (data && !data.success) {
+        throw new Error(data.error || 'Erro desconhecido ao enviar e-mail');
+      }
+
       toast.success('E-mail de recuperação enviado!');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao enviar e-mail';

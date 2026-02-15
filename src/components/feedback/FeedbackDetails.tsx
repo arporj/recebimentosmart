@@ -58,8 +58,8 @@ export function FeedbackDetails({ feedback: initialFeedback, onBack, isAdminView
         const updatedFeedback = payload.new as Feedback;
         setFeedback(prev => ({ ...prev, ...updatedFeedback }));
         toast.success(`Status atualizado externamente para ${updatedFeedback.status === 'open' ? 'Aberto' :
-            updatedFeedback.status === 'in_progress' ? 'Em Análise' :
-              updatedFeedback.status === 'resolved' ? 'Resolvido' : 'Fechado'
+          updatedFeedback.status === 'in_progress' ? 'Em Análise' :
+            updatedFeedback.status === 'resolved' ? 'Resolvido' : 'Fechado'
           }`);
       })
       .subscribe();
@@ -130,6 +130,13 @@ export function FeedbackDetails({ feedback: initialFeedback, onBack, isAdminView
 
       if (error) throw error;
       setNewMessage('');
+
+      // Enviar notificação por email
+      supabase.functions.invoke('send_feedback_email', {
+        body: {
+          feedback_id: feedback.id
+        }
+      }).catch(err => console.error('Falha ao enviar notificação de feedback:', err));
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       toast.error('Erro ao enviar mensagem');

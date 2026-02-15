@@ -32,3 +32,5 @@ certs/*
 
 # Supabase temporary files
 supabase/.temp/
+
+others/apis
