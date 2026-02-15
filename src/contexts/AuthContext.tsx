@@ -169,21 +169,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Enviar notificação de novo usuário para o admin
       if (data.user) {
+        const primaryColor = '#20B2AA';
+        const backgroundColor = '#f4f4f4';
+        const containerColor = '#ffffff';
+        const textColor = '#333333';
+
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { margin: 0; padding: 0; background-color: ${backgroundColor}; font-family: Arial, sans-serif; }
+              .container { max-width: 600px; margin: 20px auto; background-color: ${containerColor}; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+              .header { background-color: ${primaryColor}; color: white; padding: 20px; text-align: center; }
+              .header h1 { margin: 0; font-size: 20px; }
+              .content { padding: 20px; color: ${textColor}; }
+              .info { background: #f9f9f9; padding: 15px; border-radius: 4px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; font-size: 14px; }
+              .info p { margin: 8px 0; }
+              .footer { text-align: center; padding: 20px; font-size: 12px; color: #777777; border-top: 1px solid #eeeeee; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>Novo Cadastro no Sistema</h1>
+              </div>
+              <div class="content">
+                <p>Olá, Admin!</p>
+                <p>Um novo usuário acabou de se cadastrar na plataforma.</p>
+                
+                <div class="info">
+                  <p><strong>Nome:</strong> ${name}</p>
+                  <p><strong>E-mail:</strong> ${email}</p>
+                  <p><strong>CPF/CNPJ:</strong> ${cpf_cnpj}</p>
+                  <p><strong>ID do Usuário:</strong> ${data.user.id}</p>
+                  <p><strong>Data de Cadastro:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+                </div>
+
+                <p style="font-size: 13px; color: #666;">
+                  Verifique o painel administrativo para mais detalhes.
+                </p>
+              </div>
+              <div class="footer">
+                <p>Recebimento $mart &copy; ${new Date().getFullYear()}</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
         supabase.functions.invoke('send-notification-email', {
           body: {
             recipientEmail: 'contato@recebimentosmart.com.br',
-            subject: `Novo Usuário Cadastrado: ${name}`,
-            htmlContent: `
-              <h2>Novo Cadastro no Sistema</h2>
-              <p>Um novo usuário acabou de se cadastrar:</p>
-              <ul>
-                <li><strong>Nome:</strong> ${name}</li>
-                <li><strong>E-mail:</strong> ${email}</li>
-                <li><strong>CPF/CNPJ:</strong> ${cpf_cnpj}</li>
-                <li><strong>ID:</strong> ${data.user.id}</li>
-                <li><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</li>
-              </ul>
-            `
+            subject: `Novo Usuário: ${name}`,
+            htmlContent: emailHtml
           }
         }).catch(err => console.error('Erro ao enviar notificação de novo usuário:', err));
       }
