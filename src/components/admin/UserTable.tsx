@@ -165,9 +165,15 @@ export default function UserTable() {
     return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
 
+  const handleUserDeleted = () => {
+    fetchUsers();
+    handleCloseModal();
+  };
+
   return (
     <div className="flex flex-col flex-grow h-full">
       <div className="flex justify-end items-center mb-4">
+        {/* ... existing search input ... */}
         <div className="relative">
           <input
             type="text"
@@ -275,6 +281,7 @@ export default function UserTable() {
           user={selectedUser}
           onClose={handleCloseModal}
           onUserUpdate={handleUserUpdate}
+          onUserDeleted={handleUserDeleted}
         />
       )}
     </div>
