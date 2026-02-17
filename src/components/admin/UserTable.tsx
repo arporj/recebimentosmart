@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Search, ArrowUp, ArrowDown, MoreVertical } from 'lucide-react';
+import { Search, ArrowUp, ArrowDown, MoreVertical, Mail } from 'lucide-react';
 import UserDetailsModal from './UserDetailsModal';
 
 // Interface atualizada para o perfil do usuário vindo da nova função RPC
@@ -170,6 +170,31 @@ export default function UserTable() {
     handleCloseModal();
   };
 
+  const handleNotifyDuePayments = async (user: UserProfile) => {
+    if (!confirm(`Deseja enviar o e-mail de notificação de vencimentos para ${user.name}?`)) {
+      return;
+    }
+
+    const toastId = toast.loading('Enviando notificação...');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('notify-due-clients', {
+        body: { userId: user.id }
+      });
+
+      if (error) throw error;
+
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success('E-mail enviado com sucesso!', { id: toastId });
+    } catch (error) {
+      console.error('Erro ao enviar notificação:', error);
+      toast.error('Erro ao enviar e-mail. Verifique o console.', { id: toastId });
+    }
+  };
+
   return (
     <div className="flex flex-col flex-grow h-full">
       <div className="flex justify-end items-center mb-4">
@@ -261,6 +286,13 @@ export default function UserTable() {
                     {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleNotifyDuePayments(user)}
+                      className="text-orange-600 hover:text-orange-900 p-1 rounded hover:bg-orange-100 mr-2"
+                      title="Enviar Notificação de Vencimentos"
+                    >
+                      <Mail className="h-5 w-5" />
+                    </button>
                     <button
                       onClick={() => handleOpenModal(user)}
                       className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-100"
