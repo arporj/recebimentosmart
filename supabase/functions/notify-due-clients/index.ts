@@ -7,94 +7,93 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY is not set')
+    if (!SUPABASE_URL) throw new Error('SUPABASE_URL is not set')
+    if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
+
+    const { userId, targetEmail } = await req.json()
+
+    if (!userId) {
+      throw new Error('userId is required')
     }
 
-    try {
-        if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY is not set')
-        if (!SUPABASE_URL) throw new Error('SUPABASE_URL is not set')
-        if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-        const { userId, targetEmail } = await req.json()
+    // 1. Get User Details
+    const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId)
+    if (userError || !user.user) throw new Error('User not found')
 
-        if (!userId) {
-            throw new Error('userId is required')
-        }
+    const recipientEmail = targetEmail || user.user.email
+    const userName = user.user.user_metadata?.name || 'Usuário'
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    // 2. Calculate dates
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const sevenDaysFromNow = new Date(today)
+    sevenDaysFromNow.setDate(today.getDate() + 7)
+    // Set to end of day
+    sevenDaysFromNow.setHours(23, 59, 59, 999)
 
-        // 1. Get User Email if targetEmail is not provided
-        let recipientEmail = targetEmail
-        if (!recipientEmail) {
-            const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId)
-            if (userError || !user.user) throw new Error('User not found')
-            recipientEmail = user.user.email
-        }
+    // 3. Query Clients
+    const { data: clients, error: clientsError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', true) // Only active clients
+      // We want clients where next_payment_date <= 7 days from now
+      // AND next_payment_date is not null
+      .lte('next_payment_date', sevenDaysFromNow.toISOString())
+      .order('next_payment_date', { ascending: true })
 
-        // 2. Calculate dates
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const sevenDaysFromNow = new Date(today)
-        sevenDaysFromNow.setDate(today.getDate() + 7)
-        // Set to end of day
-        sevenDaysFromNow.setHours(23, 59, 59, 999)
+    if (clientsError) throw new Error(`Error fetching clients: ${clientsError.message}`)
 
-        // 3. Query Clients
-        const { data: clients, error: clientsError } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('status', true) // Only active clients
-            // We want clients where next_payment_date <= 7 days from now
-            // AND next_payment_date is not null
-            .lte('next_payment_date', sevenDaysFromNow.toISOString())
-            .order('next_payment_date', { ascending: true })
+    if (!clients || clients.length === 0) {
+      return new Response(
+        JSON.stringify({ message: 'No due payments found for this user.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
 
-        if (clientsError) throw new Error(`Error fetching clients: ${clientsError.message}`)
+    // 4. Categorize Clients
+    const overdueClients: any[] = []
+    const upcomingClients: any[] = []
 
-        if (!clients || clients.length === 0) {
-            return new Response(
-                JSON.stringify({ message: 'No due payments found for this user.' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-            )
-        }
+    clients.forEach((client: any) => {
+      const paymentDate = new Date(client.next_payment_date)
+      // Reset hours for comparison
+      paymentDate.setHours(0, 0, 0, 0)
 
-        // 4. Categorize Clients
-        const overdueClients: any[] = []
-        const upcomingClients: any[] = []
+      if (paymentDate < today) {
+        overdueClients.push(client)
+      } else {
+        upcomingClients.push(client)
+      }
+    })
 
-        clients.forEach((client: any) => {
-            const paymentDate = new Date(client.next_payment_date)
-            // Reset hours for comparison
-            paymentDate.setHours(0, 0, 0, 0)
+    // 5. Build HTML Email
+    const formatDate = (dateString: string) => {
+      if (!dateString) return '-'
+      return new Date(dateString).toLocaleDateString('pt-BR')
+    }
 
-            if (paymentDate < today) {
-                overdueClients.push(client)
-            } else {
-                upcomingClients.push(client)
-            }
-        })
+    const formatCurrency = (amount: number) => {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount)
+    }
 
-        // 5. Build HTML Email
-        const formatDate = (dateString: string) => {
-            if (!dateString) return '-'
-            return new Date(dateString).toLocaleDateString('pt-BR')
-        }
-
-        const formatCurrency = (amount: number) => {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount)
-        }
-
-        let htmlContent = `
+    let htmlContent = `
       <div style="font-family: Arial, sans-serif; color: #333;">
         <h2>Relatório de Pagamentos - Recebimento Smart</h2>
-        <p>Olá,</p>
+        <p>Olá <strong>${userName}</strong>,</p>
         <p>Aqui está o resumo dos clientes com pagamentos pendentes ou próximos do vencimento.</p>
     `
 
-        if (overdueClients.length > 0) {
-            htmlContent += `
+    if (overdueClients.length > 0) {
+      htmlContent += `
         <h3 style="color: #d32f2f;">🔴 Pagamentos Atrasados (${overdueClients.length})</h3>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr style="background-color: #fce8e6;">
@@ -113,10 +112,10 @@ serve(async (req) => {
           `).join('')}
         </table>
       `
-        }
+    }
 
-        if (upcomingClients.length > 0) {
-            htmlContent += `
+    if (upcomingClients.length > 0) {
+      htmlContent += `
         <h3 style="color: #f57c00;">🟠 Vencendo em 7 dias (${upcomingClients.length})</h3>
         <table style="width: 100%; border-collapse: collapse;">
           <tr style="background-color: #fff3e0;">
@@ -135,51 +134,58 @@ serve(async (req) => {
           `).join('')}
         </table>
       `
-        }
+    }
 
-        if (overdueClients.length === 0 && upcomingClients.length === 0) {
-            htmlContent += `<p>Tudo certo! Você não tem pagamentos pendentes ou vencendo nos próximos 7 dias.</p>`
-        }
+    if (overdueClients.length === 0 && upcomingClients.length === 0) {
+      htmlContent += `<p>Tudo certo! Você não tem pagamentos pendentes ou vencendo nos próximos 7 dias.</p>`
+    }
 
-        htmlContent += `
+    htmlContent += `
+        <p>Acesse o sistema para gerenciar os pagamentos e ver mais detalhes:</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://recebimentosmart.com.br" style="background-color: #4F46E5; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+                Acessar Recebimento Smart
+            </a>
+        </div>
+        
         <p style="margin-top: 30px; font-size: 12px; color: #888;">
           Este é um e-mail automático do sistema Recebimento Smart.
         </p>
       </div>
     `
 
-        // 6. Send Email using Brevo API
-        const emailPayload = {
-            sender: { name: 'Recebimento $mart', email: 'no-reply@recebimentosmart.com.br' },
-            to: [{ email: recipientEmail }],
-            subject: '⚠ Relatório de Pagamentos - Clientes em Atraso/Vencendo',
-            htmlContent: htmlContent,
-        }
-
-        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'accept': 'application/json',
-                'api-key': BREVO_API_KEY,
-                'content-type': 'application/json',
-            },
-            body: JSON.stringify(emailPayload),
-        })
-
-        if (!brevoResponse.ok) {
-            const errorText = await brevoResponse.text()
-            throw new Error(`Error sending email: ${errorText}`)
-        }
-
-        return new Response(
-            JSON.stringify({ success: true, message: 'Email sent successfully', recipients: { overdue: overdueClients.length, upcoming: upcomingClients.length } }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        )
-
-    } catch (error: any) {
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        )
+    // 6. Send Email using Brevo API
+    const emailPayload = {
+      sender: { name: 'Recebimento $mart', email: 'no-reply@recebimentosmart.com.br' },
+      to: [{ email: recipientEmail }],
+      subject: '⚠ Relatório de Pagamentos - Clientes em Atraso/Vencendo',
+      htmlContent: htmlContent,
     }
+
+    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(emailPayload),
+    })
+
+    if (!brevoResponse.ok) {
+      const errorText = await brevoResponse.text()
+      throw new Error(`Error sending email: ${errorText}`)
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Email sent successfully', recipients: { overdue: overdueClients.length, upcoming: upcomingClients.length } }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    )
+
+  } catch (error: any) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
+  }
 })
