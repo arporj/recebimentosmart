@@ -53,12 +53,45 @@ serve(async (req) => {
 
         // Deduplicate user IDs
         const uniqueUserIds = [...new Set(userIds.map((u: any) => u.user_id))]
-        console.log(`Found ${uniqueUserIds.length} users to process.`)
+        console.log(`Found ${uniqueUserIds.length} candidate users (with due clients).`)
+
+        if (uniqueUserIds.length === 0) {
+            return new Response(JSON.stringify({ message: 'No users found with due payments.' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
+
+        // 2.1 Filter by Plan (Pro or Premium only)
+        // Fetch profiles for these users to check their plan
+        const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, plan_name')
+            .in('id', uniqueUserIds)
+
+        if (profilesError) throw new Error(`Error fetching profiles: ${profilesError.message}`)
+
+        // Filter users who have 'pro' or 'premium' (case insensitive)
+        const eligibleUserIds = profiles
+            .filter((p: any) => {
+                const plan = p.plan_name ? p.plan_name.toLowerCase() : ''
+                return plan === 'pro' || plan === 'premium'
+            })
+            .map((p: any) => p.id)
+
+        console.log(`Filtered to ${eligibleUserIds.length} eligible users (Pro/Premium).`)
+
+        if (eligibleUserIds.length === 0) {
+            return new Response(JSON.stringify({ message: 'No eligible Pro/Premium users found with due payments.' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
 
         const results = []
 
         // 3. Process each user
-        for (const userId of uniqueUserIds) {
+        for (const userId of eligibleUserIds) {
             if (!userId) continue;
 
             console.log(`Processing user: ${userId}`)
