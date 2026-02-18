@@ -4,7 +4,7 @@ import { CheckCircle, BarChart, Users, Zap, DollarSign, ShieldCheck, Rocket } fr
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 
-const normalizePlanName = (name: string) => 
+const normalizePlanName = (name: string) =>
   name.toLowerCase().normalize("NFD").replace(/[^\w\s]/gi, '');
 
 const initialTiers = [
@@ -27,6 +27,7 @@ const initialTiers = [
       'Relatórios detalhados',
       'Campos personalizados',
       'Análises de performance',
+      'Notificação semanal por email',
     ],
     icon: (props: React.ComponentProps<'svg'>) => <BarChart {...props} />,
     popular: true,
@@ -130,13 +131,13 @@ const LandingPage: React.FC = () => {
             {features.map((feature, index) => {
               const isOdd = index % 2 !== 0;
               return (
-                <div 
-                  key={index} 
-                  className={`p-8 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 border ${isOdd 
-                    ? 'bg-custom text-white border-transparent' 
+                <div
+                  key={index}
+                  className={`p-8 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 border ${isOdd
+                    ? 'bg-custom text-white border-transparent'
                     : 'bg-white text-neutral-800 border-neutral-100'}`}>
-                  <div className={`flex items-center justify-center h-16 w-16 rounded-full mx-auto mb-6 ${isOdd 
-                    ? 'bg-white/20 text-white' 
+                  <div className={`flex items-center justify-center h-16 w-16 rounded-full mx-auto mb-6 ${isOdd
+                    ? 'bg-white/20 text-white'
                     : 'bg-custom/10 text-custom'}`}>
                     {feature.icon}
                   </div>
@@ -212,8 +213,8 @@ const LandingPage: React.FC = () => {
                   </ul>
                 </div>
                 <div className="mt-8">
-                  <Link 
-                    to={tier.name === 'Premium' ? '#' : '/cadastro'} 
+                  <Link
+                    to={tier.name === 'Premium' ? '#' : '/cadastro'}
                     className={`w-full block text-center font-bold py-3 px-6 rounded-lg transition-colors shadow-md ${tier.popular ? 'bg-custom text-white hover:bg-custom-hover' : 'bg-white text-custom border border-custom hover:bg-secondary-50'} ${tier.name === 'Premium' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={(e) => tier.name === 'Premium' && e.preventDefault()}
                   >
