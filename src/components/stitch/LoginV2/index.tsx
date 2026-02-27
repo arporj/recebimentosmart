@@ -32,13 +32,6 @@ export default function LoginV2() {
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-gray-50 overflow-x-hidden">
 
-      {/* ─── Header ─── */}
-      <div className="flex items-center bg-gray-50 p-4 pb-2 justify-center">
-        <div className="flex items-center gap-2">
-          <img src="/images/header.png" alt="Recebimento $mart" className="h-8" />
-        </div>
-      </div>
-
       {/* ─── Branding Banner ─── */}
       <div className="px-4 py-3">
         <div className="w-full bg-custom bg-gradient-to-br from-custom to-teal-700 flex flex-col justify-center items-center overflow-hidden rounded-xl min-h-[240px] shadow-lg shadow-custom/20 relative">
