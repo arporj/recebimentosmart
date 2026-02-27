@@ -28,6 +28,7 @@ import CamposPersonalizados from './pages/CamposPersonalizados'; // Importa a no
 import PaymentSuccessPage from './pages/payment-success';
 import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
+import StitchLanding from './pages/StitchLanding';
 import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do admin
 
 
@@ -35,40 +36,40 @@ import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do a
 // Componente para rotas do plano Pró ou superior
 function ProRoute({ children }: { children: React.ReactNode }) {
   const { user, plano, isAdmin, loading } = useAuth();
-  
+
   if (loading) {
     return <LoadingSpinner />;
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.trim().toLowerCase()));
-  
+
   if (!isProOrAdmin) {
     return <Navigate to="/payment" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
-  
+
   if (loading) {
     return <LoadingSpinner />;;
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -97,6 +98,7 @@ function AppRoutes() {
       {!user ? (
         <>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/stitch-landing" element={<StitchLanding />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -104,7 +106,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </>
       ) : (
-        <> 
+        <>
           {/* Rotas Protegidas (requerem login) */}
           <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
           <Route path="/monthly" element={<ProtectedRoute><MainLayout><ClientProvider><MonthlyPayments /></ClientProvider></MainLayout></ProtectedRoute>} />
@@ -127,7 +129,7 @@ function AppRoutes() {
           <Route path="/admin/feedbacks" element={<AdminRoute><MainLayout><AdminFeedbackPage /></MainLayout></AdminRoute>} />
           <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
-          
+
           {/* Se o usuário logado tentar acessar rotas públicas, redireciona para o dashboard */}
           <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/cadastro" element={<Navigate to="/dashboard" replace />} />
