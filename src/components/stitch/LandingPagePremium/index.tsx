@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    Wallet,
     TrendingUp,
     DollarSign,
     Users,
@@ -116,20 +115,15 @@ export const LandingPagePremium: React.FC = () => {
             <header className={`fixed top-0 left-0 right-0 z-50 glass ${darkMode ? 'bg-slate-900/80 border-b border-slate-800' : 'border-b border-slate-200/50'}`}>
                 <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-custom rounded-lg flex items-center justify-center text-white">
-                            <Wallet size={18} />
-                        </div>
-                        <span className="font-bold text-xl tracking-tight">
-                            Recebimento<span className="text-custom">Smart</span>
-                        </span>
+                        <img src="/images/header.png" alt="Recebimento $mart" className="h-8" />
                     </div>
                     <div className="flex items-center gap-3">
-                        <Link className={`text-sm font-medium px-3 py-2 ${darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`} to="/login">
+                        <Link className={`text-sm font-medium px-3 py-2 ${darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`} to="/v2/login">
                             Login
                         </Link>
                         <Link
                             className="text-sm font-semibold bg-custom text-white px-4 py-2 rounded-full hover:bg-custom-hover transition-colors shadow-lg"
-                            to="/cadastro"
+                            to="/v2/cadastro"
                         >
                             Registrar
                         </Link>
@@ -163,7 +157,7 @@ export const LandingPagePremium: React.FC = () => {
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link
-                                to="/cadastro"
+                                to="/v2/cadastro"
                                 className="bg-custom text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-custom-hover transition-all shadow-xl transform hover:-translate-y-1"
                             >
                                 Comece Agora com 7 Dias Grátis
@@ -204,8 +198,8 @@ export const LandingPagePremium: React.FC = () => {
                         <div className={`flex flex-wrap justify-center items-center gap-8 md:gap-16 ${darkMode ? 'opacity-30' : 'opacity-50'} grayscale`}>
                             <img alt="Logo" className={`h-6 ${darkMode ? 'invert' : ''}`} src="https://lh3.googleusercontent.com/aida-public/AB6AXuDosvTKFN5onLX2i_zOYsYQL6pG04fK7eeblMuEh6iFYzeD5BlVsFK7IVjLArBWLwk_0TJTVFJMGdgzR0HLsntWVmFNzHtHxkjg841CeV94aJzvMk8NPcXYOF6ObONp_mxSMWaxxRTuuKq5yst6XG12buI2SGnqGpW43CI5E9c_Xhc1WLZFOAZ7BCTSOnE73WJt7APWEpP54_XWiY28LYOo4TE5ahVSf9fLPassOFuAqD1cUx9NU7wZyAANdVXgvzIrVpVVInVvKAGL" />
                             <img alt="Logo" className={`h-6 ${darkMode ? 'invert' : ''}`} src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_WE_yFCBJqq7pSXRB86vpMKmM0x7e4MO9j0sMERxGHdgjPr1cpbreM7WLtJz46-b9iOsK4B9Z8anWK7c-Uf-dazDMzklaB2U6u-8YNSXXM_bqMGuvgdHpybJHMJwTODhwef317Lr93bc7KLnnZM2MFT15m0yufYzV3EQPnqjxLUtrDPk3vcqi6OXH0IJW8zovsJoXrYCCzSx9fMI0kv2FnzHsNGr4YBxXvUtcGvAcs_hr9pJk6l_gQjWtiIZJFR_NJixe0nP4WzlW" />
-                            <img alt="Logo" className={`h-8 ${darkMode ? 'invert' : ''}`} src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm-uslUsq-npHwo16uo43K9n4AnQFjs9e4Axr6q5LSdHZbWwV16MLUKobfeZ7teSA3W_wzsG8-OiKIaMnnFeJad0TKhNVi8f_hf-yMWbo9HeUh9gz2aFuo-asP5N77SZ_aDDJws6Ri5yUcXYc5CKTw12xF_BS4GfSFnF_q8UenwTvNNodtwz_Ekgbtqyq0uq7j4_tjaXhYeSZHsPwHUuMILA6CGgmAtaXIJUxVM1n627Bx3UcP3Mc-72x8JLdOc99onnL5DSBKNqu6" />
-                            <img alt="Logo" className={`h-6 ${darkMode ? 'invert' : ''}`} src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVS4uhrwGAuR3dOBH72s3R5t7KABYTN92E13e-ZWRv12U7SKcY-WyvxPvyi9OZnXOG6_b6OD9niaYXHQi8GugPlAbgrlBovoiaffVdykOkic9r8Tqe6FkySbK69oHCGrbSkxwDX_2T3vbI_ZBITpdZ23LyLHIU7rXnkfKBi2S1Y8v00n1AEh5aDlRGHrYvr2XDpIDcOc3FeeR2Yrlrtqqh5uutcOT6s2d8DRkosJklwS9h_1dd-PUUTir40d4Sn4BHtAgMljBLPfhk" />
+                            <img alt="Logo" className={`h-8 ${darkMode ? 'invert' : ''}`} src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm-uslUsq-npHwo16uo43K9n4AnQFjs9e4Axr6q5LSdHZbWwV16MLUKobfeZ7teSA3W_wzsG8-OiKIaMnnFeJad0TKhNVi8f_hf-yMWbo9HeUh9gz2aFuo-asP5N77SZ_aDDJws6Ri5yUcXYc5CKTw12xF_BS4GfSFnF_q8UenwTvNNodtwz_Ekgbtqyq0uq7j4_tjaXhYeSZHsPwHU3MILA6CGgmAtaXIJUxVM1n627Bx3UcP3Mc-72x8JLdOc99onnL5DSBKNqu6" />
+                            <img alt="Logo" className={`h-6 ${darkMode ? 'invert' : ''}`} src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVS4uhrwGAuR3dOBH72s3R5t7KABYTN92E13e-ZWRv12U7SKcY-WyvxPvyi9OZnXOG6_b6OD9niaYXHQi8GugPlAbgrlBovoiaffVdykOkic9r8Tqe6FkySbK69oHCGrbSkxwDX_2T3vbI_ZBITpdZ23LyLHIU7rXnkfKBi2S1Y8v00n1AEh5aDlRGHrYvr2XDpIDcOc3FeeR2Yrlrtqqh5uutcOT6s2d8DRkosJklwS9h_1dd-PUUTir40d4Sn4BHvAgMljBLPfhk" />
                         </div>
                     </div>
                 </section>
@@ -230,8 +224,8 @@ export const LandingPagePremium: React.FC = () => {
                             >
                                 <div
                                     className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 ${f.highlighted
-                                            ? 'bg-white/20 text-white'
-                                            : 'bg-secondary-100 text-custom group-hover:scale-110 transition-transform'
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-secondary-100 text-custom group-hover:scale-110 transition-transform'
                                         }`}
                                 >
                                     {f.icon}
@@ -324,10 +318,10 @@ export const LandingPagePremium: React.FC = () => {
                                     </button>
                                 ) : (
                                     <Link
-                                        to="/cadastro"
+                                        to="/v2/cadastro"
                                         className={`w-full py-3 rounded-xl font-bold text-center block transition-all ${tier.popular
-                                                ? 'bg-custom text-white hover:bg-custom-hover shadow-lg'
-                                                : 'border-2 border-custom text-custom hover:bg-custom hover:text-white'
+                                            ? 'bg-custom text-white hover:bg-custom-hover shadow-lg'
+                                            : 'border-2 border-custom text-custom hover:bg-custom hover:text-white'
                                             }`}
                                     >
                                         Começar Agora
@@ -350,7 +344,7 @@ export const LandingPagePremium: React.FC = () => {
                             Junte-se a centenas de empreendedores que já estão otimizando seu tempo e dinheiro com a melhor plataforma de gestão.
                         </p>
                         <Link
-                            to="/cadastro"
+                            to="/v2/cadastro"
                             className="inline-flex items-center gap-3 bg-white text-custom px-10 py-5 rounded-xl font-bold text-xl hover:bg-secondary-100 transition-all shadow-xl relative z-10"
                         >
                             Criar minha conta grátis
@@ -364,12 +358,7 @@ export const LandingPagePremium: React.FC = () => {
             <footer className={`py-12 px-4 border-t ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
                 <div className="max-w-7xl mx-auto flex flex-col items-center gap-6">
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-custom rounded-md flex items-center justify-center text-white">
-                            <Wallet size={14} />
-                        </div>
-                        <span className="font-bold text-lg tracking-tight">
-                            Recebimento<span className="text-custom">Smart</span>
-                        </span>
+                        <img src="/images/header.png" alt="Recebimento $mart" className="h-6" />
                     </div>
                     <div className={`flex gap-6 text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                         <a className="hover:text-custom transition-colors" href="#">Privacidade</a>
