@@ -98,7 +98,7 @@ function AppRoutes() {
       {!user ? (
         <>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/stitch-landing" element={<StitchLanding />} />
+          <Route path="/v2" element={<StitchLanding />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
