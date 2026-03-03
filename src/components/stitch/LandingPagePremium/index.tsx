@@ -75,19 +75,24 @@ export const LandingPagePremium: React.FC = () => {
 
     const features = [
         {
-            icon: 'qr_code_2',
-            title: 'Boletos e Pix',
-            description: 'Emita cobranças profissionais de forma rápida, segura e com taxas reduzidas para o seu negócio crescer.',
-        },
-        {
-            icon: 'bar_chart',
-            title: 'Relatórios Automáticos',
-            description: 'Acompanhe seu fluxo de caixa em tempo real com dashboards intuitivos e dados precisos para decisões rápidas.',
+            icon: 'payments',
+            title: 'Gestão de Cobranças',
+            description: 'Automatize o envio de cobranças e lembretes para seus clientes, reduzindo drasticamente a inadimplência com zero esforço manual.',
         },
         {
             icon: 'groups',
-            title: 'Gestão de Clientes',
-            description: 'Centralize todas as informações dos seus clientes e histórico de pagamentos em um único ambiente organizado.',
+            title: 'Controle de Clientes',
+            description: 'Mantenha um cadastro completo e organizado de seus clientes, com histórico de pagamentos, anexos e notas personalizadas.',
+        },
+        {
+            icon: 'bar_chart',
+            title: 'Relatórios Inteligentes',
+            description: 'Tenha acesso a relatórios visuais intuitivos que ajudam a entender a saúde financeira e o fluxo de caixa do seu negócio.',
+        },
+        {
+            icon: 'verified_user',
+            title: 'Segurança de Dados',
+            description: 'Seus dados e de seus clientes estão protegidos com criptografia de ponta e as melhores práticas de segurança do mercado.',
         },
     ];
 
@@ -186,7 +191,7 @@ export const LandingPagePremium: React.FC = () => {
                                 <h2 className="text-[#29a8a8] text-sm font-bold uppercase tracking-[0.2em] mb-3">Funcionalidades</h2>
                                 <h3 className="text-3xl font-black text-slate-900 md:text-4xl">Tudo o que você precisa para gerir suas finanças</h3>
                             </div>
-                            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                                 {features.map((f, i) => (
                                     <div key={i} className="group flex flex-col gap-6 rounded-2xl border border-slate-100 bg-[#f6f8f8] p-8 transition-all hover:-translate-y-2 hover:border-[#29a8a8]/20 hover:shadow-xl hover:shadow-[#29a8a8]/5">
                                         <div className="flex size-14 items-center justify-center rounded-xl bg-white text-[#29a8a8] shadow-sm group-hover:bg-[#29a8a8] group-hover:text-white transition-colors">
@@ -217,8 +222,8 @@ export const LandingPagePremium: React.FC = () => {
                                     <div
                                         key={tier.name}
                                         className={`relative flex flex-col gap-8 rounded-3xl p-8 transition-all ${tier.popular
-                                                ? 'border-2 border-[#29a8a8] bg-white shadow-2xl shadow-[#29a8a8]/10 scale-105 z-10'
-                                                : 'border border-slate-200 bg-white hover:border-[#29a8a8]/30'
+                                            ? 'border-2 border-[#29a8a8] bg-white shadow-2xl shadow-[#29a8a8]/10 scale-105 z-10'
+                                            : 'border border-slate-200 bg-white hover:border-[#29a8a8]/30'
                                             } ${tier.disabled ? 'opacity-60' : ''}`}
                                     >
                                         {tier.popular && (
@@ -250,8 +255,8 @@ export const LandingPagePremium: React.FC = () => {
                                             <Link
                                                 to={tier.ctaLink}
                                                 className={`w-full text-center rounded-xl text-sm font-bold transition-all ${tier.popular
-                                                        ? 'bg-[#29a8a8] py-4 text-white shadow-lg shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90'
-                                                        : 'border-2 border-slate-100 py-3 text-slate-900 hover:bg-slate-50'
+                                                    ? 'bg-[#29a8a8] py-4 text-white shadow-lg shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90'
+                                                    : 'border-2 border-slate-100 py-3 text-slate-900 hover:bg-slate-50'
                                                     }`}
                                             >
                                                 {tier.cta}
