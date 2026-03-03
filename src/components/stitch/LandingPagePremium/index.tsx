@@ -8,43 +8,49 @@ const normalizePlanName = (name: string) =>
 
 const initialTiers = [
     {
-        name: 'Essencial',
-        price: '49',
-        description: 'Para profissionais liberais e autônomos.',
+        name: 'Básico',
+        price: '--,--',
+        description: 'Ideal para quem está começando.',
         features: [
-            { text: 'Emissão de Boletos', available: true },
-            { text: 'Relatórios Básicos', available: true },
-            { text: 'Pix Ilimitado', available: false },
+            { text: 'Até 20 clientes', available: true },
+            { text: 'Gestão de cobranças', available: true },
+            { text: 'Dashboard simples', available: true },
         ],
         popular: false,
+        disabled: false,
         cta: 'Começar Agora',
         ctaLink: '/v2/cadastro',
     },
     {
-        name: 'Profissional',
-        price: '99',
-        description: 'Para empresas em rápido crescimento.',
+        name: 'Pro',
+        price: '--,--',
+        description: 'Para quem quer crescer sem limites.',
         features: [
-            { text: 'Pix Ilimitado', available: true },
-            { text: 'Relatórios Avançados', available: true },
-            { text: 'Gestão de Clientes', available: true },
+            { text: 'Clientes ilimitados', available: true },
+            { text: 'Relatórios detalhados', available: true },
+            { text: 'Campos personalizados', available: true },
+            { text: 'Análises de performance', available: true },
+            { text: 'Notificação semanal por email', available: true },
         ],
         popular: true,
+        disabled: false,
         cta: 'Começar Agora',
         ctaLink: '/v2/cadastro',
     },
     {
-        name: 'Enterprise',
-        price: '199',
-        description: 'Para empresas que precisam de escala.',
+        name: 'Premium',
+        price: '--,--',
+        description: 'O máximo em automação e suporte.',
         features: [
-            { text: 'API Integrada', available: true },
-            { text: 'Suporte VIP 24h', available: true },
-            { text: 'Personalização Completa', available: true },
+            { text: 'Tudo do plano Pró', available: true },
+            { text: 'Notificação por WhatsApp', available: true },
+            { text: 'Suporte prioritário', available: true },
+            { text: 'Múltiplos usuários', available: true },
         ],
         popular: false,
-        cta: 'Falar com Consultor',
-        ctaLink: '/v2/cadastro',
+        disabled: true,
+        cta: 'Em Breve',
+        ctaLink: '#',
     },
 ];
 
@@ -206,18 +212,23 @@ export const LandingPagePremium: React.FC = () => {
                                 <h2 className="text-[#29a8a8] text-sm font-bold uppercase tracking-[0.2em] mb-3">Preços</h2>
                                 <h3 className="text-3xl font-black text-slate-900 md:text-4xl">O plano ideal para cada fase do seu negócio</h3>
                             </div>
-                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 items-center">
                                 {pricingTiers.map((tier) => (
                                     <div
                                         key={tier.name}
-                                        className={`flex flex-col gap-8 rounded-3xl p-8 transition-all ${tier.popular
-                                                ? 'relative border-2 border-[#29a8a8] bg-white shadow-2xl shadow-[#29a8a8]/10'
+                                        className={`relative flex flex-col gap-8 rounded-3xl p-8 transition-all ${tier.popular
+                                                ? 'border-2 border-[#29a8a8] bg-white shadow-2xl shadow-[#29a8a8]/10 scale-105 z-10'
                                                 : 'border border-slate-200 bg-white hover:border-[#29a8a8]/30'
-                                            }`}
+                                            } ${tier.disabled ? 'opacity-60' : ''}`}
                                     >
                                         {tier.popular && (
                                             <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-[#29a8a8] px-4 py-1 text-xs font-bold text-white uppercase tracking-widest">
                                                 Mais Popular
+                                            </div>
+                                        )}
+                                        {tier.disabled && (
+                                            <div className="absolute inset-0 bg-slate-100/70 flex items-center justify-center rounded-3xl z-20">
+                                                <span className="text-2xl font-bold text-slate-500 border-2 border-slate-300 px-6 py-2 rounded -rotate-12">Em breve</span>
                                             </div>
                                         )}
                                         <div>
@@ -228,15 +239,24 @@ export const LandingPagePremium: React.FC = () => {
                                                 <span className="text-slate-500 font-bold">/mês</span>
                                             </div>
                                         </div>
-                                        <Link
-                                            to={tier.ctaLink}
-                                            className={`w-full text-center rounded-xl text-sm font-bold transition-all ${tier.popular
-                                                    ? 'bg-[#29a8a8] py-4 text-white shadow-lg shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90'
-                                                    : 'border-2 border-slate-100 py-3 text-slate-900 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            {tier.cta}
-                                        </Link>
+                                        {tier.disabled ? (
+                                            <button
+                                                className="w-full text-center rounded-xl text-sm font-bold py-3 border-2 border-slate-200 text-slate-400 cursor-not-allowed"
+                                                disabled
+                                            >
+                                                Indisponível
+                                            </button>
+                                        ) : (
+                                            <Link
+                                                to={tier.ctaLink}
+                                                className={`w-full text-center rounded-xl text-sm font-bold transition-all ${tier.popular
+                                                        ? 'bg-[#29a8a8] py-4 text-white shadow-lg shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90'
+                                                        : 'border-2 border-slate-100 py-3 text-slate-900 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                {tier.cta}
+                                            </Link>
+                                        )}
                                         <ul className="flex flex-col gap-4">
                                             {tier.features.map((f) => (
                                                 <li key={f.text} className={`flex items-center gap-3 text-sm font-medium ${f.available ? 'text-slate-600' : 'text-slate-400 line-through'}`}>
