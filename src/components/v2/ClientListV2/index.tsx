@@ -4,7 +4,7 @@ import { isSameDay, addMonths, format, startOfMonth } from 'date-fns';
 import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react';
 import { useClients } from '../../../contexts/ClientContext';
 import { PaymentModal } from '../../PaymentModal';
-import { PaymentHistory } from '../../PaymentHistory';
+import { PaymentHistoryV2 } from '../PaymentHistoryV2';
 import { ClientForm } from '../../ClientForm';
 
 import type { Database } from '../../../types/supabase';
@@ -339,8 +339,28 @@ export function ClientListV2() {
                                         </td>
                                         {/* Expanded row para histórico */}
                                         {isExpanded && (
-                                            <td colSpan={6} className="px-6 py-4 bg-slate-50 border-t border-slate-100">
-                                                <PaymentHistory client={client} refreshKey={refreshPayments} />
+                                            <td colSpan={6} className="px-6 py-6 bg-slate-50/50 border-t border-slate-100">
+                                                {/* Client detail header */}
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <h3 className="text-lg font-bold text-slate-900">{client.name}</h3>
+                                                        {getClientPaymentStatus(client, payments) === 'paid' && (
+                                                            <span className="px-3 py-1 bg-teal-50 text-[#14b8a6] text-xs font-bold rounded-full border border-teal-100">EM DIA</span>
+                                                        )}
+                                                        {getClientPaymentStatus(client, payments) === 'late' && (
+                                                            <span className="px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-100">EM ATRASO</span>
+                                                        )}
+                                                        {getClientPaymentStatus(client, payments) === 'due-today' && (
+                                                            <span className="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-bold rounded-full border border-yellow-100">VENCE HOJE</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-8 text-sm mb-6">
+                                                    <p className="text-slate-500">Valor: <span className="font-semibold text-slate-900">R$ {client.monthly_payment.toFixed(2).replace('.', ',')}</span></p>
+                                                    <p className="text-slate-500">Frequência: <span className="font-medium text-slate-900">{PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}</span></p>
+                                                    <p className="text-slate-500">Vencimento: <span className="font-medium text-slate-900">Dia {client.payment_due_day}</span></p>
+                                                </div>
+                                                <PaymentHistoryV2 client={client} refreshKey={refreshPayments} />
                                             </td>
                                         )}
                                     </tr>
