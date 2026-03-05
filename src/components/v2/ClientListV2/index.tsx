@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { isSameDay, addMonths, format, startOfMonth } from 'date-fns';
 import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react';
 import { useClients } from '../../../contexts/ClientContext';
-import { PaymentModal } from '../../PaymentModal';
+import { PaymentModalV2 } from '../PaymentModalV2';
 import { PaymentHistoryV2 } from '../PaymentHistoryV2';
 import { ClientFormV2 } from '../ClientFormV2';
 
@@ -390,7 +390,7 @@ export function ClientListV2() {
             </div>
 
             {/* ─── Modais ─── */}
-            {selectedClient && <PaymentModal client={selectedClient} onClose={() => setSelectedClient(null)} onConfirm={registerPayment} />}
+            {selectedClient && <PaymentModalV2 client={selectedClient} onClose={() => setSelectedClient(null)} onConfirm={registerPayment} />}
             {editingClient && (
                 <ClientFormV2
                     client={editingClient}
