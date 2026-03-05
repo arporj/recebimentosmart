@@ -5,7 +5,7 @@ import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash
 import { useClients } from '../../../contexts/ClientContext';
 import { PaymentModal } from '../../PaymentModal';
 import { PaymentHistoryV2 } from '../PaymentHistoryV2';
-import { ClientForm } from '../../ClientForm';
+import { ClientFormV2 } from '../ClientFormV2';
 
 import type { Database } from '../../../types/supabase';
 import { toast } from 'react-hot-toast';
@@ -392,13 +392,13 @@ export function ClientListV2() {
             {/* ─── Modais ─── */}
             {selectedClient && <PaymentModal client={selectedClient} onClose={() => setSelectedClient(null)} onConfirm={registerPayment} />}
             {editingClient && (
-                <ClientForm
+                <ClientFormV2
                     client={editingClient}
                     onClose={() => setEditingClient(null)}
                 />
             )}
             {showNewClientForm && (
-                <ClientForm
+                <ClientFormV2
                     key="new-client-form"
                     onClose={() => setShowNewClientForm(false)}
                 />
