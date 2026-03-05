@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export default function LoginV2() {
-  const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,10 +17,7 @@ export default function LoginV2() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      toast.success('Login realizado com sucesso!');
-      navigate('/v2/clientes');
+      await signIn(email, password, '/v2/clientes');
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

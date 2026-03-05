@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Lock, Mail, User, FileText, ArrowRight } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { toast, Toaster } from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export default function SignUpV2() {
+    const { signUp } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
@@ -85,15 +87,14 @@ export default function SignUpV2() {
         setLoading(true);
 
         try {
-            const cpfCnpj = formData.cpf_cnpj.replace(/[^0-9]/g, '');
-            const { error } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: { name: formData.name, cpf_cnpj: cpfCnpj, referral_code: referralCode || undefined }
-                }
-            });
-            if (error) throw error;
+            await signUp(
+                formData.name,
+                formData.email,
+                formData.cpf_cnpj.replace(/[^0-9]/g, ''),
+                formData.password,
+                referralCode || undefined,
+                '/v2/login'
+            );
 
             // Email de notificação (silencioso)
             try {

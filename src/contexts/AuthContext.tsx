@@ -11,8 +11,8 @@ interface AuthContextType {
   isAdmin: boolean;
   plano: string | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string) => Promise<void>;
+  signIn: (email: string, password: string, redirectTo?: string) => Promise<void>;
+  signUp: (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
@@ -140,13 +140,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, originalUser, navigate, location.pathname]);
 
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, redirectTo: string = '/dashboard') => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast.success('Login realizado com sucesso!');
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login';
       toast.error(message);
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string) => {
+  const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string, redirectTo: string = '/login') => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -230,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       toast.success('Cadastro realizado com sucesso! Verifique seu e-mail.');
-      navigate('/login');
+      navigate(redirectTo);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao cadastrar';
       toast.error(message);
