@@ -136,7 +136,7 @@ export function PaymentHistoryV2({ client, refreshKey }: PaymentHistoryV2Props) 
                         // ─── Pago (mês de referência do pagamento) ───
                         if (status === 'paid' && isPaymentMonth) {
                             return (
-                                <div key={month.toString()} className="bg-[#14b8a6] p-4 rounded-xl shadow-sm">
+                                <div key={month.toString()} className="bg-[#14b8a6] p-4 rounded-xl shadow-sm min-h-[100px]">
                                     <p className="font-bold text-white mb-2 capitalize">{monthName}</p>
                                     <div className="space-y-0.5">
                                         <p className="text-[11px] text-white/90">Pago</p>
@@ -150,7 +150,7 @@ export function PaymentHistoryV2({ client, refreshKey }: PaymentHistoryV2Props) 
                         // ─── Coberto (período coberto por pagamento) ───
                         if (status === 'paid' && !isPaymentMonth) {
                             return (
-                                <div key={month.toString()} className="bg-[#f0fdfa] p-4 rounded-xl border border-[#5eead4]">
+                                <div key={month.toString()} className="bg-[#f0fdfa] p-4 rounded-xl border border-[#5eead4] min-h-[100px]">
                                     <p className="font-bold text-slate-800 mb-2 capitalize">{monthName}</p>
                                     <p className="text-[11px] text-teal-600 font-medium">Coberto</p>
                                 </div>
@@ -160,7 +160,7 @@ export function PaymentHistoryV2({ client, refreshKey }: PaymentHistoryV2Props) 
                         // ─── Em atraso ───
                         if (status === 'late') {
                             return (
-                                <div key={month.toString()} className="bg-red-50 p-4 rounded-xl">
+                                <div key={month.toString()} className="bg-red-50 p-4 rounded-xl min-h-[100px]">
                                     <p className="font-bold text-red-900 mb-2 capitalize">{monthName}</p>
                                     <div className="space-y-0.5">
                                         <p className="text-[11px] text-red-800/80 font-medium">Em atraso</p>
@@ -172,7 +172,7 @@ export function PaymentHistoryV2({ client, refreshKey }: PaymentHistoryV2Props) 
 
                         // ─── Anterior ao início / Futuro ───
                         return (
-                            <div key={month.toString()} className="bg-slate-100 p-4 rounded-xl">
+                            <div key={month.toString()} className="bg-slate-100 p-4 rounded-xl min-h-[100px]">
                                 <p className="font-bold text-slate-800 mb-2 capitalize">{monthName}</p>
                                 <p className="text-xs text-slate-400">{status === 'before-start' ? '-' : 'Aguardando'}</p>
                             </div>
