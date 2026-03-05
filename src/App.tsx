@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import { ClientList } from './components/ClientList';
 import { ClientForm } from './components/ClientForm';
+import { ClientListV2 } from './components/v2/ClientListV2';
 import { Reports } from './components/Reports';
 import { MonthlyPayments } from './components/MonthlyPayments';
 import { ClientProvider } from './contexts/ClientContext';
@@ -124,6 +125,9 @@ function AppRoutes() {
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
           <Route path="/campos-personalizados" element={<ProRoute><MainLayout><CamposPersonalizados /></MainLayout></ProRoute>} />
+
+          {/* Rotas V2 protegidas */}
+          <Route path="/v2/clientes" element={<ProtectedRoute><MainLayout><ClientProvider><ClientListV2 /></ClientProvider></MainLayout></ProtectedRoute>} />
 
           {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
           <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />
