@@ -30,6 +30,7 @@ import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
 import StitchLanding from './pages/StitchLanding';
 import LoginV2 from './components/stitch/LoginV2';
+import SignUpV2 from './components/stitch/SignUpV2';
 import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do admin
 
 
@@ -101,6 +102,7 @@ function AppRoutes() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/v2" element={<StitchLanding />} />
           <Route path="/v2/login" element={<LoginV2 />} />
+          <Route path="/v2/cadastro" element={<SignUpV2 />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
