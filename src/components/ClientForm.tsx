@@ -33,7 +33,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
-  const [customFieldValues, setCustomFieldValues] = useState<{[key: string]: string}>({});
+  const [customFieldValues, setCustomFieldValues] = useState<{ [key: string]: string }>({});
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -93,7 +93,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           const values = data.reduce((acc, item) => {
             acc[item.field_id] = item.value;
             return acc;
-          }, {} as {[key: string]: string});
+          }, {} as { [key: string]: string });
           setCustomFieldValues(values);
         }
       };
@@ -109,7 +109,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
-    
+
     if (value.length <= 11) {
       value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
       setFormData({ ...formData, phone: value });
@@ -137,16 +137,16 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       if (!user) throw new Error('Usuário não autenticado');
 
       // Verificação do limite do plano Básico
       if (!client && (plano === 'Básico' || plano === 'basico')) {
-         // O limite é de 20 clientes para o plano Básico
-         if (clients.length >= 20) {
-             throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
-         }
+        // O limite é de 20 clientes para o plano Básico
+        if (clients.length >= 20) {
+          throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
+        }
       }
       if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
         throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
@@ -205,7 +205,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
       await refreshClients();
       toast.success(client ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
-      
+
       if (!client) {
         setFormData({ name: '', phone: '', monthly_payment: 0, payment_due_day: '', start_date: '', status: true, payment_frequency: 'monthly' });
         setCustomFieldValues({});
@@ -299,7 +299,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         />
         <p className="mt-1 text-sm text-neutral-500">Dia do mês em que o pagamento deve ser realizado.</p>
       </div>
-      
+
       <div className="md:col-span-2">
         {customFields.length > 0 ? (
           <div>
@@ -312,7 +312,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
                     id={`custom-field-${field.id}`}
                     type="text"
                     value={customFieldValues[field.id] || ''}
-                    onChange={(e) => setCustomFieldValues(prev => ({...prev, [field.id]: e.target.value}))}
+                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
                     className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
                   />
                 </div>
@@ -352,12 +352,12 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         >
           Cancelar
         </button>
-          <button
-            type="submit"
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom-hover transition-colors"
-          >
-            {client ? 'Atualizar Cliente' : 'Salvar Cliente'}
-          </button>
+        <button
+          type="submit"
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom-hover transition-colors"
+        >
+          {client ? 'Atualizar Cliente' : 'Salvar Cliente'}
+        </button>
       </div>
 
       {isModalOpen && (
@@ -386,6 +386,22 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     );
   }
 
+  // Quando chamado externamente com onClose (ex: ClientListV2), abre modal direto
+  if (onClose) {
+    return (
+      <div className="fixed inset-0 bg-neutral-800/75 flex items-center justify-center p-4 z-50 transition-opacity">
+        <div className="bg-neutral-50 rounded-lg shadow-xl p-6 max-w-2xl w-full relative">
+          <button onClick={onClose} className="absolute top-3 right-3 text-neutral-400 hover:text-neutral-600 transition-colors">
+            <X className="h-6 w-6" />
+          </button>
+          <h2 className="text-xl font-semibold text-neutral-800 mb-4">Cadastrar Novo Cliente</h2>
+          {formContent}
+        </div>
+      </div>
+    );
+  }
+
+  // Uso original com botão toggle (Dashboard antigo)
   return (
     <div>
       <button

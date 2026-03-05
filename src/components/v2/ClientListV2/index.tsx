@@ -367,10 +367,16 @@ export function ClientListV2() {
 
             {/* ─── Modais ─── */}
             {selectedClient && <PaymentModal client={selectedClient} onClose={() => setSelectedClient(null)} onConfirm={registerPayment} />}
-            {(editingClient || showNewClientForm) && (
+            {editingClient && (
                 <ClientForm
                     client={editingClient}
-                    onClose={() => { setEditingClient(null); setShowNewClientForm(false); }}
+                    onClose={() => setEditingClient(null)}
+                />
+            )}
+            {showNewClientForm && (
+                <ClientForm
+                    key="new-client-form"
+                    onClose={() => setShowNewClientForm(false)}
                 />
             )}
             {deletingClient && <DeleteModal client={deletingClient} onClose={() => setDeletingClient(null)} onConfirm={() => handleDeleteClient(deletingClient)} />}
