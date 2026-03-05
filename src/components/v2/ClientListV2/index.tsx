@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { isSameDay, addMonths, format, startOfMonth } from 'date-fns';
 import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react';
@@ -256,114 +256,118 @@ export function ClientListV2() {
                                 const periodosPendentes = getPeriodosPendentes(client, payments);
 
                                 return (
-                                    <tr key={client.id} className="group">
-                                        {/* Linha principal */}
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {client.status ? (
-                                                <CheckCircle className="text-custom" size={20} />
-                                            ) : (
-                                                <XCircle className="text-red-500" size={20} />
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <button
-                                                    onClick={() => setEditingClient(client)}
-                                                    className="font-semibold text-slate-900 hover:text-custom text-left transition-colors"
-                                                >
-                                                    {client.name}
-                                                </button>
-                                                {/* Custom fields inline */}
-                                                {customFields.map(field => {
-                                                    const value = client.custom_field_values?.[field.id];
-                                                    return value ? (
-                                                        <span key={field.id} className="text-xs text-slate-400 mt-0.5">{field.name}: {value}</span>
-                                                    ) : null;
-                                                })}
-                                                {/* Atrasos */}
-                                                {periodosPendentes.length > 0 && (
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                        <XCircle className="text-red-500 flex-shrink-0" size={12} />
-                                                        <span className="text-[11px] text-red-500 font-medium truncate max-w-[400px]">
-                                                            Em atraso: {periodosPendentes.map(formatarMesAnoCurto).join(', ')}
-                                                        </span>
-                                                    </div>
+                                    <React.Fragment key={client.id}>
+                                        <tr className="group">
+                                            {/* Linha principal */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {client.status ? (
+                                                    <CheckCircle className="text-custom" size={20} />
+                                                ) : (
+                                                    <XCircle className="text-red-500" size={20} />
                                                 )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">
-                                            R$ {client.monthly_payment.toFixed(2).replace('.', ',')}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
-                                                {PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-sm">
-                                            Dia {client.payment_due_day}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {/* Status badge */}
-                                                {status === 'late' && (
-                                                    <span className="px-2 py-0.5 rounded bg-red-50 text-red-600 text-[10px] font-bold uppercase mr-1">Em atraso</span>
-                                                )}
-                                                {status === 'due-today' && (
-                                                    <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 text-[10px] font-bold uppercase mr-1">Vence hoje</span>
-                                                )}
-                                                {/* Pagar */}
-                                                <button
-                                                    onClick={() => setSelectedClient(client)}
-                                                    className="bg-custom hover:bg-custom-hover text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1 transition-colors"
-                                                    title="Registrar Pagamento"
-                                                >
-                                                    <DollarSign size={14} /> Pagar
-                                                </button>
-                                                {/* Excluir */}
-                                                <button
-                                                    onClick={() => setDeletingClient(client)}
-                                                    className="text-slate-400 hover:text-red-500 p-1 transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                                {/* Expandir */}
-                                                <button
-                                                    onClick={() => setExpandedClient(isExpanded ? null : client.id)}
-                                                    className="text-slate-400 hover:text-custom p-1 transition-colors"
-                                                    title={isExpanded ? 'Recolher' : 'Expandir'}
-                                                >
-                                                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                                </button>
-                                            </div>
-                                        </td>
-                                        {/* Expanded row para histórico */}
-                                        {isExpanded && (
-                                            <td colSpan={6} className="px-6 py-6 bg-slate-50/50 border-t border-slate-100">
-                                                {/* Client detail header */}
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <h3 className="text-lg font-bold text-slate-900">{client.name}</h3>
-                                                        {getClientPaymentStatus(client, payments) === 'paid' && (
-                                                            <span className="px-3 py-1 bg-teal-50 text-[#14b8a6] text-xs font-bold rounded-full border border-teal-100">EM DIA</span>
-                                                        )}
-                                                        {getClientPaymentStatus(client, payments) === 'late' && (
-                                                            <span className="px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-100">EM ATRASO</span>
-                                                        )}
-                                                        {getClientPaymentStatus(client, payments) === 'due-today' && (
-                                                            <span className="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-bold rounded-full border border-yellow-100">VENCE HOJE</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-8 text-sm mb-6">
-                                                    <p className="text-slate-500">Valor: <span className="font-semibold text-slate-900">R$ {client.monthly_payment.toFixed(2).replace('.', ',')}</span></p>
-                                                    <p className="text-slate-500">Frequência: <span className="font-medium text-slate-900">{PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}</span></p>
-                                                    <p className="text-slate-500">Vencimento: <span className="font-medium text-slate-900">Dia {client.payment_due_day}</span></p>
-                                                </div>
-                                                <PaymentHistoryV2 client={client} refreshKey={refreshPayments} />
                                             </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <button
+                                                        onClick={() => setEditingClient(client)}
+                                                        className="font-semibold text-slate-900 hover:text-custom text-left transition-colors"
+                                                    >
+                                                        {client.name}
+                                                    </button>
+                                                    {/* Custom fields inline */}
+                                                    {customFields.map(field => {
+                                                        const value = client.custom_field_values?.[field.id];
+                                                        return value ? (
+                                                            <span key={field.id} className="text-xs text-slate-400 mt-0.5">{field.name}: {value}</span>
+                                                        ) : null;
+                                                    })}
+                                                    {/* Atrasos */}
+                                                    {periodosPendentes.length > 0 && (
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <XCircle className="text-red-500 flex-shrink-0" size={12} />
+                                                            <span className="text-[11px] text-red-500 font-medium truncate max-w-[400px]">
+                                                                Em atraso: {periodosPendentes.map(formatarMesAnoCurto).join(', ')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">
+                                                R$ {client.monthly_payment.toFixed(2).replace('.', ',')}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
+                                                    {PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-sm">
+                                                Dia {client.payment_due_day}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {/* Status badge */}
+                                                    {status === 'late' && (
+                                                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-600 text-[10px] font-bold uppercase mr-1">Em atraso</span>
+                                                    )}
+                                                    {status === 'due-today' && (
+                                                        <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 text-[10px] font-bold uppercase mr-1">Vence hoje</span>
+                                                    )}
+                                                    {/* Pagar */}
+                                                    <button
+                                                        onClick={() => setSelectedClient(client)}
+                                                        className="bg-custom hover:bg-custom-hover text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1 transition-colors"
+                                                        title="Registrar Pagamento"
+                                                    >
+                                                        <DollarSign size={14} /> Pagar
+                                                    </button>
+                                                    {/* Excluir */}
+                                                    <button
+                                                        onClick={() => setDeletingClient(client)}
+                                                        className="text-slate-400 hover:text-red-500 p-1 transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                    {/* Expandir */}
+                                                    <button
+                                                        onClick={() => setExpandedClient(isExpanded ? null : client.id)}
+                                                        className="text-slate-400 hover:text-custom p-1 transition-colors"
+                                                        title={isExpanded ? 'Recolher' : 'Expandir'}
+                                                    >
+                                                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {/* Expanded row para histórico — tr separado */}
+                                        {isExpanded && (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-6 bg-slate-50/50 border-t border-slate-100">
+                                                    {/* Client detail header */}
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <h3 className="text-lg font-bold text-slate-900">{client.name}</h3>
+                                                            {getClientPaymentStatus(client, payments) === 'paid' && (
+                                                                <span className="px-3 py-1 bg-teal-50 text-[#14b8a6] text-xs font-bold rounded-full border border-teal-100">EM DIA</span>
+                                                            )}
+                                                            {getClientPaymentStatus(client, payments) === 'late' && (
+                                                                <span className="px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-100">EM ATRASO</span>
+                                                            )}
+                                                            {getClientPaymentStatus(client, payments) === 'due-today' && (
+                                                                <span className="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-bold rounded-full border border-yellow-100">VENCE HOJE</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-8 text-sm mb-6">
+                                                        <p className="text-slate-500">Valor: <span className="font-semibold text-slate-900">R$ {client.monthly_payment.toFixed(2).replace('.', ',')}</span></p>
+                                                        <p className="text-slate-500">Frequência: <span className="font-medium text-slate-900">{PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}</span></p>
+                                                        <p className="text-slate-500">Vencimento: <span className="font-medium text-slate-900">Dia {client.payment_due_day}</span></p>
+                                                    </div>
+                                                    <PaymentHistoryV2 client={client} refreshKey={refreshPayments} />
+                                                </td>
+                                            </tr>
                                         )}
-                                    </tr>
+                                    </React.Fragment>
                                 );
                             })}
                             {filteredClients.length === 0 && (
