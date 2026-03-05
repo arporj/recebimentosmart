@@ -29,8 +29,8 @@ import PaymentSuccessPage from './pages/payment-success';
 import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
 import StitchLanding from './pages/StitchLanding';
-import LoginV2 from './components/stitch/LoginV2';
-import SignUpV2 from './components/stitch/SignUpV2';
+import LoginV2 from './components/v2/LoginV2';
+import SignUpV2 from './components/v2/SignUpV2';
 import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do admin
 
 
