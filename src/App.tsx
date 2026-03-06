@@ -26,7 +26,7 @@ import ChangePassword from './components/ChangePassword';
 import { SignUpPage } from './components/SignUpPage';
 import ReferralPage from './components/ReferralPage';
 import Configuracoes from './pages/Configuracoes';
-import CamposPersonalizados from './pages/CamposPersonalizados'; // Importa a nova página
+import CamposPersonalizadosV2 from './pages/v2/CamposPersonalizadosV2';
 import PaymentSuccessPage from './pages/payment-success';
 import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
@@ -126,13 +126,13 @@ function AppRoutes() {
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
           <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
           <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
-          <Route path="/campos-personalizados" element={<ProRoute><MainLayout><CamposPersonalizados /></MainLayout></ProRoute>} />
 
           {/* Rotas V2 protegidas */}
           <Route path="/v2/clientes" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ClientListV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/pagamentos" element={<ProtectedRoute><MainLayoutV2><ClientProvider><MonthlyPaymentsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/relatorios" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ReportsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/feedbacks" element={<ProtectedRoute><MainLayoutV2><FeedbackV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/campos-personalizados" element={<ProRoute><MainLayoutV2><CamposPersonalizadosV2 /></MainLayoutV2></ProRoute>} />
 
           {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
           <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />
