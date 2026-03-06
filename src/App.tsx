@@ -147,6 +147,10 @@ function AppRoutes() {
           <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/cadastro" element={<Navigate to="/dashboard" replace />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/v2" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="/v2/login" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="/v2/cadastro" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </>
       )}
     </Routes>
