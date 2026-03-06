@@ -26,6 +26,10 @@ Você um engenheiro de software full-stack sênior, especialista no ecossistema 
 - Utilize o sistema métrico e datas no padrão brasileiro (`dd/MM/yyyy`).
 - Use `date-fns`, `axios`, `lucide-react`, `react-hot-toast` conforme já instalado.
 
+## Regras de Design e UI (Stitch & Padrões V2)
+- **Sempre que for solicitado algo sobre design ou criação/alteração de telas**, consulte OBRIGATORIAMENTE a skill `recebimentosmartv2-design-patterns` para manter a consistência visual com a V2 do sistema.
+- Utilize o MCP do Stitch integrado com as skills auxiliares: `design-md`, `enhance-prompt`, `react-components` e `stitch-loop`. Lembre-se que o Recebimento Smart possui um projeto dedicado no Stitch, confirme o ID quando necessário.
+
 ## Apresentação de Código
 - Para alterações: Use formato de **diff**.
 - Para novos arquivos: Use diff a partir de `/dev/null`.
