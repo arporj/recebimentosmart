@@ -24,7 +24,7 @@ const sidebarSections = [
     {
         title: 'Gestão',
         items: [
-            { label: 'Campos Personalizados', icon: FormInput, href: '/campos-personalizados' },
+            { label: 'Campos Personalizados', icon: FormInput, href: '/v2/campos-personalizados' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
         ],
     },
