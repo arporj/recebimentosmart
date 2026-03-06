@@ -132,7 +132,7 @@ function AppRoutes() {
           <Route path="/v2/pagamentos" element={<ProtectedRoute><MainLayoutV2><ClientProvider><MonthlyPaymentsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/relatorios" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ReportsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/feedbacks" element={<ProtectedRoute><MainLayoutV2><FeedbackV2 /></MainLayoutV2></ProtectedRoute>} />
-          <Route path="/v2/campos-personalizados" element={<ProRoute><MainLayoutV2><CamposPersonalizadosV2 /></MainLayoutV2></ProRoute>} />
+          <Route path="/v2/campos-personalizados" element={<ProtectedRoute><MainLayoutV2><CamposPersonalizadosV2 /></MainLayoutV2></ProtectedRoute>} />
 
           {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
           <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />

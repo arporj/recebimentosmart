@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, Search, Trash2, Edit2, FormInput } from 'lucide-react';
+import { PlusCircle, Search, Trash2, Edit2, FormInput, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -8,9 +9,11 @@ import { ManageCustomFieldModalV2, CustomField } from './ManageCustomFieldModalV
 
 
 export function CustomFieldsManagerV2() {
-    const { user } = useAuth();
+    const { user, plano, isAdmin } = useAuth();
     const [fields, setFields] = useState<CustomField[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+
+    const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.trim().toLowerCase()));
 
     // Modals state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +62,30 @@ export function CustomFieldsManagerV2() {
     };
 
     const filteredFields = fields.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    if (!isProOrAdmin) {
+        return (
+            <div className="w-full max-w-5xl mx-auto pb-12 animate-in fade-in duration-500 mt-10">
+                <div className="bg-white border border-slate-200 rounded-[2rem] p-16 text-center flex flex-col items-center justify-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-64 h-64 bg-[#29a8a8]/10 blur-[80px] rounded-full" />
+                    <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-64 h-64 bg-[#29a8a8]/10 blur-[80px] rounded-full" />
+
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="bg-gradient-to-br from-amber-100 to-amber-200 text-amber-600 p-5 rounded-3xl mb-8 shadow-sm">
+                            <Lock className="w-12 h-12" />
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">Recurso Exclusivo</h2>
+                        <p className="text-slate-600 mb-10 max-w-lg text-lg leading-relaxed">
+                            Crie campos personalizados ilimitados e organize as informações dos seus clientes como quiser. Funcionalidade apenas para assinantes <strong>Pro</strong> e <strong>Premium</strong>.
+                        </p>
+                        <Link to="/payment" className="bg-custom hover:bg-custom-hover text-white font-bold text-lg py-4 px-12 rounded-xl shadow-xl shadow-custom/30 transition-all hover:scale-105 active:scale-95 flex items-center gap-3">
+                            Fazer Upgrade Agora
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-5xl mx-auto pb-12 animate-in fade-in duration-500">

@@ -15,6 +15,7 @@ const initialTiers = [
       'Até 20 clientes',
       'Gestão de cobranças',
       'Dashboard simples',
+      'Sem campos personalizados',
     ],
     icon: (props: React.ComponentProps<'svg'>) => <Users {...props} />,
     popular: false,

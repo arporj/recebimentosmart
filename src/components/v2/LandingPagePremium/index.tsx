@@ -15,6 +15,7 @@ const initialTiers = [
             { text: 'Até 20 clientes', available: true },
             { text: 'Gestão de cobranças', available: true },
             { text: 'Dashboard simples', available: true },
+            { text: 'Campos personalizados', available: false },
         ],
         popular: false,
         disabled: false,
