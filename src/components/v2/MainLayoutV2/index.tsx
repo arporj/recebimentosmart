@@ -24,7 +24,6 @@ const sidebarSections = [
     {
         title: 'Gestão',
         items: [
-            { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/admin/feedbacks' },
             { label: 'Campos Personalizados', icon: FormInput, href: '/campos-personalizados' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
         ],
@@ -35,6 +34,7 @@ const adminSection = {
     title: 'Admin',
     items: [
         { label: 'Gerenciar Usuários', icon: Shield, href: '/admin/users' },
+        { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/admin/feedbacks' },
         { label: 'Configurações', icon: Settings, href: '/profile' },
     ],
 };
