@@ -173,11 +173,14 @@ export function ClientListV2() {
 
     const handleDeleteClient = async (client: Client) => {
         try {
-            const { error } = await supabase.from('clients').delete().eq('id', client.id);
+            const { error } = await supabase
+                .from('clients')
+                .update({ deleted_at: new Date().toISOString() })
+                .eq('id', client.id);
+
             if (error) throw error;
+
             await refreshClients();
-            const { data: newPayments, error: paymentsError } = await supabase.from('payments').select('*');
-            if (!paymentsError && newPayments) setPayments(newPayments);
             toast.success('Cliente excluído com sucesso!');
             setDeletingClient(null);
         } catch {

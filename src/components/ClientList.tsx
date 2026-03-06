@@ -66,7 +66,7 @@ function getClientPaymentStatus(client: Client, payments: Payment[]): 'paid' | '
 function formatarMesAno(yyyyMM: string) {
   if (!yyyyMM) return '';
   const [ano, mes] = yyyyMM.split('-');
-  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   return `${meses[parseInt(mes, 10) - 1]}/${ano}`;
 }
 
@@ -82,8 +82,8 @@ function DeleteModal({ client, onClose, onConfirm }: DeleteModalProps) {
       <div className="bg-neutral-50 rounded-lg shadow-xl p-6 max-w-md w-full">
         <h3 className="text-lg font-semibold text-neutral-800 mb-4">Confirmar Exclusão</h3>
         <p className="text-sm text-neutral-600 mb-6">
-          Tem certeza que deseja excluir o cliente <span className="font-bold text-neutral-800">{client.name}</span>? 
-          Esta ação não pode ser desfeita e todos os pagamentos associados serão removidos.
+          Tem certeza que deseja excluir o cliente <span className="font-bold text-neutral-800">{client.name}</span>?
+          O cliente será ocultado da listagem, mas <span className="font-semibold text-emerald-600">todo o histórico de pagamentos será preservado</span> no banco de dados.
         </p>
         <div className="flex justify-end space-x-3">
           <button
@@ -190,7 +190,7 @@ export function ClientList() {
       const userId = data.user?.id ?? null;
       const { error } = await supabase.from('payments').insert([{ client_id: clientId, amount: monthlyPayment, payment_date: paymentDate, reference_month: referenceMonth, user_id: userId }]);
       if (error) throw error;
-      
+
       await refreshClients();
       const { data: newPayments, error: paymentsError } = await supabase.from('payments').select('*');
       if (!paymentsError && newPayments) {
@@ -210,7 +210,11 @@ export function ClientList() {
 
   const handleDeleteClient = async (client: Client) => {
     try {
-      const { error } = await supabase.from('clients').delete().eq('id', client.id);
+      const { error } = await supabase
+        .from('clients')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', client.id);
+
       if (error) throw error;
 
       await refreshClients();
@@ -290,16 +294,15 @@ export function ClientList() {
                         {client.name}
                       </button>
                     </div>
-                    
+
                     <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        status === 'late' ? 'bg-red-100 text-red-700' :
-                        status === 'due-today' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status === 'late' ? 'bg-red-100 text-red-700' :
+                          status === 'due-today' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                        }`}>
                         {status === 'late' ? 'Em atraso' :
-                        status === 'due-today' ? 'Vencendo hoje' :
-                        'Em dia'}
+                          status === 'due-today' ? 'Vencendo hoje' :
+                            'Em dia'}
                       </span>
                       <div className="flex items-center space-x-2">
                         <button

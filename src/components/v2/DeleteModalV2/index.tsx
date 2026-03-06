@@ -28,7 +28,7 @@ export function DeleteModalV2({ client, onClose, onConfirm }: DeleteModalV2Props
                 <div className="px-8 py-6">
                     <p className="text-sm text-gray-600 mb-6 leading-relaxed">
                         Tem certeza que deseja excluir o cliente <span className="font-bold text-gray-900">{client.name}</span>?
-                        Esta ação <span className="font-semibold text-red-600">não pode ser desfeita</span> e todos os pagamentos associados serão removidos permanentemente.
+                        O cliente será ocultado da sua listagem principal, mas <span className="font-semibold text-emerald-600">todo o histórico de pagamentos será preservado</span> no banco de dados.
                     </p>
 
                     {/* Botões */}

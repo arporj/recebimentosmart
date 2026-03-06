@@ -26,13 +26,14 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
         .from('clients')
         .select('*')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('name');
 
       if (error) {
         console.error('Error fetching clients:', error);
         throw error;
       }
-      
+
       setClients(data || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
