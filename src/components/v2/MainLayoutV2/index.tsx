@@ -17,7 +17,7 @@ const sidebarSections = [
         items: [
             { label: 'Clientes', icon: Users, href: '/v2/clientes' },
             { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
-            { label: 'Relatórios', icon: BarChart3, href: '/reports' },
+            { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
             { label: 'Críticas e Sugestões', icon: MessageSquare, href: '/feedback' },
         ],
     },
