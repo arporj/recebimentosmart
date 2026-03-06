@@ -165,7 +165,7 @@ export function ReportsV2() {
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Relatórios Premium</h2>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Relatórios</h2>
                     <p className="text-slate-500 text-sm mt-1">Sua visão analítica completa e indicadores de performance.</p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -183,8 +183,8 @@ export function ReportsV2() {
                             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                         </button>
                     </div>
-                    <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl hover:bg-slate-800 transition-all font-bold text-sm shadow-sm group">
-                        <Download className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+                    <button className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm">
+                        <Download className="w-5 h-5" />
                         Exportar Base
                     </button>
                 </div>
