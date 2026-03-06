@@ -302,7 +302,7 @@ export function ReportsV2() {
                                     type: 'pie',
                                     hole: 0.6,
                                     marker: {
-                                        colors: ['#14b8a6', '#8b5cf6', '#3b82f6', '#f59e0b', '#ef4444']
+                                        colors: ['#14b8a6', '#d946ef', '#f97316', '#3b82f6', '#eab308']
                                     },
                                     textinfo: 'percent',
                                     insidetextorientation: 'radial'
