@@ -91,20 +91,20 @@ export function ManageCustomFieldModalV2({ fieldToEdit, onClose, onSuccess }: Ma
                             {fieldToEdit ? 'Editar Campo' : 'Novo Campo'}
                         </h2>
                         <p className="text-slate-500 text-sm mt-1 font-medium">
-                            {fieldToEdit ? 'Altere o nome da variável' : 'Dê um nome para este campo de cliente'}
+                            {fieldToEdit ? 'Edite o nome do seu campo' : 'Dê um nome para este campo de cliente'}
                         </p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <label className="flex flex-col w-full">
-                        <p className="text-slate-900 text-sm font-semibold leading-normal pb-2">Nome da Variável</p>
+                        <p className="text-slate-900 text-sm font-semibold leading-normal pb-2">Nome do Campo</p>
                         <input
                             type="text"
                             value={fieldName}
                             onChange={(e) => setFieldName(e.target.value)}
                             className="flex w-full rounded-xl text-slate-900 border border-slate-300 bg-white focus:ring-2 focus:ring-custom focus:border-custom h-14 placeholder:text-slate-400 px-4 text-base font-normal transition-all shadow-sm"
-                            placeholder="Ex: CPF do Sócio, Telefone Residencial"
+                            placeholder="Ex: Profissão, Telefone Fixo"
                             autoFocus
                             required
                         />

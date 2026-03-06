@@ -99,15 +99,6 @@ export function CustomFieldsManagerV2() {
                 />
             </div>
 
-            <div className="flex gap-2 mb-8 overflow-x-auto pb-2 no-scrollbar">
-                <button className="flex h-9 shrink-0 items-center justify-center gap-x-1 rounded-full bg-custom text-white px-5 text-xs font-bold shadow-md shadow-custom/20">
-                    Todos os Campos
-                </button>
-                <button className="flex h-9 shrink-0 items-center justify-center gap-x-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 text-xs font-semibold transition-colors">
-                    Ativos
-                </button>
-            </div>
-
             {/* LISTAGEM DE CAMPOS */}
             <div className="space-y-3">
                 {filteredFields.length === 0 ? (
@@ -123,19 +114,10 @@ export function CustomFieldsManagerV2() {
                     filteredFields.map((field) => (
                         <div
                             key={field.id}
-                            className="bg-white hover:bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm transition-colors gap-4"
+                            className="bg-white hover:border-custom/30 rounded-2xl p-5 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between shadow-md hover:shadow-lg transition-all duration-300 gap-4"
                         >
                             <div className="flex flex-col gap-1.5">
-                                <span className="text-base font-bold text-slate-900">{field.name}</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2.5 py-1 bg-[#14b8a6]/10 text-custom text-[10px] font-bold rounded uppercase tracking-wider">
-                                        Variável de Texto
-                                    </span>
-                                    {/* Se estivéssemos rastreando data, inseriríamos aqui. Usarei um dot genérico. */}
-                                    <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> ID: {field.id}
-                                    </span>
-                                </div>
+                                <span className="text-lg font-bold text-slate-800">{field.name}</span>
                             </div>
                             <div className="flex gap-2">
                                 <button
