@@ -18,13 +18,13 @@ const sidebarSections = [
             { label: 'Clientes', icon: Users, href: '/v2/clientes' },
             { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
             { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
-            { label: 'Críticas e Sugestões', icon: MessageSquare, href: '/feedback' },
+            { label: 'Críticas e Sugestões', icon: MessageSquare, href: '/v2/feedbacks' },
         ],
     },
     {
         title: 'Gestão',
         items: [
-            { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/feedback' },
+            { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/admin/feedbacks' },
             { label: 'Campos Personalizados', icon: FormInput, href: '/campos-personalizados' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
         ],
