@@ -16,7 +16,7 @@ const sidebarSections = [
         title: 'Geral',
         items: [
             { label: 'Clientes', icon: Users, href: '/v2/clientes' },
-            { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/monthly' },
+            { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
             { label: 'Relatórios', icon: BarChart3, href: '/reports' },
             { label: 'Críticas e Sugestões', icon: MessageSquare, href: '/feedback' },
         ],
@@ -91,8 +91,8 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                                             key={item.href + item.label}
                                             to={item.href}
                                             className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${isActive
-                                                    ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
-                                                    : 'hover:bg-slate-800 hover:text-white'
+                                                ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
+                                                : 'hover:bg-slate-800 hover:text-white'
                                                 }`}
                                         >
                                             <item.icon size={20} />
@@ -118,8 +118,8 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                                             key={item.href}
                                             to={item.href}
                                             className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${isActive
-                                                    ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
-                                                    : 'hover:bg-slate-800 hover:text-white'
+                                                ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
+                                                : 'hover:bg-slate-800 hover:text-white'
                                                 }`}
                                         >
                                             <item.icon size={20} />
