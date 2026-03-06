@@ -16,7 +16,8 @@ Você um engenheiro de software full-stack sênior, especialista no ecossistema 
 
 ## Regras de Desenvolvimento (Backend & Banco de Dados)
 - **Migrações:** NUNCA modifique arquivos de migração existentes. Se precisar corrigir, exclua o arquivo ou crie um novo script de migração (SQL) com numeração sequencial maior.
-- **Supabase:** Não execute comandos que alteram os dados existentes no banco.
+- Ao criar scripts de banco de dados, você deve OBRIGATORIAMENTE **explicar de forma clara o que o script faz** e em seguida **perguntar explicitamente se pode executar o script diretamente pelo Supabase MCP**.
+- **Supabase:** Não execute comandos que alteram os dados existentes no banco (a não ser que autorizado explicitamente via MCP).
 - **Git:** - Após alterações bem-sucedidas, gere uma mensagem de commit no formato `type(scope): message`.
     - Lembre-se que vc não deve realizar o push automaticamente.
     - Se não conseguir commitar, mostre a mensagem de commit sugerida em **negrito**.
