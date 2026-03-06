@@ -142,6 +142,42 @@ export function ReportsV2() {
         setSelectedMonth(formatToSP(next, 'yyyy-MM'));
     }
 
+    const FREQ_LABELS: Record<string, string> = {
+        monthly: 'Mensal',
+        bimonthly: 'Bimestral',
+        quarterly: 'Trimestral',
+        semiannual: 'Semestral',
+        annual: 'Anual',
+    };
+
+    function handleExportBase() {
+        const activeClients = clients.filter(c => c.status && !c.deleted_at);
+        if (activeClients.length === 0) {
+            alert('Não há clientes ativos para exportar.');
+            return;
+        }
+
+        const headers = ['Nome', 'Valor Mensalidade (R$)', 'Frequência de Pagamento', 'Data do Próximo Pagamento'];
+
+        const csvRows = activeClients.map(c => {
+            const freq = FREQ_LABELS[c.payment_frequency || 'monthly'] || 'Mensal';
+            const value = c.monthly_payment.toString().replace('.', ',');
+            const date = c.next_payment_date ? formatToSP(c.next_payment_date, 'dd/MM/yyyy') : '';
+            return `"${c.name}","${value}","${freq}","${date}"`;
+        });
+
+        const csvContent = [headers.join(','), ...csvRows].join('\n');
+        // Adiciona \uFEFF para Excel reconhecer UTF-8
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `base_clientes_${selectedMonth}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     if (loading) {
         return (
             <div className="flex h-full items-center justify-center p-8">
@@ -151,14 +187,6 @@ export function ReportsV2() {
     }
 
     if (!reportData) return null;
-
-    const FREQ_LABELS: Record<string, string> = {
-        monthly: 'Mensal',
-        bimonthly: 'Bimestral',
-        quarterly: 'Trimestral',
-        semiannual: 'Semestral',
-        annual: 'Anual',
-    };
 
     return (
         <div className="text-slate-900 w-full max-w-7xl mx-auto font-['Inter']">
@@ -183,7 +211,7 @@ export function ReportsV2() {
                             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                         </button>
                     </div>
-                    <button className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm">
+                    <button onClick={handleExportBase} className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm">
                         <Download className="w-5 h-5" />
                         Exportar Base
                     </button>
