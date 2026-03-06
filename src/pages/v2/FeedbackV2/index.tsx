@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatToSP } from '../../../lib/dates';
 import type { Feedback } from '../../../types/feedback';
-import { CreateFeedbackModal } from '../../../components/feedback/CreateFeedbackModal';
+import { CreateFeedbackModalV2 } from '../../../components/v2/FeedbackV2/CreateFeedbackModalV2';
 import { FeedbackDetails } from '../../../components/feedback/FeedbackDetails';
 
 export function FeedbackV2() {
@@ -107,7 +107,7 @@ export function FeedbackV2() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-[#14b8a6] text-white px-5 py-2.5 rounded-xl hover:opacity-90 transition-all font-bold text-sm shadow-md"
+                        className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm"
                     >
                         <span className="material-symbols-outlined text-[18px]">add</span>
                         Novo Feedback
@@ -178,7 +178,7 @@ export function FeedbackV2() {
             )}
 
             {showCreateModal && (
-                <CreateFeedbackModal
+                <CreateFeedbackModalV2
                     onClose={() => setShowCreateModal(false)}
                     onSuccess={fetchFeedbacks}
                 />
