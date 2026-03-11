@@ -31,5 +31,6 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 
 ## Não esquecer 
 - [ ] **Validar se o sistema v2 está compatível com aparelhos menores (celular e tablet - responsividade)**
+- [ ] **Padronizar as letras de todas as páginas v2: títulos, subtítulos e letras normais da tela.**
 ---
 *Para atualizar, basta marcar os checkboxes com "x" conforme as telas forem sendo criadas no MCP do Stitch e integradas ao `App.tsx`.*

@@ -35,7 +35,7 @@ const sidebarSections = [
 const adminSection = {
     title: 'Admin',
     items: [
-        { label: 'Gerenciar Usuários', icon: Shield, href: '/admin/users' },
+        { label: 'Gerenciar Usuários', icon: Shield, href: '/v2/admin/users' },
         { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/admin/feedbacks' },
         { label: 'Configurações', icon: Settings, href: '/profile' },
     ],

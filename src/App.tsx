@@ -20,7 +20,7 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext'; // Import
 import FeedbackPage from './pages/FeedbackPage';
 import AdminFeedbackPage from './pages/AdminFeedbackPage';
 import SubscriptionPageV2 from './pages/v2/SubscriptionPageV2';
-import AdminUserManagement from './components/AdminUserManagement';
+import AdminUserManagementV2 from './pages/v2/AdminUserManagementV2';
 import UserProfileSettings from './components/UserProfileSettings';
 import { SignUpPage } from './components/SignUpPage';
 import Configuracoes from './pages/Configuracoes';
@@ -143,7 +143,8 @@ function AppRoutes() {
           <Route path="/payment-failure" element={<ProtectedRoute><PaymentFailurePage /></ProtectedRoute>} />
 
           {/* Rotas de Admin */}
-          <Route path="/admin/users" element={<AdminRoute><MainLayout><AdminUserManagement /></MainLayout></AdminRoute>} />
+          <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
+          <Route path="/admin/users" element={<Navigate to="/v2/admin/users" replace />} />
           <Route path="/admin/feedbacks" element={<AdminRoute><MainLayout><AdminFeedbackPage /></MainLayout></AdminRoute>} />
           <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
