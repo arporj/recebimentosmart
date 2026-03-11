@@ -9,13 +9,20 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-  
+
+    if (!remember) {
+      window.sessionStorage.setItem('use_session_storage', 'true');
+    } else {
+      window.sessionStorage.removeItem('use_session_storage');
+    }
+
     try {
       await signIn(email, password);
       // O redirecionamento será tratado pelo App.tsx com base no estado de autenticação
@@ -100,10 +107,25 @@ export function LoginForm() {
               </div>
             </div>
 
-            <div className="text-center mt-4">
-              <Link to="/forgot-password" className="text-sm text-custom hover:text-custom-hover">
-                Esqueceu sua senha?
-              </Link>
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="h-4 w-4 text-custom focus:ring-custom border-gray-300 rounded cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 cursor-pointer">
+                  Lembrar-me
+                </label>
+              </div>
+              <div className="text-sm">
+                <Link to="/forgot-password" className="font-medium text-custom hover:text-custom-hover">
+                  Esqueceu sua senha?
+                </Link>
+              </div>
             </div>
 
             <div>

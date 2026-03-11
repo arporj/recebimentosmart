@@ -16,6 +16,12 @@ export default function LoginV2() {
     e.preventDefault();
     setLoading(true);
 
+    if (!remember) {
+      window.sessionStorage.setItem('use_session_storage', 'true');
+    } else {
+      window.sessionStorage.removeItem('use_session_storage');
+    }
+
     try {
       await signIn(email, password, '/v2/clientes');
     } catch (error) {

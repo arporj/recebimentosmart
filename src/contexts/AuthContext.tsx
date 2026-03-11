@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (originalUser) return; // Do not run when impersonating
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -243,6 +243,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     setLoading(true);
     try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('use_session_storage');
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
