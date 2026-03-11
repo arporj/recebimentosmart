@@ -19,7 +19,7 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext'; // Import
 // Importar os novos componentes
 import FeedbackPage from './pages/FeedbackPage';
 import AdminFeedbackPage from './pages/AdminFeedbackPage';
-import SubscriptionPage from './pages/SubscriptionPage';
+import SubscriptionPageV2 from './pages/v2/SubscriptionPageV2';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
 import { SignUpPage } from './components/SignUpPage';
@@ -133,9 +133,10 @@ function AppRoutes() {
           <Route path="/v2/campos-personalizados" element={<ProtectedRoute><MainLayoutV2><CamposPersonalizadosV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/indicacoes" element={<ProtectedRoute><MainLayoutV2><ReferralPageV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/assinatura" element={<ProtectedRoute><MainLayoutV2><SubscriptionPageV2 /></MainLayoutV2></ProtectedRoute>} />
 
-          {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
-          <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />
+          {/* A página de pagamento antiga - redireciona */}
+          <Route path="/payment" element={<Navigate to="/v2/assinatura" replace />} />
 
           {/* Rotas de retorno do pagamento */}
           <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />

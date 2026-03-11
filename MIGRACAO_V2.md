@@ -19,7 +19,7 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 ## Páginas Pendentes da Área do Cliente
 - [x] **Perfil e Configurações da Conta** (`/profile` -> `UserProfileSettings`)
 - [x] **Indique e Ganhe** (`/indicacoes` -> `ReferralPageV2`)
-- [ ] **Planos e Assinatura** (`/payment` -> `SubscriptionPage`)
+- [x] **Planos e Assinatura** (`/payment` -> `SubscriptionPageV2`)
 - [ ] **Status de Pagamento - Sucesso** (`/payment-success`)
 - [ ] **Status de Pagamento - Falha** (`/payment-failure`)
 

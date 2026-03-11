@@ -98,7 +98,7 @@ export function CustomFieldsManagerV2() {
                             <FormInput className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-tight">Campos Premium</h1>
+                            <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-tight">Campos Personalizados</h1>
                             <p className="text-sm text-slate-500 mt-1 font-medium">Configure e gerencie campos extras para o perfil dos seus clientes</p>
                         </div>
                     </div>

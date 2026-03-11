@@ -57,7 +57,19 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         setPageData(null); // Clear data on error
         return;
       }
-      
+
+      try {
+        const { data: referralData } = await supabase.rpc('get_full_referral_stats', { p_user_id: user.id });
+        if (referralData && referralData.length > 0) {
+          const stats = referralData[0];
+          const giftedCredit = stats.was_referred ? 1 : 0;
+          // Garante que o total é o cálculo igual da página de referências
+          data.user.credits = stats.available_credits + giftedCredit;
+        }
+      } catch (err) {
+        console.error('Falha ao obter creditos extras:', err);
+      }
+
       setPageData(data);
 
       if (data?.user?.plan !== 'trial' && data?.user?.valid_until && isFuture(parseISO(data.user.valid_until))) {
