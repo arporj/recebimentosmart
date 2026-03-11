@@ -18,7 +18,7 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 
 ## Páginas Pendentes da Área do Cliente
 - [x] **Perfil e Configurações da Conta** (`/profile` -> `UserProfileSettings`)
-- [ ] **Alterar Senha Logado** (`/change-password` -> `ChangePassword`)
+- [x] **Alterar Senha Logado** (`/change-password` -> `ChangePassword`)
 - [ ] **Indique e Ganhe** (`/indicacoes` -> `ReferralPage`)
 - [ ] **Planos e Assinatura** (`/payment` -> `SubscriptionPage`)
 - [ ] **Status de Pagamento - Sucesso** (`/payment-success`)

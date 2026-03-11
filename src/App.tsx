@@ -22,12 +22,11 @@ import AdminFeedbackPage from './pages/AdminFeedbackPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserProfileSettings from './components/UserProfileSettings';
-import ChangePassword from './components/ChangePassword';
 import { SignUpPage } from './components/SignUpPage';
-import ReferralPage from './components/ReferralPage';
 import Configuracoes from './pages/Configuracoes';
 import CamposPersonalizadosV2 from './pages/v2/CamposPersonalizadosV2';
 import PaymentSuccessPage from './pages/payment-success';
+import ReferralPageV2 from './pages/v2/ReferralPageV2';
 import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
 import StitchLanding from './pages/StitchLanding';
@@ -125,8 +124,6 @@ function AppRoutes() {
           <Route path="/reports" element={<ProRoute><MainLayout><ClientProvider><Reports /></ClientProvider></MainLayout></ProRoute>} />
           <Route path="/feedback" element={<ProtectedRoute><MainLayout><FeedbackPage /></MainLayout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><MainLayout><UserProfileSettings /></MainLayout></ProtectedRoute>} />
-          <Route path="/change-password" element={<ProtectedRoute><MainLayout><ChangePassword /></MainLayout></ProtectedRoute>} />
-          <Route path="/indicacoes" element={<ProtectedRoute><MainLayout><ReferralPage /></MainLayout></ProtectedRoute>} />
 
           {/* Rotas V2 protegidas */}
           <Route path="/v2/clientes" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ClientListV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
@@ -135,6 +132,7 @@ function AppRoutes() {
           <Route path="/v2/feedbacks" element={<ProtectedRoute><MainLayoutV2><FeedbackV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/campos-personalizados" element={<ProtectedRoute><MainLayoutV2><CamposPersonalizadosV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/indicacoes" element={<ProtectedRoute><MainLayoutV2><ReferralPageV2 /></MainLayoutV2></ProtectedRoute>} />
 
           {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
           <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />
