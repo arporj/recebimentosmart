@@ -374,6 +374,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const stopImpersonating = async () => {
     if (!originalUser) return;
+    setLoading(true);
     setUser(originalUser);
     setOriginalUser(null);
     // Timeout pequeno para dar tempo do react renderizar e limpar os estados

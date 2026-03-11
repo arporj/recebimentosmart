@@ -161,7 +161,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                         <div className="flex items-center gap-3 text-sm font-medium">
                             <Eye size={20} />
                             <span>
-                                Você está visualizando a plataforma como <strong>{userName}</strong> ({user?.email}).
+                                Você está visualizando a plataforma como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
                             </span>
                         </div>
                         <button
