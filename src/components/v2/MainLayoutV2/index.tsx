@@ -4,7 +4,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import {
     Users, CalendarDays, BarChart3, MessageSquare,
     MessageCircle, FormInput, CreditCard,
-    Shield, Settings, LogOut, Gift
+    Shield, Settings, LogOut, Gift, Eye
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -42,7 +42,7 @@ const adminSection = {
 };
 
 export function MainLayoutV2({ children }: MainLayoutV2Props) {
-    const { user, isAdmin, signOut } = useAuth();
+    const { user, isAdmin, signOut, originalUser, stopImpersonating } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -153,8 +153,26 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             </aside>
 
             {/* ─── Main Content ─── */}
-            <main className="ml-64 flex-1 p-8">
-                {children}
+            <main className="ml-64 flex-1 flex flex-col min-h-screen">
+                {originalUser && (
+                    <div className="bg-amber-500 text-white px-6 py-3 flex items-center justify-between shadow-sm z-40 sticky top-0">
+                        <div className="flex items-center gap-3 text-sm font-medium">
+                            <Eye size={20} />
+                            <span>
+                                Você está visualizando a plataforma como <strong>{userName}</strong> ({user?.email}).
+                            </span>
+                        </div>
+                        <button
+                            onClick={stopImpersonating}
+                            className="bg-amber-700 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm hidden md:block"
+                        >
+                            Encerrar Visualização
+                        </button>
+                    </div>
+                )}
+                <div className="p-8 flex-1">
+                    {children}
+                </div>
             </main>
 
             <style>{`
