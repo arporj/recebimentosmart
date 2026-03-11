@@ -39,6 +39,7 @@ import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do a
 import MonthlyPaymentsV2 from './pages/v2/MonthlyPaymentsV2';
 import ReportsV2 from './pages/v2/ReportsV2';
 import FeedbackV2 from './pages/v2/FeedbackV2';
+import UserProfileSettingsV2 from './pages/v2/UserProfileSettingsV2';
 
 // Componente para rotas do plano Pró ou superior
 function ProRoute({ children }: { children: React.ReactNode }) {
@@ -133,6 +134,7 @@ function AppRoutes() {
           <Route path="/v2/relatorios" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ReportsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/feedbacks" element={<ProtectedRoute><MainLayoutV2><FeedbackV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/campos-personalizados" element={<ProtectedRoute><MainLayoutV2><CamposPersonalizadosV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
 
           {/* A página de pagamento não deve ser protegida da mesma forma, pois usuários sem acesso precisam vê-la */}
           <Route path="/payment" element={<MainLayout><SubscriptionPage /></MainLayout>} />
