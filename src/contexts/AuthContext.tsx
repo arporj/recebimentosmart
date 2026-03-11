@@ -365,7 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(impersonatedUserObj);
 
       toast.success(`Acessando como ${targetUser.email || 'usuário'}`);
-      navigate('/dashboard');
+      navigate('/v2/clientes');
     } catch (error) {
       console.error('Erro ao impersonar usuário:', error);
       toast.error('Não foi possível acessar como este usuário.');
@@ -377,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!originalUser) return;
     setUser(originalUser);
     setOriginalUser(null);
-    navigate('/admin/users');
+    navigate('/v2/admin/users');
   };
 
   return (
