@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
-import { useAuth } from '../../contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 import { formatCurrency } from '../../lib/utils';
 import { generatePixCopyPaste } from '../../lib/pix';
