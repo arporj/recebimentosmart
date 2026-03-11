@@ -46,7 +46,9 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const userName = user?.user_metadata?.name || user?.email || 'Usuário';
+    // Se estivermos impersonificando, a barra lateral ainda mostrará quem nós realmente somos
+    const displayUser = originalUser || user;
+    const userName = displayUser?.user_metadata?.name || displayUser?.email || 'Usuário';
     const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     const handleSignOut = async () => {
