@@ -1,4 +1,5 @@
 ---
+name: debug
 description: Debugging command. Activates DEBUG mode for systematic problem investigation.
 ---
 

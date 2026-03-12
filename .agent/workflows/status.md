@@ -1,4 +1,5 @@
 ---
+name: status
 description: Display agent and project status. Progress tracking and status board.
 ---
 

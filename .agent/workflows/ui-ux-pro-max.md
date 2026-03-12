@@ -1,4 +1,5 @@
 ---
+name: ui-ux-pro-max
 description: Plan and implement UI
 ---
 
