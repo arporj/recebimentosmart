@@ -24,7 +24,7 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 - [ ] **Status de Pagamento - Falha** (`/payment-failure`)
 
 ## Páginas do Painel Administrativo (Pendentes)
-- [ ] **Gerenciamento de Usuários** (`/admin/users`)
+- [x] **Gerenciamento de Usuários** (`/admin/users`)
 - [ ] **Visualização de Feedbacks** (`/admin/feedbacks`)
 - [ ] **Chat de Suporte Admin** (`/admin/chat`)
 - [ ] **Configurações Globais do Sistema** (`/configuracoes`)

@@ -5,7 +5,7 @@ import {
     Users, UserPlus, CheckCircle, Search,
     ArrowUp, ArrowDown, MoreVertical, Mail, TrendingUp
 } from 'lucide-react';
-import UserDetailsModal from '../../components/admin/UserDetailsModal';
+import UserDetailsModalV2 from '../../components/v2/UserDetailsModalV2';
 import { UserProfile } from '../../components/admin/UserTable';
 
 interface KpiData {
@@ -362,7 +362,7 @@ export default function AdminUserManagementV2() {
             </div>
 
             {selectedUser && (
-                <UserDetailsModal
+                <UserDetailsModalV2
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
                     onUserUpdate={(updatedUser) => {
