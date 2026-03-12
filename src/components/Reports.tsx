@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Users, Wallet, CircleDollarSign, AlertTriangle } from 'lucide-react';
+import { Users, Wallet, CircleDollarSign, AlertTriangle, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
 import { isBefore, isSameMonth, startOfMonth, subMonths, addMonths } from 'date-fns';
 import Plot from 'react-plotly.js';
@@ -62,7 +63,7 @@ export function Reports() {
   const [receivedRevenue, setReceivedRevenue] = useState(0);
   const [activeClientsCount, setActiveClientsCount] = useState(0);
   const [inadimplenciaPercent, setInadimplenciaPercent] = useState(0);
-  const [evolucaoReceita, setEvolucaoReceita] = useState<{mes: string, esperada: number, recebida: number}[]>([]);
+  const [evolucaoReceita, setEvolucaoReceita] = useState<{ mes: string, esperada: number, recebida: number }[]>([]);
 
   useEffect(() => {
     async function fetchData() {
