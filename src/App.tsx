@@ -18,7 +18,7 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext'; // Import
 
 // Importar os novos componentes
 import FeedbackPage from './pages/FeedbackPage';
-import AdminFeedbackPage from './pages/AdminFeedbackPage';
+// AdminFeedbackPage V1 usado via redirect para V2
 import SubscriptionPageV2 from './pages/v2/SubscriptionPageV2';
 import AdminUserManagementV2 from './pages/v2/AdminUserManagementV2';
 import UserProfileSettings from './components/UserProfileSettings';
@@ -39,6 +39,7 @@ import MonthlyPaymentsV2 from './pages/v2/MonthlyPaymentsV2';
 import ReportsV2 from './pages/v2/ReportsV2';
 import FeedbackV2 from './pages/v2/FeedbackV2';
 import UserProfileSettingsV2 from './pages/v2/UserProfileSettingsV2';
+import AdminFeedbackPageV2 from './pages/v2/AdminFeedbackPageV2';
 
 // Componente para rotas do plano Pró ou superior
 function ProRoute({ children }: { children: React.ReactNode }) {
@@ -145,7 +146,8 @@ function AppRoutes() {
           {/* Rotas de Admin */}
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/admin/users" element={<Navigate to="/v2/admin/users" replace />} />
-          <Route path="/admin/feedbacks" element={<AdminRoute><MainLayout><AdminFeedbackPage /></MainLayout></AdminRoute>} />
+          <Route path="/v2/admin/feedbacks" element={<AdminRoute><MainLayoutV2><AdminFeedbackPageV2 /></MainLayoutV2></AdminRoute>} />
+          <Route path="/admin/feedbacks" element={<Navigate to="/v2/admin/feedbacks" replace />} />
           <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
 
