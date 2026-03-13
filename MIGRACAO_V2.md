@@ -27,7 +27,7 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 - [x] **Gerenciamento de Usuários** (`/admin/users`)
 - [x] **Visualização de Feedbacks** (`/admin/feedbacks`)
 - [ ] **Chat de Suporte Admin** (`/admin/chat`)
-- [ ] **Configurações Globais do Sistema** (`/configuracoes`)
+- [x] **Configurações Globais do Sistema** (`/configuracoes`)
 
 ## Não esquecer 
 - [ ] **Validar se o sistema v2 está compatível com aparelhos menores (celular e tablet - responsividade)**

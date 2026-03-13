@@ -37,7 +37,7 @@ const adminSection = {
     items: [
         { label: 'Gerenciar Usuários', icon: Shield, href: '/v2/admin/users' },
         { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/v2/admin/feedbacks' },
-        { label: 'Configurações', icon: Settings, href: '/profile' },
+        { label: 'Configurações Globais', icon: Settings, href: '/v2/admin/configuracoes' },
     ],
 };
 

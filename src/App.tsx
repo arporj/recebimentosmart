@@ -23,7 +23,7 @@ import SubscriptionPageV2 from './pages/v2/SubscriptionPageV2';
 import AdminUserManagementV2 from './pages/v2/AdminUserManagementV2';
 import UserProfileSettings from './components/UserProfileSettings';
 import { SignUpPage } from './components/SignUpPage';
-import Configuracoes from './pages/Configuracoes';
+// Configuracoes V1 removido, agora usa redirect para V2
 import CamposPersonalizadosV2 from './pages/v2/CamposPersonalizadosV2';
 import PaymentSuccessPage from './pages/payment-success';
 import ReferralPageV2 from './pages/v2/ReferralPageV2';
@@ -40,6 +40,7 @@ import ReportsV2 from './pages/v2/ReportsV2';
 import FeedbackV2 from './pages/v2/FeedbackV2';
 import UserProfileSettingsV2 from './pages/v2/UserProfileSettingsV2';
 import AdminFeedbackPageV2 from './pages/v2/AdminFeedbackPageV2';
+import AdminSettingsV2 from './pages/v2/AdminSettingsV2';
 
 // Componente para rotas do plano Pró ou superior
 function ProRoute({ children }: { children: React.ReactNode }) {
@@ -148,8 +149,9 @@ function AppRoutes() {
           <Route path="/admin/users" element={<Navigate to="/v2/admin/users" replace />} />
           <Route path="/v2/admin/feedbacks" element={<AdminRoute><MainLayoutV2><AdminFeedbackPageV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/admin/feedbacks" element={<Navigate to="/v2/admin/feedbacks" replace />} />
+          <Route path="/v2/admin/configuracoes" element={<AdminRoute><MainLayoutV2><AdminSettingsV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
-          <Route path="/configuracoes" element={<AdminRoute><MainLayout><Configuracoes /></MainLayout></AdminRoute>} />
+          <Route path="/configuracoes" element={<Navigate to="/v2/admin/configuracoes" replace />} />
 
           {/* Se o usuário logado tentar acessar rotas públicas, redireciona para o dashboard */}
           <Route path="/login" element={<Navigate to="/dashboard" replace />} />
