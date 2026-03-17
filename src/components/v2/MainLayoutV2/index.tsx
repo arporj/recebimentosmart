@@ -1,10 +1,11 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
     Users, CalendarDays, BarChart3, MessageSquare,
     MessageCircle, FormInput, CreditCard,
-    Shield, Settings, LogOut, Gift, Eye
+    Shield, Settings, LogOut, Gift, Eye, Menu, X
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -51,13 +52,20 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const userName = displayUser?.user_metadata?.name || displayUser?.email || 'Usuário';
     const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Fechar o menu mobile sempre que a rota mudar
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [location.pathname]);
+
     const handleSignOut = async () => {
         await signOut();
         navigate('/v2/login');
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-50">
+        <div className="min-h-screen flex bg-slate-50 overflow-hidden">
             <Toaster
                 position="top-right"
                 toastOptions={{
@@ -68,16 +76,33 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 }}
             />
 
+            {/* Overlay para fechar o menu mobile ao clicar fora */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             {/* ─── Sidebar ─── */}
-            <aside className="w-64 bg-[#0f172a] text-slate-300 flex flex-col fixed h-full z-50">
+            <aside className={`bg-[#0f172a] text-slate-300 flex flex-col fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none`}>
                 {/* Logo */}
                 <div className="p-6 flex items-center gap-3">
                     <div className="bg-white p-1.5 rounded-lg">
                         <img src="/images/logo.png" alt="Recebimento $mart" className="h-6 w-6" />
                     </div>
-                    <span className="text-white font-bold text-xl tracking-tight">
+                    <span className="text-white font-bold text-xl tracking-tight hidden md:block">
                         Recebimento <span className="text-[#14b8a6]">$mart</span>
                     </span>
+                    <span className="text-white font-bold text-xl tracking-tight md:hidden">
+                        Menu
+                    </span>
+                    <button
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="ml-auto md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
 
                 {/* Navigation */}
@@ -155,27 +180,49 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             </aside>
 
             {/* ─── Main Content ─── */}
-            <main className="ml-64 flex-1 flex flex-col min-h-screen">
-                {originalUser && (
-                    <div className="bg-amber-500 text-white px-6 py-3 flex items-center justify-between shadow-sm z-40 sticky top-0">
-                        <div className="flex items-center gap-3 text-sm font-medium">
-                            <Eye size={20} />
-                            <span>
-                                Você está visualizando a plataforma como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
-                            </span>
+            <div className="flex-1 flex flex-col min-h-screen ml-0 md:ml-64 w-full transition-all duration-300">
+
+                {/* Header Mobile (Visível apenas em telas pequenas) */}
+                <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-[#0f172a] p-1.5 rounded-md">
+                            <img src="/images/logo.png" alt="Logo" className="w-5 h-5" />
                         </div>
-                        <button
-                            onClick={stopImpersonating}
-                            className="bg-amber-700 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm hidden md:block"
-                        >
-                            Encerrar Visualização
-                        </button>
+                        <span className="font-bold text-slate-800 text-lg tracking-tight">
+                            Recebimento <span className="text-[#14b8a6]">$mart</span>
+                        </span>
                     </div>
-                )}
-                <div className="p-8 flex-1">
-                    {children}
-                </div>
-            </main>
+                    {/* Aqui está o menu sanduíche mantido no lado superior direito, conforme solicitado */}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none"
+                    >
+                        <Menu size={24} />
+                    </button>
+                </header>
+
+                <main className="flex-1 flex flex-col">
+                    {originalUser && (
+                        <div className="bg-amber-500 text-white px-4 md:px-6 py-3 flex items-center justify-between shadow-sm z-20 sticky top-0 md:top-0">
+                            <div className="flex items-center gap-3 text-sm font-medium">
+                                <Eye size={20} />
+                                <span>
+                                    Você está visualizando a plataforma como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
+                                </span>
+                            </div>
+                            <button
+                                onClick={stopImpersonating}
+                                className="bg-amber-700 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm hidden md:block"
+                            >
+                                Encerrar Visualização
+                            </button>
+                        </div>
+                    )}
+                    <div className="p-4 md:p-8 flex-1 w-full max-w-full overflow-x-hidden">
+                        {children}
+                    </div>
+                </main>
+            </div>
 
             <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

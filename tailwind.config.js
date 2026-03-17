@@ -3,11 +3,14 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+      },
       colors: {
         // Cor primária (mantida a original)
         'custom': '#20B2AA',
         'custom-hover': '#1A9D94',
-        
+
         // Cores secundárias
         'secondary': {
           50: '#f0f9f9',
@@ -21,7 +24,7 @@ export default {
           800: '#1a4c48',
           900: '#0d2624',
         },
-        
+
         // Cores terciárias
         'accent': {
           50: '#f5f9ff',
