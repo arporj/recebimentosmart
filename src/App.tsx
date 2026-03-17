@@ -32,7 +32,7 @@ import LoginV2 from './components/v2/LoginV2';
 import SignUpV2 from './components/v2/SignUpV2';
 import ForgotPasswordV2 from './components/v2/ForgotPasswordV2';
 import ResetPasswordV2 from './components/v2/ResetPasswordV2';
-import AdminChatPage from './pages/AdminChat'; // Importa a página de chat do admin
+// AdminChatPage removido para backlog de ideias
 import MonthlyPaymentsV2 from './pages/v2/MonthlyPaymentsV2';
 import ReportsV2 from './pages/v2/ReportsV2';
 import FeedbackV2 from './pages/v2/FeedbackV2';
@@ -144,7 +144,6 @@ function AppRoutes() {
           <Route path="/v2/admin/feedbacks" element={<AdminRoute><MainLayoutV2><AdminFeedbackPageV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/admin/feedbacks" element={<Navigate to="/v2/admin/feedbacks" replace />} />
           <Route path="/v2/admin/configuracoes" element={<AdminRoute><MainLayoutV2><AdminSettingsV2 /></MainLayoutV2></AdminRoute>} />
-          <Route path="/admin/chat" element={<AdminRoute><MainLayout><AdminChatPage /></MainLayout></AdminRoute>} />
           <Route path="/configuracoes" element={<Navigate to="/v2/admin/configuracoes" replace />} />
 
           {/* Se o usuário logado tentar acessar rotas públicas, redireciona para o dashboard */}

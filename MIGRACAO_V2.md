@@ -26,7 +26,7 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 ## Páginas do Painel Administrativo (Pendentes)
 - [x] **Gerenciamento de Usuários** (`/admin/users`)
 - [x] **Visualização de Feedbacks** (`/admin/feedbacks`)
-- [ ] **Chat de Suporte Admin** (`/admin/chat`)
+- [x] **Chat de Suporte Admin** (`/admin/chat`) - *Removido: Funcionalidade transferida para o BACKLOG_IDEIAS.md*
 - [x] **Configurações Globais do Sistema** (`/configuracoes`)
 
 ## Não esquecer 
