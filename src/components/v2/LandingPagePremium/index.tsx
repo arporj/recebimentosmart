@@ -111,7 +111,7 @@ export const LandingPagePremium: React.FC = () => {
                     <div className="mx-auto flex max-w-7xl items-center justify-between">
                         <div className="flex items-center gap-2 md:gap-3">
                             <img src="/images/logo.png" alt="Recebimento $mart" className="h-8 w-8 md:h-10 md:w-10 rounded-lg shadow-lg shadow-[#29a8a8]/20" />
-                            <h2 className="hidden sm:block text-xl font-extrabold tracking-tight text-slate-900">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
+                            <h2 className="block text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
                         </div>
                         <nav className="hidden md:flex items-center gap-10">
                             <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#features">Funcionalidades</a>
@@ -119,10 +119,10 @@ export const LandingPagePremium: React.FC = () => {
                             <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#">Sobre</a>
                         </nav>
                         <div className="flex items-center gap-2 sm:gap-4">
-                            <Link className="text-xs sm:text-sm font-bold text-slate-700 hover:text-[#29a8a8] px-2 sm:px-4 py-2 transition-colors" to="/v2/login">
+                            <Link className="rounded-lg bg-slate-200/50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 hover:text-[#29a8a8] transition-colors" to="/v2/login">
                                 Login
                             </Link>
-                            <Link className="flex cursor-pointer items-center justify-center rounded-lg bg-[#29a8a8] px-3 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#29a8a8]/30 hover:scale-105 active:scale-95 transition-all" to="/v2/cadastro">
+                            <Link className="hidden sm:flex cursor-pointer items-center justify-center rounded-lg bg-[#29a8a8] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#29a8a8]/30 hover:scale-105 active:scale-95 transition-all" to="/v2/cadastro">
                                 <span>Teste Grátis</span>
                             </Link>
                         </div>
