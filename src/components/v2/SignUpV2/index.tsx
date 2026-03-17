@@ -145,7 +145,7 @@ export default function SignUpV2() {
                 <div className="w-full bg-custom bg-gradient-to-br from-custom to-teal-700 flex flex-col justify-center items-center overflow-hidden rounded-xl min-h-[200px] shadow-lg shadow-custom/20 relative">
                     <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
                     <div className="z-10 flex flex-col items-center">
-                        <img src="/images/logo.png" alt="Recebimento $mart" className="h-14 mb-2" />
+                        <img src="/images/logo.svg" alt="Recebimento $mart" className="h-14 mb-2" />
                         <h3 className="text-white text-2xl font-extrabold tracking-tight">Recebimento $mart</h3>
                         <p className="text-white/80 text-sm font-medium">Comece a organizar seus recebimentos hoje</p>
                     </div>

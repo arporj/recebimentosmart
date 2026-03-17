@@ -110,7 +110,7 @@ export const LandingPagePremium: React.FC = () => {
                 <header className="sticky top-0 z-50 w-full border-b border-[#29a8a8]/10 bg-[#f6f8f8]/80 backdrop-blur-md px-4 md:px-20 py-4">
                     <div className="mx-auto flex max-w-7xl items-center justify-between">
                         <div className="flex items-center gap-2 md:gap-3">
-                            <img src="/images/logo.png" alt="Recebimento $mart" className="h-8 w-8 md:h-10 md:w-10 rounded-lg shadow-lg shadow-[#29a8a8]/20" />
+                            <img src="/images/logo.svg" alt="Recebimento $mart" className="h-8 w-8 md:h-10 md:w-10 rounded-lg shadow-lg shadow-[#29a8a8]/20" />
                             <h2 className="block text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
                         </div>
                         <nav className="hidden md:flex items-center gap-10">
@@ -301,7 +301,7 @@ export const LandingPagePremium: React.FC = () => {
                         <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
                             <div className="flex flex-col gap-6">
                                 <div className="flex items-center gap-3">
-                                    <img src="/images/logo.png" alt="Recebimento $mart" className="h-10 w-10 rounded-lg" />
+                                    <img src="/images/logo.svg" alt="Recebimento $mart" className="h-10 w-10 rounded-lg" />
                                     <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
                                 </div>
                                 <p className="text-sm text-slate-500 leading-relaxed">A solução inteligente para o controle financeiro da sua pequena empresa.</p>
