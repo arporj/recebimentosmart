@@ -25,9 +25,7 @@ import UserProfileSettings from './components/UserProfileSettings';
 import { SignUpPage } from './components/SignUpPage';
 // Configuracoes V1 removido, agora usa redirect para V2
 import CamposPersonalizadosV2 from './pages/v2/CamposPersonalizadosV2';
-import PaymentSuccessPage from './pages/payment-success';
 import ReferralPageV2 from './pages/v2/ReferralPageV2';
-import PaymentFailurePage from './pages/payment-failure';
 import LandingPage from './pages/LandingPage';
 import StitchLanding from './pages/StitchLanding';
 import LoginV2 from './components/v2/LoginV2';
@@ -139,10 +137,6 @@ function AppRoutes() {
 
           {/* A página de pagamento antiga - redireciona */}
           <Route path="/payment" element={<Navigate to="/v2/assinatura" replace />} />
-
-          {/* Rotas de retorno do pagamento */}
-          <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
-          <Route path="/payment-failure" element={<ProtectedRoute><PaymentFailurePage /></ProtectedRoute>} />
 
           {/* Rotas de Admin */}
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />

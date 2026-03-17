@@ -20,8 +20,8 @@ Este documento acompanha o progresso da reescrita e atualização das interfaces
 - [x] **Perfil e Configurações da Conta** (`/profile` -> `UserProfileSettings`)
 - [x] **Indique e Ganhe** (`/indicacoes` -> `ReferralPageV2`)
 - [x] **Planos e Assinatura** (`/payment` -> `SubscriptionPageV2`)
-- [ ] **Status de Pagamento - Sucesso** (`/payment-success`)
-- [ ] **Status de Pagamento - Falha** (`/payment-failure`)
+- [x] **Status de Pagamento - Sucesso** (`/payment-success`) - *Removido: Fluxo nativo via PIX direto*
+- [x] **Status de Pagamento - Falha** (`/payment-failure`) - *Removido: Fluxo nativo via PIX direto*
 
 ## Páginas do Painel Administrativo (Pendentes)
 - [x] **Gerenciamento de Usuários** (`/admin/users`)
