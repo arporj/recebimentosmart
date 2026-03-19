@@ -164,20 +164,24 @@ export const LandingPagePremium: React.FC = () => {
                                         <span>+5.000 empresas confiam no Recebimento $mart</span>
                                     </div>
                                 </div>
-                                <div className="relative flex-1 lg:max-w-xl">
+                                <div className="relative flex-1 lg:max-w-xl flex items-center justify-center" style={{ minHeight: '340px' }}>
                                     <div className="absolute -inset-4 bg-[#29a8a8]/10 blur-3xl rounded-full" />
-                                    <div className="relative rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-                                        <img alt="Dashboard Mockup" className="w-full rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2qqsn3anEDn4CylhjeShDGQwDWkBLu3Jx2z6gq6PSG4d2eP-Zzlb3MecJPP9g29O6709u4X1JnvgNpczm57H9vHbA6Lh3BNMW_AFY7C50DuVDv3vm8uMa-Hqj5w9F-iyzjcBRn3ntu_z3eWBloIu440IFbGE4y8czdtOynRKWJ5v1hM_j8tjtnaFF8n_a_fFRXiRVXHED08WultgsD-y2zivGiCKZHWw_Im398LjJvkUbE7qu9cTjdQDmPspxZLxLcgDT93_JwAIl" />
+                                    {/* Leque de screenshots: Pagamentos (trás esquerda) */}
+                                    <div className="absolute w-[75%] left-0 top-4 -rotate-[4deg] z-10">
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                                            <img alt="Pagamentos do Mês" className="w-full rounded-xl" src="/images/screenshot-pagamentos.png" />
+                                        </div>
                                     </div>
-                                    <div className="absolute -bottom-6 -left-6 rounded-xl border border-slate-200 bg-white p-4 shadow-xl hidden md:block">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex size-10 items-center justify-center rounded-full bg-green-100 text-green-600">
-                                                <span className="material-symbols-outlined">check_circle</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-400">Pagamento Recebido</p>
-                                                <p className="text-sm font-bold text-slate-900">R$ 1.250,00 via Pix</p>
-                                            </div>
+                                    {/* Leque de screenshots: Clientes (trás direita) */}
+                                    <div className="absolute w-[75%] right-0 top-4 rotate-[4deg] z-10">
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                                            <img alt="Listagem de Clientes" className="w-full rounded-xl" src="/images/screenshot-clientes.png" />
+                                        </div>
+                                    </div>
+                                    {/* Leque de screenshots: Relatórios (frente, centro) */}
+                                    <div className="relative w-[82%] z-20 mt-4">
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl ring-1 ring-slate-900/5">
+                                            <img alt="Relatórios e Gráficos" className="w-full rounded-xl" src="/images/screenshot-relatorios.png" />
                                         </div>
                                     </div>
                                 </div>
