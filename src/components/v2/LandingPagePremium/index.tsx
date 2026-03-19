@@ -57,6 +57,13 @@ const initialTiers = [
 
 export const LandingPagePremium: React.FC = () => {
     const [pricingTiers, setPricingTiers] = useState(initialTiers);
+    const [heroSlide, setHeroSlide] = useState(0);
+
+    // Auto-play do carrossel de screenshots
+    useEffect(() => {
+        const timer = setInterval(() => setHeroSlide(prev => (prev + 1) % 3), 5000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         const fetchPrices = async () => {
@@ -164,26 +171,41 @@ export const LandingPagePremium: React.FC = () => {
                                         <span>+5.000 empresas confiam no Recebimento $mart</span>
                                     </div>
                                 </div>
-                                <div className="relative flex-1 lg:max-w-xl flex items-center justify-center" style={{ minHeight: '340px' }}>
+                                <div className="relative flex-1 lg:max-w-xl">
                                     <div className="absolute -inset-4 bg-[#29a8a8]/10 blur-3xl rounded-full" />
-                                    {/* Leque de screenshots: Pagamentos (trás esquerda) */}
-                                    <div className="absolute w-[75%] left-0 top-4 -rotate-[4deg] z-10">
-                                        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                                            <img alt="Pagamentos do Mês" className="w-full rounded-xl" src="/images/screenshot-pagamentos.png" />
-                                        </div>
-                                    </div>
-                                    {/* Leque de screenshots: Clientes (trás direita) */}
-                                    <div className="absolute w-[75%] right-0 top-4 rotate-[4deg] z-10">
-                                        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                                            <img alt="Listagem de Clientes" className="w-full rounded-xl" src="/images/screenshot-clientes.png" />
-                                        </div>
-                                    </div>
-                                    {/* Leque de screenshots: Relatórios (frente, centro) */}
-                                    <div className="relative w-[82%] z-20 mt-4">
-                                        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl ring-1 ring-slate-900/5">
-                                            <img alt="Relatórios e Gráficos" className="w-full rounded-xl" src="/images/screenshot-relatorios.png" />
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const screenshots = [
+                                            { src: '/images/screenshot-relatorios.png', alt: 'Relatórios e Gráficos', label: 'Relatórios' },
+                                            { src: '/images/screenshot-clientes.png', alt: 'Listagem de Clientes', label: 'Clientes' },
+                                            { src: '/images/screenshot-pagamentos.png', alt: 'Pagamentos do Mês', label: 'Pagamentos' },
+                                        ];
+                                        return (
+                                            <div className="relative">
+                                                <div className="relative rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl overflow-hidden">
+                                                    {screenshots.map((s, i) => (
+                                                        <img
+                                                            key={i}
+                                                            alt={s.alt}
+                                                            className={`w-full rounded-xl transition-all duration-700 ease-in-out ${i === heroSlide ? 'opacity-100 relative' : 'opacity-0 absolute inset-0 p-2'}`}
+                                                            src={s.src}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                {/* Dots + Label */}
+                                                <div className="flex items-center justify-center gap-3 mt-4">
+                                                    {screenshots.map((s, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setHeroSlide(i)}
+                                                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${i === heroSlide ? 'bg-[#29a8a8] text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                                        >
+                                                            {s.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
