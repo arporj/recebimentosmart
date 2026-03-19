@@ -310,24 +310,23 @@ export const LandingPagePremium: React.FC = () => {
                                 <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Produto</h6>
                                 <ul className="flex flex-col gap-4 text-sm text-slate-600">
                                     <li><a className="hover:text-[#29a8a8] transition-colors" href="#features">Funcionalidades</a></li>
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">API</a></li>
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Segurança</a></li>
+                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#pricing">Planos</a></li>
                                 </ul>
                             </div>
                             <div>
                                 <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Suporte</h6>
                                 <ul className="flex flex-col gap-4 text-sm text-slate-600">
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Central de Ajuda</a></li>
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Status do Sistema</a></li>
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Contato</a></li>
+                                    <li><Link className="hover:text-[#29a8a8] transition-colors" to="/contato">Contato</Link></li>
+                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="mailto:contato@recebimentosmart.com.br">E-mail</a></li>
+                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="https://wa.me/5521967621494" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
                                 </ul>
                             </div>
                             <div>
                                 <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Legal</h6>
                                 <ul className="flex flex-col gap-4 text-sm text-slate-600">
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Privacidade</a></li>
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Termos de Uso</a></li>
-                                    <li><a className="hover:text-[#29a8a8] transition-colors" href="#">Cookies</a></li>
+                                    <li><Link className="hover:text-[#29a8a8] transition-colors" to="/privacidade">Privacidade</Link></li>
+                                    <li><Link className="hover:text-[#29a8a8] transition-colors" to="/termos">Termos de Uso</Link></li>
+                                    <li><Link className="hover:text-[#29a8a8] transition-colors" to="/cookies">Cookies</Link></li>
                                 </ul>
                             </div>
                         </div>

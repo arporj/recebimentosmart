@@ -20,6 +20,10 @@ import LoginV2 from './components/v2/LoginV2';
 import SignUpV2 from './components/v2/SignUpV2';
 import ForgotPasswordV2 from './components/v2/ForgotPasswordV2';
 import ResetPasswordV2 from './components/v2/ResetPasswordV2';
+import PrivacyPolicyPage from './components/v2/PrivacyPolicyPage';
+import TermsOfUsePage from './components/v2/TermsOfUsePage';
+import CookiePolicyPage from './components/v2/CookiePolicyPage';
+import ContactPage from './components/v2/ContactPage';
 // AdminChatPage removido para backlog de ideias
 import MonthlyPaymentsV2 from './pages/v2/MonthlyPaymentsV2';
 import ReportsV2 from './pages/v2/ReportsV2';
@@ -72,6 +76,12 @@ function AppRoutes() {
           <Route path="/v2/forgot-password" element={<Navigate to="/forgot-password" replace />} />
           <Route path="/v2/reset-password" element={<Navigate to="/reset-password" replace />} />
 
+          {/* Páginas institucionais (acessíveis por todos) */}
+          <Route path="/privacidade" element={<PrivacyPolicyPage />} />
+          <Route path="/termos" element={<TermsOfUsePage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
+          <Route path="/contato" element={<ContactPage />} />
+
           {/* Fallback manda sempre para a raiz */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </>
@@ -118,6 +128,11 @@ function AppRoutes() {
           <Route path="/v2" element={<Navigate to="/v2/clientes" replace />} />
           <Route path="/v2/login" element={<Navigate to="/v2/clientes" replace />} />
           <Route path="/v2/cadastro" element={<Navigate to="/v2/clientes" replace />} />
+          {/* Páginas institucionais (acessíveis também logado) */}
+          <Route path="/privacidade" element={<PrivacyPolicyPage />} />
+          <Route path="/termos" element={<TermsOfUsePage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
+          <Route path="/contato" element={<ContactPage />} />
           <Route path="*" element={<Navigate to="/v2/clientes" replace />} />
         </>
       )}
