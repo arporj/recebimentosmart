@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileText, UserCheck, Ban, AlertTriangle, Scale, CreditCard, RefreshCw } from 'lucide-react';
 
 const TermsOfUsePage = () => {
+    useEffect(() => { window.scrollTo(0, 0); }, []);
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}

@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 
 const ContactPage = () => {
+    useEffect(() => { window.scrollTo(0, 0); }, []);
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}

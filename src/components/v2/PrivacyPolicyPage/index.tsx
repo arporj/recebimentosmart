@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Eye, Database, Lock, UserCheck, Bell, Trash2 } from 'lucide-react';
 
 const PrivacyPolicyPage = () => {
+    useEffect(() => { window.scrollTo(0, 0); }, []);
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}
