@@ -175,9 +175,9 @@ export const LandingPagePremium: React.FC = () => {
                                     <div className="absolute -inset-4 bg-[#29a8a8]/10 blur-3xl rounded-full" />
                                     {(() => {
                                         const screenshots = [
-                                            { src: '/images/screenshot-relatorios.png', alt: 'Relatórios e Gráficos', label: 'Relatórios' },
                                             { src: '/images/screenshot-clientes.png', alt: 'Listagem de Clientes', label: 'Clientes' },
                                             { src: '/images/screenshot-pagamentos.png', alt: 'Pagamentos do Mês', label: 'Pagamentos' },
+                                            { src: '/images/screenshot-relatorios.png', alt: 'Relatórios e Gráficos', label: 'Relatórios' },
                                         ];
                                         return (
                                             <div className="relative">
