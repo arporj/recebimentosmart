@@ -4,6 +4,7 @@ const cors = require('cors');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const { createClient } = require('@supabase/supabase-js');
+const Stripe = require('stripe');
 
 // --- Configuração e Inicialização ---
 const app = express();
@@ -18,10 +19,12 @@ const webhookUrl = process.env.WEBHOOK_URL;
 
 const pagarMeApiKey = process.env.PAGARME_API_KEY;
 
+const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 // Validação das Variáveis
-if (!supabaseUrl || !supabaseServiceRoleKey || !mercadoPagoAccessToken) {
-  console.error('ERRO CRÍTICO: Variáveis de ambiente essenciais (Supabase, Mercado Pago) não estão definidas. Verifique seu arquivo .env');
-  process.exit(1); // Encerra o servidor se a configuração for inválida
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  console.error('ERRO CRÍTICO: Variáveis de ambiente essenciais (Supabase) não estão definidas. Verifique seu arquivo .env');
+  process.exit(1);
 }
 
 const mercadoPagoRoutes = require('./server/routes/mercadoPago');
@@ -30,8 +33,75 @@ const mercadoPagoRoutes = require('./server/routes/mercadoPago');
 app.use(cors());
 app.use(express.json());
 
-// --- Rotas ---
-app.use('/api/mercado-pago', mercadoPagoRoutes);
+// --- Rotas Stripe ---
+
+/**
+ * POST /api/stripe/create-checkout-session
+ * Body: { amount, planName, userId, userEmail }
+ */
+app.post('/api/stripe/create-checkout-session', async (req, res) => {
+  try {
+    const { amount, planName, userId, userEmail } = req.body;
+    const origin = req.headers.origin || 'http://localhost:5173';
+
+    if (!amount || !userId || !planName) {
+      return res.status(400).json({ success: false, message: 'Parâmetros obrigatórios ausentes.' });
+    }
+
+    const session = await stripeClient.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      customer_email: userEmail || undefined,
+      line_items: [
+        {
+          price_data: {
+            currency: 'brl',
+            unit_amount: Math.round(amount * 100),
+            product_data: {
+              name: `Recebimento Smart — Plano ${planName}`,
+              description: `Assinatura mensal do Plano ${planName}`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        user_id: userId,
+        plan_name: planName,
+      },
+      success_url: `${origin}/v2/assinatura?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/v2/assinatura?payment=cancelled`,
+    });
+
+    res.status(201).json({ success: true, url: session.url });
+  } catch (error) {
+    console.error('Erro ao criar sessão Stripe:', error.message);
+    res.status(500).json({ success: false, message: 'Erro ao iniciar o checkout.' });
+  }
+});
+
+/**
+ * GET /api/stripe/session-status?session_id=cs_xxx
+ */
+app.get('/api/stripe/session-status', async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    if (!session_id) return res.status(400).json({ success: false, message: 'session_id obrigatório.' });
+
+    const session = await stripeClient.checkout.sessions.retrieve(session_id);
+    res.status(200).json({
+      success: true,
+      status: session.payment_status,
+      planName: session.metadata?.plan_name,
+      amountTotal: session.amount_total,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar status da sessão:', error.message);
+    res.status(500).json({ success: false, message: 'Erro ao verificar o pagamento.' });
+  }
+});
+
+// --- Rotas legadas (Mercado Pago / outros) ---
 
 // Rota genérica para verificar status do pagamento (com verificação ativa no MP)
 app.get('/api/get-payment-status/:paymentId', async (req, res) => {
