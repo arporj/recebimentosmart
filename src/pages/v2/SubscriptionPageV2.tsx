@@ -16,7 +16,7 @@ const PLAN_MAPPING: Record<string, PlanName> = {
 };
 
 export default function SubscriptionPageV2() {
-  const { loading, pageData, paymentStatus, fetchData } = useSubscription();
+  const { loading, pageData, fetchData } = useSubscription();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 
@@ -123,31 +123,6 @@ export default function SubscriptionPageV2() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-custom"></div>
-      </div>
-    );
-  }
-
-  // Tela de assinatura já ativa
-  if (paymentStatus === 'completed' && pageData?.user) {
-    const { plan, valid_until } = pageData.user;
-    return (
-      <div className="max-w-xl mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-slate-100 text-center animate-in fade-in slide-in-from-bottom-4">
-        <div className="flex justify-center mb-6">
-          <div className="bg-emerald-100 p-4 rounded-full">
-            <CheckCircle className="h-12 w-12 text-emerald-500" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Assinatura Ativa</h2>
-        <p className="text-slate-600 mb-6">
-          Sua assinatura do plano <span className="font-bold text-custom">{plan}</span> está ativa e funcionando perfeitamente!
-        </p>
-        <div className="bg-slate-50 rounded-xl p-4 mb-8 border border-slate-100">
-          <p className="text-sm text-slate-500">Próximo vencimento</p>
-          <p className="text-xl font-bold text-slate-800">{format(parseISO(valid_until), 'dd/MM/yyyy')}</p>
-        </div>
-        <Link to="/v2/dashboard" className="inline-block bg-custom text-white font-bold py-3 px-8 rounded-xl hover:bg-custom-hover transition-colors">
-          Acessar Dashboard
-        </Link>
       </div>
     );
   }
@@ -290,6 +265,22 @@ export default function SubscriptionPageV2() {
         <h1 className="text-slate-900 text-4xl md:text-5xl font-black leading-tight tracking-tight mb-3">Faça sua Assinatura</h1>
         <p className="text-slate-500 text-lg max-w-2xl">Escolha o plano ideal para o seu negócio e finalize o pagamento de forma segura.</p>
       </div>
+
+      {pageData?.user?.valid_until && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-8 flex items-start gap-4">
+          <div className="bg-emerald-100 p-2 rounded-full shrink-0">
+            <CheckCircle className="h-6 w-6 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="text-emerald-800 font-bold text-lg mb-1">Assinatura Ativa</h3>
+            <p className="text-emerald-700">
+              Você já possui uma assinatura ativa do plano <span className="font-bold">{pageData.user.plan}</span>.
+              Seu próximo vencimento é em <span className="font-bold">{format(parseISO(pageData.user.valid_until), 'dd/MM/yyyy')}</span>.
+              Você pode renovar ou alterar seu plano abaixo a qualquer momento.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-8 space-y-10">
