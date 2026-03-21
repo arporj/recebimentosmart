@@ -162,14 +162,7 @@ export const LandingPagePremium: React.FC = () => {
                                             Ver demonstração
                                         </a>
                                     </div>
-                                    <div className="flex items-center gap-4 text-sm font-semibold text-slate-500">
-                                        <div className="flex -space-x-2">
-                                            <div className="size-8 rounded-full border-2 border-white bg-slate-200 bg-cover bg-center" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDMdgFSSbGXd10EAmWwCU2RQ506McdOpbnBjN0UvqwPacsoeBa8vYAplTwEegsYQaf8YWCeygYBssjf25EQjZJL5dIMQAEj0UDiENvlYKK-r5-BNnP7vKZFhuA50TKKsx6QRoMDJJQf37rXDP3OiKh2NJph3pgkiFyJaeq9z89ZbcQn-3e7OKEQl8HKY6cFAg9jSlTEzT0levygdgB-dgvUtG3E_0AnURkYls3EAUF9VOpmC0t5xRMlZCPZh2Bzos-pwNXZilJslgy1')" }} />
-                                            <div className="size-8 rounded-full border-2 border-white bg-slate-300 bg-cover bg-center" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC7boLxKEXXwykCK4yk555SzPbdo063UoOzkL2wQqliVWS4EwoZEd9oQ6S-_Ui_l0DW8doxJaB_XLd_gB9UauDSTgijT7McKeAz0n-nbRDv6dALuglkNkUNvDWp96JYDnLu8Pu4lOBgmosav9dl4BwbFZ9ILqS02_lo9YwxCixisiChThuG79pIetnGkPHYHBV0WN4NlOzvwyGWlN8N5owTHcEMMiV0ZiiqzQzzpXHuPllbPMkah0Rp_UBTyO_jKhm0MgNu_eM2mfMM')" }} />
-                                            <div className="size-8 rounded-full border-2 border-white bg-slate-400 bg-cover bg-center" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuANoBfUwr7ilso8OumwLXEW_fVnrZQrO_zjoYp61QWVQvTuK0Lr6TBfRsSFUq0HdcJSQC8B9U6MGVpdBwxTDMH_6YYXj1W3c7lilv5QUZdraNzD4AALzGzodrUuM90HSgFbsFgn6uspRUzrjRPEBU0pfQxgrerNfLO99ddsJpKCl8ZF6SnRUmIg6jN4H6vPSy-gb5bMOjYlmbeS-S09g5wEcy8SY6KZE9JaC2E74xZvrF5_YfrgtNW12zUQ1dd3WBJvYiIx0ntCyVDJ')" }} />
-                                        </div>
-                                        <span>+5.000 empresas confiam no Recebimento $mart</span>
-                                    </div>
+
                                 </div>
                                 <div className="relative flex-1 lg:max-w-xl">
                                     <div className="absolute -inset-4 bg-[#29a8a8]/10 blur-3xl rounded-full" />
