@@ -266,21 +266,70 @@ export default function SubscriptionPageV2() {
         <p className="text-slate-500 text-lg max-w-2xl">Escolha o plano ideal para o seu negócio e finalize o pagamento de forma segura.</p>
       </div>
 
-      {pageData?.user?.valid_until && pageData?.user?.plan !== 'trial' && isFuture(parseISO(pageData.user.valid_until)) && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-8 flex items-start gap-4">
-          <div className="bg-emerald-100 p-2 rounded-full shrink-0">
-            <CheckCircle className="h-6 w-6 text-emerald-600" />
-          </div>
-          <div>
-            <h3 className="text-emerald-800 font-bold text-lg mb-1">Assinatura Ativa</h3>
-            <p className="text-emerald-700">
-              Você já possui uma assinatura ativa do plano <span className="font-bold">{pageData.user.plan}</span>.
-              Seu próximo vencimento é em <span className="font-bold">{format(parseISO(pageData.user.valid_until), 'dd/MM/yyyy')}</span>.
-              Você pode renovar ou alterar seu plano abaixo a qualquer momento.
-            </p>
-          </div>
-        </div>
-      )}
+      {(() => {
+        const userPlan = pageData?.user?.plan;
+        const validUntil = pageData?.user?.valid_until;
+
+        if (!userPlan) return null;
+
+        // Caso 1: Administrador (acesso vitalício/irrestrito)
+        if (userPlan === 'admin') {
+          return (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 mb-8 flex items-start gap-4">
+              <div className="bg-slate-700 p-2 rounded-full shrink-0">
+                <Shield className="h-6 w-6 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg mb-1">Acesso Administrativo</h3>
+                <p className="text-slate-300">
+                  Sua conta possui nível de acesso <span className="font-bold text-white">Administrador</span>.
+                  Você tem acesso total aos recursos do sistema sem data de expiração.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        // Caso 2: Em período de Trial
+        if (userPlan === 'trial' && validUntil && isFuture(parseISO(validUntil))) {
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8 flex items-start gap-4">
+              <div className="bg-amber-100 p-2 rounded-full shrink-0">
+                <Info className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-amber-800 font-bold text-lg mb-1">Período de Testes</h3>
+                <p className="text-amber-700">
+                  Sua conta está no período gratuito de <span className="font-bold">Testes (Trial)</span>.
+                  Ele terminará em <span className="font-bold">{format(parseISO(validUntil), 'dd/MM/yyyy')}</span>.
+                  Assine um de nossos planos abaixo para não perder o acesso!
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        // Caso 3: Assinatura regular ativa (Básico, Pró, etc)
+        if (userPlan !== 'trial' && validUntil && isFuture(parseISO(validUntil))) {
+          return (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-8 flex items-start gap-4">
+              <div className="bg-emerald-100 p-2 rounded-full shrink-0">
+                <CheckCircle className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-emerald-800 font-bold text-lg mb-1">Assinatura Ativa</h3>
+                <p className="text-emerald-700">
+                  Você já possui uma assinatura ativa do plano <span className="font-bold capitalize">{userPlan}</span>.
+                  Seu próximo vencimento é em <span className="font-bold">{format(parseISO(validUntil), 'dd/MM/yyyy')}</span>.
+                  Você pode renovar ou alterar seu plano abaixo a qualquer momento.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-8 space-y-10">
@@ -387,15 +436,9 @@ export default function SubscriptionPageV2() {
               </div>
 
               <div className="border-t border-dashed border-slate-200 pt-6">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total a pagar</span>
-                    <span className="text-slate-900 text-3xl font-black">{formatCurrency(finalAmount)}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-[10px] text-slate-400 font-medium">Acesso em até</span>
-                    <span className="text-custom font-bold text-sm">5 minutos</span>
-                  </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total a pagar</span>
+                  <span className="text-slate-900 text-3xl font-black">{formatCurrency(finalAmount)}</span>
                 </div>
               </div>
 
