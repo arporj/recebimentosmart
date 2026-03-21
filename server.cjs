@@ -82,6 +82,7 @@ app.post('/api/stripe/create-checkout-session', async (req, res) => {
 
 /**
  * GET /api/stripe/session-status?session_id=cs_xxx
+ * Verifica o status da sessão e ativa a assinatura imediatamente se o pagamento foi confirmado.
  */
 app.get('/api/stripe/session-status', async (req, res) => {
   try {
@@ -89,9 +90,50 @@ app.get('/api/stripe/session-status', async (req, res) => {
     if (!session_id) return res.status(400).json({ success: false, message: 'session_id obrigatório.' });
 
     const session = await stripeClient.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status === 'paid') {
+      const userId = session.metadata?.user_id;
+      const planName = session.metadata?.plan_name;
+      const transactionId = session.id;
+      const amount = session.amount_total / 100;
+
+      if (userId && planName) {
+        // Idempotência: só processa se ainda não foi registrado
+        const { data: existing } = await supabaseAdmin
+          .from('subscriptions')
+          .select('id')
+          .eq('transaction_id', transactionId)
+          .single();
+
+        if (!existing) {
+          // 1. Registrar o pagamento
+          await supabaseAdmin.from('subscriptions').insert({
+            user_id: userId,
+            amount,
+            payment_provider: 'stripe',
+            transaction_id: transactionId,
+          });
+
+          // 2. Ativar o plano via RPC (atualiza profiles: plan + valid_until + 31 dias)
+          const { error: rpcError } = await supabaseAdmin.rpc('update_user_subscription', {
+            p_user_id: userId,
+            p_plan_name: planName,
+          });
+
+          if (rpcError) {
+            console.error('Erro ao ativar assinatura via RPC:', rpcError);
+          } else {
+            console.log(`Assinatura ${planName} ativada para usuário ${userId} via session-status.`);
+          }
+        } else {
+          console.log(`Sessão ${transactionId} já registrada. Apenas retornando status.`);
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
-      status: session.payment_status,
+      status: session.payment_status, // 'paid' | 'unpaid' | 'no_payment_required'
       planName: session.metadata?.plan_name,
       amountTotal: session.amount_total,
     });
@@ -100,6 +142,7 @@ app.get('/api/stripe/session-status', async (req, res) => {
     res.status(500).json({ success: false, message: 'Erro ao verificar o pagamento.' });
   }
 });
+
 
 // --- Rotas legadas (Mercado Pago / outros) ---
 

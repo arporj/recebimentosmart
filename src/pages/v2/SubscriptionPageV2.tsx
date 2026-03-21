@@ -16,20 +16,48 @@ const PLAN_MAPPING: Record<string, PlanName> = {
 };
 
 export default function SubscriptionPageV2() {
-  const { loading, pageData, paymentStatus } = useSubscription();
+  const { loading, pageData, paymentStatus, fetchData } = useSubscription();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<'success' | 'cancelled' | null>(null);
+  const [paymentResult, setPaymentResult] = useState<'success' | 'cancelled' | 'activating' | null>(null);
+  const [activationError, setActivationError] = useState(false);
 
-  // Detecta retorno do Stripe via query params
+  // Detecta retorno do Stripe e ativa a assinatura imediatamente
   useEffect(() => {
     const payment = searchParams.get('payment');
-    if (payment === 'success') setPaymentResult('success');
-    if (payment === 'cancelled') setPaymentResult('cancelled');
-  }, [searchParams]);
+    const sessionId = searchParams.get('session_id');
+
+    if (payment === 'cancelled') {
+      setPaymentResult('cancelled');
+      return;
+    }
+
+    if (payment === 'success' && sessionId) {
+      setPaymentResult('activating');
+
+      axios.get(`/api/stripe/session-status?session_id=${sessionId}`)
+        .then(({ data }) => {
+          if (data.success && data.status === 'paid') {
+            // Recarrega os dados do contexto para refletir a assinatura ativa
+            return fetchData();
+          } else {
+            throw new Error('Sessão não confirmada como paga.');
+          }
+        })
+        .then(() => {
+          setPaymentResult('success');
+        })
+        .catch((err) => {
+          console.error('Erro ao ativar assinatura:', err);
+          setActivationError(true);
+          setPaymentResult('success'); // Ainda exibe sucesso — webhook vai garantir a ativação
+        });
+    }
+  }, [searchParams, fetchData]);
+
 
   // Define o plano padrão quando os dados carregam
   useEffect(() => {
@@ -124,8 +152,24 @@ export default function SubscriptionPageV2() {
     );
   }
 
-  // Tela de retorno do Stripe: pagamento com sucesso
+  // Tela de carregamento: ativando assinatura após retorno do Stripe
+  if (paymentResult === 'activating') {
+    return (
+      <div className="max-w-xl mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-slate-100 text-center">
+        <div className="flex justify-center mb-6">
+          <div className="bg-custom/10 p-4 rounded-full">
+            <Loader2 className="h-12 w-12 text-custom animate-spin" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Ativando sua assinatura...</h2>
+        <p className="text-slate-500">Aguarde enquanto confirmamos seu pagamento e liberamos o acesso.</p>
+      </div>
+    );
+  }
+
+  // Tela de retorno do Stripe: pagamento com sucesso e assinatura ativada
   if (paymentResult === 'success') {
+    const activeUser = pageData?.user;
     return (
       <div className="max-w-xl mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-slate-100 text-center animate-in fade-in slide-in-from-bottom-4">
         <div className="flex justify-center mb-6">
@@ -134,9 +178,26 @@ export default function SubscriptionPageV2() {
           </div>
         </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2">Pagamento Confirmado!</h2>
-        <p className="text-slate-500 mb-8">
-          Seu pagamento foi processado com sucesso. Sua assinatura será ativada em instantes.
-        </p>
+
+        {activationError ? (
+          <p className="text-slate-500 mb-8">
+            Seu pagamento foi aprovado com sucesso. Sua assinatura será ativada automaticamente em instantes. Se o acesso não for liberado em alguns minutos, entre em contato com o suporte.
+          </p>
+        ) : (
+          <>
+            <p className="text-slate-600 mb-4">
+              Sua assinatura do plano{' '}
+              <span className="font-bold text-custom">{activeUser?.plan ?? 'contratado'}</span>{' '}está ativa!
+            </p>
+            {activeUser?.valid_until && (
+              <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+                <p className="text-sm text-slate-500">Próximo vencimento</p>
+                <p className="text-xl font-bold text-slate-800">{format(parseISO(activeUser.valid_until), 'dd/MM/yyyy')}</p>
+              </div>
+            )}
+          </>
+        )}
+
         <Link to="/v2/dashboard" className="inline-block bg-custom text-white font-bold py-3 px-8 rounded-xl hover:bg-custom-hover transition-colors">
           Ir para o Dashboard
         </Link>
