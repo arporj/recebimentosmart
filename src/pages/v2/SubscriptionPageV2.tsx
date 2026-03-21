@@ -389,7 +389,7 @@ export default function SubscriptionPageV2() {
                   ) : (
                     <>
                       <CreditCard className="w-5 h-5" />
-                      Pagar com Cartão
+                      Finalizar Pagamento
                     </>
                   )}
                 </button>
