@@ -62,10 +62,26 @@ export default function SubscriptionPageV2() {
   // Define o plano padrão quando os dados carregam
   useEffect(() => {
     if (pageData && !selectedPlan) {
-      const basicPlan = pageData.plans.find(p => p.name.toLowerCase() === 'básico');
+      const userPlan = pageData.user?.plan?.toLowerCase();
+      
+      // 1. Tenta selecionar o plano atual do usuário, se ele constar nos planos carregados
+      if (userPlan && userPlan !== 'trial' && userPlan !== 'admin') {
+        const mappedUserPlan = PLAN_MAPPING[userPlan] ?? (userPlan as PlanName);
+        if (pageData.plans.some(p => (PLAN_MAPPING[p.name.toLowerCase()] ?? p.name.toLowerCase()) === mappedUserPlan)) {
+          setSelectedPlan(mappedUserPlan);
+          return;
+        }
+      }
+
+      // 2. Fallback: seleciona o Básico, se existir
+      const basicPlan = pageData.plans.find(p => p.name.toLowerCase() === 'básico' || p.name.toLowerCase() === 'basico');
       if (basicPlan) {
         setSelectedPlan('basico');
-      } else if (pageData.plans.length > 0) {
+        return;
+      }
+
+      // 3. Fallback final: seleciona o primeiro plano da lista
+      if (pageData.plans.length > 0) {
         const firstKey = PLAN_MAPPING[pageData.plans[0].name.toLowerCase()] ?? (pageData.plans[0].name.toLowerCase() as PlanName);
         setSelectedPlan(firstKey);
       }
