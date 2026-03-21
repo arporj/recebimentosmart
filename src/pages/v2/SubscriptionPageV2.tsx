@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../../lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
 import { CheckCircle, CreditCard, Info, Loader2, Shield, XCircle } from 'lucide-react';
@@ -266,7 +266,7 @@ export default function SubscriptionPageV2() {
         <p className="text-slate-500 text-lg max-w-2xl">Escolha o plano ideal para o seu negócio e finalize o pagamento de forma segura.</p>
       </div>
 
-      {pageData?.user?.valid_until && (
+      {pageData?.user?.valid_until && pageData?.user?.plan !== 'trial' && isFuture(parseISO(pageData.user.valid_until)) && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-8 flex items-start gap-4">
           <div className="bg-emerald-100 p-2 rounded-full shrink-0">
             <CheckCircle className="h-6 w-6 text-emerald-600" />
