@@ -1,5 +1,7 @@
 ---
 trigger: always_on
+system_files:
+  - C:\Users\andre\.gemini\antigravity\MASTER_INDEX.md
 ---
 
 # GEMINI.md - Antigravity Kit
@@ -118,4 +120,6 @@ O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e client
 6.  **Tom:** Mantenha um tom conversacional e colaborativo.
 7.  **S.O.:** Lembre que estou usando o Windows para rodar localmente
 8.  **Github:** Mude para o diretório do projeto usando "cd" antes de tentar fazer o commit. Se não conseguir, sempre me mostre a mensagem que devo escrever no commit manual, usando formatação normal em negrito.
+9. **Gestão de Skills:** Antes de implementar qualquer funcionalidade (React, Tailwind, Supabase), você DEVE consultar o manifesto global em `C:\Users\andre\.gemini\antigravity\MASTER_INDEX.md`. Localize a skill de "Best Practices" necessária e leia o arquivo indicado no manifesto antes de gerar o código. Isso é obrigatório para manter os padrões do projeto.
+10. **Design e UI:** Sempre que eu pedir qualquer coisa sobre "design", você deve obrigatoriamente usar o MCP do Stitch em conjunto com as habilidades `design-md`, `enhance-prompt`, `react-components` e `stitch-loop`. O ID do projeto do Stitch para o "recebimento-smart" deve ser confirmado antes da primeira execução.
 </OUTPUT_INSTRUCTION>
