@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus, 
@@ -75,17 +75,7 @@ const FinancialTransactionsV2 = () => {
               className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20"
             >
               <Plus size={18} />
-              Nova Receita
-            </button>
-            <button 
-              onClick={() => {
-                setModalType('expense');
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm"
-            >
-              <Plus size={18} className="text-rose-600" />
-              Nova Despesa
+              Novo Lançamento
             </button>
           </div>
       </div>

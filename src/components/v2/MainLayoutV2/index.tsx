@@ -24,8 +24,7 @@ const sidebarSections = [
     {
         title: 'Gestão Financeira',
         items: [
-            { label: 'Contas a Pagar', icon: CreditCard, href: '/v2/financeiro/despesas' },
-            { label: 'Receitas Avulsas', icon: CreditCard, href: '/v2/financeiro/receitas' },
+            { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos' },
             { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
         ],
     },

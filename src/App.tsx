@@ -103,8 +103,11 @@ function AppRoutes() {
           
           {/* Novas Rotas Financeiras */}
           <Route path="/v2/dashboard" element={<ProtectedRoute><MainLayoutV2><DashboardV2 /></MainLayoutV2></ProtectedRoute>} />
-          <Route path="/v2/financeiro/despesas" element={<ProtectedRoute><MainLayoutV2><FinancialTransactionsV2 type="expense" /></MainLayoutV2></ProtectedRoute>} />
-          <Route path="/v2/financeiro/receitas" element={<ProtectedRoute><MainLayoutV2><FinancialTransactionsV2 type="income" /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/lancamentos" element={<ProtectedRoute><MainLayoutV2><FinancialTransactionsV2 /></MainLayoutV2></ProtectedRoute>} />
+          
+          {/* Redirecionamentos para compatibilidade */}
+          <Route path="/v2/financeiro/despesas" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2/financeiro/receitas" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
 
           {/* Rotas de Admin V2 */}
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
