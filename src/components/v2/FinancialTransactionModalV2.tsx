@@ -283,7 +283,7 @@ const FinancialTransactionModalV2 = ({
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Aluguel, Venda de Equipamento..."
+                placeholder=""
                 className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
               />
             </div>
