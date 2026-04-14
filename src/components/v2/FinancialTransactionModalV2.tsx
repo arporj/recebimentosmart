@@ -7,7 +7,8 @@ import {
   Square, 
   ArrowRight,
   ChevronDown, 
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,20 +28,54 @@ interface Client {
   name: string;
 }
 
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+  parent_id: string | null;
+}
+
+interface TransactionData {
+  id: string;
+  type: 'income' | 'expense';
+  amount: number;
+  date: string;
+  description: string;
+  status: 'pending' | 'paid' | 'partial';
+  recurrence_enabled?: boolean;
+  recurrence_period?: string;
+  recurrence_interval?: number;
+  client_id?: string;
+  account_id?: string;
+  category_id?: string;
+  client?: { name: string };
+  tags?: { tag: { id: string; name: string; color: string } }[];
+}
+
 interface FinancialTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   initialType?: 'income' | 'expense';
+  transaction?: TransactionData | null;
 }
 
 const FinancialTransactionModalV2 = ({ 
   isOpen, 
   onClose, 
   onSuccess,
-  initialType = 'income' 
+  initialType = 'income',
+  transaction = null
 }: FinancialTransactionModalProps) => {
   const { user } = useAuth();
+  const isEditing = !!transaction;
+
   const [type, setType] = useState<'income' | 'expense'>(initialType);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -49,25 +84,22 @@ const FinancialTransactionModalV2 = ({
   const [frequency, setFrequency] = useState('monthly');
   const [recurrenceInterval, setRecurrenceInterval] = useState('1');
   const [clientId, setClientId] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
   const [clients, setClients] = useState<Client[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Estados para sub-modais
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
-  // Máscara numérica para o valor (Ex: 1.234,56)
   const formatCurrency = (value: string) => {
-    // Remove tudo que não é dígito
     const cleanValue = value.replace(/\D/g, "");
-    
-    // Converte para centavos
     const cents = parseInt(cleanValue || "0");
-    
-    // Formata o número
     return new Intl.NumberFormat('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -80,13 +112,54 @@ const FinancialTransactionModalV2 = ({
     setAmount(formattedValue);
   };
 
+  // Popular campos ao editar
+  useEffect(() => {
+    if (isOpen && transaction) {
+      setType(transaction.type);
+      setDescription(transaction.description || '');
+      setDate(transaction.date);
+      setClientId(transaction.client_id || '');
+      setAccountId(transaction.account_id || '');
+      setCategoryId(transaction.category_id || '');
+      setIsRecurring(transaction.recurrence_enabled || false);
+      setFrequency(transaction.recurrence_period || 'monthly');
+      setRecurrenceInterval(String(transaction.recurrence_interval || 1));
+      
+      // Formatar o valor para exibição
+      const amountCents = Math.round(transaction.amount * 100);
+      setAmount(new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amountCents / 100));
+
+      // Tags existentes
+      if (transaction.tags) {
+        setSelectedTags(transaction.tags.map(t => t.tag.id));
+      }
+    } else if (isOpen && !transaction) {
+      // Reset para novo lançamento
+      setType(initialType);
+      setAmount('');
+      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setDescription('');
+      setIsRecurring(false);
+      setFrequency('monthly');
+      setRecurrenceInterval('1');
+      setClientId('');
+      setAccountId('');
+      setCategoryId('');
+      setSelectedTags([]);
+    }
+  }, [isOpen, transaction, initialType]);
+
   useEffect(() => {
     if (isOpen && user) {
       fetchClients();
       fetchTags();
-      setType(initialType);
+      fetchAccounts();
+      fetchCategories();
     }
-  }, [isOpen, user, initialType]);
+  }, [isOpen, user]);
 
   const fetchClients = async () => {
     const { data } = await supabase
@@ -106,53 +179,112 @@ const FinancialTransactionModalV2 = ({
     if (data) setTags(data);
   };
 
+  const fetchAccounts = async () => {
+    const { data } = await supabase
+      .from('financial_accounts')
+      .select('id, name, type')
+      .eq('user_id', user?.id)
+      .eq('is_active', true)
+      .order('name');
+    if (data) setAccounts(data);
+  };
+
+  const fetchCategories = async () => {
+    const { data } = await supabase
+      .from('financial_categories')
+      .select('id, name, icon, parent_id')
+      .eq('user_id', user?.id)
+      .order('name');
+    if (data) setCategories(data);
+  };
+
+  const getAccountTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      checking: 'Conta Corrente',
+      savings: 'Poupança',
+      credit_card: 'Cartão de Crédito',
+      investment: 'Investimento'
+    };
+    return labels[type] || type;
+  };
+
+  // Agrupar categorias: pais e seus filhos
+  const parentCategories = categories.filter(c => !c.parent_id);
+  const getChildren = (parentId: string) => categories.filter(c => c.parent_id === parentId);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!amount || parseFloat(amount.replace(',', '.')) <= 0) {
+    
+    const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
+    if (!amount || parsedAmount <= 0) {
       toast.error('Informe um valor válido');
       return;
     }
 
     try {
       setLoading(true);
-      
-      const { data: transaction, error: tError } = await supabase
-        .from('financial_transactions')
-        .insert({
-          user_id: user.id,
-          type,
-          amount: parseFloat(amount.replace(',', '.')),
-          date,
-          description,
-          status: 'pending',
-          client_id: clientId || null,
-          recurrence_enabled: isRecurring,
-          recurrence_period: isRecurring ? frequency : null,
-          recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1
-        })
-        .select()
-        .single();
 
-      if (tError) throw tError;
+      const transactionData = {
+        user_id: user.id,
+        type,
+        amount: parsedAmount,
+        date,
+        description,
+        status: isEditing ? transaction!.status : 'pending',
+        client_id: clientId || null,
+        account_id: accountId || null,
+        category_id: categoryId || null,
+        recurrence_enabled: isRecurring,
+        recurrence_period: isRecurring ? frequency : null,
+        recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1
+      };
 
-      if (selectedTags.length > 0 && transaction) {
+      let savedTransaction;
+
+      if (isEditing) {
+        // UPDATE
+        const { data, error } = await supabase
+          .from('financial_transactions')
+          .update(transactionData)
+          .eq('id', transaction!.id)
+          .select()
+          .single();
+        if (error) throw error;
+        savedTransaction = data;
+
+        // Limpar tags existentes e reinserir
+        await supabase
+          .from('transaction_tags')
+          .delete()
+          .eq('transaction_id', transaction!.id);
+      } else {
+        // INSERT
+        const { data, error } = await supabase
+          .from('financial_transactions')
+          .insert(transactionData)
+          .select()
+          .single();
+        if (error) throw error;
+        savedTransaction = data;
+      }
+
+      if (selectedTags.length > 0 && savedTransaction) {
         const tagRelations = selectedTags.map(tagId => ({
-          transaction_id: transaction.id,
+          transaction_id: savedTransaction.id,
           tag_id: tagId
         }));
         const { error: tagError } = await supabase
           .from('transaction_tags')
           .insert(tagRelations);
-        
         if (tagError) throw tagError;
       }
 
-      toast.success('Lançamento realizado com sucesso!');
+      toast.success(isEditing ? 'Lançamento atualizado!' : 'Lançamento criado!');
       onSuccess();
       onClose();
     } catch (err: any) {
-      toast.error('Erro ao salvar lançamento: ' + err.message);
+      toast.error('Erro ao salvar: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -162,13 +294,11 @@ const FinancialTransactionModalV2 = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
-      {/* Modal Content */}
       <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col">
         <header className="px-6 py-4 flex justify-between items-center border-b border-slate-100 bg-white/50 shrink-0">
           <div className="flex items-center gap-3">
@@ -178,7 +308,9 @@ const FinancialTransactionModalV2 = ({
             >
               <X size={20} className="text-slate-500" />
             </button>
-            <h2 className="text-lg font-bold text-slate-900 font-manrope">Nova Transação</h2>
+            <h2 className="text-lg font-bold text-slate-900 font-manrope">
+              {isEditing ? `Editar ${description || 'Lançamento'}` : 'Nova Transação'}
+            </h2>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-extrabold text-teal-600 tracking-widest uppercase opacity-60">Recebimento $mart</span>
@@ -224,6 +356,96 @@ const FinancialTransactionModalV2 = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Description */}
+              <div className="space-y-2">
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Descrição</label>
+                </div>
+                <input 
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ex: Aluguel, Venda..."
+                  className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                />
+              </div>
+
+              {/* Date Input */}
+              <div className="space-y-2">
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data de Vencimento</label>
+                </div>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                    <CalendarIcon size={18} />
+                  </div>
+                  <input 
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Account Select */}
+              <div className="space-y-2">
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Conta</label>
+                </div>
+                <div className="relative group">
+                  <select 
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
+                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                  >
+                    <option value="">Selecione uma conta</option>
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} ({getAccountTypeLabel(a.type)})</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Select */}
+              <div className="space-y-2">
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
+                </div>
+                <div className="relative group">
+                  <select 
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
+                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {parentCategories.map(parent => {
+                      const children = getChildren(parent.id);
+                      return (
+                        <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
+                          <option value={parent.id}>{parent.icon || ''} {parent.name} (Geral)</option>
+                          {children.map(child => (
+                            <option key={child.id} value={child.id}>{parent.icon || ''} {parent.name}/{child.name}</option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Client Select */}
               <div className="space-y-2">
                 <div className="h-5 flex justify-between items-center px-1">
@@ -257,70 +479,40 @@ const FinancialTransactionModalV2 = ({
                 </div>
               </div>
 
-              {/* Date Input */}
+              {/* Tags */}
               <div className="space-y-2">
-                <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data de Vencimento</label>
-                </div>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
-                    <CalendarIcon size={18} />
-                  </div>
-                  <input 
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1">Descrição</label>
-              <input 
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder=""
-                className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
-              />
-            </div>
-
-            {/* Tags */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tags / Categorias</label>
-                <button 
-                  type="button" 
-                  onClick={() => setIsTagModalOpen(true)}
-                  className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline"
-                >
-                  + Nova Tag
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedTags(prev => 
-                        prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                      );
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                      selectedTags.includes(tag.id) 
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                    }`}
+                <div className="h-5 flex justify-between items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tags</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsTagModalOpen(true)}
+                    className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline"
                   >
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
-                    {tag.name}
+                    + Nova Tag
                   </button>
-                ))}
-                {tags.length === 0 && <span className="text-xs text-slate-400 italic">Nenhuma tag cadastrada.</span>}
+                </div>
+                <div className="flex flex-wrap gap-2 min-h-[52px] px-4 py-3 bg-slate-50 rounded-2xl">
+                  {tags.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTags(prev => 
+                          prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                        );
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                        selectedTags.includes(tag.id) 
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                    </button>
+                  ))}
+                  {tags.length === 0 && <span className="text-xs text-slate-400 italic">Nenhuma tag cadastrada.</span>}
+                </div>
               </div>
             </div>
 
@@ -398,18 +590,17 @@ const FinancialTransactionModalV2 = ({
                 : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
             }`}
           >
-            {loading ? 'Salvando...' : 'Confirmar Lançamento'}
+            {loading ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Confirmar Lançamento')}
             <ArrowRight size={18} />
           </button>
         </footer>
       </div>
 
-      {/* Sub-modais */}
       {isClientModalOpen && (
         <ClientFormV2 
           onClose={() => {
             setIsClientModalOpen(false);
-            fetchClients(); // Atualiza a lista após fechar
+            fetchClients();
           }} 
         />
       )}
