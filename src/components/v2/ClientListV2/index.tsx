@@ -30,21 +30,32 @@ const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
 
 const FREQUENCY_MONTHS = { monthly: 1, bimonthly: 2, quarterly: 3, semiannual: 6, annual: 12 };
 
-function gerarPeriodosDevidos(startDate: string, frequency: keyof typeof FREQUENCY_MONTHS): string[] {
+function gerarPeriodosDevidos(startDate: string, frequency: keyof typeof FREQUENCY_MONTHS, paymentDueDay: number): string[] {
     const mesesPorPeriodo = FREQUENCY_MONTHS[frequency];
     const periodos: string[] = [];
-    const [year, month, day] = startDate.split('-').map(Number);
-    let atual = startOfMonth(new Date(year, month - 1, day));
-    const hoje = startOfMonth(new Date());
-    while (format(atual, 'yyyy-MM') <= format(hoje, 'yyyy-MM')) {
-        periodos.push(format(atual, 'yyyy-MM'));
+    const [year, month] = startDate.split('-').map(Number);
+    let atual = startOfMonth(new Date(year, month - 1, 1));
+    const hoje = new Date();
+
+    while (atual <= hoje) {
+        // Calcula a data efetiva de vencimento neste período
+        const anoAtual = atual.getFullYear();
+        const mesAtual = atual.getMonth(); // 0-indexed
+        const ultimoDiaDoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
+        const diaEfetivo = Math.min(paymentDueDay, ultimoDiaDoMes);
+        const vencimentoEfetivo = new Date(anoAtual, mesAtual, diaEfetivo);
+
+        // Só inclui o período se o vencimento efetivo já passou ou é hoje
+        if (vencimentoEfetivo <= hoje) {
+            periodos.push(format(atual, 'yyyy-MM'));
+        }
         atual = addMonths(atual, mesesPorPeriodo);
     }
     return periodos;
 }
 
 function getPeriodosPendentes(client: Client, payments: Payment[]): string[] {
-    const periodosDevidos = gerarPeriodosDevidos(client.start_date, client.payment_frequency);
+    const periodosDevidos = gerarPeriodosDevidos(client.start_date, client.payment_frequency, client.payment_due_day ?? 1);
     const periodosPagos = payments.filter(p => p.client_id === client.id && p.reference_month).map(p => p.reference_month!);
     return periodosDevidos.filter(periodo => !periodosPagos.includes(periodo));
 }
@@ -54,7 +65,7 @@ function getClientPaymentStatus(client: Client, payments: Payment[]): 'paid' | '
     if (pendentes.length === 0) return 'paid';
     const periodoMaisAntigo = pendentes[0];
     const [ano, mes] = periodoMaisAntigo.split('-').map(Number);
-    const vencimento = new Date(ano, mes - 1, client.payment_due_day);
+    const vencimento = new Date(ano, mes - 1, client.payment_due_day ?? 1);
     const hoje = new Date();
     if (isSameDay(vencimento, hoje)) return 'due-today';
     if (vencimento < hoje) return 'late';
