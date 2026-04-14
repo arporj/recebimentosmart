@@ -119,15 +119,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAdmin(profile?.is_admin || false);
         setPlano(profile?.plano || 'basico');
 
-        if (!originalUser) {
-          if (!profile?.cpf_cnpj && location.pathname !== '/profile') {
-            toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-            navigate('/profile');
-          } else if (!currentHasFullAccess && !profile?.is_admin && location.pathname !== '/payment' && location.pathname !== '/profile') {
+      if (!originalUser) {
+        // Verifica se o usuário precisa preencher o CPF/CNPJ
+        const isAtProfilePage = location.pathname === '/profile' || location.pathname === '/v2/perfil';
+        
+        if (!profile?.cpf_cnpj && !isAtProfilePage) {
+          toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
+          navigate('/v2/perfil');
+        } else {
+          // Verifica se o usuário tem acesso (assinatura ou trial)
+          const isAtAllowedPages = location.pathname === '/payment' || 
+                                 location.pathname === '/v2/assinatura' || 
+                                 location.pathname === '/profile' || 
+                                 location.pathname === '/v2/perfil';
+
+          if (!currentHasFullAccess && !profile?.is_admin && !isAtAllowedPages) {
             // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
-            navigate('/payment');
+            navigate('/v2/assinatura');
           }
         }
+      }
 
       } catch (error) {
         console.error('Erro geral em checkUserStatus:', error);
@@ -140,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, originalUser, navigate, location.pathname]);
 
 
-  const signIn = async (email: string, password: string, redirectTo: string = '/dashboard') => {
+  const signIn = async (email: string, password: string, redirectTo: string = '/v2/clientes') => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });

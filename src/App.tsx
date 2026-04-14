@@ -45,7 +45,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/v2/clientes" replace />;
   }
 
   return <>{children}</>;
