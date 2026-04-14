@@ -45,7 +45,7 @@ const FinancialTransactionModalV2 = ({
   const [description, setDescription] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState('monthly');
-  const [dayOfMonth, setDayOfMonth] = useState('10');
+  const [recurrenceInterval, setRecurrenceInterval] = useState('1');
   const [clientId, setClientId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
@@ -121,9 +121,9 @@ const FinancialTransactionModalV2 = ({
           description,
           status: 'pending',
           client_id: clientId || null,
-          is_recurring: isRecurring,
-          frequency: isRecurring ? frequency : null,
-          day_of_month: isRecurring ? parseInt(dayOfMonth) : null
+          recurrence_enabled: isRecurring,
+          recurrence_period: isRecurring ? frequency : null,
+          recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1
         })
         .select()
         .single();
@@ -220,31 +220,39 @@ const FinancialTransactionModalV2 = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Client Select */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center px-1">
+                <div className="h-5 flex justify-between items-center px-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cliente (Opcional)</label>
                   <button type="button" className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline">+ Novo</button>
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                    <Search size={18} />
+                  </div>
                   <select 
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm appearance-none"
+                    className="w-full pl-12 pr-10 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm appearance-none cursor-pointer [&::-ms-expand]:hidden"
                   >
                     <option value="">Nenhum cliente selecionado</option>
                     {clients.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <ChevronDown size={16} />
+                  </div>
                 </div>
               </div>
 
               {/* Date Input */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1">Data de Vencimento</label>
-                <div className="relative">
-                  <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data de Vencimento</label>
+                </div>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                    <CalendarIcon size={18} />
+                  </div>
                   <input 
                     type="date"
                     value={date}
@@ -317,31 +325,35 @@ const FinancialTransactionModalV2 = ({
               </div>
 
               {isRecurring && (
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Frequência</label>
-                    <select 
-                      value={frequency}
-                      onChange={(e) => setFrequency(e.target.value)}
-                      className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                    >
-                      <option value="weekly">Semanal</option>
-                      <option value="monthly">Mensal</option>
-                      <option value="yearly">Anual</option>
-                    </select>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Qual a recorrência?</label>
+                    <div className="relative group">
+                      <select 
+                        value={frequency}
+                        onChange={(e) => setFrequency(e.target.value)}
+                        className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm appearance-none cursor-pointer [&::-ms-expand]:hidden"
+                      >
+                        <option value="daily">Dia</option>
+                        <option value="weekly">Semana</option>
+                        <option value="monthly">Mês</option>
+                        <option value="yearly">Ano</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <ChevronDown size={16} />
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Dia do Mês</label>
-                    <select 
-                      value={dayOfMonth}
-                      onChange={(e) => setDayOfMonth(e.target.value)}
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Intervalo</label>
+                    <input 
+                      type="number"
+                      min="1"
+                      value={recurrenceInterval}
+                      onChange={(e) => setRecurrenceInterval(e.target.value)}
+                      placeholder="Ex: 1"
                       className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                    >
-                      {Array.from({ length: 31 }, (_, i) => (
-                        <option key={i+1} value={i+1}>{i+1}</option>
-                      ))}
-                      <option value="99">Último dia do mês</option>
-                    </select>
+                    />
                   </div>
                 </div>
               )}
