@@ -54,6 +54,7 @@ SELECT
 FROM public.clients c
 WHERE c.deleted_at IS NULL
   AND c.monthly_payment > 0
+  AND c.user_id IS NOT NULL
   -- Não duplicar: só migra clientes que ainda não têm lançamento na nova tabela
   AND NOT EXISTS (
       SELECT 1 FROM public.financial_transactions ft
