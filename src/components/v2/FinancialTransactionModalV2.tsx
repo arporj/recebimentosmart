@@ -13,6 +13,8 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { ClientFormV2 } from './ClientFormV2';
+import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
 
 interface Tag {
   id: string;
@@ -52,6 +54,10 @@ const FinancialTransactionModalV2 = ({
   const [clients, setClients] = useState<Client[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Estados para sub-modais
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
   // Máscara numérica para o valor (Ex: 1.234,56)
   const formatCurrency = (value: string) => {
@@ -222,7 +228,13 @@ const FinancialTransactionModalV2 = ({
               <div className="space-y-2">
                 <div className="h-5 flex justify-between items-center px-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cliente (Opcional)</label>
-                  <button type="button" className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline">+ Novo</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsClientModalOpen(true)}
+                    className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline"
+                  >
+                    + Novo
+                  </button>
                 </div>
                 <div className="relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
@@ -231,7 +243,8 @@ const FinancialTransactionModalV2 = ({
                   <select 
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full pl-12 pr-10 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm appearance-none cursor-pointer [&::-ms-expand]:hidden"
+                    className="w-full pl-12 pr-10 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
+                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                   >
                     <option value="">Nenhum cliente selecionado</option>
                     {clients.map(c => (
@@ -279,7 +292,13 @@ const FinancialTransactionModalV2 = ({
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tags / Categorias</label>
-                <button type="button" className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline">+ Nova Tag</button>
+                <button 
+                  type="button" 
+                  onClick={() => setIsTagModalOpen(true)}
+                  className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline"
+                >
+                  + Nova Tag
+                </button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {tags.map(tag => (
@@ -332,7 +351,8 @@ const FinancialTransactionModalV2 = ({
                       <select 
                         value={frequency}
                         onChange={(e) => setFrequency(e.target.value)}
-                        className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm appearance-none cursor-pointer [&::-ms-expand]:hidden"
+                        className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
+                        style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                       >
                         <option value="daily">Dia</option>
                         <option value="weekly">Semana</option>
@@ -383,6 +403,26 @@ const FinancialTransactionModalV2 = ({
           </button>
         </footer>
       </div>
+
+      {/* Sub-modais */}
+      {isClientModalOpen && (
+        <ClientFormV2 
+          onClose={() => {
+            setIsClientModalOpen(false);
+            fetchClients(); // Atualiza a lista após fechar
+          }} 
+        />
+      )}
+
+      {isTagModalOpen && (
+        <TagModalV2 
+          onClose={() => setIsTagModalOpen(false)}
+          onSuccess={(newTag) => {
+            setTags(prev => [...prev, newTag]);
+            setSelectedTags(prev => [...prev, newTag.id]);
+          }}
+        />
+      )}
     </div>
   );
 };
