@@ -5,7 +5,8 @@ import { useAuth } from '../../../contexts/AuthContext';
 import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
-    Shield, Settings, LogOut, Eye, Menu, X
+    Shield, Settings, LogOut, Eye, Menu, X,
+    Wallet, FolderOpen
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -25,6 +26,8 @@ const sidebarSections = [
         title: 'Gestão Financeira',
         items: [
             { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos' },
+            { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas' },
+            { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias' },
             { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
         ],
     },
