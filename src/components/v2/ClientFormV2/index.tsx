@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { UserPlus, X, PlusCircle } from 'lucide-react';
@@ -6,8 +7,6 @@ import { useClients } from '../../../contexts/ClientContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../../../lib/dates';
 import type { Database, PaymentFrequency } from '../../../types/supabase';
-import { setDate } from 'date-fns';
-import { CurrencyInput } from '../../ui/CurrencyInput';
 import { AddCustomFieldModal } from '../../AddCustomFieldModal';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -18,13 +17,6 @@ interface ClientFormV2Props {
     onClose: () => void;
 }
 
-const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; label: string }[] = [
-    { value: 'monthly', label: 'Mensal' },
-    { value: 'bimonthly', label: 'Bimestral' },
-    { value: 'quarterly', label: 'Trimestral' },
-    { value: 'semiannual', label: 'Semestral' },
-    { value: 'annual', label: 'Anual' },
-];
 
 export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
     const { clients, refreshClients } = useClients();
@@ -36,8 +28,8 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
         name: '',
         phone: '',
         monthly_payment: 0,
-        payment_due_day: '',
-        start_date: '',
+        payment_due_day: '1',
+        start_date: formatToSP(new Date(), 'yyyy-MM-dd'),
         status: true,
         payment_frequency: 'monthly' as PaymentFrequency,
     });
@@ -109,22 +101,6 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
         }
     };
 
-    const handleDueDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '');
-        const day = parseInt(value);
-        if (!value || (day >= 1 && day <= 31)) {
-            setFormData({ ...formData, payment_due_day: value });
-        }
-    };
-
-    const calculateNextPaymentDate = (startDate: Date, paymentDueDay: number): Date => {
-        const today = new Date();
-        let nextPaymentDate = setDate(startDate, paymentDueDay);
-        if (nextPaymentDate < today) {
-            nextPaymentDate = setDate(today, paymentDueDay);
-        }
-        return nextPaymentDate;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -135,18 +111,14 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                     throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
                 }
             }
-            if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
-                throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
+            if (!formData.name) {
+                throw new Error('O nome do cliente é obrigatório');
             }
 
-            const monthlyPayment = formData.monthly_payment / 100;
-            if (isNaN(monthlyPayment) || monthlyPayment <= 0) throw new Error('Valor do pagamento inválido');
-
-            const paymentDueDay = parseInt(formData.payment_due_day);
-            if (isNaN(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 31) throw new Error('Dia de vencimento deve ser entre 1 e 31');
-
-            const startDate = new Date(formData.start_date);
-            const nextPaymentDate = calculateNextPaymentDate(startDate, paymentDueDay);
+            const monthlyPayment = 0;
+            const paymentDueDay = 1;
+            const startDate = new Date();
+            const nextPaymentDate = new Date();
 
             const clientData = {
                 name: formData.name.trim(),
@@ -240,57 +212,30 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                                     placeholder="(00) 00000-0000"
                                 />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Data de Início</label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={formData.start_date}
-                                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                    max={formatToSP(new Date(), 'yyyy-MM-dd')}
-                                    className={inputClass}
-                                />
+                        </div>
+
+                        {/* Aviso sobre novos lançamentos */}
+                        <div className="bg-teal-50 border border-teal-100 rounded-2xl p-6 flex items-start gap-4">
+                            <div className="p-2 bg-teal-100 rounded-lg shrink-0">
+                                <PlusCircle className="text-teal-600" size={20} />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Valor do Pagamento</label>
-                                <div className="relative">
-                                    <CurrencyInput
-                                        id="monthly_payment_v2"
-                                        value={formData.monthly_payment}
-                                        onValueChange={(value) => setFormData({ ...formData, monthly_payment: value })}
-                                        className={inputClass}
-                                        placeholder="R$ 0,00"
-                                    />
+                            <div className="space-y-1">
+                                <h4 className="text-sm font-bold text-teal-900 uppercase tracking-tight">Novos Lançamentos Financeiros</h4>
+                                <p className="text-xs text-teal-700 leading-relaxed">
+                                    Para cadastrar mensalidades, cobranças recorrentes ou avulsas para este cliente, utilize o novo módulo de finanças.
+                                </p>
+                                <div className="pt-2">
+                                    <Link 
+                                        to="/v2/financeiro/lancamentos"
+                                        onClick={onClose}
+                                        className="text-xs font-extrabold text-teal-600 hover:text-teal-700 uppercase tracking-widest flex items-center gap-1"
+                                    >
+                                        Ir para Lançamentos <PlusCircle size={14} />
+                                    </Link>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Frequência</label>
-                                <select
-                                    value={formData.payment_frequency}
-                                    onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value as PaymentFrequency })}
-                                    className={inputClass}
-                                >
-                                    {PAYMENT_FREQUENCY_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Dia do Vencimento</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.payment_due_day}
-                                    onChange={handleDueDayChange}
-                                    className={inputClass}
-                                    placeholder="1 a 31"
-                                />
-                                <p className="text-[11px] text-gray-500 mt-1 italic">Dia do mês em que o pagamento deve ser realizado.</p>
-                            </div>
-                        </div>
 
                         {/* Campos Personalizados — subtítulo com linha */}
                         {customFields.length > 0 && (
