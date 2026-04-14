@@ -31,6 +31,8 @@ import FeedbackV2 from './pages/v2/FeedbackV2';
 import UserProfileSettingsV2 from './pages/v2/UserProfileSettingsV2';
 import AdminFeedbackPageV2 from './pages/v2/AdminFeedbackPageV2';
 import AdminSettingsV2 from './pages/v2/AdminSettingsV2';
+import DashboardV2 from './pages/v2/DashboardV2';
+import FinancialTransactionsV2 from './pages/v2/FinancialTransactionsV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -98,6 +100,11 @@ function AppRoutes() {
           <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/indicacoes" element={<ProtectedRoute><MainLayoutV2><ReferralPageV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/assinatura" element={<ProtectedRoute><MainLayoutV2><SubscriptionPageV2 /></MainLayoutV2></ProtectedRoute>} />
+          
+          {/* Novas Rotas Financeiras */}
+          <Route path="/v2/dashboard" element={<ProtectedRoute><MainLayoutV2><DashboardV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/despesas" element={<ProtectedRoute><MainLayoutV2><FinancialTransactionsV2 type="expense" /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/receitas" element={<ProtectedRoute><MainLayoutV2><FinancialTransactionsV2 type="income" /></MainLayoutV2></ProtectedRoute>} />
 
           {/* Rotas de Admin V2 */}
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
@@ -108,7 +115,7 @@ function AppRoutes() {
             REDIRECIONAMENTOS V1 -> V2 
             Se qualquer usuário acessar links antigos salvos nos favoritos, será jogado para a V2 correspondente 
           */}
-          <Route path="/dashboard" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/v2/dashboard" replace />} />
           <Route path="/monthly" element={<Navigate to="/v2/pagamentos" replace />} />
           <Route path="/reports" element={<Navigate to="/v2/relatorios" replace />} />
           <Route path="/feedback" element={<Navigate to="/v2/feedbacks" replace />} />

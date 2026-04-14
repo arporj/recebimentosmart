@@ -3,9 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
-    Users, CalendarDays, BarChart3, MessageSquare,
+    Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
-    Shield, Settings, LogOut, Gift, Eye, Menu, X
+    Shield, Settings, LogOut, Eye, Menu, X
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -16,15 +16,21 @@ const sidebarSections = [
     {
         title: 'Geral',
         items: [
+            { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Clientes', icon: Users, href: '/v2/clientes' },
             { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
-            { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
-            { label: 'Críticas e Sugestões', icon: MessageSquare, href: '/v2/feedbacks' },
-            { label: 'Indique e Ganhe', icon: Gift, href: '/v2/indicacoes', className: 'text-custom font-semibold' },
         ],
     },
     {
-        title: 'Gestão',
+        title: 'Gestão Financeira',
+        items: [
+            { label: 'Contas a Pagar', icon: CreditCard, href: '/v2/financeiro/despesas' },
+            { label: 'Receitas Avulsas', icon: CreditCard, href: '/v2/financeiro/receitas' },
+            { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
+        ],
+    },
+    {
+        title: 'Configurações',
         items: [
             { label: 'Campos Personalizados', icon: FormInput, href: '/v2/campos-personalizados' },
             { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil' },
