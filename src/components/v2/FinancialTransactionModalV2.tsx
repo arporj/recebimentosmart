@@ -7,8 +7,7 @@ import {
   Square, 
   ArrowRight,
   ChevronDown, 
-  AlertCircle,
-  Plus
+  AlertCircle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,7 +19,7 @@ import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
 interface Tag {
   id: string;
   name: string;
-  color: string;
+  color: string | null;
 }
 
 interface Client {
@@ -32,6 +31,8 @@ interface Account {
   id: string;
   name: string;
   type: string;
+  secondary_cards?: string[] | { name: string }[];
+  main_card_name?: string;
 }
 
 interface Category {
@@ -88,10 +89,18 @@ const FinancialTransactionModalV2 = ({
   const [categoryId, setCategoryId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
+  // Credit Card specific fields
+  const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [cardHolderName, setCardHolderName] = useState('');
+  const [installmentTotal, setInstallmentTotal] = useState('1');
+  const [installmentCurrent, setInstallmentCurrent] = useState('1');
+
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+
+  const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
   const [loading, setLoading] = useState(false);
   
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -141,6 +150,10 @@ const FinancialTransactionModalV2 = ({
       setType(initialType);
       setAmount('');
       setDate(format(new Date(), 'yyyy-MM-dd'));
+      setInvoiceMonth(format(new Date(), 'yyyy-MM'));
+      setCardHolderName('');
+      setInstallmentTotal('1');
+      setInstallmentCurrent('1');
       setDescription('');
       setIsRecurring(false);
       setFrequency('monthly');
@@ -165,7 +178,7 @@ const FinancialTransactionModalV2 = ({
     const { data } = await supabase
       .from('clients')
       .select('id, name')
-      .eq('user_id', user?.id)
+      .eq('user_id', user?.id || '')
       .order('name');
     if (data) setClients(data);
   };
@@ -174,26 +187,38 @@ const FinancialTransactionModalV2 = ({
     const { data } = await supabase
       .from('financial_tags')
       .select('*')
-      .eq('user_id', user?.id)
+      .eq('user_id', user?.id || '')
       .order('name');
     if (data) setTags(data);
   };
 
   const fetchAccounts = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('financial_accounts')
-      .select('id, name, type')
-      .eq('user_id', user?.id)
+      .select('id, name, type, secondary_cards, main_card_name')
+      .eq('user_id', user?.id || '')
       .eq('is_active', true)
       .order('name');
-    if (data) setAccounts(data);
+    
+    // Fallback if columns don't exist yet (migration not run)
+    if (error) {
+      const { data: fallbackData } = await supabase
+        .from('financial_accounts')
+        .select('id, name, type')
+        .eq('user_id', user?.id || '')
+        .eq('is_active', true)
+        .order('name');
+      if (fallbackData) setAccounts(fallbackData);
+    } else if (data) {
+      setAccounts(data as unknown as Account[]);
+    }
   };
 
   const fetchCategories = async () => {
     const { data } = await supabase
       .from('financial_categories')
       .select('id, name, icon, parent_id')
-      .eq('user_id', user?.id)
+      .eq('user_id', user?.id || '')
       .order('name');
     if (data) setCategories(data);
   };
@@ -237,7 +262,11 @@ const FinancialTransactionModalV2 = ({
         category_id: categoryId || null,
         recurrence_enabled: isRecurring,
         recurrence_period: isRecurring ? frequency : null,
-        recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1
+        recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1,
+        invoice_month: isCreditCard ? invoiceMonth : null,
+        card_holder_name: isCreditCard ? cardHolderName : null,
+        installment_current: isRecurring && frequency === 'parcelada' ? parseInt(installmentCurrent) : 1,
+        installment_total: isRecurring && frequency === 'parcelada' ? parseInt(installmentTotal) : 1
       };
 
       let savedTransaction;
@@ -443,6 +472,57 @@ const FinancialTransactionModalV2 = ({
               </div>
             </div>
 
+            {/* Conditional Credit Card Details */}
+            {isCreditCard && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="space-y-2">
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Lançar na fatura de</label>
+                  </div>
+                  <input 
+                    type="month"
+                    value={invoiceMonth}
+                    onChange={(e) => setInvoiceMonth(e.target.value)}
+                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cartão / Titular</label>
+                  </div>
+                  <div className="relative group">
+                    <select 
+                      value={cardHolderName}
+                      onChange={(e) => setCardHolderName(e.target.value)}
+                      className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer"
+                      style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                    >
+                      <option value="">Selecione o titular</option>
+                      {(() => {
+                        const account = accounts.find(a => a.id === accountId);
+                        if (!account) return null;
+                        const holders = [];
+                        if (account.main_card_name) holders.push(account.main_card_name);
+                        if (Array.isArray(account.secondary_cards)) {
+                          (account.secondary_cards as any[]).forEach((c) => {
+                            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+                            if (name) holders.push(name);
+                          });
+                        }
+                        return holders.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ));
+                      })()}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Client Select */}
               <div className="space-y-2">
@@ -544,10 +624,10 @@ const FinancialTransactionModalV2 = ({
                         className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
                         style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                       >
-                        <option value="daily">Dia</option>
-                        <option value="weekly">Semana</option>
-                        <option value="monthly">Mês</option>
-                        <option value="yearly">Ano</option>
+                        <option value="daily">Única</option>
+                        <option value="parcelada">Parcelada</option>
+                        <option value="monthly">Fixa (Mensal)</option>
+                        <option value="yearly">Fixa (Anual)</option>
                       </select>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                         <ChevronDown size={16} />
