@@ -11,11 +11,15 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  CheckCircle2,
+  Repeat,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, isAfter, isBefore, isSameMonth, parseISO, addDays, addWeeks, addYears } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, isAfter, isBefore, isSameMonth, parseISO, addDays, addWeeks, addYears, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactionModalV2';
@@ -42,6 +46,7 @@ interface FinancialTransaction {
   category?: { name: string; icon: string | null; parent_id: string | null };
   installment_total?: number;
   installment_current?: number;
+  auto_confirm?: boolean;
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
@@ -62,6 +67,7 @@ const FinancialTransactionsV2 = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'income' | 'expense' | 'transfer'>('income');
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -204,7 +210,9 @@ const FinancialTransactionsV2 = () => {
     if (t.status === 'paid') return 'paid';
     if (t.status === 'partial') return 'partial';
     const dueDate = parseISO(t.instanceDate);
-    if (isBefore(dueDate, today) && !isSameMonth(dueDate, today) || (isSameMonth(dueDate, today) && dueDate < today)) {
+    
+    // Apenas atrasado se for antes de hoje (hoje é amarelo/pendente)
+    if (isBefore(dueDate, startOfMonth(today)) || (isBefore(dueDate, today) && !isSameDay(dueDate, today))) {
       return 'overdue';
     }
     return 'pending';
@@ -213,6 +221,15 @@ const FinancialTransactionsV2 = () => {
   const handleEdit = (t: FinancialTransaction) => {
     setEditingTransaction(t);
     setModalType(t.type);
+    setIsConfirming(false);
+    setIsModalOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const handleConfirmAction = (t: FinancialTransaction) => {
+    setEditingTransaction(t);
+    setModalType(t.type);
+    setIsConfirming(true);
     setIsModalOpen(true);
     setOpenDropdown(null);
   };
@@ -324,13 +341,38 @@ const FinancialTransactionsV2 = () => {
   }, [accountsData, selectedAccountIds, monthInstances]);
 
   const displayInstances = useMemo(() => {
-    return monthInstances.filter(t => {
+    const filtered = monthInstances.filter(t => {
       const isSelected = (t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
       const matchesFilter = filter === 'all' || t.type === filter;
       const matchesSearch = searchTerm === '' || t.description?.toLowerCase().includes(searchTerm.toLowerCase());
       return isSelected && matchesFilter && matchesSearch;
     });
-  }, [monthInstances, selectedAccountIds, filter, searchTerm]);
+
+    // Início do saldo acumulado para as contas selecionadas no início do mês
+    let runningBalance = totals.confirmed - monthInstances
+      .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth) && t.status === 'paid' && ((t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id))))
+      .reduce((sum, t) => {
+        if (t.type === 'income') return sum + t.amount;
+        if (t.type === 'expense') return sum - t.amount;
+        if (t.type === 'transfer') {
+          if (t.destination_account_id && selectedAccountIds.has(t.destination_account_id)) sum += t.amount;
+          if (t.account_id && selectedAccountIds.has(t.account_id)) sum -= t.amount;
+        }
+        return sum;
+      }, 0);
+
+    return filtered.map(t => {
+      if (t.type === 'income') runningBalance += t.amount;
+      else if (t.type === 'expense') runningBalance -= t.amount;
+      else if (t.type === 'transfer') {
+        const isOut = t.account_id && selectedAccountIds.has(t.account_id);
+        const isIn = t.destination_account_id && selectedAccountIds.has(t.destination_account_id);
+        if (isIn && !isOut) runningBalance += t.amount;
+        else if (isOut && !isIn) runningBalance -= t.amount;
+      }
+      return { ...t, runningBalance };
+    });
+  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth]);
 
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
@@ -479,31 +521,81 @@ const FinancialTransactionsV2 = () => {
                 {displayInstances.length === 0 ? (
                   <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
                 ) : (
-                  displayInstances.map((t) => {
+                  displayInstances.map((t, index) => {
                     const status = getVisualStatus(t);
                     const dropdownKey = `${t.id}-${t.instanceDate}`;
+                    const isEven = index % 2 === 0;
+                    
                     return (
-                      <div key={dropdownKey} className="group flex items-center gap-4 px-8 py-5 hover:bg-slate-50 transition-colors">
-                        <div className={`p-3 rounded-2xl ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                      <div key={dropdownKey} className={`group flex items-center gap-4 px-8 py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
+                        <div className={`p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
                           {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <ArrowDownCircle size={20} /> : <ArrowRightLeft size={20} />}
                         </div>
+                        
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <h4 className="font-extrabold text-slate-800 truncate">{t.description || 'S/ Descrição'}</h4>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ring-1 ${status === 'paid' ? 'bg-emerald-50 text-emerald-600 ring-emerald-100' : 'bg-amber-50 text-amber-600 ring-amber-100'}`}>{status}</span>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : status === 'overdue' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
+                            <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
+                            
+                            {/* Ícones de Status Intermediários */}
+                            <div className="flex items-center gap-1.5 px-2">
+                              {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500/60" />}
+                              {t.recurrence_enabled && t.recurrence_period !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
+                              {t.auto_confirm && <Zap size={12} className="text-amber-500/60" />}
+                            </div>
                           </div>
-                          <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')} {t.account ? `/ ${t.account.name}` : ''}</p>
+                          
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                            <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
+                            
+                            {t.account && (
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                <span className="text-[9px] font-black text-slate-500 uppercase">{t.account.name}</span>
+                              </div>
+                            )}
+
+                            {t.type === 'transfer' && t.destination_account && (
+                              <>
+                                <ArrowRight size={10} className="text-slate-300" />
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
+                                  <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                                </div>
+                              </>
+                            )}
+
+                            {t.category && (
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
+                                <span className="text-[9px] font-bold text-slate-400">{t.category.name}</span>
+                              </div>
+                            )}
+
+                            {t.installment_total && (
+                              <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
+                                {t.installment_current}/{t.installment_total}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-black text-slate-800 text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}</p>
+
+                        <div className="text-right shrink-0">
+                          <p className={`font-black text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-300">
+                             {(t as any).runningBalance ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
+                          </p>
                         </div>
+
                         <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-300 hover:text-slate-600"><MoreVertical size={20} /></button>
+                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
                           {openDropdown === dropdownKey && (
                             <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+                              {t.status !== 'paid' && (
+                                <button onClick={() => handleConfirmAction(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                              )}
                               <button onClick={() => handleEdit(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
                               <button onClick={() => handleClone(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
-                              <button onClick={() => handleDelete(t.id)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
+                              <button onClick={() => handleDelete(t.id)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
                             </div>
                           )}
                         </div>
@@ -519,7 +611,7 @@ const FinancialTransactionsV2 = () => {
 
       <FinancialTransactionModalV2 
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchTransactions}
-        initialType={modalType} transaction={editingTransaction}
+        initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming}
       />
     </div>
   );

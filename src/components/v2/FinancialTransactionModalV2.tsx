@@ -57,6 +57,7 @@ interface TransactionData {
   category_id?: string;
   client?: { name: string };
   destination_account_id?: string;
+  auto_confirm?: boolean;
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
@@ -66,6 +67,7 @@ interface FinancialTransactionModalProps {
   onSuccess: () => void;
   initialType?: 'income' | 'expense' | 'transfer';
   transaction?: TransactionData | null;
+  isConfirming?: boolean;
 }
 
 const FinancialTransactionModalV2 = ({ 
@@ -73,7 +75,8 @@ const FinancialTransactionModalV2 = ({
   onClose, 
   onSuccess,
   initialType = 'income',
-  transaction = null
+  transaction = null,
+  isConfirming = false
 }: FinancialTransactionModalProps) => {
   const { user } = useAuth();
   const isEditing = !!transaction;
@@ -101,6 +104,7 @@ const FinancialTransactionModalV2 = ({
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [autoConfirm, setAutoConfirm] = useState(false);
 
   const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
   const [loading, setLoading] = useState(false);
@@ -133,9 +137,8 @@ const FinancialTransactionModalV2 = ({
       setAccountId(transaction.account_id || '');
       setDestinationAccountId(transaction.destination_account_id || '');
       setCategoryId(transaction.category_id || '');
-      setIsRecurring(transaction.recurrence_enabled || false);
-      setFrequency(transaction.recurrence_period || 'monthly');
       setRecurrenceInterval(String(transaction.recurrence_interval || 1));
+      setAutoConfirm(transaction.auto_confirm || false);
       
       // Formatar o valor para exibição
       const amountCents = Math.round(transaction.amount * 100);
@@ -161,6 +164,7 @@ const FinancialTransactionModalV2 = ({
       setIsRecurring(false);
       setFrequency('monthly');
       setRecurrenceInterval('1');
+      setAutoConfirm(false);
       setClientId('');
       setAccountId('');
       setCategoryId('');
@@ -289,7 +293,14 @@ const FinancialTransactionModalV2 = ({
         recurrence_enabled: isRecurring,
         recurrence_period: isRecurring ? frequency : null,
         recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1,
+        auto_confirm: autoConfirm,
       };
+
+      if (isConfirming) {
+        transactionData.status = 'paid';
+        transactionData.paid_amount = parsedAmount;
+        transactionData.paid_date = date;
+      }
 
       // Add credit card / parcelled fields only if applicable
       if (isCreditCard) {
@@ -758,6 +769,23 @@ const FinancialTransactionModalV2 = ({
                 </div>
               )}
             </div>
+
+            {/* Auto Confirm Toggle */}
+            <div className="p-6 bg-slate-50 rounded-3xl space-y-2">
+              <div className="flex items-center gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setAutoConfirm(!autoConfirm)}
+                  className={`p-1 rounded-lg transition-all ${autoConfirm ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-300 border border-slate-200'}`}
+                >
+                  {autoConfirm ? <CheckSquare size={20} /> : <Square size={20} />}
+                </button>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Confirmação Automática</h3>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Confirmar ao atingir a data</p>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
 
@@ -773,14 +801,16 @@ const FinancialTransactionModalV2 = ({
             onClick={handleSubmit}
             disabled={loading}
             className={`w-full md:w-auto px-10 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-white text-xs font-extrabold transition-all shadow-xl uppercase tracking-widest ${
-              type === 'income' 
-                ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20' 
-                : type === 'expense' 
-                  ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
-                  : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
+              isConfirming
+                ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                : type === 'income' 
+                  ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20' 
+                  : type === 'expense' 
+                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
             }`}
           >
-            {loading ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Confirmar Lançamento')}
+            {loading ? 'Salvando...' : (isConfirming ? 'Confirmar Lançamento' : (isEditing ? 'Salvar Alterações' : 'Criar Lançamento'))}
             <ArrowRight size={18} />
           </button>
         </footer>
