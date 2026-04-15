@@ -184,9 +184,12 @@ const FinancialTransactionsV2 = () => {
     }
   };
 
+  const getOverdueDays = (t: TransactionInstance) => {
+    const dueDate = parseISO(t.instanceDate);
+    return Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
   const getDisplayDate = (t: TransactionInstance) => {
-    const status = getVisualStatus(t);
-    if (status === 'overdue') return 'hoje';
     return format(parseISO(t.instanceDate), 'dd/MM/yy');
   };
 
@@ -404,15 +407,25 @@ const FinancialTransactionsV2 = () => {
               const visualStatus = getVisualStatus(t);
               const dropdownKey = `${t.id}-${idx}`;
               return (
-                <div key={dropdownKey} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 transition-colors group">
+                <div 
+                  key={dropdownKey} 
+                  className={`flex items-center gap-4 px-6 py-4 hover:bg-slate-50/80 transition-colors group ${
+                    idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+                  }`}
+                >
                   {/* Status Dot */}
                   <div className={`w-3 h-3 rounded-full shrink-0 ${getStatusDot(visualStatus)}`} />
 
                   {/* Date */}
-                  <div className="w-20 shrink-0">
+                  <div className="w-20 shrink-0 flex flex-col">
                     <span className={`text-sm font-medium ${visualStatus === 'overdue' ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
                       {getDisplayDate(t)}
                     </span>
+                    {visualStatus === 'overdue' && (
+                      <span className="text-[10px] text-rose-500 font-bold leading-none mt-0.5">
+                        +{getOverdueDays(t)} dias
+                      </span>
+                    )}
                   </div>
 
                   {/* Description + Badges */}

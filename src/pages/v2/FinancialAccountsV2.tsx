@@ -237,7 +237,21 @@ const FinancialAccountsV2 = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Saldo Inicial</label>
-                <input type="text" value={initialBalance} onChange={e => setInitialBalance(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm" />
+                <input 
+                  type="text" 
+                  value={initialBalance} 
+                  onChange={e => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    const cents = parseInt(clean || "0");
+                    const formatted = new Intl.NumberFormat('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }).format(cents / 100);
+                    setInitialBalance(formatted);
+                  }} 
+                  placeholder="0,00"
+                  className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm" 
+                />
               </div>
               {type === 'credit_card' && (
                 <div className="space-y-4 pt-4 border-t border-slate-100">

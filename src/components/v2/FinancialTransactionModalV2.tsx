@@ -430,9 +430,9 @@ const FinancialTransactionModalV2 = ({
                       const children = getChildren(parent.id);
                       return (
                         <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
-                          <option value={parent.id}>{parent.icon || ''} {parent.name} (Geral)</option>
+                          <option value={parent.id}>{parent.name}</option>
                           {children.map(child => (
-                            <option key={child.id} value={child.id}>{parent.icon || ''} {parent.name}/{child.name}</option>
+                            <option key={child.id} value={child.id}>{child.name}</option>
                           ))}
                         </optgroup>
                       );
