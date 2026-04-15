@@ -6,7 +6,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { format, subDays, setDate } from 'date-fns';
+import { format, subDays, setDate, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Account {
@@ -160,6 +160,52 @@ const FinancialAccountsV2 = () => {
       return null;
     }
   }, [dueDay, closingDaysBefore, firstInvoiceDueDate]);
+  
+  // Opções para a data da primeira fatura (Dia Fixo)
+  const firstInvoiceOptions = useMemo(() => {
+    const due = parseInt(dueDay);
+    if (!due || due < 1 || due > 31) return [];
+
+    const options = [];
+    const now = new Date();
+    
+    // De -12 meses até +2 meses conforme solicitado
+    for (let i = -12; i <= 2; i++) {
+      const date = addMonths(now, i);
+      try {
+        const d = setDate(date, due);
+        options.push({
+          value: format(d, 'yyyy-MM-dd'),
+          label: format(d, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+        });
+      } catch {
+        // Ignora datas inválidas
+      }
+    }
+    
+    return options;
+  }, [dueDay]);
+
+  // Efeito para garantir que a data da primeira fatura seja válida quando o dia de vencimento mudar
+  // E também auto-selecionar a data mais próxima conforme solicitado pelo usuário
+  useEffect(() => {
+    if (type === 'credit_card' && dueDay) {
+      const due = parseInt(dueDay);
+      if (!due || due < 1 || due > 31) return;
+
+      const now = new Date();
+      const currentDay = now.getDate();
+      
+      // Se o dia de vencimento for maior ou igual ao dia atual, sugere o mês atual.
+      // Se for menor, sugere o próximo mês.
+      const targetDate = due >= currentDay ? now : addMonths(now, 1);
+      const newAutoDate = format(setDate(targetDate, due), 'yyyy-MM-dd');
+
+      if (newAutoDate !== firstInvoiceDueDate) {
+        setFirstInvoiceDueDate(newAutoDate);
+      }
+    }
+  }, [dueDay, type]);
 
   // Non-credit-card accounts for the payment account selector
   const paymentAccounts = useMemo(() =>
@@ -637,7 +683,20 @@ const FinancialAccountsV2 = () => {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">1ª Fatura (vencimento)</label>
-                      <input type="date" value={firstInvoiceDueDate} onChange={e => setFirstInvoiceDueDate(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20" />
+                      <div className="relative">
+                        <select 
+                          value={firstInvoiceDueDate} 
+                          onChange={e => setFirstInvoiceDueDate(e.target.value)} 
+                          className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 appearance-none cursor-pointer pr-10"
+                          style={{ appearance: 'none' }}
+                        >
+                          <option value="">Selecione...</option>
+                          {firstInvoiceOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
