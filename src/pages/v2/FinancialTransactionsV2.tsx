@@ -505,7 +505,7 @@ const FinancialTransactionsV2 = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
               <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex items-center justify-between">
                 <h2 className="text-xl font-black">Transações</h2>
                 <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
@@ -569,7 +569,7 @@ const FinancialTransactionsV2 = () => {
                               </div>
                             )}
 
-                            {t.installment_total && (
+                            {t.installment_total && t.installment_total > 1 && (
                               <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
                                 {t.installment_current}/{t.installment_total}
                               </span>
