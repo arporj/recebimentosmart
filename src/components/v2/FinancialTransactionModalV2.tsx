@@ -275,7 +275,7 @@ const FinancialTransactionModalV2 = ({
     try {
       setLoading(true);
 
-      const transactionData = {
+      const transactionData: any = {
         user_id: user.id,
         type,
         amount: parsedAmount,
@@ -289,11 +289,18 @@ const FinancialTransactionModalV2 = ({
         recurrence_enabled: isRecurring,
         recurrence_period: isRecurring ? frequency : null,
         recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1,
-        invoice_month: isCreditCard ? invoiceMonth : null,
-        card_holder_name: isCreditCard ? cardHolderName : null,
-        installment_current: isRecurring && frequency === 'parcelada' ? parseInt(installmentCurrent) : 1,
-        installment_total: isRecurring && frequency === 'parcelada' ? parseInt(installmentTotal) : 1
       };
+
+      // Add credit card / parcelled fields only if applicable
+      if (isCreditCard) {
+        transactionData.invoice_month = invoiceMonth || null;
+        transactionData.card_holder_name = cardHolderName || null;
+      }
+
+      if (isRecurring && frequency === 'parcelada') {
+        transactionData.installment_current = parseInt(installmentCurrent) || 1;
+        transactionData.installment_total = parseInt(installmentTotal) || 1;
+      }
 
       let savedTransaction;
 
@@ -416,7 +423,7 @@ const FinancialTransactionModalV2 = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Day Input (Smart Logic) */}
-              {!isEditing && (
+              {!isEditing && type !== 'income' && (
                 <div className="space-y-2">
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Dia de Venc.</label>
