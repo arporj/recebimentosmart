@@ -132,15 +132,34 @@ const FinancialAccountsV2 = () => {
     const due = parseInt(dueDay);
     const daysBefore = parseInt(closingDaysBefore);
     if (!due || !daysBefore || due < 1 || due > 31) return null;
+    
     try {
       const now = new Date();
-      const dueDate = setDate(now, due);
-      const closingDate = subDays(dueDate, daysBefore);
+      let referenceDate = now;
+
+      // Se houver uma data de primeira fatura, usamos ela como base inicial
+      if (firstInvoiceDueDate) {
+        const [year, month, day] = firstInvoiceDueDate.split('-').map(Number);
+        referenceDate = new Date(year, month - 1, day);
+      }
+
+      // Calcula o vencimento baseado na data de referência
+      let dueDate = setDate(referenceDate, due);
+      let closingDate = subDays(dueDate, daysBefore);
+
+      // Se o fechamento calculado for no passado (em relação a 'now'), 
+      // e não houver uma primeira fatura forçando essa data, avançamos para o próximo mês
+      if (!firstInvoiceDueDate && closingDate < now) {
+        dueDate = setDate(new Date(now.getFullYear(), now.getMonth() + 1, 1), due);
+        closingDate = subDays(dueDate, daysBefore);
+      }
+
       return format(closingDate, "dd/MM/yyyy", { locale: ptBR });
-    } catch {
+    } catch (e) {
+      console.error('Erro ao calcular fechamento:', e);
       return null;
     }
-  }, [dueDay, closingDaysBefore]);
+  }, [dueDay, closingDaysBefore, firstInvoiceDueDate]);
 
   // Non-credit-card accounts for the payment account selector
   const paymentAccounts = useMemo(() =>
