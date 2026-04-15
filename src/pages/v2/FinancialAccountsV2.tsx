@@ -91,7 +91,8 @@ const pushMaskFormat = (raw: string): string => {
   const cents = parseInt(clean || "0");
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
+    useGrouping: true
   }).format(cents / 100);
 };
 
@@ -287,19 +288,14 @@ const FinancialAccountsV2 = () => {
                     {a.bank_icon ? (
                       <div className="w-full h-full relative">
                         <img 
-                          src={`https://logo.clearbit.com/${a.bank_icon}`} 
+                          src={`https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=64`} 
                           alt={a.bank_name || ''} 
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            // Se falhar Clearbit, tenta Google Favicon
-                            if (!target.src.includes('google.com')) {
-                              target.src = `https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=64`;
-                            } else {
-                              target.classList.add('hidden');
-                              if (target.nextElementSibling) {
-                                target.nextElementSibling.classList.remove('hidden');
-                              }
+                            target.classList.add('hidden');
+                            if (target.nextElementSibling) {
+                              target.nextElementSibling.classList.remove('hidden');
                             }
                           }}
                         />
@@ -447,7 +443,7 @@ const FinancialAccountsV2 = () => {
                   {bankIcon && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg overflow-hidden border border-slate-200">
                       <img 
-                        src={`https://logo.clearbit.com/${bankIcon}`} 
+                        src={`https://www.google.com/s2/favicons?domain=${bankIcon}&sz=64`} 
                         alt="" 
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -482,18 +478,14 @@ const FinancialAccountsV2 = () => {
                         >
                           <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-100 shrink-0 relative bg-white flex items-center justify-center">
                             <img 
-                              src={`https://logo.clearbit.com/${b.domain}`} 
+                              src={`https://www.google.com/s2/favicons?domain=${b.domain}&sz=64`} 
                               alt="" 
                               className="w-full h-full object-cover" 
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                if (!target.src.includes('google.com')) {
-                                  target.src = `https://www.google.com/s2/favicons?domain=${b.domain}&sz=64`;
-                                } else {
-                                  target.classList.add('hidden');
-                                  if (target.nextElementSibling) {
-                                    target.nextElementSibling.classList.remove('hidden');
-                                  }
+                                target.classList.add('hidden');
+                                if (target.nextElementSibling) {
+                                  target.nextElementSibling.classList.remove('hidden');
                                 }
                               }}
                             />
