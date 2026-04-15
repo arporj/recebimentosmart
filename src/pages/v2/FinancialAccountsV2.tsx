@@ -19,12 +19,12 @@ interface Account {
   due_day: number | null;
   is_active: boolean;
   created_at: string;
-  limit_type: string | null;
-  first_invoice_due_date: string | null;
-  closing_days_before: number | null;
-  invoice_payment_account_id: string | null;
-  main_card_name: string | null;
-  secondary_cards: string[] | null;
+  limit_type?: string | null;
+  first_invoice_due_date?: string | null;
+  closing_days_before?: number | null;
+  invoice_payment_account_id?: string | null;
+  main_card_name?: string | null;
+  secondary_cards?: string[] | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -315,7 +315,7 @@ const FinancialAccountsV2 = () => {
               {/* Nome */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nome</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Banco Inter" className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm" required />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Nubank, Carteira, Itaú" className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm" required />
               </div>
               {/* Tipo */}
               <div className="space-y-1.5">
@@ -449,7 +449,7 @@ const FinancialAccountsV2 = () => {
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Cartão Principal</label>
-                      <input type="text" value={mainCardName} onChange={e => setMainCardName(e.target.value)} placeholder="Ex: ANDRE R P OLIVEIRA" className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20" />
+                      <input type="text" value={mainCardName} onChange={e => setMainCardName(e.target.value)} placeholder="Ex: Nome Impresso no Cartão" className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20" />
                     </div>
 
                     {/* Secondary cards */}
