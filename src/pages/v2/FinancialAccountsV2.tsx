@@ -52,7 +52,7 @@ const typeColors: Record<string, string> = {
 };
 
 const BRAZILIAN_BANKS = [
-  { name: 'Banco Inter', domain: 'bancointer.com.br', color: '#ff7a00' },
+  { name: 'Banco Inter', domain: 'inter.co', color: '#ff7a00' },
   { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
   { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
   { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
@@ -61,8 +61,8 @@ const BRAZILIAN_BANKS = [
   { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
   { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
   { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
-  { name: 'C6 Bank', domain: 'c6bank.com.br', color: '#252525' },
-  { name: 'PagBank', domain: 'pagbank.com.br', color: '#53d21e' },
+  { name: 'C6 Bank', domain: 'c6.com.br', color: '#252525' },
+  { name: 'PagBank', domain: 'pagseguro.uol.com.br', color: '#53d21e' },
   { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
   { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
   { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
@@ -72,12 +72,12 @@ const BRAZILIAN_BANKS = [
 ];
 
 const CARD_BRANDS = [
-  { name: 'Visa', id: 'visa' },
-  { name: 'Mastercard', id: 'mastercard' },
-  { name: 'Elo', id: 'elo' },
-  { name: 'American Express', id: 'amex' },
-  { name: 'Hipercard', id: 'hipercard' },
-  { name: 'Diners Club', id: 'diners' },
+  { name: 'Visa', id: 'visa', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/visa.svg' },
+  { name: 'Mastercard', id: 'mastercard', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/mastercard.svg' },
+  { name: 'Elo', id: 'elo', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/elo.svg' },
+  { name: 'American Express', id: 'amex', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/amex.svg' },
+  { name: 'Hipercard', id: 'hipercard', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/hipercard.svg' },
+  { name: 'Diners Club', id: 'diners', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/diners.svg' },
 ];
 
 const limitTypeLabels: Record<string, string> = {
@@ -273,50 +273,83 @@ const FinancialAccountsV2 = () => {
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
         {loading ? (
           <div className="col-span-full py-12 text-center text-slate-400 italic">Carregando...</div>
         ) : accounts.length === 0 ? (
           <div className="col-span-full py-12 text-center text-slate-400 italic">Nenhuma conta cadastrada. Clique em "Nova Conta" para começar.</div>
         ) : (
           accounts.map(a => (
-            <div key={a.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
+            <div key={a.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col gap-4 hover:shadow-md transition-shadow overflow-hidden group">
+              <div className="flex items-start justify-between gap-2 overflow-hidden">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center border overflow-hidden shrink-0 ${typeColors[a.type]}`}>
                     {a.bank_icon ? (
-                      <img 
-                        src={`https://logo.clearbit.com/${a.bank_icon}`} 
-                        alt={a.bank_name || ''} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.parentElement!.innerHTML = `<div class="text-slate-400">${typeIcons[a.type]}</div>`;
-                        }}
-                      />
-                    ) : typeIcons[a.type]}
+                      <div className="w-full h-full relative">
+                        <img 
+                          src={`https://logo.clearbit.com/${a.bank_icon}`} 
+                          alt={a.bank_name || ''} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            // Se falhar Clearbit, tenta Google Favicon
+                            if (!target.src.includes('google.com')) {
+                              target.src = `https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=64`;
+                            } else {
+                              target.classList.add('hidden');
+                              if (target.nextElementSibling) {
+                                target.nextElementSibling.classList.remove('hidden');
+                              }
+                            }
+                          }}
+                        />
+                        <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-lg text-white" style={{ backgroundColor: BRAZILIAN_BANKS.find(b => b.domain === a.bank_icon)?.color || '#94a3b8' }}>
+                          {a.bank_name?.charAt(0) || typeIcons[a.type]}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400">{typeIcons[a.type]}</div>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-bold text-slate-900 truncate">{a.name}</h3>
-                    <div className="flex flex-wrap gap-1 items-center mt-0.5">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap ${typeColors[a.type]}`}>
+                    <div className="flex flex-wrap gap-1 items-center mt-0.5 min-w-0">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap shrink-0 ${typeColors[a.type]}`}>
                         {typeLabels[a.type]}
                       </span>
                       {a.bank_name && (
-                        <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
-                          em <span className="font-bold text-slate-500">{a.bank_name}</span>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+                          em <span className="font-bold text-slate-500 truncate">{a.bank_name}</span>
                         </span>
+                      )}
+                      {a.card_brand && (
+                        <div className="flex items-center gap-1 ml-1 shrink-0">
+                          {CARD_BRANDS.find(b => b.id === a.card_brand)?.icon ? (
+                            <img 
+                              src={CARD_BRANDS.find(b => b.id === a.card_brand)?.icon} 
+                              alt={a.card_brand} 
+                              className="h-3 w-auto object-contain brightness-90"
+                            />
+                          ) : (
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{a.card_brand}</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0">
                   <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                     <Pencil size={15} />
                   </button>
                   <button onClick={() => handleDelete(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                     <Trash2 size={15} />
+                  </button>
+                </div>
+                {/* Fallback for actions when mobile/touch if needed, but here we keep them inside */}
+                <div className="flex sm:hidden gap-1 shrink-0">
+                  <button onClick={() => openEdit(a)} className="p-1 text-slate-300">
+                    <Pencil size={14} />
                   </button>
                 </div>
               </div>
@@ -413,7 +446,21 @@ const FinancialAccountsV2 = () => {
                   />
                   {bankIcon && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg overflow-hidden border border-slate-200">
-                      <img src={`https://logo.clearbit.com/${bankIcon}`} alt="" className="w-full h-full object-cover" />
+                      <img 
+                        src={`https://logo.clearbit.com/${bankIcon}`} 
+                        alt="" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.classList.add('hidden');
+                          if (target.nextElementSibling) {
+                            target.nextElementSibling.classList.remove('hidden');
+                          }
+                        }}
+                      />
+                      <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-slate-400 bg-white">
+                        {bankName?.charAt(0)}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -433,8 +480,26 @@ const FinancialAccountsV2 = () => {
                           }}
                           className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors text-left"
                         >
-                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-100 shrink-0">
-                            <img src={`https://logo.clearbit.com/${b.domain}`} alt="" className="w-full h-full object-cover" />
+                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-100 shrink-0 relative bg-white flex items-center justify-center">
+                            <img 
+                              src={`https://logo.clearbit.com/${b.domain}`} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (!target.src.includes('google.com')) {
+                                  target.src = `https://www.google.com/s2/favicons?domain=${b.domain}&sz=64`;
+                                } else {
+                                  target.classList.add('hidden');
+                                  if (target.nextElementSibling) {
+                                    target.nextElementSibling.classList.remove('hidden');
+                                  }
+                                }
+                              }}
+                            />
+                            <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-white text-[10px]" style={{ backgroundColor: b.color || '#94a3b8' }}>
+                              {b.name.charAt(0)}
+                            </div>
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-900">{b.name}</p>
@@ -509,9 +574,20 @@ const FinancialAccountsV2 = () => {
                            key={brand.id}
                            type="button"
                            onClick={() => setCardBrand(brand.id)}
-                           className={`px-2 py-2 rounded-xl border text-[10px] font-bold transition-all ${cardBrand === brand.id ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-600/20' : 'bg-white border-slate-100 text-slate-400 hover:border-purple-200'}`}
+                           className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
+                             cardBrand === brand.id 
+                               ? 'border-purple-600 bg-purple-50 text-purple-700 shadow-sm' 
+                               : 'border-slate-100 bg-white text-slate-400 hover:border-purple-100 hover:bg-slate-50'
+                           }`}
                          >
-                           {brand.name}
+                           <div className="h-6 w-10 flex items-center justify-center">
+                             {brand.icon ? (
+                               <img src={brand.icon} alt={brand.name} className="max-h-full max-w-full object-contain" />
+                             ) : (
+                               <CreditCard size={14} />
+                             )}
+                           </div>
+                           <span className="text-[9px] font-bold uppercase tracking-tight">{brand.name}</span>
                          </button>
                        ))}
                     </div>
