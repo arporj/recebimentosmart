@@ -25,6 +25,9 @@ interface Account {
   invoice_payment_account_id?: string | null;
   main_card_name?: string | null;
   secondary_cards?: string[] | null;
+  bank_name?: string | null;
+  bank_icon?: string | null;
+  card_brand?: string | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -47,6 +50,35 @@ const typeColors: Record<string, string> = {
   credit_card: 'bg-purple-50 text-purple-700 border-purple-200',
   investment: 'bg-amber-50 text-amber-700 border-amber-200'
 };
+
+const BRAZILIAN_BANKS = [
+  { name: 'Banco Inter', domain: 'bancointer.com.br', color: '#ff7a00' },
+  { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
+  { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
+  { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
+  { name: 'Santander', domain: 'santander.com.br', color: '#ec0000' },
+  { name: 'Banco do Brasil', domain: 'bb.com.br', color: '#fcf200' },
+  { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
+  { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
+  { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
+  { name: 'C6 Bank', domain: 'c6bank.com.br', color: '#252525' },
+  { name: 'PagBank', domain: 'pagbank.com.br', color: '#53d21e' },
+  { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
+  { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
+  { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
+  { name: 'Mercado Pago', domain: 'mercadopago.com.br', color: '#009ee3' },
+  { name: 'Avenue', domain: 'avenue.us', color: '#000000' },
+  { name: 'Nomad', domain: 'nomadglobal.com', color: '#000000' },
+];
+
+const CARD_BRANDS = [
+  { name: 'Visa', id: 'visa' },
+  { name: 'Mastercard', id: 'mastercard' },
+  { name: 'Elo', id: 'elo' },
+  { name: 'American Express', id: 'amex' },
+  { name: 'Hipercard', id: 'hipercard' },
+  { name: 'Diners Club', id: 'diners' },
+];
 
 const limitTypeLabels: Record<string, string> = {
   total: 'Total',
@@ -87,7 +119,12 @@ const FinancialAccountsV2 = () => {
   const [mainCardName, setMainCardName] = useState('');
   const [secondaryCards, setSecondaryCards] = useState<string[]>([]);
   const [newSecondaryCard, setNewSecondaryCard] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankIcon, setBankIcon] = useState('');
+  const [cardBrand, setCardBrand] = useState('');
   const [saving, setSaving] = useState(false);
+  const [bankSearch, setBankSearch] = useState('');
+  const [showBankOptions, setShowBankOptions] = useState(false);
 
   // Computed: closing date preview
   const closingDatePreview = useMemo(() => {
@@ -131,6 +168,8 @@ const FinancialAccountsV2 = () => {
     setDueDay(''); setFirstInvoiceDueDate(''); setClosingDaysBefore('10');
     setInvoicePaymentAccountId(''); setMainCardName('');
     setSecondaryCards([]); setNewSecondaryCard('');
+    setBankName(''); setBankIcon(''); setCardBrand('');
+    setBankSearch(''); setShowBankOptions(false);
     setEditing(null);
   };
 
@@ -151,6 +190,10 @@ const FinancialAccountsV2 = () => {
     setInvoicePaymentAccountId(a.invoice_payment_account_id || '');
     setMainCardName(a.main_card_name || '');
     setSecondaryCards(a.secondary_cards || []);
+    setBankName(a.bank_name || '');
+    setBankIcon(a.bank_icon || '');
+    setCardBrand(a.card_brand || '');
+    setBankSearch(a.bank_name || '');
     setIsModalOpen(true);
   };
 
@@ -180,20 +223,23 @@ const FinancialAccountsV2 = () => {
     const isCC = type === 'credit_card';
     const parsedBalance = parsePushMask(initialBalance) * (balanceType === 'creditor' ? -1 : 1);
     
-    const payload: Record<string, unknown> = {
+    const payload = {
       user_id: user!.id,
       name: name.trim(),
-      type,
+      type: type as any,
       initial_balance: parsedBalance,
       credit_limit: isCC ? parsePushMask(creditLimit) : null,
       closing_day: null,
       due_day: isCC && dueDay ? parseInt(dueDay) : null,
-      limit_type: isCC ? limitType : null,
+      limit_type: (isCC ? limitType : null) as any,
       first_invoice_due_date: isCC && firstInvoiceDueDate ? firstInvoiceDueDate : null,
       closing_days_before: isCC && closingDaysBefore ? parseInt(closingDaysBefore) : null,
       invoice_payment_account_id: isCC && invoicePaymentAccountId ? invoicePaymentAccountId : null,
       main_card_name: isCC && mainCardName.trim() ? mainCardName.trim() : null,
       secondary_cards: isCC && secondaryCards.length > 0 ? secondaryCards : null,
+      bank_name: bankName.trim() || null,
+      bank_icon: bankIcon || null,
+      card_brand: isCC && cardBrand ? cardBrand : null,
     };
 
     let error;
@@ -237,14 +283,32 @@ const FinancialAccountsV2 = () => {
             <div key={a.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${typeColors[a.type]}`}>
-                    {typeIcons[a.type]}
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border overflow-hidden shrink-0 ${typeColors[a.type]}`}>
+                    {a.bank_icon ? (
+                      <img 
+                        src={`https://logo.clearbit.com/${a.bank_icon}`} 
+                        alt={a.bank_name || ''} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement!.innerHTML = `<div class="text-slate-400">${typeIcons[a.type]}</div>`;
+                        }}
+                      />
+                    ) : typeIcons[a.type]}
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">{a.name}</h3>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border ${typeColors[a.type]}`}>
-                      {typeLabels[a.type]}
-                    </span>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-900 truncate">{a.name}</h3>
+                    <div className="flex flex-wrap gap-1 items-center mt-0.5">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap ${typeColors[a.type]}`}>
+                        {typeLabels[a.type]}
+                      </span>
+                      {a.bank_name && (
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
+                          em <span className="font-bold text-slate-500">{a.bank_name}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -294,7 +358,19 @@ const FinancialAccountsV2 = () => {
                         <span className="font-bold text-slate-700">{a.secondary_cards.length}</span>
                       </div>
                     )}
+                    {a.card_brand && (
+                      <div className="flex justify-between text-sm pt-2 border-t border-slate-50 mt-2">
+                        <span className="text-slate-400">Bandeira</span>
+                        <span className="font-bold text-slate-700 capitalize">{a.card_brand}</span>
+                      </div>
+                    )}
                   </>
+                )}
+                {a.type !== 'credit_card' && a.bank_name && (
+                   <div className="flex justify-between text-sm pt-2 border-t border-slate-50 mt-2">
+                    <span className="text-slate-400">Instituição</span>
+                    <span className="font-bold text-slate-700">{a.bank_name}</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -314,8 +390,68 @@ const FinancialAccountsV2 = () => {
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               {/* Nome */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nome</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Nubank, Carteira, Itaú" className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm" required />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nome da Conta / Cartão</label>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Principal, Cashback Master, Reserva" className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm" required />
+              </div>
+
+              {/* Instituição / Banco */}
+              <div className="space-y-1.5 relative">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Banco / Instituição</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={bankSearch} 
+                    onChange={e => {
+                      setBankSearch(e.target.value);
+                      setBankName(e.target.value);
+                      setShowBankOptions(true);
+                      if (e.target.value === '') { setBankIcon(''); }
+                    }} 
+                    onFocus={() => setShowBankOptions(true)}
+                    placeholder="Busque ou digite o nome do banco" 
+                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                  />
+                  {bankIcon && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg overflow-hidden border border-slate-200">
+                      <img src={`https://logo.clearbit.com/${bankIcon}`} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+
+                {showBankOptions && (
+                  <div className="absolute top-full left-0 right-0 z-20 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-2 grid grid-cols-1 gap-1">
+                      {BRAZILIAN_BANKS.filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase())).map(b => (
+                        <button
+                          key={b.domain}
+                          type="button"
+                          onClick={() => {
+                            setBankName(b.name);
+                            setBankIcon(b.domain);
+                            setBankSearch(b.name);
+                            setShowBankOptions(false);
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-100 shrink-0">
+                            <img src={`https://logo.clearbit.com/${b.domain}`} alt="" className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{b.name}</p>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{b.domain}</p>
+                          </div>
+                        </button>
+                      ))}
+                      <button 
+                         type="button" 
+                         onClick={() => setShowBankOptions(false)}
+                         className="p-2 text-center text-[10px] text-slate-400 hover:bg-slate-50 uppercase font-bold tracking-widest"
+                      >
+                         Fechar lista
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Tipo */}
               <div className="space-y-1.5">
@@ -363,6 +499,23 @@ const FinancialAccountsV2 = () => {
               {type === 'credit_card' && (
                 <div className="space-y-5 pt-4 border-t border-slate-100">
                   <p className="text-[10px] font-bold text-purple-600 uppercase tracking-widest">Dados do Cartão</p>
+
+                  {/* Bandeira do Cartão */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Bandeira</label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                       {CARD_BRANDS.map(brand => (
+                         <button
+                           key={brand.id}
+                           type="button"
+                           onClick={() => setCardBrand(brand.id)}
+                           className={`px-2 py-2 rounded-xl border text-[10px] font-bold transition-all ${cardBrand === brand.id ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-600/20' : 'bg-white border-slate-100 text-slate-400 hover:border-purple-200'}`}
+                         >
+                           {brand.name}
+                         </button>
+                       ))}
+                    </div>
+                  </div>
 
                   {/* Limite + Tipo de Limite */}
                   <div className="grid grid-cols-2 gap-3">
