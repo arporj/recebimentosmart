@@ -44,7 +44,7 @@ interface Category {
 
 interface TransactionData {
   id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   date: string;
   description: string;
@@ -56,6 +56,7 @@ interface TransactionData {
   account_id?: string;
   category_id?: string;
   client?: { name: string };
+  destination_account_id?: string;
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
@@ -63,7 +64,7 @@ interface FinancialTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialType?: 'income' | 'expense';
+  initialType?: 'income' | 'expense' | 'transfer';
   transaction?: TransactionData | null;
 }
 
@@ -77,7 +78,7 @@ const FinancialTransactionModalV2 = ({
   const { user } = useAuth();
   const isEditing = !!transaction;
 
-  const [type, setType] = useState<'income' | 'expense'>(initialType);
+  const [type, setType] = useState<'income' | 'expense' | 'transfer'>(initialType);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [description, setDescription] = useState('');
@@ -88,7 +89,7 @@ const FinancialTransactionModalV2 = ({
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
+  const [destinationAccountId, setDestinationAccountId] = useState('');
   // Credit Card specific fields
   const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [cardHolderName, setCardHolderName] = useState('');
@@ -129,6 +130,7 @@ const FinancialTransactionModalV2 = ({
       setDate(transaction.date);
       setClientId(transaction.client_id || '');
       setAccountId(transaction.account_id || '');
+      setDestinationAccountId(transaction.destination_account_id || '');
       setCategoryId(transaction.category_id || '');
       setIsRecurring(transaction.recurrence_enabled || false);
       setFrequency(transaction.recurrence_period || 'monthly');
@@ -161,6 +163,7 @@ const FinancialTransactionModalV2 = ({
       setClientId('');
       setAccountId('');
       setCategoryId('');
+      setDestinationAccountId('');
       setSelectedTags([]);
     }
   }, [isOpen, transaction, initialType]);
@@ -260,6 +263,7 @@ const FinancialTransactionModalV2 = ({
         client_id: clientId || null,
         account_id: accountId || null,
         category_id: categoryId || null,
+        destination_account_id: type === 'transfer' ? destinationAccountId : null,
         recurrence_enabled: isRecurring,
         recurrence_period: isRecurring ? frequency : null,
         recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1,
@@ -362,6 +366,13 @@ const FinancialTransactionModalV2 = ({
                 >
                   Despesa
                 </button>
+                <button 
+                  type="button"
+                  onClick={() => setType('transfer')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${type === 'transfer' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Transferência
+                </button>
               </div>
             </div>
 
@@ -369,7 +380,7 @@ const FinancialTransactionModalV2 = ({
             <div className="text-center space-y-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Valor do Lançamento</label>
               <div className="flex items-baseline justify-center gap-2">
-                <span className={`text-2xl font-bold opacity-60 ${type === 'income' ? 'text-teal-600' : 'text-rose-600'}`}>R$</span>
+                <span className={`text-2xl font-bold opacity-60 ${type === 'income' ? 'text-teal-600' : type === 'expense' ? 'text-rose-600' : 'text-indigo-600'}`}>R$</span>
                 <input 
                   type="text"
                   inputMode="numeric"
@@ -419,7 +430,9 @@ const FinancialTransactionModalV2 = ({
               {/* Account Select */}
               <div className="space-y-2">
                 <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Conta</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    {type === 'transfer' ? 'Conta de Origem' : 'Conta'}
+                  </label>
                 </div>
                 <div className="relative group">
                   <select 
@@ -428,7 +441,7 @@ const FinancialTransactionModalV2 = ({
                     className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
                     style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                   >
-                    <option value="">Selecione uma conta</option>
+                    <option value="">Selecione a conta</option>
                     {accounts.map(a => (
                       <option key={a.id} value={a.id}>{a.name} ({getAccountTypeLabel(a.type)})</option>
                     ))}
@@ -439,34 +452,58 @@ const FinancialTransactionModalV2 = ({
                 </div>
               </div>
 
-              {/* Category Select */}
-              <div className="space-y-2">
-                <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
-                </div>
-                <div className="relative group">
-                  <select 
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
-                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                  >
-                    <option value="">Selecione uma categoria</option>
-                    {parentCategories.map(parent => {
-                      const children = getChildren(parent.id);
-                      return [
-                        <option key={parent.id} value={parent.id}>{parent.icon || '📁'} {parent.name}</option>,
-                        ...children.map(child => (
-                          <option key={child.id} value={child.id}>&nbsp;&nbsp;&nbsp;— {child.name}</option>
-                        ))
-                      ];
-                    })}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <ChevronDown size={16} />
+              {/* Destination Account Select (Transfer only) or Category Select */}
+              {type === 'transfer' ? (
+                <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Conta de Destino</label>
+                  </div>
+                  <div className="relative group">
+                    <select 
+                      value={destinationAccountId}
+                      onChange={(e) => setDestinationAccountId(e.target.value)}
+                      className="w-full px-4 py-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-500/20 text-sm !appearance-none bg-none cursor-pointer"
+                      style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                    >
+                      <option value="">Selecione o destino</option>
+                      {accounts.filter(a => a.id !== accountId).map(a => (
+                        <option key={a.id} value={a.id}>{a.name} ({getAccountTypeLabel(a.type)})</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
+                      <ChevronDown size={16} />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
+                  </div>
+                  <div className="relative group">
+                    <select 
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
+                      style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                    >
+                      <option value="">Selecione uma categoria</option>
+                      {parentCategories.map(parent => {
+                        const children = getChildren(parent.id);
+                        return [
+                          <option key={parent.id} value={parent.id}>{parent.icon || '📁'} {parent.name}</option>,
+                          ...children.map(child => (
+                            <option key={child.id} value={child.id}>&nbsp;&nbsp;&nbsp;— {child.name}</option>
+                          ))
+                        ];
+                      })}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Conditional Credit Card Details */}
@@ -662,7 +699,9 @@ const FinancialTransactionModalV2 = ({
             className={`w-full md:w-auto px-10 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-white text-xs font-extrabold transition-all shadow-xl uppercase tracking-widest ${
               type === 'income' 
                 ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20' 
-                : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                : type === 'expense' 
+                  ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                  : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
             }`}
           >
             {loading ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Confirmar Lançamento')}

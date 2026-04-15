@@ -13,7 +13,8 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,7 +25,7 @@ import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactio
 
 interface FinancialTransaction {
   id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   date: string;
   description: string;
@@ -39,6 +40,7 @@ interface FinancialTransaction {
   category_id?: string;
   client?: { name: string };
   account?: { name: string; type: string };
+  destination_account?: { name: string; type: string };
   category?: { name: string; icon: string | null; parent_id: string | null };
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
@@ -57,7 +59,7 @@ const FinancialTransactionsV2 = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'income' | 'expense'>('income');
+  const [modalType, setModalType] = useState<'income' | 'expense' | 'transfer'>('income');
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [partialInput, setPartialInput] = useState<{ id: string; value: string } | null>(null);
@@ -71,22 +73,24 @@ const FinancialTransactionsV2 = () => {
     if (!user) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('financial_transactions')
-        .select(`
-          *,
-          client:clients(name),
-          account:financial_accounts(name, type),
-          category:financial_categories(name, icon, parent_id),
-          tags:transaction_tags(
-            tag:financial_tags(id, name, color)
-          )
-        `)
+       const { data, error } = await (supabase
+        .from('v_financial_transactions') as any)
+        .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: true });
 
       if (error) throw error;
-      setTransactions(data || []);
+      
+      // Mapear dados da view para o formato esperado pelo componente
+      const mappedData = (data || []).map((t: any) => ({
+        ...t,
+        account: t.account_name ? { name: t.account_name, type: t.account_type } : null,
+        destination_account: t.destination_account_name ? { name: t.destination_account_name, type: t.destination_account_type } : null,
+        client: t.client_name ? { name: t.client_name } : null,
+        category: t.category_name ? { name: t.category_name, icon: t.category_icon, parent_id: t.category_parent_id } : null
+      }));
+
+      setTransactions(mappedData);
     } catch (err) {
       console.error('Erro ao buscar transações:', err);
     } finally {
@@ -180,6 +184,7 @@ const FinancialTransactionsV2 = () => {
       case 'pending': return 'bg-amber-400';
       case 'overdue': return 'bg-rose-500';
       case 'partial': return 'bg-orange-400';
+      case 'transfer': return 'bg-indigo-500';
       default: return 'bg-slate-300';
     }
   };
@@ -383,6 +388,7 @@ const FinancialTransactionsV2 = () => {
             <button onClick={() => setFilter('all')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === 'all' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Todos</button>
             <button onClick={() => setFilter('income')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === 'income' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Receitas</button>
             <button onClick={() => setFilter('expense')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === 'expense' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Despesas</button>
+            <button onClick={() => setFilter('transfer')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === 'transfer' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Transferências</button>
           </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
@@ -435,8 +441,17 @@ const FinancialTransactionsV2 = () => {
                       {/* Account badge */}
                       {t.account && (
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-medium">
-                          {t.account.name}
+                          {t.type === 'transfer' ? 'De: ' : ''}{t.account.name}
                         </span>
+                      )}
+                      {/* Destination Account badge */}
+                      {t.type === 'transfer' && t.destination_account && (
+                        <>
+                          <ArrowRight size={10} className="text-slate-400 self-center" />
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold border border-indigo-100">
+                            Para: {t.destination_account.name}
+                          </span>
+                        </>
                       )}
                       {/* Category badge */}
                       {t.category && (
@@ -471,8 +486,8 @@ const FinancialTransactionsV2 = () => {
 
                   {/* Amount */}
                   <div className="w-32 text-right shrink-0">
-                    <span className={`text-sm font-bold ${t.type === 'income' ? 'text-teal-600' : 'text-rose-600'}`}>
-                      {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                    <span className={`text-sm font-bold ${t.type === 'income' ? 'text-teal-600' : t.type === 'expense' ? 'text-rose-600' : 'text-indigo-600'}`}>
+                      {t.type === 'expense' ? '-' : t.type === 'transfer' ? '⇆ ' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                     </span>
                     {t.paid_amount && t.paid_amount !== t.amount && (
                       <p className="text-[10px] text-slate-400">Pago: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.paid_amount)}</p>
