@@ -95,6 +95,7 @@ const FinancialTransactionModalV2 = ({
   const [cardHolderName, setCardHolderName] = useState('');
   const [installmentTotal, setInstallmentTotal] = useState('1');
   const [installmentCurrent, setInstallmentCurrent] = useState('1');
+  const [dayInput, setDayInput] = useState('');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -165,8 +166,29 @@ const FinancialTransactionModalV2 = ({
       setCategoryId('');
       setDestinationAccountId('');
       setSelectedTags([]);
+      setDayInput('');
     }
   }, [isOpen, transaction, initialType]);
+
+  // Lógica de Data Inteligente
+  useEffect(() => {
+    if (dayInput && !isEditing) {
+      const day = parseInt(dayInput);
+      if (isNaN(day) || day < 1 || day > 31) return;
+
+      const now = new Date();
+      let targetDate = new Date(now.getFullYear(), now.getMonth(), day);
+      
+      // Se o dia já passou ou é hoje (conforme regra do usuário, dia informado deve ser o "seguinte mais perto")
+      // Se hoje é 15 e colocar 10 -> 10 do mês seguinte
+      // Se hoje é 15 e colocar 20 -> 20 deste mês
+      if (targetDate <= now) {
+        targetDate = new Date(now.getFullYear(), now.getMonth() + 1, day);
+      }
+      
+      setDate(format(targetDate, 'yyyy-MM-dd'));
+    }
+  }, [dayInput, isEditing]);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -392,25 +414,29 @@ const FinancialTransactionModalV2 = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Description */}
-              <div className="space-y-2">
-                <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Descrição</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Day Input (Smart Logic) */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Dia de Venc.</label>
+                  </div>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={dayInput}
+                    onChange={(e) => setDayInput(e.target.value)}
+                    placeholder="Ex: 10"
+                    className="w-full px-4 py-4 bg-teal-50/50 border border-teal-100 rounded-2xl focus:ring-2 focus:ring-teal-500/20 text-sm font-bold"
+                  />
                 </div>
-                <input 
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ex: Aluguel, Venda..."
-                  className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
-                />
-              </div>
+              )}
 
               {/* Date Input */}
-              <div className="space-y-2">
+              <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
                 <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data de Vencimento</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
                 </div>
                 <div className="relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
@@ -423,6 +449,20 @@ const FinancialTransactionModalV2 = ({
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                   />
                 </div>
+              </div>
+
+              {/* Description */}
+              <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Descrição</label>
+                </div>
+                <input 
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ex: Aluguel, Venda..."
+                  className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                />
               </div>
             </div>
 
@@ -668,17 +708,46 @@ const FinancialTransactionModalV2 = ({
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Intervalo</label>
-                    <input 
-                      type="number"
-                      min="1"
-                      value={recurrenceInterval}
-                      onChange={(e) => setRecurrenceInterval(e.target.value)}
-                      placeholder="Ex: 1"
-                      className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                    />
-                  </div>
+
+                  {frequency === 'parcelada' ? (
+                    <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-right-4 duration-300">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Parcelas Totais</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={installmentTotal}
+                          onChange={(e) => setInstallmentTotal(e.target.value)}
+                          placeholder="Ex: 12"
+                          className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Parcela Atual</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          max={installmentTotal}
+                          value={installmentCurrent}
+                          onChange={(e) => setInstallmentCurrent(e.target.value)}
+                          placeholder="Ex: 1"
+                          className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Intervalo</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        value={recurrenceInterval}
+                        onChange={(e) => setRecurrenceInterval(e.target.value)}
+                        placeholder="Ex: 1"
+                        className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

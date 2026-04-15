@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Search, 
-  Plus, 
+  ArrowDownCircle,
+  ArrowRightLeft,
+  RefreshCcw,
+  Plus,
   MoreVertical,
   CheckCircle2,
   Clock,
@@ -11,8 +14,7 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
-  Filter,
-  ArrowRight
+  Filter
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,6 +43,8 @@ interface FinancialTransaction {
   account?: { name: string; type: string };
   destination_account?: { name: string; type: string };
   category?: { name: string; icon: string | null; parent_id: string | null };
+  installment_total?: number;
+  installment_current?: number;
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
@@ -67,18 +71,16 @@ const FinancialTransactionsV2 = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const today = new Date();
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
 
   const fetchTransactions = async () => {
     if (!user) return;
     try {
       setLoading(true);
-       const { data, error } = await (supabase
-        .from('v_financial_transactions') as any)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: true });
+    const { data, error } = await (supabase as any)
+      .from('v_financial_transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: true });
 
       if (error) throw error;
       
@@ -182,10 +184,20 @@ const FinancialTransactionsV2 = () => {
       
       while (isBefore(cursor, absMax)) {
         if (isSameMonth(cursor, currentMonth)) {
+          // Diferença de meses para calcular a parcela no caso de 'parcelada'
+          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+          const currentInst = (t.installment_current || 1) + monthsDiff;
+
+          // Se for parcelada e já ultrapassou o total, interromper
+          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
+            break;
+          }
+
           instances.push({
             ...t,
             instanceDate: format(cursor, 'yyyy-MM-dd'),
-            isVirtual: format(cursor, 'yyyy-MM-dd') !== t.date
+            isVirtual: format(cursor, 'yyyy-MM-dd') !== t.date,
+            installment_current: currentInst
           });
           break; // Apenas 1 instância por mês
         }
@@ -217,22 +229,6 @@ const FinancialTransactionsV2 = () => {
       return 'overdue';
     }
     return 'pending';
-  };
-
-  const getStatusDot = (status: string) => {
-    switch (status) {
-      case 'paid': return 'bg-green-500';
-      case 'pending': return 'bg-amber-400';
-      case 'overdue': return 'bg-rose-500';
-      case 'partial': return 'bg-orange-400';
-      case 'transfer': return 'bg-indigo-500';
-      default: return 'bg-slate-300';
-    }
-  };
-
-  const getOverdueDays = (t: TransactionInstance) => {
-    const dueDate = parseISO(t.instanceDate);
-    return Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
   };
 
   const getDisplayDate = (t: TransactionInstance) => {
@@ -352,14 +348,6 @@ const FinancialTransactionsV2 = () => {
     setIsModalOpen(true);
     setOpenDropdown(null);
   };
-
-  const filteredInstances = monthInstances.filter(t => {
-    const matchesFilter = filter === 'all' || t.type === filter;
-    const matchesSearch = searchTerm === '' || 
-      (t.description?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesFilter && matchesSearch;
-  });
 
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
@@ -615,35 +603,45 @@ const FinancialTransactionsV2 = () => {
           </aside>
 
           {/* Navegação Mobile (Cabeçalho de Ações) */}
-          <div className="lg:hidden flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              {/* Gatilho 1: Menu Geral (Inspirado no sistema de referência) */}
+          <div className="lg:hidden space-y-4 mb-4">
+            <div className="flex items-center justify-between">
+              {/* Gatilho 1: Menu Geral (Top) */}
               <button 
-                onClick={() => {
-                  // Aqui dispararíamos o menu do layout principal se necessário, 
-                  // mas para este componente, vamos focar nos filtros
-                  setIsSidebarOpen(true);
-                }}
                 className="p-3 bg-white text-slate-800 rounded-2xl shadow-sm border border-slate-100 active:scale-95 transition-all"
               >
-                <Filter size={20} />
+                <div className="flex flex-col gap-1 w-5">
+                  <div className="h-0.5 w-full bg-slate-800 rounded-full" />
+                  <div className="h-0.5 w-full bg-slate-800 rounded-full" />
+                  <div className="h-0.5 w-full bg-slate-800 rounded-full" />
+                </div>
+              </button>
+
+              <div className="text-right">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Saldo Hoje</span>
+                <p className="text-sm font-black text-slate-800 tracking-tight">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+               {/* Gatilho 2: Resumo (Bottom) */}
+               <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="flex items-center gap-2 text-slate-800 font-black text-xs active:scale-95 transition-all"
+              >
+                <div className="flex flex-col gap-1 w-5">
+                  <div className="h-0.5 w-full bg-slate-400 rounded-full" />
+                  <div className="h-0.5 w-full bg-slate-400 rounded-full" />
+                  <div className="h-0.5 w-full bg-slate-400 rounded-full" />
+                </div>
+                <span>Resumo das Contas</span>
               </button>
               
-              {/* Gatilho 2: Resumo (Drawer Lateral) */}
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all"
-              >
-                <Clock size={16} />
-                <span>Resumo</span>
-              </button>
-            </div>
-            
-            <div className="text-right">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">{monthLabel}</span>
-              <p className="text-sm font-black text-slate-800 tracking-tight">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{monthLabel}</span>
+                <Clock size={14} className="text-slate-400" />
+              </div>
             </div>
           </div>
 
@@ -677,20 +675,21 @@ const FinancialTransactionsV2 = () => {
                   className="w-full pl-14 pr-6 py-4.5 bg-white border border-slate-200 rounded-[2rem] focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500/50 transition-all shadow-sm text-slate-700 font-bold placeholder:text-slate-300 placeholder:font-medium"
                 />
               </div>
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 xl:pb-0 no-scrollbar">
-                <button 
-                  onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4.5 rounded-[1.8rem] font-black transition-all shadow-xl shadow-emerald-600/20 whitespace-nowrap active:scale-95 text-sm"
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={fetchTransactions}
+                  disabled={loading}
+                  className={`p-4.5 bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 rounded-[1.8rem] transition-all shadow-sm active:scale-95 ${loading ? 'animate-spin cursor-not-allowed opacity-50' : ''}`}
+                  title="Recarregar"
                 >
-                  <Plus size={20} />
-                  <span>Novo Recebimento</span>
+                  <RefreshCcw size={20} />
                 </button>
                 <button 
-                  onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
-                  className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-6 py-4.5 rounded-[1.8rem] font-black transition-all shadow-xl shadow-rose-600/20 whitespace-nowrap active:scale-95 text-sm"
+                  onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+                  className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-8 py-4.5 rounded-[1.8rem] font-black transition-all shadow-xl shadow-slate-900/20 whitespace-nowrap active:scale-95 text-sm"
                 >
                   <Plus size={20} />
-                  <span>Nova Despesa</span>
+                  <span>Novo Lançamento</span>
                 </button>
               </div>
             </div>
@@ -739,16 +738,21 @@ const FinancialTransactionsV2 = () => {
                     
                     return (
                       <div key={dropdownKey} className="group flex items-center gap-4 px-8 py-5 hover:bg-slate-50/50 transition-colors">
-                        <div className={`p-3 rounded-2xl shadow-sm ${
+                        <div className={`p-3 rounded-2xl shadow-sm shrink-0 ${
                           t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 
                           t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'
                         }`}>
-                          {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <Trash2 size={20} /> : <ArrowRight size={20} />}
+                          {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <ArrowDownCircle size={20} /> : <ArrowRightLeft size={20} />}
                         </div>
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-black text-slate-800 truncate">{t.description || 'S/ Descrição'}</h4>
+                            {t.installment_total && t.installment_total > 1 && (
+                              <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
+                                Parc. {t.installment_current}/{t.installment_total}
+                              </span>
+                            )}
                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ring-1 ${
                               status === 'paid' ? 'bg-emerald-50 text-emerald-600 ring-emerald-200' :
                               status === 'overdue' ? 'bg-rose-50 text-rose-600 ring-rose-200' :
@@ -761,12 +765,12 @@ const FinancialTransactionsV2 = () => {
                           <div className="flex items-center gap-3 text-xs text-slate-400 font-bold">
                             <span className="flex items-center gap-1.5"><Clock size={12} /> {getDisplayDate(t)}</span>
                             {t.account && (
-                              <span className="flex items-center gap-1.5 max-w-[150px] truncate" title={t.account.name}>
+                              <span className="flex items-center gap-1.5 break-words" title={t.account.name}>
                                 / {t.account.name}
                               </span>
                             )}
                             {t.type === 'transfer' && t.destination_account && (
-                              <span className="flex items-center gap-1.5 text-indigo-400 max-w-[150px] truncate" title={t.destination_account.name}>
+                              <span className="flex items-center gap-1.5 text-indigo-400 break-words" title={t.destination_account.name}>
                                 → {t.destination_account.name}
                               </span>
                             )}
@@ -794,9 +798,8 @@ const FinancialTransactionsV2 = () => {
                             </button>
 
                             {openDropdown === dropdownKey && (
-                              <div className={`absolute right-0 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[60] animate-in fade-in zoom-in duration-200 ${
-                                filteredInstances.indexOf(t) > filteredInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'
-                              }`}>
+                              <div className={`absolute right-0 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[150] animate-in fade-in zoom-in duration-200 origin-top-right overflow-visible
+                                ${displayInstances.indexOf(t) >= Math.max(0, displayInstances.length - 3) ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                                 {status !== 'paid' && status !== 'partial' && (
                                   <button
                                     onClick={() => handleConfirm(t)}

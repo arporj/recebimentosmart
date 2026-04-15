@@ -372,8 +372,8 @@ const FinancialAccountsV2 = () => {
                       <div className="text-slate-400">{typeIcons[a.type]}</div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-slate-900 break-words leading-tight">{a.name}</h3>
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <h3 className="font-bold text-slate-900 break-words leading-tight pr-2">{a.name}</h3>
                     <div className="flex flex-wrap gap-1 items-center mt-0.5 min-w-0">
                       <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap shrink-0 ${typeColors[a.type]}`}>
                         {typeLabels[a.type]}
@@ -399,20 +399,11 @@ const FinancialAccountsV2 = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0">
-                  <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <div className="flex gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-all sm:translate-x-1 sm:group-hover:translate-x-0">
+                  <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-                {/* Fallback for actions when mobile/touch if needed, but here we keep them inside */}
-                <div className="flex sm:hidden gap-1 shrink-0">
-                  <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400">
-                    <Pencil size={15} />
-                  </button>
-                  <button onClick={() => handleDelete(a.id)} className="p-1.5 text-slate-400">
+                  <button onClick={() => handleDelete(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Excluir">
                     <Trash2 size={15} />
                   </button>
                 </div>
