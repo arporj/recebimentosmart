@@ -98,7 +98,6 @@ const FinancialTransactionModalV2 = ({
   const [cardHolderName, setCardHolderName] = useState('');
   const [installmentTotal, setInstallmentTotal] = useState('1');
   const [installmentCurrent, setInstallmentCurrent] = useState('1');
-  const [dayInput, setDayInput] = useState('');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -170,29 +169,9 @@ const FinancialTransactionModalV2 = ({
       setCategoryId('');
       setDestinationAccountId('');
       setSelectedTags([]);
-      setDayInput('');
     }
   }, [isOpen, transaction, initialType]);
 
-  // Lógica de Data Inteligente
-  useEffect(() => {
-    if (dayInput && !isEditing) {
-      const day = parseInt(dayInput);
-      if (isNaN(day) || day < 1 || day > 31) return;
-
-      const now = new Date();
-      let targetDate = new Date(now.getFullYear(), now.getMonth(), day);
-      
-      // Se o dia já passou ou é hoje (conforme regra do usuário, dia informado deve ser o "seguinte mais perto")
-      // Se hoje é 15 e colocar 10 -> 10 do mês seguinte
-      // Se hoje é 15 e colocar 20 -> 20 deste mês
-      if (targetDate <= now) {
-        targetDate = new Date(now.getFullYear(), now.getMonth() + 1, day);
-      }
-      
-      setDate(format(targetDate, 'yyyy-MM-dd'));
-    }
-  }, [dayInput, isEditing]);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -433,23 +412,6 @@ const FinancialTransactionModalV2 = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Day Input (Smart Logic) */}
-              {!isEditing && type !== 'income' && (
-                <div className="space-y-2">
-                  <div className="h-5 flex items-center px-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Dia de Venc.</label>
-                  </div>
-                  <input 
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={dayInput}
-                    onChange={(e) => setDayInput(e.target.value)}
-                    placeholder="Ex: 10"
-                    className="w-full px-4 py-4 bg-teal-50/50 border border-teal-100 rounded-2xl focus:ring-2 focus:ring-teal-500/20 text-sm font-bold"
-                  />
-                </div>
-              )}
 
               {/* Date Input */}
               <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
