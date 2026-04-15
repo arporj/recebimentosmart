@@ -381,9 +381,9 @@ const FinancialTransactionsV2 = () => {
       </div>
 
       {/* Tabela */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
         {/* Filtros */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between gap-4">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between gap-4 rounded-t-2xl">
           <div className="flex bg-white p-1 rounded-xl border border-slate-200 w-fit">
             <button onClick={() => setFilter('all')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === 'all' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Todos</button>
             <button onClick={() => setFilter('income')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === 'income' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Receitas</button>
@@ -596,7 +596,7 @@ const FinancialTransactionsV2 = () => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/30">
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/30 rounded-b-2xl">
           <p className="text-xs text-slate-400">
             {filteredInstances.length} lançamento{filteredInstances.length !== 1 ? 's' : ''} neste mês
           </p>
