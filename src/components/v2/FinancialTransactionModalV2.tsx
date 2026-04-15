@@ -428,14 +428,12 @@ const FinancialTransactionModalV2 = ({
                     <option value="">Selecione uma categoria</option>
                     {parentCategories.map(parent => {
                       const children = getChildren(parent.id);
-                      return (
-                        <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
-                          <option value={parent.id}>{parent.name}</option>
-                          {children.map(child => (
-                            <option key={child.id} value={child.id}>{child.name}</option>
-                          ))}
-                        </optgroup>
-                      );
+                      return [
+                        <option key={parent.id} value={parent.id}>{parent.icon || '📁'} {parent.name}</option>,
+                        ...children.map(child => (
+                          <option key={child.id} value={child.id}>&nbsp;&nbsp;&nbsp;— {child.name}</option>
+                        ))
+                      ];
                     })}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
