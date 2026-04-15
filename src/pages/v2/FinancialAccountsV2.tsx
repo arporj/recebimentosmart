@@ -51,7 +51,7 @@ const FinancialAccountsV2 = () => {
   const [name, setName] = useState('');
   const [type, setType] = useState<string>('checking');
   const [initialBalance, setInitialBalance] = useState('0,00');
-  const [creditLimit, setCreditLimit] = useState('');
+  const [creditLimit, setCreditLimit] = useState('0,00');
   const [closingDay, setClosingDay] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [saving, setSaving] = useState(false);
@@ -73,7 +73,7 @@ const FinancialAccountsV2 = () => {
 
   const resetForm = () => {
     setName(''); setType('checking'); setInitialBalance('0,00');
-    setCreditLimit(''); setClosingDay(''); setDueDay('');
+    setCreditLimit('0,00'); setClosingDay(''); setDueDay('');
     setEditing(null);
   };
 
@@ -84,7 +84,7 @@ const FinancialAccountsV2 = () => {
     setName(a.name);
     setType(a.type);
     setInitialBalance(a.initial_balance.toFixed(2).replace('.', ','));
-    setCreditLimit(a.credit_limit ? String(a.credit_limit) : '');
+    setCreditLimit(a.credit_limit ? a.credit_limit.toFixed(2).replace('.', ',') : '0,00');
     setClosingDay(a.closing_day ? String(a.closing_day) : '');
     setDueDay(a.due_day ? String(a.due_day) : '');
     setIsModalOpen(true);
@@ -110,7 +110,7 @@ const FinancialAccountsV2 = () => {
       name: name.trim(),
       type,
       initial_balance: parsedBalance,
-      credit_limit: type === 'credit_card' && creditLimit ? parseFloat(creditLimit) : null,
+      credit_limit: type === 'credit_card' ? parseFloat(creditLimit.replace(/\./g, '').replace(',', '.')) : null,
       closing_day: type === 'credit_card' && closingDay ? parseInt(closingDay) : null,
       due_day: type === 'credit_card' && dueDay ? parseInt(dueDay) : null,
     };
@@ -259,7 +259,21 @@ const FinancialAccountsV2 = () => {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Limite</label>
-                      <input type="number" step="0.01" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} placeholder="5000" className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20" />
+                      <input 
+                        type="text" 
+                        value={creditLimit} 
+                        onChange={e => {
+                          const clean = e.target.value.replace(/\D/g, "");
+                          const cents = parseInt(clean || "0");
+                          const formatted = new Intl.NumberFormat('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          }).format(cents / 100);
+                          setCreditLimit(formatted);
+                        }} 
+                        placeholder="0,00" 
+                        className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20" 
+                      />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Fecha dia</label>
