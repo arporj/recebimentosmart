@@ -585,7 +585,7 @@ const FinancialTransactionModalV2 = ({
                           : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color || undefined }} />
                       {tag.name}
                     </button>
                   ))}
