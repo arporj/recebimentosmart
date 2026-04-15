@@ -250,7 +250,7 @@ const FinancialTransactionModalV2 = ({
     try {
       setLoading(true);
 
-      const baseTransactionData = {
+      const transactionData = {
         user_id: user.id,
         type,
         amount: parsedAmount,
@@ -263,36 +263,21 @@ const FinancialTransactionModalV2 = ({
         recurrence_enabled: isRecurring,
         recurrence_period: isRecurring ? frequency : null,
         recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1,
-      };
-
-      // Campos expandidos (dependem da migração 20260415100000)
-      const expandedTransactionFields = {
         invoice_month: isCreditCard ? invoiceMonth : null,
         card_holder_name: isCreditCard ? cardHolderName : null,
         installment_current: isRecurring && frequency === 'parcelada' ? parseInt(installmentCurrent) : 1,
         installment_total: isRecurring && frequency === 'parcelada' ? parseInt(installmentTotal) : 1
       };
 
-      const fullTransactionData = { ...baseTransactionData, ...expandedTransactionFields };
-
       let savedTransaction;
 
       if (isEditing) {
-        // UPDATE: tenta com todos os campos, fallback com campos base
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from('financial_transactions')
-          .update(fullTransactionData)
+          .update(transactionData)
           .eq('id', transaction!.id)
           .select()
           .single();
-        if (error) {
-          ({ data, error } = await supabase
-            .from('financial_transactions')
-            .update(baseTransactionData)
-            .eq('id', transaction!.id)
-            .select()
-            .single());
-        }
         if (error) throw error;
         savedTransaction = data;
 
@@ -301,19 +286,11 @@ const FinancialTransactionModalV2 = ({
           .delete()
           .eq('transaction_id', transaction!.id);
       } else {
-        // INSERT: tenta com todos os campos, fallback com campos base
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from('financial_transactions')
-          .insert(fullTransactionData)
+          .insert(transactionData)
           .select()
           .single();
-        if (error) {
-          ({ data, error } = await supabase
-            .from('financial_transactions')
-            .insert(baseTransactionData)
-            .select()
-            .single());
-        }
         if (error) throw error;
         savedTransaction = data;
       }

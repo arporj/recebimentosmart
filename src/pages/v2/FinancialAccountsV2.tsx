@@ -180,8 +180,7 @@ const FinancialAccountsV2 = () => {
     const isCC = type === 'credit_card';
     const parsedBalance = parsePushMask(initialBalance) * (balanceType === 'creditor' ? -1 : 1);
     
-    // Campos base (sempre existem na tabela)
-    const basePayload: Record<string, unknown> = {
+    const payload: Record<string, unknown> = {
       user_id: user!.id,
       name: name.trim(),
       type,
@@ -189,10 +188,6 @@ const FinancialAccountsV2 = () => {
       credit_limit: isCC ? parsePushMask(creditLimit) : null,
       closing_day: null,
       due_day: isCC && dueDay ? parseInt(dueDay) : null,
-    };
-
-    // Campos expandidos (dependem da migração 20260415083000)
-    const expandedFields: Record<string, unknown> = {
       limit_type: isCC ? limitType : null,
       first_invoice_due_date: isCC && firstInvoiceDueDate ? firstInvoiceDueDate : null,
       closing_days_before: isCC && closingDaysBefore ? parseInt(closingDaysBefore) : null,
@@ -201,21 +196,11 @@ const FinancialAccountsV2 = () => {
       secondary_cards: isCC && secondaryCards.length > 0 ? secondaryCards : null,
     };
 
-    const fullPayload = { ...basePayload, ...expandedFields };
-
     let error;
     if (editing) {
-      ({ error } = await supabase.from('financial_accounts').update(fullPayload).eq('id', editing.id));
-      // Fallback: se falhar por colunas inexistentes, tenta só com campos base
-      if (error) {
-        ({ error } = await supabase.from('financial_accounts').update(basePayload).eq('id', editing.id));
-      }
+      ({ error } = await supabase.from('financial_accounts').update(payload).eq('id', editing.id));
     } else {
-      ({ error } = await supabase.from('financial_accounts').insert(fullPayload));
-      // Fallback: se falhar por colunas inexistentes, tenta só com campos base
-      if (error) {
-        ({ error } = await supabase.from('financial_accounts').insert(basePayload));
-      }
+      ({ error } = await supabase.from('financial_accounts').insert(payload));
     }
 
     if (error) { toast.error('Erro: ' + error.message); setSaving(false); return; }
