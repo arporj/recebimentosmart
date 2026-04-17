@@ -23,6 +23,8 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths, isAfter, isBefo
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactionModalV2';
+import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
+import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 
 interface FinancialTransaction {
   id: string;
@@ -71,6 +73,10 @@ const FinancialTransactionsV2 = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Estados para exclusão em cadeia
+  const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
 
   const today = new Date();
 
@@ -261,17 +267,28 @@ const FinancialTransactionsV2 = () => {
     setOpenDropdown(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este lançamento?')) return;
+  const handleDelete = async (t: FinancialTransaction, scope: 'this' | 'following' | 'all' = 'this') => {
+    const isRecurrent = t.recurrence_enabled || (t as any).modalidade === 'parcelada' || (t as any).parent_id;
+    
+    if (isRecurrent && !isDeleteScopeModalOpen && scope === 'this') {
+      setItemToDelete(t);
+      setIsDeleteScopeModalOpen(true);
+      setOpenDropdown(null);
+      return;
+    }
+
     try {
-      const { error } = await supabase.from('financial_transactions').delete().eq('id', id);
+      const { error } = await deletarTransacao(t.id, scope);
       if (error) throw error;
       toast.success('Excluído!');
       fetchTransactions();
     } catch {
       toast.error('Erro ao excluir.');
+    } finally {
+      setIsDeleteScopeModalOpen(false);
+      setItemToDelete(null);
+      setOpenDropdown(null);
     }
-    setOpenDropdown(null);
   };
 
   const accountsData = useMemo(() => {
@@ -598,7 +615,7 @@ const FinancialTransactionsV2 = () => {
                               )}
                               <button onClick={() => handleEdit(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
                               <button onClick={() => handleClone(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
-                              <button onClick={() => handleDelete(t.id)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
+                              <button onClick={() => handleDelete(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
                             </div>
                           )}
                         </div>
@@ -616,6 +633,16 @@ const FinancialTransactionsV2 = () => {
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchTransactions}
         initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming}
       />
+
+      {itemToDelete && (
+        <ModalOpcaoRecorrente
+          isOpen={isDeleteScopeModalOpen}
+          onClose={() => setIsDeleteScopeModalOpen(false)}
+          onSelect={(scope) => handleDelete(itemToDelete, scope as any)}
+          type="delete"
+          modalidade={(itemToDelete as any).modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
+        />
+      )}
     </div>
   );
 };
