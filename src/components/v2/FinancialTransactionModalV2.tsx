@@ -165,6 +165,7 @@ const FinancialTransactionModalV2 = ({
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
+      setDescription('');
       setAmount('');
       setDate(format(new Date(), 'yyyy-MM-dd'));
       setInvoiceMonth(format(new Date(), 'yyyy-MM'));
@@ -176,6 +177,14 @@ const FinancialTransactionModalV2 = ({
       setCategoryId('');
       setDestinationAccountId('');
       setSelectedTags([]);
+      
+      // Novos campos
+      setModalidade('unica');
+      setDueDay(new Date().getDate());
+      setPeriodicidade('mensal');
+      setStartInstallment(1);
+      setIsTotalValue(false);
+      setRecurrenceInterval(1);
     }
   }, [isOpen, transaction, initialType]);
 
