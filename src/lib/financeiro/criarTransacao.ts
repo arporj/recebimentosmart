@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
-import { addDays, addWeeks, addMonths, addYears, format } from 'date-fns';
+import { format } from 'date-fns';
+import { addPeriod, parseLocalDate, gerarInstanciasRecorrentes } from './recorrenciaUtils';
 
 export interface TransactionInput {
   description: string;
@@ -16,20 +17,6 @@ export interface TransactionInput {
   due_day?: number;
   recurrence_interval?: number;
 }
-
-const addPeriod = (date: Date, amount: number, period: string) => {
-  switch (period) {
-    case 'daily': return addDays(date, amount);
-    case 'weekly': return addWeeks(date, amount);
-    case 'yearly': return addYears(date, amount);
-    default: return addMonths(date, amount);
-  }
-};
-
-const parseLocalDate = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
 
 export async function criarTransacao(input: TransactionInput) {
   const { data: userData } = await supabase.auth.getUser();
@@ -107,22 +94,17 @@ export async function criarTransacao(input: TransactionInput) {
 
     if (parentError) return { data: null, error: parentError };
 
-    const occurrences = [];
-    const startDate = parseLocalDate(input.date);
-
-    // Gerar 12 ocorrências iniciais respeitando o intervalo
-    for (let i = 1; i <= 12; i++) {
-      const occurrenceDate = addPeriod(startDate, i * recurrenceInterval, recurrencePeriod);
-      occurrences.push({
-        ...baseTransaction,
-        parent_id: parentData.id,
-        date: format(occurrenceDate, 'yyyy-MM-dd'),
-        recurrence_period: recurrencePeriod,
-        recurrence_interval: recurrenceInterval,
-      });
+    try {
+      await gerarInstanciasRecorrentes(
+        parentData,
+        baseTransaction,
+        recurrencePeriod,
+        recurrenceInterval
+      );
+      return { data: parentData, error: null };
+    } catch (error: any) {
+      return { data: parentData, error };
     }
-
-    return await supabase.from('financial_transactions').insert(occurrences);
   }
 
   return { data: null, error: new Error('Modalidade inválida') };

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { gerarInstanciasRecorrentes } from './recorrenciaUtils';
 
 export type EditScope = 'this' | 'following' | 'all';
 
@@ -33,40 +34,66 @@ export async function editarTransacao(
 
   if (fetchError || !current) throw new Error('Erro ao buscar transação');
 
-  const { modalidade, parent_id, date: currentDate } = current as any;
+  const { modalidade: currentModalidade, parent_id, date: currentDate, type } = current as any;
 
   // Se for única ou escopo 'este', apenas atualiza uma
-  if (modalidade === 'unica' || scope === 'this') {
-    return await supabase
+  if (currentModalidade === 'unica' || scope === 'this') {
+    const { data, error } = await supabase
       .from('financial_transactions')
-      .update({ ...update, is_customized: modalidade !== 'unica' })
-      .eq('id', transactionId);
+      .update({ ...update, is_customized: currentModalidade !== 'unica' })
+      .eq('id', transactionId)
+      .select()
+      .single();
+
+    if (error) return { data, error };
+
+    // LÓGICA ESPECIAL: Se mudou de única para recorrente, gera os filhos
+    if (currentModalidade === 'unica' && update.modalidade === 'recorrente') {
+      const baseTransaction = {
+        user_id: current.user_id,
+        description: update.description || current.description,
+        amount: update.amount || current.amount,
+        type: type,
+        category_id: update.category_id || current.category_id,
+        account_id: update.account_id || current.account_id,
+        modalidade: 'recorrente',
+        status: 'pending',
+      };
+
+      try {
+        await gerarInstanciasRecorrentes(
+          data, // A própria transação atualizada (mãe)
+          baseTransaction,
+          update.recurrence_period || 'monthly',
+          update.recurrence_interval || 1
+        );
+        
+        // Habilitar recorrência no registro principal se não foi feito
+        await supabase.from('financial_transactions').update({ recurrence_enabled: true }).eq('id', data.id);
+      } catch (genError: any) {
+        console.error('Erro ao gerar instâncias recorrentes:', genError);
+      }
+    }
+
+    return { data, error: null };
   }
 
   // Lógica para Parcelas e Recorrências
   const refId = parent_id || current.id; // ID da transação "mãe" ou referência
 
   if (scope === 'all') {
-    // Atualiza todas que pertencem ao mesmo grupo
-    // Para parcelas: compartilhamos as mesmas propriedades de parcelamento
-    // Para recorrências: compartilhamos o parent_id
     let query = supabase.from('financial_transactions').update(update);
     
-    if (modalidade === 'parcelada') {
-      // Como não temos installment_group_id, filtramos por parent_id ou descrição similar se necessário
-      // Mas o ideal é que todas as parcelas tenham o mesmo parent_id se forem criadas juntas
-      // Na nossa criarTransacao.ts, não definimos parent_id para parcelas. 
-      // VOU AJUSTAR criarTransacao para definir um parent_id para parcelas também.
+    if (currentModalidade === 'parcelada') {
       query = query.or(`id.eq.${refId},parent_id.eq.${refId}`);
     } else {
       query = query.or(`id.eq.${refId},parent_id.eq.${refId}`);
     }
     
-    return await query.neq('is_customized', true); // Não sobrescreve as que foram customizadas individualmente
+    return await query.neq('is_customized', true);
   }
 
   if (scope === 'following') {
-    // Atualiza a atual e as futuras que não estão customizadas
     return await supabase
       .from('financial_transactions')
       .update(update)
