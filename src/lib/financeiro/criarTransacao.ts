@@ -102,6 +102,7 @@ export async function criarTransacao(input: TransactionInput) {
       date: input.date,
       recurrence_period: periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly',
       recurrence_interval: recurrenceInterval,
+      recurrence_enabled: true,
     }).select().single();
 
     if (parentError) return { data: null, error: parentError };

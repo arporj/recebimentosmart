@@ -268,7 +268,10 @@ const FinancialTransactionsV2 = () => {
   };
 
   const handleDelete = async (t: FinancialTransaction, scope: 'this' | 'following' | 'all' = 'this') => {
-    const isRecurrent = t.recurrence_enabled || (t as any).modalidade === 'parcelada' || (t as any).parent_id;
+    const isRecurrent = t.recurrence_enabled || 
+                        (t as any).modalidade === 'parcelada' || 
+                        (t as any).modalidade === 'recorrente' ||
+                        (t as any).parent_id;
     
     if (isRecurrent && !isDeleteScopeModalOpen && scope === 'this') {
       setItemToDelete(t);
