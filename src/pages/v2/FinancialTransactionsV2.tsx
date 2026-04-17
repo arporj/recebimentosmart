@@ -538,12 +538,6 @@ const FinancialTransactionsV2 = () => {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={fetchTransactions} disabled={loading} className={`p-4 bg-white border border-slate-200 rounded-3xl shadow-sm ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={20} /></button>
-                <button 
-                  onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-                  className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-3xl font-black shadow-xl"
-                >
-                  <Plus size={20} /><span>Novo Lançamento</span>
-                </button>
               </div>
             </div>
 
