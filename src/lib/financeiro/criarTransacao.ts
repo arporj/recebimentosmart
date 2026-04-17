@@ -26,6 +26,11 @@ const addPeriod = (date: Date, amount: number, periodicidade: string) => {
   }
 };
 
+const parseLocalDate = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export async function criarTransacao(input: TransactionInput) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Usuário não autenticado');
@@ -59,7 +64,7 @@ export async function criarTransacao(input: TransactionInput) {
   }
 
   if (input.modalidade === 'parcelada') {
-    const startDate = new Date(input.date);
+    const startDate = parseLocalDate(input.date);
     const parcels = [];
 
     for (let i = startInstallment; i <= totalInstallments; i++) {
@@ -102,7 +107,7 @@ export async function criarTransacao(input: TransactionInput) {
     if (parentError) return { data: null, error: parentError };
 
     const occurrences = [];
-    const startDate = new Date(input.date);
+    const startDate = parseLocalDate(input.date);
 
     // Gerar 12 ocorrências iniciais respeitando o intervalo
     for (let i = 1; i <= 12; i++) {
