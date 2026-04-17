@@ -46,6 +46,8 @@ interface FinancialTransaction {
   account?: { name: string; type: string };
   destination_account?: { name: string; type: string };
   category?: { name: string; icon: string | null; parent_id: string | null };
+  parent_id?: string | null;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_total?: number;
   installment_current?: number;
   auto_confirm?: boolean;
@@ -163,6 +165,16 @@ const FinancialTransactionsV2 = () => {
   const monthInstances = useMemo((): TransactionInstance[] => {
     const instances: TransactionInstance[] = [];
 
+    // 1. Identificar registros físicos daquela cadeia para evitar sobreposição
+    const physicalDatesByParent = new Map<string, Set<string>>();
+    for (const t of transactions) {
+      const parentId = t.parent_id || t.id;
+      if (!physicalDatesByParent.has(parentId)) {
+        physicalDatesByParent.set(parentId, new Set());
+      }
+      physicalDatesByParent.get(parentId)!.add(t.date);
+    }
+
     for (const t of transactions) {
       const tDate = parseISO(t.date);
 
@@ -179,22 +191,30 @@ const FinancialTransactionsV2 = () => {
       const absMax = addYears(today, 5);
       
       let cursor = new Date(tDate);
+      const parentId = t.id; // Se tem recurrence_enabled é o pai
+      
       while (isBefore(cursor, absMax)) {
+        const dateStr = format(cursor, 'yyyy-MM-dd');
+        // Só gera virtual se não houver registro físico correspondente
+        const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
+
         if (isSameMonth(cursor, currentMonth)) {
-          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-          const currentInst = (t.installment_current || 1) + monthsDiff;
+          // Se for a data original do pai ou uma virtual que não existe fisicamente
+          if (!alreadyHasPhysical || dateStr === t.date) {
+            const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+            const currentInst = (t.installment_current || 1) + monthsDiff;
 
-          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
-            break;
+            if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
+              break;
+            }
+
+            instances.push({
+              ...t,
+              instanceDate: dateStr,
+              isVirtual: dateStr !== t.date,
+              installment_current: currentInst
+            });
           }
-
-          instances.push({
-            ...t,
-            instanceDate: format(cursor, 'yyyy-MM-dd'),
-            isVirtual: format(cursor, 'yyyy-MM-dd') !== t.date,
-            installment_current: currentInst
-          });
-          break;
         }
         
         if (isAfter(cursor, maxDate)) break;
@@ -268,12 +288,9 @@ const FinancialTransactionsV2 = () => {
   };
 
   const handleDelete = async (t: FinancialTransaction, scope: 'this' | 'following' | 'all' = 'this') => {
-    const isRecurrent = t.recurrence_enabled || 
-                        (t as any).modalidade === 'parcelada' || 
-                        (t as any).modalidade === 'recorrente' ||
-                        (t as any).parent_id;
+    const isRecurring = t.modalidade === 'recorrente' || t.modalidade === 'parcelada' || !!t.parent_id || t.recurrence_enabled;
     
-    if (isRecurrent && !isDeleteScopeModalOpen && scope === 'this') {
+    if (isRecurring && !isDeleteScopeModalOpen && scope === 'this') {
       setItemToDelete(t);
       setIsDeleteScopeModalOpen(true);
       setOpenDropdown(null);
@@ -563,7 +580,7 @@ const FinancialTransactionsV2 = () => {
                             {/* Ícones de Status Intermediários */}
                             <div className="flex items-center gap-1.5 px-2">
                               {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500/60" />}
-                              {t.recurrence_enabled && t.recurrence_period !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
+                              {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
                               {t.auto_confirm && <Zap size={12} className="text-amber-500/60" />}
                             </div>
                           </div>
