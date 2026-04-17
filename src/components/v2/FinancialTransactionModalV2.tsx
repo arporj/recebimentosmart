@@ -106,6 +106,7 @@ const FinancialTransactionModalV2 = ({
   const [periodicidade, setPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
   const [startInstallment, setStartInstallment] = useState(1);
   const [isTotalValue, setIsTotalValue] = useState(false);
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -273,10 +274,11 @@ const FinancialTransactionModalV2 = ({
         account_id: accountId || undefined,
         modalidade,
         total_installments: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
-        periodicidade: modalidade === 'parcelada' ? periodicidade : undefined,
+        periodicidade: (modalidade === 'parcelada' || modalidade === 'recorrente') ? periodicidade : undefined,
         start_installment: modalidade === 'parcelada' ? startInstallment : undefined,
         is_total_value: modalidade === 'parcelada' ? isTotalValue : undefined,
         due_day: modalidade === 'recorrente' ? dueDay : undefined,
+        recurrence_interval: modalidade === 'recorrente' ? recurrenceInterval : undefined,
         auto_confirm: autoConfirm,
       };
 
@@ -469,18 +471,38 @@ const FinancialTransactionModalV2 = ({
               )}
 
               {modalidade === 'recorrente' && (
-                <div className="pt-4 border-t border-slate-200/60 animate-in slide-in-from-top-2 duration-300">
+                <div className="pt-4 border-t border-slate-200/60 animate-in slide-in-from-top-2 duration-300 space-y-6">
+                  {/* Periodicidade */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block w-full">Periodicidade</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(['diaria', 'semanal', 'mensal', 'anual'] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPeriodicidade(p)}
+                          className={`py-2 rounded-lg text-[10px] font-bold transition-all border ${
+                            periodicidade === p 
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Intervalo */}
                   <div className="space-y-1.5 flex flex-col items-center">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Dia do Vencimento (Mensal)</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+                      Repete-se a cada X {periodicidade === 'diaria' ? 'Dias' : periodicidade === 'semanal' ? 'Semanas' : periodicidade === 'anual' ? 'Anos' : 'Meses'}
+                    </label>
                     <input 
                       type="number"
                       min="1"
-                      max="31"
-                      value={isNaN(dueDay) ? '' : dueDay}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        setDueDay(isNaN(val) ? 1 : val);
-                      }}
+                      value={recurrenceInterval}
+                      onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
                       className="w-full max-w-[200px] px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/20 text-center shadow-sm"
                     />
                   </div>
@@ -488,11 +510,11 @@ const FinancialTransactionModalV2 = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
 
               {/* Date Input */}
               {!(modalidade === 'recorrente' && !isEditing) && (
-                <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
+                <div className="space-y-2">
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
                   </div>
@@ -511,7 +533,7 @@ const FinancialTransactionModalV2 = ({
               )}
 
               {/* Description */}
-              <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
+              <div className="space-y-2">
                 <div className="h-5 flex items-center px-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Descrição</label>
                 </div>

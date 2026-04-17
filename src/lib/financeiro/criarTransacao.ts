@@ -14,6 +14,7 @@ export interface TransactionInput {
   start_installment?: number;
   is_total_value?: boolean;
   due_day?: number;
+  recurrence_interval?: number;
 }
 
 const addPeriod = (date: Date, amount: number, periodicidade: string) => {
@@ -89,10 +90,13 @@ export async function criarTransacao(input: TransactionInput) {
   }
 
   if (input.modalidade === 'recorrente') {
+    const recurrenceInterval = input.recurrence_interval || 1;
+    
     const { data: parentData, error: parentError } = await supabase.from('financial_transactions').insert({
       ...baseTransaction,
       date: input.date,
-      due_day: input.due_day || new Date(input.date).getDate(),
+      recurrence_period: periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly',
+      recurrence_interval: recurrenceInterval,
     }).select().single();
 
     if (parentError) return { data: null, error: parentError };
@@ -100,13 +104,15 @@ export async function criarTransacao(input: TransactionInput) {
     const occurrences = [];
     const startDate = new Date(input.date);
 
+    // Gerar 12 ocorrências iniciais respeitando o intervalo
     for (let i = 1; i <= 12; i++) {
-      const occurrenceDate = addMonths(startDate, i);
+      const occurrenceDate = addPeriod(startDate, i * recurrenceInterval, periodicidade);
       occurrences.push({
         ...baseTransaction,
         parent_id: parentData.id,
         date: format(occurrenceDate, 'yyyy-MM-dd'),
-        due_day: input.due_day || new Date(input.date).getDate(),
+        recurrence_period: periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly',
+        recurrence_interval: recurrenceInterval,
       });
     }
 
