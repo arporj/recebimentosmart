@@ -513,24 +513,22 @@ const FinancialTransactionModalV2 = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Date Input */}
-              {!(modalidade === 'recorrente' && !isEditing) && (
-                <div className="space-y-2">
-                  <div className="h-5 flex items-center px-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
-                      <CalendarIcon size={18} />
-                    </div>
-                    <input 
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
                 </div>
-              )}
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                    <CalendarIcon size={18} />
+                  </div>
+                  <input 
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                  />
+                </div>
+              </div>
 
               {/* Description */}
               <div className="space-y-2">
