@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { addMonths, format } from 'date-fns';
+import { addDays, addWeeks, addMonths, addYears, format } from 'date-fns';
 
 export interface TransactionInput {
   description: string;
@@ -10,18 +10,38 @@ export interface TransactionInput {
   account_id?: string;
   modalidade: 'unica' | 'parcelada' | 'recorrente';
   total_installments?: number;
-  recurrence_period?: 'monthly';
+  periodicidade?: 'diaria' | 'semanal' | 'mensal' | 'anual';
+  start_installment?: number;
+  is_total_value?: boolean;
   due_day?: number;
 }
+
+const addPeriod = (date: Date, amount: number, periodicidade: string) => {
+  switch (periodicidade) {
+    case 'diaria': return addDays(date, amount);
+    case 'semanal': return addWeeks(date, amount);
+    case 'anual': return addYears(date, amount);
+    default: return addMonths(date, amount);
+  }
+};
 
 export async function criarTransacao(input: TransactionInput) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Usuário não autenticado');
 
+  const totalInstallments = input.total_installments || 1;
+  const startInstallment = input.start_installment || 1;
+  const periodicidade = input.periodicidade || 'mensal';
+  
+  // Ajustar o valor se for o valor total
+  const finalAmount = input.is_total_value 
+    ? Number((input.amount / totalInstallments).toFixed(2))
+    : input.amount;
+
   const baseTransaction = {
     user_id: userData.user.id,
     description: input.description,
-    amount: input.amount,
+    amount: finalAmount,
     type: input.type,
     category_id: input.category_id,
     account_id: input.account_id,
@@ -33,42 +53,42 @@ export async function criarTransacao(input: TransactionInput) {
     return await supabase.from('financial_transactions').insert({
       ...baseTransaction,
       date: input.date,
+      amount: input.amount // Valor único não divide
     });
   }
 
-  if (input.modalidade === 'parcelada' && input.total_installments) {
+  if (input.modalidade === 'parcelada') {
     const startDate = new Date(input.date);
-    
-    // 1. Criar a primeira parcela
-    const { data: firstParcel, error: firstError } = await supabase.from('financial_transactions').insert({
-      ...baseTransaction,
-      description: `${input.description} (1/${input.total_installments})`,
-      date: format(startDate, 'yyyy-MM-dd'),
-      installment_number: 1,
-      total_installments: input.total_installments,
-    }).select().single();
+    const parcels = [];
 
-    if (firstError) return { data: null, error: firstError };
-
-    // 2. Criar as demais parcelas vinculadas à primeira
-    const otherParcels = [];
-    for (let i = 2; i <= input.total_installments; i++) {
-      const dueDate = addMonths(startDate, i - 1);
-      otherParcels.push({
-        ...baseTransaction,
-        parent_id: firstParcel.id,
-        description: `${input.description} (${i}/${input.total_installments})`,
-        date: format(dueDate, 'yyyy-MM-dd'),
-        installment_number: i,
-        total_installments: input.total_installments,
-      });
+    for (let i = startInstallment; i <= totalInstallments; i++) {
+        const indexOffset = i - startInstallment;
+        const dueDate = addPeriod(startDate, indexOffset, periodicidade);
+        
+        parcels.push({
+          ...baseTransaction,
+          description: `${input.description} (${i}/${totalInstallments})`,
+          date: format(dueDate, 'yyyy-MM-dd'),
+          installment_number: i,
+          total_installments: totalInstallments,
+          modalidade: 'parcelada'
+        });
     }
     
-    return await supabase.from('financial_transactions').insert(otherParcels);
+    if (parcels.length === 0) return { data: null, error: new Error('Nenhuma parcela a criar') };
+
+    const { data: firstData, error: firstError } = await supabase.from('financial_transactions').insert(parcels[0]).select().single();
+    if (firstError) return { data: null, error: firstError };
+
+    if (parcels.length > 1) {
+        const remainingParcels = parcels.slice(1).map(p => ({ ...p, parent_id: firstData.id }));
+        return await supabase.from('financial_transactions').insert(remainingParcels);
+    }
+
+    return { data: firstData, error: null };
   }
 
   if (input.modalidade === 'recorrente') {
-    // Para recorrente, criamos a "mãe" e as ocorrências dos próximos 12 meses
     const { data: parentData, error: parentError } = await supabase.from('financial_transactions').insert({
       ...baseTransaction,
       date: input.date,

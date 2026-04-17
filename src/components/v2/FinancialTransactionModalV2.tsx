@@ -103,6 +103,9 @@ const FinancialTransactionModalV2 = ({
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [scopeType, setScopeType] = useState<'edit' | 'delete'>('edit');
   const [tempFormData, setTempFormData] = useState<any>(null);
+  const [periodicidade, setPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
+  const [startInstallment, setStartInstallment] = useState(1);
+  const [isTotalValue, setIsTotalValue] = useState(false);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -270,6 +273,9 @@ const FinancialTransactionModalV2 = ({
         account_id: accountId || undefined,
         modalidade,
         total_installments: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
+        periodicidade: modalidade === 'parcelada' ? periodicidade : undefined,
+        start_installment: modalidade === 'parcelada' ? startInstallment : undefined,
+        is_total_value: modalidade === 'parcelada' ? isTotalValue : undefined,
         due_day: modalidade === 'recorrente' ? dueDay : undefined,
         auto_confirm: autoConfirm,
       };
@@ -400,17 +406,64 @@ const FinancialTransactionModalV2 = ({
               </div>
 
               {modalidade === 'parcelada' && (
-                <div className="pt-4 border-t border-slate-200/60 animate-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1.5 flex flex-col items-center">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Número de Parcelas</label>
-                    <input 
-                      type="number"
-                      min="2"
-                      value={installmentTotal}
-                      onChange={(e) => setInstallmentTotal(e.target.value)}
-                      placeholder="Ex: 12"
-                      className="w-full max-w-[200px] px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/20 text-center shadow-sm"
-                    />
+                <div className="pt-4 border-t border-slate-200/60 animate-in slide-in-from-top-2 duration-300 space-y-6">
+                  {/* Periodicidade */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block w-full">Periodicidade</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(['diaria', 'semanal', 'mensal', 'anual'] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPeriodicidade(p)}
+                          className={`py-2 rounded-lg text-[10px] font-bold transition-all border ${
+                            periodicidade === p 
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 flex flex-col items-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Total de Parcelas</label>
+                      <input 
+                        type="number"
+                        min="2"
+                        value={installmentTotal}
+                        onChange={(e) => setInstallmentTotal(e.target.value)}
+                        placeholder="Ex: 12"
+                        className="w-full px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/20 text-center shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5 flex flex-col items-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Parcela Inicial</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        max={parseInt(installmentTotal) || 1}
+                        value={startInstallment}
+                        onChange={(e) => setStartInstallment(parseInt(e.target.value) || 1)}
+                        className="w-full px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/20 text-center shadow-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle Valor Total vs Unitário */}
+                  <div className="flex items-center justify-center gap-4 bg-white/50 p-3 rounded-2xl border border-slate-100">
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Valor Unitário</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsTotalValue(!isTotalValue)}
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-6' : 'translate-x-0'}`} />
+                    </button>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Valor Total</span>
                   </div>
                 </div>
               )}
