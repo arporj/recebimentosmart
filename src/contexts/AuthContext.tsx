@@ -79,7 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setLoading(true);
+      // Only show full-screen loading if we don't have basic profile data yet
+      if (!plano) {
+        setLoading(true);
+      }
       try {
         if (!originalUser) {
           const lastUpdate = localStorage.getItem('lastSeenUpdate');
