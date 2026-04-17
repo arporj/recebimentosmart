@@ -498,7 +498,9 @@ const FinancialTransactionsV2 = () => {
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen relative">
       <div className="max-w-[1700px] mx-auto">
         <div className="flex flex-col lg:flex-row gap-6">
-          <aside className="hidden lg:block w-[360px] flex-shrink-0"><SidebarContent /></aside>
+          <aside className="hidden lg:block w-[360px] flex-shrink-0 sticky top-6 self-start h-[calc(100vh-3rem)] overflow-y-auto scrollbar-hide">
+            <SidebarContent />
+          </aside>
 
           <div className="lg:hidden space-y-4 mb-4">
             <div className="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm" onClick={() => setIsSidebarOpen(true)}>
@@ -663,6 +665,24 @@ const FinancialTransactionsV2 = () => {
           modalidade={(itemToDelete as any).modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
         />
       )}
+
+      {/* Botão Flutuante (FAB) para dispositivos móveis */}
+      <button 
+        onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-slate-900 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all lg:hidden"
+        title="Novo Lançamento"
+      >
+        <Plus size={28} />
+      </button>
+
+      {/* Botão Flutuante (FAB) para Desktop */}
+      <button 
+        onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+        className="fixed bottom-8 right-8 z-50 hidden lg:flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all font-black shadow-indigo-500/20"
+      >
+        <Plus size={20} />
+        <span>Novo Lançamento</span>
+      </button>
     </div>
   );
 };
