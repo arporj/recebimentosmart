@@ -9,19 +9,19 @@ export interface TransactionInput {
   category_id?: string;
   account_id?: string;
   modalidade: 'unica' | 'parcelada' | 'recorrente';
-  total_installments?: number;
-  periodicidade?: 'diaria' | 'semanal' | 'mensal' | 'anual';
+  installment_total?: number;
+  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   start_installment?: number;
   is_total_value?: boolean;
   due_day?: number;
   recurrence_interval?: number;
 }
 
-const addPeriod = (date: Date, amount: number, periodicidade: string) => {
-  switch (periodicidade) {
-    case 'diaria': return addDays(date, amount);
-    case 'semanal': return addWeeks(date, amount);
-    case 'anual': return addYears(date, amount);
+const addPeriod = (date: Date, amount: number, period: string) => {
+  switch (period) {
+    case 'daily': return addDays(date, amount);
+    case 'weekly': return addWeeks(date, amount);
+    case 'yearly': return addYears(date, amount);
     default: return addMonths(date, amount);
   }
 };
@@ -35,13 +35,13 @@ export async function criarTransacao(input: TransactionInput) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Usuário não autenticado');
 
-  const totalInstallments = input.total_installments || 1;
+  const installmentTotal = input.installment_total || 1;
   const startInstallment = input.start_installment || 1;
-  const periodicidade = input.periodicidade || 'mensal';
+  const recurrencePeriod = input.recurrence_period || 'monthly';
   
   // Ajustar o valor se for o valor total
   const finalAmount = input.is_total_value 
-    ? Number((input.amount / totalInstallments).toFixed(2))
+    ? Number((input.amount / installmentTotal).toFixed(2))
     : input.amount;
 
   const baseTransaction = {
@@ -67,16 +67,16 @@ export async function criarTransacao(input: TransactionInput) {
     const startDate = parseLocalDate(input.date);
     const parcels = [];
 
-    for (let i = startInstallment; i <= totalInstallments; i++) {
+    for (let i = startInstallment; i <= installmentTotal; i++) {
         const indexOffset = i - startInstallment;
-        const dueDate = addPeriod(startDate, indexOffset, periodicidade);
+        const dueDate = addPeriod(startDate, indexOffset, recurrencePeriod);
         
         parcels.push({
           ...baseTransaction,
-          description: `${input.description} (${i}/${totalInstallments})`,
+          description: `${input.description} (${i}/${installmentTotal})`,
           date: format(dueDate, 'yyyy-MM-dd'),
-          installment_number: i,
-          total_installments: totalInstallments,
+          installment_current: i,
+          installment_total: installmentTotal,
           modalidade: 'parcelada'
         });
     }
@@ -100,7 +100,7 @@ export async function criarTransacao(input: TransactionInput) {
     const { data: parentData, error: parentError } = await supabase.from('financial_transactions').insert({
       ...baseTransaction,
       date: input.date,
-      recurrence_period: periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly',
+      recurrence_period: recurrencePeriod,
       recurrence_interval: recurrenceInterval,
       recurrence_enabled: true,
     }).select().single();
@@ -112,12 +112,12 @@ export async function criarTransacao(input: TransactionInput) {
 
     // Gerar 12 ocorrências iniciais respeitando o intervalo
     for (let i = 1; i <= 12; i++) {
-      const occurrenceDate = addPeriod(startDate, i * recurrenceInterval, periodicidade);
+      const occurrenceDate = addPeriod(startDate, i * recurrenceInterval, recurrencePeriod);
       occurrences.push({
         ...baseTransaction,
         parent_id: parentData.id,
         date: format(occurrenceDate, 'yyyy-MM-dd'),
-        recurrence_period: periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly',
+        recurrence_period: recurrencePeriod,
         recurrence_interval: recurrenceInterval,
       });
     }

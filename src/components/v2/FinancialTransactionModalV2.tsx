@@ -274,6 +274,8 @@ const FinancialTransactionModalV2 = ({
     try {
       setLoading(true);
 
+      const mappedRecurrencePeriod = periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly';
+
       const payload = {
         description,
         amount: parsedAmount,
@@ -282,8 +284,8 @@ const FinancialTransactionModalV2 = ({
         category_id: categoryId || undefined,
         account_id: accountId || undefined,
         modalidade,
-        total_installments: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
-        periodicidade: (modalidade === 'parcelada' || modalidade === 'recorrente') ? periodicidade : undefined,
+        installment_total: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
+        recurrence_period: (modalidade === 'parcelada' || modalidade === 'recorrente') ? mappedRecurrencePeriod : undefined,
         start_installment: modalidade === 'parcelada' ? startInstallment : undefined,
         is_total_value: modalidade === 'parcelada' ? isTotalValue : undefined,
         due_day: modalidade === 'recorrente' ? dueDay : undefined,

@@ -1,5 +1,4 @@
 import { supabase } from '../supabase';
-import { format } from 'date-fns';
 
 export type EditScope = 'this' | 'following' | 'all';
 
@@ -10,6 +9,14 @@ export interface TransactionUpdate {
   account_id?: string;
   date?: string;
   status?: string;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente';
+  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence_interval?: number;
+  due_day?: number;
+  installment_total?: number;
+  installment_current?: number;
+  parent_id?: string;
+  is_customized?: boolean;
 }
 
 export async function editarTransacao(
