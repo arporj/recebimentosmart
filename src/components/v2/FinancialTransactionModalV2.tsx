@@ -6,8 +6,7 @@ import {
   CheckSquare, 
   Square, 
   ArrowRight,
-  ChevronDown, 
-  AlertCircle
+  ChevronDown
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +14,9 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { ClientFormV2 } from './ClientFormV2';
 import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
+import { criarTransacao as criarTransacaoFinanceira } from '../../lib/financeiro/criarTransacao';
+import { editarTransacao as editarTransacaoFinanceira } from '../../lib/financeiro/editarTransacao';
+import { ModalOpcaoRecorrente } from '../financeiro/ModalOpcaoRecorrente';
 
 interface Tag {
   id: string;
@@ -85,9 +87,6 @@ const FinancialTransactionModalV2 = ({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [description, setDescription] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [frequency, setFrequency] = useState('monthly');
-  const [recurrenceInterval, setRecurrenceInterval] = useState('1');
   const [clientId, setClientId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -97,7 +96,13 @@ const FinancialTransactionModalV2 = ({
   const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [cardHolderName, setCardHolderName] = useState('');
   const [installmentTotal, setInstallmentTotal] = useState('1');
-  const [installmentCurrent, setInstallmentCurrent] = useState('1');
+  
+  // Novos campos para Módulo Financeiro Avançado
+  const [modalidade, setModalidade] = useState<'unica' | 'parcelada' | 'recorrente'>('unica');
+  const [dueDay, setDueDay] = useState(new Date().getDate());
+  const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
+  const [scopeType, setScopeType] = useState<'edit' | 'delete'>('edit');
+  const [tempFormData, setTempFormData] = useState<any>(null);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -136,7 +141,6 @@ const FinancialTransactionModalV2 = ({
       setAccountId(transaction.account_id || '');
       setDestinationAccountId(transaction.destination_account_id || '');
       setCategoryId(transaction.category_id || '');
-      setRecurrenceInterval(String(transaction.recurrence_interval || 1));
       setAutoConfirm(transaction.auto_confirm || false);
       
       // Formatar o valor para exibição
@@ -158,11 +162,6 @@ const FinancialTransactionModalV2 = ({
       setInvoiceMonth(format(new Date(), 'yyyy-MM'));
       setCardHolderName('');
       setInstallmentTotal('1');
-      setInstallmentCurrent('1');
-      setDescription('');
-      setIsRecurring(false);
-      setFrequency('monthly');
-      setRecurrenceInterval('1');
       setAutoConfirm(false);
       setClientId('');
       setAccountId('');
@@ -258,75 +257,34 @@ const FinancialTransactionModalV2 = ({
     try {
       setLoading(true);
 
-      const transactionData: any = {
-        user_id: user.id,
-        type,
-        amount: parsedAmount,
-        date,
+      const payload = {
         description,
-        status: isEditing ? transaction!.status : 'pending',
-        client_id: clientId || null,
-        account_id: accountId || null,
-        category_id: categoryId || null,
-        destination_account_id: type === 'transfer' ? destinationAccountId : null,
-        recurrence_enabled: isRecurring,
-        recurrence_period: isRecurring ? frequency : null,
-        recurrence_interval: isRecurring ? parseInt(recurrenceInterval) || 1 : 1,
+        amount: parsedAmount,
+        type,
+        date,
+        category_id: categoryId || undefined,
+        account_id: accountId || undefined,
+        modalidade,
+        total_installments: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
+        due_day: modalidade === 'recorrente' ? dueDay : undefined,
         auto_confirm: autoConfirm,
       };
 
-      if (isConfirming) {
-        transactionData.status = 'paid';
-        transactionData.paid_amount = parsedAmount;
-        transactionData.paid_date = date;
-      }
-
-      // Add credit card / parcelled fields only if applicable
-      if (isCreditCard) {
-        transactionData.invoice_month = invoiceMonth || null;
-        transactionData.card_holder_name = cardHolderName || null;
-      }
-
-      if (isRecurring && frequency === 'parcelada') {
-        transactionData.installment_current = parseInt(installmentCurrent) || 1;
-        transactionData.installment_total = parseInt(installmentTotal) || 1;
-      }
-
-      let savedTransaction;
-
       if (isEditing) {
-        const { data, error } = await supabase
-          .from('financial_transactions')
-          .update(transactionData)
-          .eq('id', transaction!.id)
-          .select()
-          .single();
-        if (error) throw error;
-        savedTransaction = data;
+        if (modalidade !== 'unica' && !isScopeModalOpen) {
+          setTempFormData(payload);
+          setScopeType('edit');
+          setIsScopeModalOpen(true);
+          setLoading(false);
+          return;
+        }
 
-        await supabase
-          .from('transaction_tags')
-          .delete()
-          .eq('transaction_id', transaction!.id);
+        const scope = tempFormData?.scope || 'this';
+        const { error } = await editarTransacaoFinanceira(transaction!.id, payload as any, scope);
+        if (error) throw error;
       } else {
-        const { data, error } = await supabase
-          .from('financial_transactions')
-          .insert(transactionData)
-          .select()
-          .single();
+        const { error } = await criarTransacaoFinanceira(payload as any);
         if (error) throw error;
-        savedTransaction = data;
-      }
-
-      if (selectedTags.length > 0 && savedTransaction) {
-        const tagRelations = selectedTags.map(tagId => ({
-          transaction_id: savedTransaction.id,
-          tag_id: tagId
-        }));
-        const { error: tagError } = await supabase
-          .from('transaction_tags')
-          .insert(tagRelations);
-        if (tagError) throw tagError;
       }
 
       toast.success(isEditing ? 'Lançamento atualizado!' : 'Lançamento criado!');
@@ -414,22 +372,24 @@ const FinancialTransactionModalV2 = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
               {/* Date Input */}
-              <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
-                <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
-                </div>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
-                    <CalendarIcon size={18} />
+              {!(modalidade === 'recorrente' && !isEditing) && (
+                <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
                   </div>
-                  <input 
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
-                  />
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                      <CalendarIcon size={18} />
+                    </div>
+                    <input 
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Description */}
               <div className={`space-y-2 ${isEditing ? 'md:col-span-2' : ''}`}>
@@ -648,86 +608,61 @@ const FinancialTransactionModalV2 = ({
               </div>
             </div>
 
-            {/* Recurrence */}
+            {/* Modalidade de Lançamento */}
             <div className="p-6 bg-slate-50 rounded-3xl space-y-6">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setIsRecurring(!isRecurring)}
-                    className={`p-1 rounded-lg transition-all ${isRecurring ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20' : 'bg-white text-slate-300 border border-slate-200'}`}
-                  >
-                    {isRecurring ? <CheckSquare size={20} /> : <Square size={20} />}
-                  </button>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">Transação Recorrente</h3>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Gerar cobranças automáticas</p>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Modalidade do Lançamento</h3>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Única, Parcelada ou Recorrente</p>
                 </div>
-                <AlertCircle size={20} className="text-teal-600 opacity-40" />
               </div>
 
-              {isRecurring && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Qual a recorrência?</label>
-                    <div className="relative group">
-                      <select 
-                        value={frequency}
-                        onChange={(e) => setFrequency(e.target.value)}
-                        className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
-                        style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                      >
-                        <option value="daily">Única</option>
-                        <option value="parcelada">Parcelada</option>
-                        <option value="monthly">Fixa (Mensal)</option>
-                        <option value="yearly">Fixa (Anual)</option>
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                        <ChevronDown size={16} />
-                      </div>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-3 gap-3">
+                {(['unica', 'parcelada', 'recorrente'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setModalidade(m)}
+                    className={`py-3 rounded-xl text-xs font-bold transition-all border ${
+                      modalidade === m 
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {m === 'unica' ? 'Única' : m === 'parcelada' ? 'Parcelada' : 'Recorrente'}
+                  </button>
+                ))}
+              </div>
 
-                  {frequency === 'parcelada' ? (
-                    <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-right-4 duration-300">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Parcelas Totais</label>
-                        <input 
-                          type="number"
-                          min="1"
-                          value={installmentTotal}
-                          onChange={(e) => setInstallmentTotal(e.target.value)}
-                          placeholder="Ex: 12"
-                          className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Parcela Atual</label>
-                        <input 
-                          type="number"
-                          min="1"
-                          max={installmentTotal}
-                          value={installmentCurrent}
-                          onChange={(e) => setInstallmentCurrent(e.target.value)}
-                          placeholder="Ex: 1"
-                          className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Intervalo</label>
-                      <input 
-                        type="number"
-                        min="1"
-                        value={recurrenceInterval}
-                        onChange={(e) => setRecurrenceInterval(e.target.value)}
-                        placeholder="Ex: 1"
-                        className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                      />
-                    </div>
-                  )}
+              {modalidade === 'parcelada' && (
+                <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Número de Parcelas</label>
+                    <input 
+                      type="number"
+                      min="2"
+                      value={installmentTotal}
+                      onChange={(e) => setInstallmentTotal(e.target.value)}
+                      placeholder="Ex: 12"
+                      className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {modalidade === 'recorrente' && (
+                <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Dia do Vencimento (Mensal)</label>
+                    <input 
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={dueDay}
+                      onChange={(e) => setDueDay(parseInt(e.target.value))}
+                      className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -777,6 +712,22 @@ const FinancialTransactionModalV2 = ({
           </button>
         </footer>
       </div>
+
+      <ModalOpcaoRecorrente
+        isOpen={isScopeModalOpen}
+        onClose={() => setIsScopeModalOpen(false)}
+        onSelect={(scope) => {
+          setIsScopeModalOpen(false);
+          setTempFormData({ ...tempFormData, scope });
+          // Re-disparar o submit com o escopo definido
+          setTimeout(() => {
+            const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+            handleSubmit(fakeEvent);
+          }, 0);
+        }}
+        type={scopeType}
+        modalidade={modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
+      />
 
       {isClientModalOpen && (
         <ClientFormV2 
