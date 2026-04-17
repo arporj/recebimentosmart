@@ -154,6 +154,10 @@ const FinancialTransactionModalV2 = ({
       if (transaction.tags) {
         setSelectedTags(transaction.tags.map(t => t.tag.id));
       }
+
+      // Novos campos
+      setModalidade((transaction as any).modalidade || 'unica');
+      setDueDay((transaction as any).due_day || new Date().getDate());
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
@@ -658,8 +662,11 @@ const FinancialTransactionModalV2 = ({
                       type="number"
                       min="1"
                       max="31"
-                      value={dueDay}
-                      onChange={(e) => setDueDay(parseInt(e.target.value))}
+                      value={isNaN(dueDay) ? '' : dueDay}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setDueDay(isNaN(val) ? 1 : val);
+                      }}
                       className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
                     />
                   </div>

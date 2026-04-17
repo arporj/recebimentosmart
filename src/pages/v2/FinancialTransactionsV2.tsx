@@ -282,23 +282,25 @@ const FinancialTransactionsV2 = () => {
       const previousTotal = accTransactions
         .filter(t => isBefore(parseISO(t.date), monthStart) && t.status === 'paid')
         .reduce((sum, t) => {
-          if (t.type === 'income') return sum + t.amount;
-          if (t.type === 'expense') return sum - t.amount;
+          const valValue = Number(t.amount) || 0;
+          if (t.type === 'income') return sum + valValue;
+          if (t.type === 'expense') return sum - valValue;
           if (t.type === 'transfer') {
-             if (t.destination_account_id === acc.id) return sum + t.amount;
-             if (t.account_id === acc.id) return sum - t.amount;
+             if (t.destination_account_id === acc.id) return sum + valValue;
+             if (t.account_id === acc.id) return sum - valValue;
           }
           return sum;
-        }, acc.initial_balance || 0);
+        }, Number(acc.initial_balance) || 0);
 
       const monthConfirmed = accTransactions
         .filter(t => isSameMonth(parseISO(t.date), currentMonth) && t.status === 'paid')
         .reduce((sum, t) => {
-          if (t.type === 'income') return sum + t.amount;
-          if (t.type === 'expense') return sum - t.amount;
+          const valValue = Number(t.amount) || 0;
+          if (t.type === 'income') return sum + valValue;
+          if (t.type === 'expense') return sum - valValue;
           if (t.type === 'transfer') {
-             if (t.destination_account_id === acc.id) return sum + t.amount;
-             if (t.account_id === acc.id) return sum - t.amount;
+             if (t.destination_account_id === acc.id) return sum + valValue;
+             if (t.account_id === acc.id) return sum - valValue;
           }
           return sum;
         }, 0);
@@ -306,11 +308,12 @@ const FinancialTransactionsV2 = () => {
       const monthProjected = accTransactions
         .filter(t => isSameMonth(parseISO(t.date), currentMonth))
         .reduce((sum, t) => {
-          if (t.type === 'income') return sum + t.amount;
-          if (t.type === 'expense') return sum - t.amount;
+          const valValue = Number(t.amount) || 0;
+          if (t.type === 'income') return sum + valValue;
+          if (t.type === 'expense') return sum - valValue;
           if (t.type === 'transfer') {
-             if (t.destination_account_id === acc.id) return sum + t.amount;
-             if (t.account_id === acc.id) return sum - t.amount;
+             if (t.destination_account_id === acc.id) return sum + valValue;
+             if (t.account_id === acc.id) return sum - valValue;
           }
           return sum;
         }, 0);
@@ -582,7 +585,7 @@ const FinancialTransactionsV2 = () => {
                             {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                           </p>
                           <p className="text-[10px] font-bold text-slate-300">
-                             {(t as any).runningBalance ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
+                             {(t as any).runningBalance && !isNaN((t as any).runningBalance) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
                           </p>
                         </div>
 
