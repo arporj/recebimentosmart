@@ -495,13 +495,15 @@ const FinancialTransactionsV2 = () => {
   );
 
   return (
-    <div className="p-4 lg:p-6 bg-slate-50 min-h-screen relative">
-      <div className="max-w-[1700px] mx-auto">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <aside className="hidden lg:block w-[360px] flex-shrink-0 sticky top-6 self-start h-[calc(100vh-3rem)] overflow-y-auto scrollbar-hide">
+    <div className="bg-slate-50 h-screen overflow-hidden flex flex-col">
+      <div className="flex-1 max-w-[1700px] mx-auto w-full p-4 lg:p-6 overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-6 h-full">
+          {/* Sidebar - Scroll Independente */}
+          <aside className="hidden lg:block w-[360px] flex-shrink-0 h-full overflow-y-auto scrollbar-hide pb-10">
             <SidebarContent />
           </aside>
 
+          {/* ... mobile sidebar logic remains the same ... */}
           <div className="lg:hidden space-y-4 mb-4">
             <div className="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm" onClick={() => setIsSidebarOpen(true)}>
               <div className="flex items-center gap-3">
@@ -527,8 +529,10 @@ const FinancialTransactionsV2 = () => {
             </div>
           )}
 
-          <main className="flex-1 space-y-6 min-w-0">
-            <div className="flex flex-col xl:flex-row gap-4 justify-between">
+          {/* Main Content - Quadro com scroll independente */}
+          <main className="flex-1 h-full flex flex-col space-y-6 min-w-0 overflow-hidden pb-10">
+            {/* Header da Lista (Fixo) */}
+            <div className="flex flex-col xl:flex-row gap-4 justify-between shrink-0">
               <div className="flex-1 relative group">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input 
@@ -541,8 +545,9 @@ const FinancialTransactionsV2 = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
-              <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex items-center justify-between">
+            {/* Listagem (Rolável) */}
+            <div className="flex-1 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+              <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex items-center justify-between shrink-0">
                 <h2 className="text-xl font-black">Transações</h2>
                 <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                   {['all', 'income', 'expense', 'transfer'].map(f => (
@@ -553,7 +558,7 @@ const FinancialTransactionsV2 = () => {
                 </div>
               </div>
 
-              <div className="divide-y divide-slate-50">
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
                 {displayInstances.length === 0 ? (
                   <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
                 ) : (
@@ -573,7 +578,6 @@ const FinancialTransactionsV2 = () => {
                             <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : status === 'overdue' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
                             <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
                             
-                            {/* Ícones de Status Intermediários */}
                             <div className="flex items-center gap-1.5 px-2">
                               {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500/60" />}
                               {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
