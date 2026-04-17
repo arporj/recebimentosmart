@@ -373,6 +373,68 @@ const FinancialTransactionModalV2 = ({
               </div>
             </div>
 
+            {/* Modalidade de Lançamento */}
+            <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center justify-between">
+                <div className="w-full text-center">
+                  <h3 className="text-sm font-bold text-slate-900">Modalidade do Lançamento</h3>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Única, Parcelada ou Recorrente</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {(['unica', 'parcelada', 'recorrente'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setModalidade(m)}
+                    className={`py-3 rounded-xl text-xs font-bold transition-all border ${
+                      modalidade === m 
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-105' 
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {m === 'unica' ? 'Única' : m === 'parcelada' ? 'Parcelada' : 'Recorrente'}
+                  </button>
+                ))}
+              </div>
+
+              {modalidade === 'parcelada' && (
+                <div className="pt-4 border-t border-slate-200/60 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1.5 flex flex-col items-center">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Número de Parcelas</label>
+                    <input 
+                      type="number"
+                      min="2"
+                      value={installmentTotal}
+                      onChange={(e) => setInstallmentTotal(e.target.value)}
+                      placeholder="Ex: 12"
+                      className="w-full max-w-[200px] px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/20 text-center shadow-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {modalidade === 'recorrente' && (
+                <div className="pt-4 border-t border-slate-200/60 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1.5 flex flex-col items-center">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Dia do Vencimento (Mensal)</label>
+                    <input 
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={isNaN(dueDay) ? '' : dueDay}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setDueDay(isNaN(val) ? 1 : val);
+                      }}
+                      className="w-full max-w-[200px] px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/20 text-center shadow-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
               {/* Date Input */}
@@ -610,68 +672,6 @@ const FinancialTransactionModalV2 = ({
                   {tags.length === 0 && <span className="text-xs text-slate-400 italic">Nenhuma tag cadastrada.</span>}
                 </div>
               </div>
-            </div>
-
-            {/* Modalidade de Lançamento */}
-            <div className="p-6 bg-slate-50 rounded-3xl space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Modalidade do Lançamento</h3>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Única, Parcelada ou Recorrente</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {(['unica', 'parcelada', 'recorrente'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setModalidade(m)}
-                    className={`py-3 rounded-xl text-xs font-bold transition-all border ${
-                      modalidade === m 
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    {m === 'unica' ? 'Única' : m === 'parcelada' ? 'Parcelada' : 'Recorrente'}
-                  </button>
-                ))}
-              </div>
-
-              {modalidade === 'parcelada' && (
-                <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Número de Parcelas</label>
-                    <input 
-                      type="number"
-                      min="2"
-                      value={installmentTotal}
-                      onChange={(e) => setInstallmentTotal(e.target.value)}
-                      placeholder="Ex: 12"
-                      className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {modalidade === 'recorrente' && (
-                <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Dia do Vencimento (Mensal)</label>
-                    <input 
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={isNaN(dueDay) ? '' : dueDay}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        setDueDay(isNaN(val) ? 1 : val);
-                      }}
-                      className="w-full px-4 py-3 bg-white rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 shadow-sm"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Auto Confirm Toggle */}
