@@ -417,8 +417,8 @@ const FinancialTransactionsV2 = () => {
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   const SidebarContent = () => (
-    <div className="space-y-6">
-      <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
+    <div className="space-y-4 h-full pb-6">
+      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
         <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all active:scale-90">
           <ChevronLeft size={22} className="text-slate-600" />
         </button>
@@ -432,13 +432,13 @@ const FinancialTransactionsV2 = () => {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-xs font-extrabold uppercase tracking-widest text-slate-400">
+        <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-xs font-extrabold uppercase tracking-widest text-slate-400">
           <span>Contas</span>
           <span>Saldo</span>
         </div>
-        <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto">
+        <div className="divide-y divide-slate-50 max-h-[300px] overflow-y-auto">
           {accountsData.map((acc) => (
-            <div key={acc.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+            <div key={acc.id} className="p-3 flex items-center gap-4 hover:bg-slate-50 transition-colors">
               <input 
                 type="checkbox"
                 checked={selectedAccountIds.has(acc.id)}
@@ -460,7 +460,7 @@ const FinancialTransactionsV2 = () => {
             </div>
           ))}
         </div>
-        <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
+        <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
           <div className="flex flex-col"><span className="text-[10px] font-black opacity-40 uppercase">Total</span></div>
           <div className="text-right">
             <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
@@ -469,8 +469,8 @@ const FinancialTransactionsV2 = () => {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-7 rounded-[2.5rem] text-white space-y-8 relative overflow-hidden group">
-        <div className="space-y-6 relative z-10">
+      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-5 rounded-[2.5rem] text-white space-y-6 relative overflow-hidden group">
+        <div className="space-y-4 relative z-10">
           <div className="flex items-center justify-between opacity-90 border-b border-white/10 pb-3">
             <span className="text-[10px] font-black uppercase tracking-[0.25em]">Resumo Mensal</span>
             <Filter size={16} className="text-white/50" />
