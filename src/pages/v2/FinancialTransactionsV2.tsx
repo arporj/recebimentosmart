@@ -498,8 +498,8 @@ const FinancialTransactionsV2 = () => {
     <div className="bg-slate-50 h-screen overflow-hidden flex flex-col">
       <div className="flex-1 max-w-[1700px] mx-auto w-full p-4 lg:p-6 overflow-hidden">
         <div className="flex flex-col lg:flex-row gap-6 h-full">
-          {/* Sidebar - Scroll Independente */}
-          <aside className="hidden lg:block w-[360px] flex-shrink-0 h-full overflow-y-auto scrollbar-hide pb-10">
+          {/* Sidebar - Fixa */}
+          <aside className="hidden lg:block w-[360px] flex-shrink-0 h-full">
             <SidebarContent />
           </aside>
 
