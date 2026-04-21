@@ -552,9 +552,11 @@ const FinancialTransactionsV2 = () => {
                   <h2 className="text-xl font-black">Transações</h2>
                   <button 
                     onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:scale-105 transition-all"
+                    className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
                   >
-                    <Plus size={14} /> NOVO
+                    <Plus size={14} /> 
+                    <span>Criar Lançamento</span>
+                    <ArrowRight size={14} className="ml-1 opacity-70" />
                   </button>
                 </div>
                 <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
