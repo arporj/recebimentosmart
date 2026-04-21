@@ -558,7 +558,7 @@ const FinancialTransactionsV2 = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-50 pb-24">
                 {displayInstances.length === 0 ? (
                   <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
                 ) : (
