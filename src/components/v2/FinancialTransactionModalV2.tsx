@@ -6,7 +6,9 @@ import {
   CheckSquare, 
   Square, 
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  Plus,
+  Tag as TagIcon
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -119,6 +121,8 @@ const FinancialTransactionModalV2 = ({
   
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
@@ -721,39 +725,93 @@ const FinancialTransactionModalV2 = ({
                 </div>
               </div>
 
-              {/* Tags */}
+              {/* Tags - Combobox */}
               <div className="space-y-2">
-                <div className="h-5 flex justify-between items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tags</label>
-                  <button 
-                    type="button" 
-                    onClick={() => setIsTagModalOpen(true)}
-                    className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:underline"
-                  >
-                    + Nova Tag
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2 min-h-[52px] px-4 py-3 bg-slate-50 rounded-2xl">
-                  {tags.map(tag => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTags(prev => 
-                          prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                        );
-                      }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                        selectedTags.includes(tag.id) 
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color || undefined }} />
-                      {tag.name}
-                    </button>
-                  ))}
-                  {tags.length === 0 && <span className="text-xs text-slate-400 italic">Nenhuma tag cadastrada.</span>}
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1">Tags</label>
+                {/* Chips das tags selecionadas */}
+                {selectedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-1">
+                    {selectedTags.map(tagId => {
+                      const tag = tags.find(t => t.id === tagId);
+                      if (!tag) return null;
+                      return (
+                        <span key={tag.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-900 text-white border border-slate-900">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tag.color || '#64748b' }} />
+                          {tag.name}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTags(prev => prev.filter(id => id !== tagId))}
+                            className="ml-0.5 hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* Campo de busca/criação */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tagSearch}
+                    onChange={e => { setTagSearch(e.target.value); setIsTagDropdownOpen(true); }}
+                    onFocus={() => setIsTagDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setIsTagDropdownOpen(false), 200)}
+                    placeholder="Buscar ou criar tag..."
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm pr-10"
+                  />
+                  <TagIcon size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  {/* Dropdown */}
+                  {isTagDropdownOpen && (
+                    <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto">
+                      {tags
+                        .filter(t => !selectedTags.includes(t.id))
+                        .filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+                        .map(tag => (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTags(prev => [...prev, tag.id]);
+                              setTagSearch('');
+                              setIsTagDropdownOpen(false);
+                            }}
+                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left hover:bg-slate-50 transition-colors text-sm"
+                          >
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tag.color || '#64748b' }} />
+                            <span className="font-medium text-slate-700">{tag.name}</span>
+                          </button>
+                        ))
+                      }
+                      {tagSearch.trim() && !tags.some(t => t.name.toLowerCase() === tagSearch.toLowerCase()) && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!user) return;
+                            const { data, error } = await supabase
+                              .from('financial_tags')
+                              .insert({ user_id: user.id, name: tagSearch.trim(), color: '#14b8a6' })
+                              .select()
+                              .single();
+                            if (error) { toast.error('Erro ao criar tag: ' + error.message); return; }
+                            setTags(prev => [...prev, data]);
+                            setSelectedTags(prev => [...prev, data.id]);
+                            setTagSearch('');
+                            setIsTagDropdownOpen(false);
+                            toast.success(`Tag "${data.name}" criada!`);
+                          }}
+                          className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left hover:bg-teal-50 transition-colors text-sm border-t border-slate-100"
+                        >
+                          <Plus size={14} className="text-teal-600" />
+                          <span className="font-bold text-teal-600">Criar "{tagSearch.trim()}"</span>
+                        </button>
+                      )}
+                      {tags.filter(t => !selectedTags.includes(t.id)).filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase())).length === 0 && !tagSearch.trim() && (
+                        <div className="px-4 py-3 text-xs text-slate-400 italic">Nenhuma tag disponível. Digite para criar.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

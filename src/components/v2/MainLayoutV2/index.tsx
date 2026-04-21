@@ -6,7 +6,7 @@ import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
-    Wallet, FolderOpen
+    Wallet, FolderOpen, Tag
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -28,6 +28,7 @@ const sidebarSections = [
             { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos' },
             { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas' },
             { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias' },
+            { label: 'Tags', icon: Tag, href: '/v2/financeiro/tags' },
             { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
         ],
     },
