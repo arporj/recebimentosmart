@@ -497,7 +497,7 @@ const FinancialTransactionsV2 = () => {
   return (
     <div className="bg-slate-50 h-screen overflow-hidden flex flex-col">
       <div className="flex-1 max-w-[1700px] mx-auto w-full p-4 lg:p-6 overflow-hidden">
-        <div className="flex flex-col lg:flex-row gap-6 h-full">
+        <div className="flex flex-col lg:flex-row h-screen bg-[#f8fafc] overflow-hidden p-2 lg:p-6 gap-6">
           {/* Sidebar - Fixa */}
           <aside className="hidden lg:block w-[360px] flex-shrink-0 h-full">
             <SidebarContent />
@@ -530,14 +530,14 @@ const FinancialTransactionsV2 = () => {
           )}
 
           {/* Main Content - Quadro com scroll independente */}
-          <main className="flex-1 h-full flex flex-col space-y-6 min-w-0 overflow-hidden pb-10">
+          <main className="flex-1 h-full flex flex-col space-y-3 lg:space-y-6 min-w-0 overflow-hidden pb-10">
             {/* Header da Lista (Fixo) */}
             <div className="flex flex-col xl:flex-row gap-4 justify-between shrink-0">
               <div className="flex-1 relative group">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input 
                   type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
+                  className="w-full pl-14 pr-6 py-3 lg:py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -546,22 +546,22 @@ const FinancialTransactionsV2 = () => {
             </div>
 
             {/* Listagem (Rolável) */}
-            <div className="flex-1 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-              <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+            <div className="flex-1 bg-white rounded-3xl lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+              <div className="px-4 py-3 lg:px-8 lg:py-5 border-b border-slate-50 bg-slate-50/20 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl font-black">Transações</h2>
                   <button 
                     onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-                    className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
+                    className="flex items-center gap-2 bg-[#0d9488] text-white px-3 py-2 lg:px-5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
                   >
-                    <Plus size={14} /> 
-                    <span>Criar Lançamento</span>
-                    <ArrowRight size={14} className="ml-1 opacity-70" />
+                    <Plus size={12} className="lg:w-[14px] lg:h-[14px]" /> 
+                    <span>Criar</span>
+                    <ArrowRight size={12} className="ml-0.5 opacity-70 lg:w-[14px] lg:h-[14px]" />
                   </button>
                 </div>
-                <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex gap-1 bg-white p-0.5 lg:p-1 rounded-xl lg:rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar">
                   {['all', 'income', 'expense', 'transfer'].map(f => (
-                    <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${filter === f ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
+                    <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg lg:rounded-xl text-[8px] lg:text-[10px] font-black transition-all shrink-0 ${filter === f ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
                       {f === 'all' ? 'TUDO' : f === 'income' ? 'ENTRADAS' : f === 'expense' ? 'SAÍDAS' : 'TRANSF.'}
                     </button>
                   ))}
@@ -578,9 +578,9 @@ const FinancialTransactionsV2 = () => {
                     const isEven = index % 2 === 0;
                     
                     return (
-                      <div key={dropdownKey} className={`group flex items-center gap-4 px-8 py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
-                        <div className={`p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                          {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <ArrowDownCircle size={20} /> : <ArrowRightLeft size={20} />}
+                      <div key={dropdownKey} className={`group flex items-center gap-3 lg:gap-4 px-4 py-2.5 lg:px-8 lg:py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
+                        <div className={`p-2 lg:p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                          {t.type === 'income' ? <Plus size={16} className="lg:w-5 lg:h-5" /> : t.type === 'expense' ? <ArrowDownCircle size={16} className="lg:w-5 lg:h-5" /> : <ArrowRightLeft size={16} className="lg:w-5 lg:h-5" />}
                         </div>
                         
                         <div className="flex-1 min-w-0">
@@ -628,7 +628,7 @@ const FinancialTransactionsV2 = () => {
                         </div>
 
                         <div className="text-right shrink-0">
-                          <p className={`font-black text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                          <p className={`font-black text-sm lg:text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                             {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                           </p>
                           <p className="text-[10px] font-bold text-slate-300">
