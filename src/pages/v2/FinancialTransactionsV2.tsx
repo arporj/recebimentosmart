@@ -514,6 +514,16 @@ const FinancialTransactionsV2 = () => {
               <Plus size={12} /> Criar
             </button>
           </div>
+          {/* Linha 2: Navegação de Mês */}
+          <div className="flex items-center justify-between bg-slate-50 rounded-xl px-1 py-1">
+            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 hover:bg-white rounded-lg transition-all active:scale-90">
+              <ChevronLeft size={18} className="text-slate-600" />
+            </button>
+            <span className="text-xs font-black text-slate-700 capitalize">{monthLabel}</span>
+            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 hover:bg-white rounded-lg transition-all active:scale-90">
+              <ChevronRight size={18} className="text-slate-600" />
+            </button>
+          </div>
           {/* Linha 2: Busca + Refresh */}
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
