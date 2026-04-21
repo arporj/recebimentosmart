@@ -547,8 +547,16 @@ const FinancialTransactionsV2 = () => {
 
             {/* Listagem (Rolável) */}
             <div className="flex-1 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-              <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex items-center justify-between shrink-0">
-                <h2 className="text-xl font-black">Transações</h2>
+              <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-xl font-black">Transações</h2>
+                  <button 
+                    onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:scale-105 transition-all"
+                  >
+                    <Plus size={14} /> NOVO
+                  </button>
+                </div>
                 <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                   {['all', 'income', 'expense', 'transfer'].map(f => (
                     <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${filter === f ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
@@ -558,7 +566,7 @@ const FinancialTransactionsV2 = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-50 pb-24">
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
                 {displayInstances.length === 0 ? (
                   <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
                 ) : (
@@ -663,24 +671,6 @@ const FinancialTransactionsV2 = () => {
           modalidade={(itemToDelete as any).modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
         />
       )}
-
-      {/* Botão Flutuante (FAB) para dispositivos móveis */}
-      <button 
-        onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-slate-900 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all lg:hidden"
-        title="Novo Lançamento"
-      >
-        <Plus size={28} />
-      </button>
-
-      {/* Botão Flutuante (FAB) para Desktop */}
-      <button 
-        onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-        className="fixed bottom-8 right-8 z-50 hidden lg:flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all font-black shadow-indigo-500/20"
-      >
-        <Plus size={20} />
-        <span>Novo Lançamento</span>
-      </button>
     </div>
   );
 };
