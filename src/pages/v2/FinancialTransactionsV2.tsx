@@ -496,167 +496,257 @@ const FinancialTransactionsV2 = () => {
 
   return (
     <div className="bg-slate-50 h-screen overflow-hidden flex flex-col">
-      <div className="flex-1 max-w-[1700px] mx-auto w-full p-4 lg:p-6 overflow-hidden">
-        <div className="flex flex-col lg:flex-row h-screen bg-[#f8fafc] overflow-hidden p-2 lg:p-6 gap-6">
-          {/* Sidebar - Fixa */}
-          <aside className="hidden lg:block w-[360px] flex-shrink-0 h-full">
-            <SidebarContent />
-          </aside>
+      {/* ===== MOBILE LAYOUT ===== */}
+      <div className="lg:hidden flex flex-col h-full overflow-hidden">
+        {/* Mobile Header: Resumo + Busca + Criar */}
+        <div className="shrink-0 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+          {/* Linha 1: Hamburger Resumo + Saldo + Botão Criar */}
+          <div className="flex items-center justify-between">
+            <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2">
+              <div className="flex flex-col gap-[3px] w-4"><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /></div>
+              <span className="text-xs font-black text-slate-800">Resumo</span>
+            </button>
+            <span className="text-sm font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</span>
+            <button
+              onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+              className="flex items-center gap-1.5 bg-[#0d9488] text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider"
+            >
+              <Plus size={12} /> Criar
+            </button>
+          </div>
+          {/* Linha 2: Busca + Refresh */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
+              />
+            </div>
+            <button onClick={fetchTransactions} disabled={loading} className={`p-2 bg-slate-50 border border-slate-200 rounded-xl ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={16} /></button>
+          </div>
+          {/* Linha 3: Filtros */}
+          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+            {['all', 'income', 'expense', 'transfer'].map(f => (
+              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all shrink-0 ${filter === f ? 'bg-slate-900 text-white shadow' : 'text-slate-400 bg-slate-50'}`}>
+                {f === 'all' ? 'TUDO' : f === 'income' ? 'ENTRADAS' : f === 'expense' ? 'SAÍDAS' : 'TRANSF.'}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* ... mobile sidebar logic remains the same ... */}
-          <div className="lg:hidden space-y-4 mb-4">
-            <div className="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm" onClick={() => setIsSidebarOpen(true)}>
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1 w-5"><div className="h-0.5 w-full bg-slate-400" /><div className="h-0.5 w-full bg-slate-400" /><div className="h-0.5 w-full bg-slate-400" /></div>
-                <span className="text-xs font-black text-slate-800">Resumo</span>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
-              </div>
+        {/* Mobile Transaction List - Layout tabular compacto */}
+        <div className="flex-1 overflow-y-auto bg-white">
+          {displayInstances.length === 0 ? (
+            <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
+          ) : (
+            displayInstances.map((t, index) => {
+              const status = getVisualStatus(t);
+              const dropdownKey = `${t.id}-${t.instanceDate}`;
+              const isEven = index % 2 === 0;
+
+              return (
+                <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}>
+                  {/* Status dot */}
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
+                  {/* Data */}
+                  <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
+                  {/* Descrição + badges */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold text-xs text-slate-800 truncate">{t.description || 'S/ Descrição'}</span>
+                      {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-400/60 shrink-0" />}
+                      {t.installment_total && t.installment_total > 1 && (
+                        <span className="text-[8px] font-black text-indigo-600 shrink-0">{t.installment_current}/{t.installment_total}</span>
+                      )}
+                    </div>
+                    {(t.account || t.category) && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {t.account && <span className="text-[8px] font-black text-slate-400 uppercase">{t.account.name}</span>}
+                        {t.category && <span className="text-[8px] font-medium text-slate-300">· {t.category.name}</span>}
+                      </div>
+                    )}
+                  </div>
+                  {/* Valor + Saldo */}
+                  <div className="text-right shrink-0">
+                    <p className={`font-black text-xs ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                      {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                    </p>
+                    {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                      <p className="text-[9px] font-bold text-slate-300">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                      </p>
+                    )}
+                  </div>
+                  {/* Menu */}
+                  <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
+                    <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-300"><MoreVertical size={16} /></button>
+                    {openDropdown === dropdownKey && (
+                      <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+                        {t.status !== 'paid' && (
+                          <button onClick={() => handleConfirmAction(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
+                        )}
+                        <button onClick={() => handleEdit(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Pencil size={12} /> Editar</button>
+                        <button onClick={() => handleClone(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Copy size={12} /> Clonar</button>
+                        <button onClick={() => handleDelete(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-rose-50 text-rose-600 border-t mt-0.5 pt-1.5 flex items-center gap-2"><Trash2 size={12} /> Excluir</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-[200] lg:hidden">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-[300px] bg-slate-50 p-6 overflow-y-auto animate-in slide-in-from-left">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black">Resumo</h2>
+              <button onClick={() => setIsSidebarOpen(false)} className="p-2"><ChevronLeft size={24} /></button>
+            </div>
+            <SidebarContent />
+          </div>
+        </div>
+      )}
+
+      {/* ===== DESKTOP LAYOUT ===== */}
+      <div className="hidden lg:flex flex-1 max-w-[1700px] mx-auto w-full p-6 overflow-hidden gap-6">
+        {/* Sidebar - Fixa */}
+        <aside className="w-[360px] flex-shrink-0 h-full">
+          <SidebarContent />
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 h-full flex flex-col space-y-6 min-w-0 overflow-hidden">
+          {/* Header da Lista (Fixo) */}
+          <div className="flex flex-col xl:flex-row gap-4 justify-between shrink-0">
+            <div className="flex-1 relative group">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={fetchTransactions} disabled={loading} className={`p-4 bg-white border border-slate-200 rounded-3xl shadow-sm ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={20} /></button>
             </div>
           </div>
 
-          {isSidebarOpen && (
-            <div className="fixed inset-0 z-[200] lg:hidden">
-              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-              <div className="absolute left-0 top-0 bottom-0 w-[300px] bg-slate-50 p-6 overflow-y-auto animate-in slide-in-from-left">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-black">Resumo</h2>
-                  <button onClick={() => setIsSidebarOpen(false)} className="p-2"><ChevronLeft size={24} /></button>
-                </div>
-                <SidebarContent />
+          {/* Listagem (Rolável) */}
+          <div className="flex-1 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+            <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex flex-row items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-black">Transações</h2>
+                <button
+                  onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+                  className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
+                >
+                  <Plus size={14} />
+                  <span>Criar Lançamento</span>
+                  <ArrowRight size={14} className="ml-1 opacity-70" />
+                </button>
               </div>
-            </div>
-          )}
-
-          {/* Main Content - Quadro com scroll independente */}
-          <main className="flex-1 h-full flex flex-col space-y-3 lg:space-y-6 min-w-0 overflow-hidden pb-10">
-            {/* Header da Lista (Fixo) */}
-            <div className="flex flex-col xl:flex-row gap-4 justify-between shrink-0">
-              <div className="flex-1 relative group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input 
-                  type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-14 pr-6 py-3 lg:py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={fetchTransactions} disabled={loading} className={`p-4 bg-white border border-slate-200 rounded-3xl shadow-sm ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={20} /></button>
-              </div>
-            </div>
-
-            {/* Listagem (Rolável) */}
-            <div className="flex-1 bg-white rounded-3xl lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-              <div className="px-4 py-3 lg:px-8 lg:py-5 border-b border-slate-50 bg-slate-50/20 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-black">Transações</h2>
-                  <button 
-                    onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
-                    className="flex items-center gap-2 bg-[#0d9488] text-white px-3 py-2 lg:px-5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
-                  >
-                    <Plus size={12} className="lg:w-[14px] lg:h-[14px]" /> 
-                    <span>Criar</span>
-                    <ArrowRight size={12} className="ml-0.5 opacity-70 lg:w-[14px] lg:h-[14px]" />
+              <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
+                {['all', 'income', 'expense', 'transfer'].map(f => (
+                  <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${filter === f ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
+                    {f === 'all' ? 'TUDO' : f === 'income' ? 'ENTRADAS' : f === 'expense' ? 'SAÍDAS' : 'TRANSF.'}
                   </button>
-                </div>
-                <div className="flex gap-1 bg-white p-0.5 lg:p-1 rounded-xl lg:rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar">
-                  {['all', 'income', 'expense', 'transfer'].map(f => (
-                    <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg lg:rounded-xl text-[8px] lg:text-[10px] font-black transition-all shrink-0 ${filter === f ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
-                      {f === 'all' ? 'TUDO' : f === 'income' ? 'ENTRADAS' : f === 'expense' ? 'SAÍDAS' : 'TRANSF.'}
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
+            </div>
 
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-                {displayInstances.length === 0 ? (
-                  <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
-                ) : (
-                  displayInstances.map((t, index) => {
-                    const status = getVisualStatus(t);
-                    const dropdownKey = `${t.id}-${t.instanceDate}`;
-                    const isEven = index % 2 === 0;
-                    
-                    return (
-                      <div key={dropdownKey} className={`group flex items-center gap-3 lg:gap-4 px-4 py-2.5 lg:px-8 lg:py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
-                        <div className={`p-2 lg:p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                          {t.type === 'income' ? <Plus size={16} className="lg:w-5 lg:h-5" /> : t.type === 'expense' ? <ArrowDownCircle size={16} className="lg:w-5 lg:h-5" /> : <ArrowRightLeft size={16} className="lg:w-5 lg:h-5" />}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : status === 'overdue' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
-                            <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
-                            
-                            <div className="flex items-center gap-1.5 px-2">
-                              {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500/60" />}
-                              {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
-                              {t.auto_confirm && <Zap size={12} className="text-amber-500/60" />}
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                            <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
-                            
-                            {t.account && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
-                                <span className="text-[9px] font-black text-slate-500 uppercase">{t.account.name}</span>
-                              </div>
-                            )}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
+              {displayInstances.length === 0 ? (
+                <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
+              ) : (
+                displayInstances.map((t, index) => {
+                  const status = getVisualStatus(t);
+                  const dropdownKey = `${t.id}-${t.instanceDate}`;
+                  const isEven = index % 2 === 0;
 
-                            {t.type === 'transfer' && t.destination_account && (
-                              <>
-                                <ArrowRight size={10} className="text-slate-300" />
-                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
-                                  <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
-                                </div>
-                              </>
-                            )}
+                  return (
+                    <div key={dropdownKey} className={`group flex items-center gap-4 px-8 py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
+                      <div className={`p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                        {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <ArrowDownCircle size={20} /> : <ArrowRightLeft size={20} />}
+                      </div>
 
-                            {t.category && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
-                                <span className="text-[9px] font-bold text-slate-400">{t.category.name}</span>
-                              </div>
-                            )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : status === 'overdue' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
+                          <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
 
-                            {t.installment_total && t.installment_total > 1 && (
-                              <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
-                                {t.installment_current}/{t.installment_total}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-1.5 px-2">
+                            {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500/60" />}
+                            {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
+                            {t.auto_confirm && <Zap size={12} className="text-amber-500/60" />}
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0">
-                          <p className={`font-black text-sm lg:text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                            {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
-                          </p>
-                          <p className="text-[10px] font-bold text-slate-300">
-                             {(t as any).runningBalance && !isNaN((t as any).runningBalance) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
-                          </p>
-                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                          <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
 
-                        <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
-                          {openDropdown === dropdownKey && (
-                            <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
-                              {t.status !== 'paid' && (
-                                <button onClick={() => handleConfirmAction(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
-                              )}
-                              <button onClick={() => handleEdit(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
-                              <button onClick={() => handleClone(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
-                              <button onClick={() => handleDelete(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
+                          {t.account && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                              <span className="text-[9px] font-black text-slate-500 uppercase">{t.account.name}</span>
                             </div>
+                          )}
+
+                          {t.type === 'transfer' && t.destination_account && (
+                            <>
+                              <ArrowRight size={10} className="text-slate-300" />
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
+                                <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                              </div>
+                            </>
+                          )}
+
+                          {t.category && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
+                              <span className="text-[9px] font-bold text-slate-400">{t.category.name}</span>
+                            </div>
+                          )}
+
+                          {t.installment_total && t.installment_total > 1 && (
+                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
+                              {t.installment_current}/{t.installment_total}
+                            </span>
                           )}
                         </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
+
+                      <div className="text-right shrink-0">
+                        <p className={`font-black text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                          {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-300">
+                           {(t as any).runningBalance && !isNaN((t as any).runningBalance) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
+                        </p>
+                      </div>
+
+                      <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
+                        <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
+                        {openDropdown === dropdownKey && (
+                          <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+                            {t.status !== 'paid' && (
+                              <button onClick={() => handleConfirmAction(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                            )}
+                            <button onClick={() => handleEdit(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
+                            <button onClick={() => handleClone(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
+                            <button onClick={() => handleDelete(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
 
       <FinancialTransactionModalV2 
