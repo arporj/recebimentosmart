@@ -27,6 +27,7 @@ const sidebarSections = [
         items: [
             { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos' },
             { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas' },
+            { label: 'Cartões', icon: CreditCard, href: '/v2/financeiro/cartoes' },
             { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias' },
             { label: 'Tags', icon: Tag, href: '/v2/financeiro/tags' },
             { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },

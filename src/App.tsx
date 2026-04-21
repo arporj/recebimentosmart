@@ -36,6 +36,7 @@ import FinancialTransactionsV2 from './pages/v2/FinancialTransactionsV2';
 import FinancialAccountsV2 from './pages/v2/FinancialAccountsV2';
 import FinancialCategoriesV2 from './pages/v2/FinancialCategoriesV2';
 import FinancialTagsV2 from './pages/v2/FinancialTagsV2';
+import CreditCardV2 from './pages/v2/CreditCardV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -110,6 +111,7 @@ function AppRoutes() {
           <Route path="/v2/financeiro/contas" element={<ProtectedRoute><MainLayoutV2><FinancialAccountsV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/financeiro/categorias" element={<ProtectedRoute><MainLayoutV2><FinancialCategoriesV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/financeiro/tags" element={<ProtectedRoute><MainLayoutV2><FinancialTagsV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/cartoes" element={<ProtectedRoute><MainLayoutV2><CreditCardV2 /></MainLayoutV2></ProtectedRoute>} />
           
           {/* Redirecionamentos para compatibilidade */}
           <Route path="/v2/financeiro/despesas" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
