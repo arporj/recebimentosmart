@@ -12,7 +12,7 @@ interface AuthContextType {
   plano: string | null;
   loading: boolean;
   signIn: (email: string, password: string, redirectTo?: string) => Promise<void>;
-  signUp: (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
+  signUp: (name: string, email: string, cpf_cnpj: string | undefined, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
@@ -123,23 +123,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setPlano(profile?.plano || 'basico');
 
       if (!originalUser) {
-        // Verifica se o usuário precisa preencher o CPF/CNPJ
-        const isAtProfilePage = location.pathname === '/profile' || location.pathname === '/v2/perfil';
-        
-        if (!profile?.cpf_cnpj && !isAtProfilePage) {
-          toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-          navigate('/v2/perfil');
-        } else {
-          // Verifica se o usuário tem acesso (assinatura ou trial)
-          const isAtAllowedPages = location.pathname === '/payment' || 
+        // Verifica se o usuário tem acesso (assinatura ou trial)
+        const isAtAllowedPages = location.pathname === '/payment' || 
                                  location.pathname === '/v2/assinatura' || 
                                  location.pathname === '/profile' || 
                                  location.pathname === '/v2/perfil';
 
-          if (!currentHasFullAccess && !profile?.is_admin && !isAtAllowedPages) {
-            // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
-            navigate('/v2/assinatura');
-          }
+        if (!currentHasFullAccess && !profile?.is_admin && !isAtAllowedPages) {
+          // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
+          navigate('/v2/assinatura');
         }
       }
 
@@ -169,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string, redirectTo: string = '/login') => {
+  const signUp = async (name: string, email: string, cpf_cnpj: string | undefined, password: string, referralCode?: string, redirectTo: string = '/login') => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
