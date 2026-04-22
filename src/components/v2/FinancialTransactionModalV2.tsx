@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { format } from 'date-fns';
+import { format, parseISO, setDate as setDateFns, subDays, addMonths, isAfter, isBefore, addDays, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import { ClientFormV2 } from './ClientFormV2';
 import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
@@ -37,6 +37,8 @@ interface Account {
   type: string;
   secondary_cards?: string[] | { name: string }[];
   main_card_name?: string;
+  closing_days_before?: number | null;
+  due_day?: number | null;
 }
 
 interface Category {
@@ -249,7 +251,7 @@ const FinancialTransactionModalV2 = ({
   const fetchAccounts = async () => {
     const { data, error } = await supabase
       .from('financial_accounts')
-      .select('id, name, type, secondary_cards, main_card_name')
+      .select('id, name, type, secondary_cards, main_card_name, due_day, closing_days_before')
       .eq('user_id', user?.id || '')
       .eq('is_active', true)
       .order('name');
@@ -286,6 +288,41 @@ const FinancialTransactionModalV2 = ({
     };
     return labels[type] || type;
   };
+
+  // Calcular fatura correta ao mudar data ou cartao selecionado
+  useEffect(() => {
+    if (!accountId || !date || !accounts.length) return;
+    
+    const account = accounts.find(a => a.id === accountId);
+    if (account?.type === 'credit_card' && account.due_day && account.closing_days_before) {
+      try {
+        const tDate = parseISO(date);
+        let foundInvoiceMonth = null;
+        
+        // Vamos checar faturas dos meses -1 a +2 da data da compra pra ver onde ela cai
+        for (let i = -1; i <= 2; i++) {
+          const m = addMonths(tDate, i);
+          const dueDate = setDateFns(m, Math.min(account.due_day, 28));
+          const closingDate = subDays(dueDate, account.closing_days_before);
+          
+          const prevDueDate = setDateFns(subMonths(m, 1), Math.min(account.due_day, 28));
+          const prevClosingDate = subDays(prevDueDate, account.closing_days_before);
+          const startDate = addDays(prevClosingDate, 1);
+
+          if (!isBefore(tDate, startDate) && !isAfter(tDate, closingDate)) {
+             foundInvoiceMonth = format(m, 'yyyy-MM');
+             break;
+          }
+        }
+        
+        if (foundInvoiceMonth) {
+          setInvoiceMonth(foundInvoiceMonth);
+        }
+      } catch (err) {
+        console.error('Erro ao calcular invoice_month inteligente:', err);
+      }
+    }
+  }, [date, accountId, accounts]);
 
   // Agrupar categorias: pais e seus filhos
   const parentCategories = categories.filter(c => !c.parent_id);
