@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import UserDetailsModalV2 from '../../components/v2/UserDetailsModalV2';
 import { UserProfile } from '../../components/admin/UserTable';
+import ConfirmModal from '../../components/v2/ConfirmModal';
 
 interface KpiData {
     monthlyRevenue: number;
@@ -150,17 +151,20 @@ export default function AdminUserManagementV2() {
         return email.substring(0, 2).toUpperCase();
     };
 
-    const handleNotifyDuePayments = async (user: UserProfile) => {
-        if (!window.confirm(`Deseja enviar o e-mail de notificação de vencimentos para ${user.name || user.email}?`)) return;
+    const [userToNotify, setUserToNotify] = useState<UserProfile | null>(null);
+
+    const handleNotifyDuePayments = async (u: UserProfile) => {
         const toastId = toast.loading('Enviando notificação...');
         try {
-            const { data, error } = await supabase.functions.invoke('notify-due-clients', { body: { userId: user.id } });
+            const { data, error } = await supabase.functions.invoke('notify-due-clients', { body: { userId: u.id } });
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
             toast.success('E-mail enviado com sucesso!', { id: toastId });
         } catch (error) {
             console.error('Erro ao enviar notificação:', error);
             toast.error('Erro ao enviar e-mail. Verifique o console.', { id: toastId });
+        } finally {
+            setUserToNotify(null);
         }
     };
 
@@ -314,7 +318,7 @@ export default function AdminUserManagementV2() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => handleNotifyDuePayments(user)}
+                                                    onClick={() => setUserToNotify(user)}
                                                     className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
                                                     title="Notificar Vencimentos"
                                                 >
@@ -375,6 +379,16 @@ export default function AdminUserManagementV2() {
                     }}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={!!userToNotify}
+                onClose={() => setUserToNotify(null)}
+                onConfirm={() => userToNotify && handleNotifyDuePayments(userToNotify)}
+                title="Enviar notificação"
+                message={<>Deseja enviar o e-mail de notificação de vencimentos para <strong>{userToNotify?.name || userToNotify?.email}</strong>?</>}
+                confirmLabel="Enviar"
+                confirmColor="blue"
+            />
         </div>
     );
 }

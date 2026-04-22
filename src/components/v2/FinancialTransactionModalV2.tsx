@@ -70,6 +70,11 @@ interface FinancialTransactionModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialType?: 'income' | 'expense' | 'transfer';
+  initialAccountId?: string;
+  initialDestinationAccountId?: string;
+  initialDescription?: string;
+  initialAmount?: string | number;
+  initialDate?: string;
   transaction?: TransactionData | null;
   isConfirming?: boolean;
 }
@@ -79,6 +84,11 @@ const FinancialTransactionModalV2 = ({
   onClose, 
   onSuccess,
   initialType = 'income',
+  initialAccountId = '',
+  initialDestinationAccountId = '',
+  initialDescription = '',
+  initialAmount = '',
+  initialDate,
   transaction = null,
   isConfirming = false
 }: FinancialTransactionModalProps) => {
@@ -169,17 +179,33 @@ const FinancialTransactionModalV2 = ({
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
-      setDescription('');
-      setAmount('');
-      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setDescription(initialDescription || '');
+      
+      if (initialAmount) {
+        const amountStr = String(initialAmount);
+        // Ensure it's formatted properly if it's passed
+        const amountCents = Math.round(parseFloat(amountStr) * 100);
+        if (!isNaN(amountCents)) {
+           setAmount(new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }).format(amountCents / 100));
+        } else {
+           setAmount(amountStr);
+        }
+      } else {
+        setAmount('');
+      }
+
+      setDate(initialDate || format(new Date(), 'yyyy-MM-dd'));
       setInvoiceMonth(format(new Date(), 'yyyy-MM'));
       setCardHolderName('');
       setInstallmentTotal('1');
       setAutoConfirm(false);
       setClientId('');
-      setAccountId('');
+      setAccountId(initialAccountId || '');
       setCategoryId('');
-      setDestinationAccountId('');
+      setDestinationAccountId(initialDestinationAccountId || '');
       setSelectedTags([]);
       
       // Novos campos
@@ -190,7 +216,7 @@ const FinancialTransactionModalV2 = ({
       setIsTotalValue(false);
       setRecurrenceInterval(1);
     }
-  }, [isOpen, transaction, initialType]);
+  }, [isOpen, transaction, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate]);
 
 
   useEffect(() => {

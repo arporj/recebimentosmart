@@ -5,6 +5,7 @@ import { X, Calendar, Shield, Eye, CheckCircle, DollarSign, AlertTriangle, User,
 import { UserProfile } from '../admin/UserTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import ConfirmModal from './ConfirmModal';
 
 interface Plan {
     name: string;
@@ -141,11 +142,9 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
         }
     };
 
-    const handleDeleteUser = async () => {
-        if (!window.confirm('TEM CERTEZA? Essa ação apagará permanentemente o usuário e todos os dados relacionados (pagamentos, clientes, etc). Não pode ser desfeito.')) {
-            return;
-        }
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    const handleDeleteUser = async () => {
         setUpdating(true);
         try {
             const { error } = await supabase.rpc('admin_delete_user', { p_user_id: user.id });
@@ -492,7 +491,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                                     Isso apagará permanentemente a conta, histórico de pagamentos, clientes e todos os dados associados.
                                 </p>
                                 <button
-                                    onClick={handleDeleteUser}
+                                    onClick={() => setShowDeleteConfirm(true)}
                                     disabled={updating}
                                     className="w-full py-3 px-4 text-sm font-bold rounded-xl text-white bg-red-600 hover:bg-red-700 shadow-sm shadow-red-600/20 disabled:opacity-50 transition-all"
                                 >
@@ -504,5 +503,15 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                 </div>
             </div>
         </div>
+
+        <ConfirmModal
+            isOpen={showDeleteConfirm}
+            onClose={() => setShowDeleteConfirm(false)}
+            onConfirm={() => { setShowDeleteConfirm(false); handleDeleteUser(); }}
+            title="Excluir Usuário"
+            message={<>TEM CERTEZA? Essa ação apagará permanentemente <strong>o usuário e todos os dados relacionados</strong> (pagamentos, clientes, etc). Não pode ser desfeito.</>}
+            confirmLabel="EXCLUIR"
+            confirmColor="red"
+        />
     );
 }

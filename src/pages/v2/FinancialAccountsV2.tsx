@@ -6,6 +6,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import ConfirmModal from '../../components/v2/ConfirmModal';
 import { format, subDays, setDate, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -263,11 +264,13 @@ const FinancialAccountsV2 = () => {
     setIsModalOpen(true);
   };
 
+  const [accountToDeleteId, setAccountToDeleteId] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta conta?')) return;
     const { error } = await supabase.from('financial_accounts').delete().eq('id', id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     toast.success('Conta excluída!');
+    setAccountToDeleteId(null);
     fetchAccounts();
   };
 
@@ -403,7 +406,7 @@ const FinancialAccountsV2 = () => {
                   <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100" title="Editar">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100" title="Excluir">
+                  <button onClick={() => setAccountToDeleteId(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100" title="Excluir">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -786,6 +789,16 @@ const FinancialAccountsV2 = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!accountToDeleteId}
+        onClose={() => setAccountToDeleteId(null)}
+        onConfirm={() => accountToDeleteId && handleDelete(accountToDeleteId)}
+        title="Excluir conta"
+        message="Excluir esta conta?"
+        confirmLabel="Excluir"
+        confirmColor="red"
+      />
     </div>
   );
 };

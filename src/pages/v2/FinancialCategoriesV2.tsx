@@ -6,6 +6,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import ConfirmModal from '../../components/v2/ConfirmModal';
 
 interface Category {
   id: string;
@@ -27,6 +28,7 @@ const FinancialCategoriesV2 = () => {
   const [icon, setIcon] = useState('');
   const [parentId, setParentId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   const fetchCategories = async () => {
     if (!user) return;
@@ -71,16 +73,19 @@ const FinancialCategoriesV2 = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (c: Category) => {
-    const children = getChildren(c.id);
-    const msg = children.length > 0 
-      ? `Esta categoria possui ${children.length} subcategoria(s). Excluir tudo?` 
-      : 'Excluir esta categoria?';
-    if (!confirm(msg)) return;
+  const handleDeleteConfirmed = async (c: Category) => {
     const { error } = await supabase.from('financial_categories').delete().eq('id', c.id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     toast.success('Categoria excluída!');
+    setCategoryToDelete(null);
     fetchCategories();
+  };
+
+  const getDeleteMessage = (c: Category) => {
+    const children = getChildren(c.id);
+    return children.length > 0
+      ? <>Esta categoria possui <strong>{children.length} subcategoria(s)</strong>. Excluir tudo?</>
+      : <>Excluir a categoria <strong>"{c.name}"</strong>?</>;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,7 +159,7 @@ const FinancialCategoriesV2 = () => {
                       <button onClick={() => openEdit(parent)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => handleDelete(parent)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                      <button onClick={() => setCategoryToDelete(parent)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -172,7 +177,7 @@ const FinancialCategoriesV2 = () => {
                         <button onClick={() => openEdit(child)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => handleDelete(child)} className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                        <button onClick={() => setCategoryToDelete(child)} className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -257,6 +262,16 @@ const FinancialCategoriesV2 = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={() => categoryToDelete && handleDeleteConfirmed(categoryToDelete)}
+        title="Excluir categoria"
+        message={categoryToDelete ? getDeleteMessage(categoryToDelete) : ''}
+        confirmLabel="Excluir"
+        confirmColor="red"
+      />
     </div>
   );
 };

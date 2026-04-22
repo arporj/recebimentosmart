@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, X, ArrowRight, Check, Tag as TagIcon } from 'luci
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import ConfirmModal from '../../components/v2/ConfirmModal';
 
 interface Tag {
   id: string;
@@ -35,6 +36,7 @@ const FinancialTagsV2 = () => {
   const [name, setName] = useState('');
   const [color, setColor] = useState(COLORS[0].value);
   const [saving, setSaving] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
 
   const fetchTags = async () => {
     if (!user) return;
@@ -61,10 +63,10 @@ const FinancialTagsV2 = () => {
   };
 
   const handleDelete = async (t: Tag) => {
-    if (!confirm(`Excluir a tag "${t.name}"?`)) return;
     const { error } = await supabase.from('financial_tags').delete().eq('id', t.id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     toast.success('Tag excluída!');
+    setTagToDelete(null);
     fetchTags();
   };
 
@@ -129,7 +131,7 @@ const FinancialTagsV2 = () => {
                   <button onClick={() => openEdit(tag)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(tag)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                  <button onClick={() => setTagToDelete(tag)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -201,6 +203,16 @@ const FinancialTagsV2 = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!tagToDelete}
+        onClose={() => setTagToDelete(null)}
+        onConfirm={() => tagToDelete && handleDelete(tagToDelete)}
+        title="Excluir tag"
+        message={<>Excluir a tag <strong>"{tagToDelete?.name}"</strong>?</>}
+        confirmLabel="Excluir"
+        confirmColor="red"
+      />
     </div>
   );
 };
