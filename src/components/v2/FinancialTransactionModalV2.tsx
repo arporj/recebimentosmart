@@ -9,11 +9,9 @@ import {
   ChevronDown,
   Plus,
   Tag as TagIcon,
-  Building2,
   CreditCard,
   TrendingUp,
   Landmark,
-  FileText,
   PiggyBank
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -25,6 +23,8 @@ import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
 import { criarTransacao as criarTransacaoFinanceira } from '../../lib/financeiro/criarTransacao';
 import { editarTransacao as editarTransacaoFinanceira } from '../../lib/financeiro/editarTransacao';
 import { ModalOpcaoRecorrente } from '../financeiro/ModalOpcaoRecorrente';
+import QuickAddAccountModal from './QuickAddAccountModal';
+import QuickAddCategoryModal from './QuickAddCategoryModal';
 
 interface Tag {
   id: string;
@@ -45,7 +45,30 @@ interface Account {
   main_card_name?: string;
   closing_days_before?: number | null;
   due_day?: number | null;
+  bank_name?: string | null;
+  bank_icon?: string | null;
+  card_brand?: string | null;
 }
+
+const BRAZILIAN_BANKS = [
+  { name: 'Banco Inter', domain: 'inter.co', color: '#ff7a00' },
+  { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
+  { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
+  { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
+  { name: 'Santander', domain: 'santander.com.br', color: '#ec0000' },
+  { name: 'Banco do Brasil', domain: 'bb.com.br', color: '#fcf200' },
+  { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
+  { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
+  { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
+  { name: 'C6 Bank', domain: 'c6.com.br', color: '#252525' },
+  { name: 'PagBank', domain: 'pagseguro.uol.com.br', color: '#53d21e' },
+  { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
+  { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
+  { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
+  { name: 'Mercado Pago', domain: 'mercadopago.com.br', color: '#009ee3' },
+  { name: 'Avenue', domain: 'avenue.us', color: '#000000' },
+  { name: 'Nomad', domain: 'nomadglobal.com', color: '#000000' },
+];
 
 interface Category {
   id: string;
@@ -146,6 +169,9 @@ const FinancialTransactionModalV2 = ({
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [isDestAccountDropdownOpen, setIsDestAccountDropdownOpen] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isQuickAddAccountOpen, setIsQuickAddAccountOpen] = useState(false);
+  const [isQuickAddCategoryOpen, setIsQuickAddCategoryOpen] = useState(false);
+  const [pendingAccountType, setPendingAccountType] = useState<'origin' | 'destination'>('origin');
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
@@ -268,7 +294,7 @@ const FinancialTransactionModalV2 = ({
   const fetchAccounts = async () => {
     const { data, error } = await supabase
       .from('financial_accounts')
-      .select('id, name, type, secondary_cards, main_card_name, due_day, closing_days_before')
+      .select('id, name, type, secondary_cards, main_card_name, due_day, closing_days_before, bank_name, bank_icon, card_brand')
       .eq('user_id', user?.id || '')
       .eq('is_active', true)
       .order('name');
@@ -281,7 +307,7 @@ const FinancialTransactionModalV2 = ({
         .eq('user_id', user?.id || '')
         .eq('is_active', true)
         .order('name');
-      if (fallbackData) setAccounts(fallbackData);
+      if (fallbackData) setAccounts(fallbackData as unknown as Account[]);
     } else if (data) {
       setAccounts(data as unknown as Account[]);
     }
@@ -314,6 +340,45 @@ const FinancialTransactionModalV2 = ({
       case 'investment': return <TrendingUp size={18} className="text-slate-600" />;
       default: return <Landmark size={18} className="text-slate-600" />;
     }
+  };
+
+  const AccountIcon = ({ account }: { account: Account | undefined }) => {
+    if (!account) return <div className="text-slate-400">{getAccountTypeIcon('')}</div>;
+
+    const typeConfig: Record<string, string> = {
+      checking: 'bg-blue-50 text-blue-700 border-blue-200',
+      savings: 'bg-green-50 text-green-700 border-green-200',
+      credit_card: 'bg-purple-50 text-purple-700 border-purple-200',
+      investment: 'bg-amber-50 text-amber-700 border-amber-200'
+    };
+
+    const bgColorClass = typeConfig[account.type] || 'bg-slate-50 text-slate-400 border-slate-200';
+
+    return (
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center border overflow-hidden shrink-0 ${bgColorClass}`}>
+        {account.bank_icon ? (
+          <div className="w-full h-full relative">
+            <img 
+              src={`https://www.google.com/s2/favicons?domain=${account.bank_icon}&sz=64`} 
+              alt={account.bank_name || ''} 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.classList.add('hidden');
+                if (target.nextElementSibling) {
+                  target.nextElementSibling.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-[10px] text-white" style={{ backgroundColor: BRAZILIAN_BANKS.find(b => b.domain === account.bank_icon)?.color || '#94a3b8' }}>
+              {account.bank_name?.charAt(0) || getAccountTypeIcon(account.type)}
+            </div>
+          </div>
+        ) : (
+          <div className="text-current scale-[0.8] flex items-center justify-center">{getAccountTypeIcon(account.type)}</div>
+        )}
+      </div>
+    );
   };
 
   // Calcular fatura correta ao mudar data ou cartao selecionado
@@ -688,7 +753,7 @@ const FinancialTransactionModalV2 = ({
                   >
                     {accountId ? (
                       <div className="flex items-center gap-3">
-                        {getAccountTypeIcon(accounts.find(a => a.id === accountId)?.type || '')}
+                        <AccountIcon account={accounts.find(a => a.id === accountId)} />
                         <div className="flex flex-col">
                           <span className="font-medium text-slate-700 leading-tight">{accounts.find(a => a.id === accountId)?.name}</span>
                           <span className="text-[10px] text-slate-400">{getAccountTypeLabel(accounts.find(a => a.id === accountId)?.type || '')}</span>
@@ -712,7 +777,7 @@ const FinancialTransactionModalV2 = ({
                           }}
                           className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
                         >
-                          {getAccountTypeIcon(a.type)}
+                          <AccountIcon account={a} />
                           <div className="flex flex-col">
                             <span className="font-medium text-slate-700 text-sm leading-tight">{a.name}</span>
                             <span className="text-[10px] text-slate-400">{getAccountTypeLabel(a.type)}</span>
@@ -724,7 +789,8 @@ const FinancialTransactionModalV2 = ({
                           type="button"
                           onClick={() => {
                             setIsAccountDropdownOpen(false);
-                            toast.error('Tela de cadastro de contas será desenvolvida em breve!');
+                            setPendingAccountType('origin');
+                            setIsQuickAddAccountOpen(true);
                           }}
                           className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
                         >
@@ -752,7 +818,7 @@ const FinancialTransactionModalV2 = ({
                     >
                       {destinationAccountId ? (
                         <div className="flex items-center gap-3">
-                          {getAccountTypeIcon(accounts.find(a => a.id === destinationAccountId)?.type || '')}
+                          <AccountIcon account={accounts.find(a => a.id === destinationAccountId)} />
                           <div className="flex flex-col">
                             <span className="font-medium text-slate-700 leading-tight">{accounts.find(a => a.id === destinationAccountId)?.name}</span>
                             <span className="text-[10px] text-slate-400">{getAccountTypeLabel(accounts.find(a => a.id === destinationAccountId)?.type || '')}</span>
@@ -776,7 +842,7 @@ const FinancialTransactionModalV2 = ({
                             }}
                             className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
                           >
-                            {getAccountTypeIcon(a.type)}
+                            <AccountIcon account={a} />
                             <div className="flex flex-col">
                               <span className="font-medium text-slate-700 text-sm leading-tight">{a.name}</span>
                               <span className="text-[10px] text-slate-400">{getAccountTypeLabel(a.type)}</span>
@@ -788,7 +854,8 @@ const FinancialTransactionModalV2 = ({
                             type="button"
                             onClick={() => {
                               setIsDestAccountDropdownOpen(false);
-                              toast.error('Tela de cadastro de contas será desenvolvida em breve!');
+                              setPendingAccountType('destination');
+                              setIsQuickAddAccountOpen(true);
                             }}
                             className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-indigo-600 font-bold"
                           >
@@ -828,24 +895,29 @@ const FinancialTransactionModalV2 = ({
                         {parentCategories.map(parent => {
                           const children = getChildren(parent.id);
                           return (
-                            <div key={parent.id}>
+                            <div key={parent.id} className="border-b border-slate-50 last:border-0 last:mb-0 mb-1 pb-1">
                               <button
                                 type="button"
                                 onClick={() => { setCategoryId(parent.id); setIsCategoryDropdownOpen(false); }}
-                                className="flex items-center gap-3 w-full px-4 py-2 text-left hover:bg-slate-50 transition-colors font-bold text-slate-700"
+                                className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
                               >
-                                <span>{parent.icon || '📁'}</span>
-                                {parent.name}
+                                <span className="text-xl">{parent.icon || '📁'}</span>
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-700 text-sm leading-tight">{parent.name}</span>
+                                  {children.length > 0 && (
+                                    <span className="text-[10px] text-slate-400">Possui subcategorias</span>
+                                  )}
+                                </div>
                               </button>
                               {children.map(child => (
                                 <button
                                   key={child.id}
                                   type="button"
                                   onClick={() => { setCategoryId(child.id); setIsCategoryDropdownOpen(false); }}
-                                  className="flex items-center gap-3 w-full pl-10 pr-4 py-2 text-left hover:bg-slate-50 transition-colors text-sm text-slate-600"
+                                  className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
                                 >
-                                  <span>{child.icon || '↘️'}</span>
-                                  {child.name}
+                                  <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
+                                  <span className="text-sm font-medium text-slate-600">{child.name}</span>
                                 </button>
                               ))}
                             </div>
@@ -856,7 +928,7 @@ const FinancialTransactionModalV2 = ({
                             type="button"
                             onClick={() => {
                               setIsCategoryDropdownOpen(false);
-                              toast.error('Tela de cadastro de categorias será desenvolvida em breve!');
+                              setIsQuickAddCategoryOpen(true);
                             }}
                             className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
                           >
@@ -1127,6 +1199,29 @@ const FinancialTransactionModalV2 = ({
           }}
         />
       )}
+
+      <QuickAddAccountModal 
+        isOpen={isQuickAddAccountOpen}
+        onClose={() => setIsQuickAddAccountOpen(false)}
+        onSuccess={(newId) => {
+          fetchAccounts();
+          if (pendingAccountType === 'origin') {
+            setAccountId(newId);
+          } else {
+            setDestinationAccountId(newId);
+          }
+        }}
+      />
+
+      <QuickAddCategoryModal 
+        isOpen={isQuickAddCategoryOpen}
+        onClose={() => setIsQuickAddCategoryOpen(false)}
+        onSuccess={(newId) => {
+          fetchCategories();
+          setCategoryId(newId);
+        }}
+        categories={categories}
+      />
     </div>
   );
 };

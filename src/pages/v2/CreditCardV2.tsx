@@ -184,12 +184,13 @@ const CreditCardV2 = () => {
     const dueDate = setDate(currentMonth, Math.min(dueDay, 28));
     // Fechamento = vencimento - closing_days_before
     const closingDate = subDays(dueDate, closingDaysBefore);
-    // Início = fechamento do mês anterior + 1 dia
+    const endDate = subDays(closingDate, 1);
+    // Início = fechamento do mês anterior (dia do fechamento cai nesta nova fatura)
     const prevDueDate = setDate(subMonths(currentMonth, 1), Math.min(dueDay, 28));
     const prevClosingDate = subDays(prevDueDate, closingDaysBefore);
-    const startDate = addDays(prevClosingDate, 1);
+    const startDate = prevClosingDate;
 
-    return { startDate, closingDate, dueDate };
+    return { startDate, closingDate, dueDate, endDate };
   }, [selectedCard, currentMonth]);
 
   // Filter transactions for this card + invoice period
@@ -212,7 +213,7 @@ const CreditCardV2 = () => {
 
       if (!t.recurrence_enabled) {
         if (invoicePeriod) {
-          if (!isBefore(tDate, invoicePeriod.startDate) && !isAfter(tDate, invoicePeriod.closingDate)) {
+          if (!isBefore(tDate, invoicePeriod.startDate) && !isAfter(tDate, invoicePeriod.endDate)) {
             instances.push({ ...t, instanceDate: t.date, isVirtual: false });
           }
         } else if (isSameMonth(tDate, currentMonth)) {
@@ -234,7 +235,7 @@ const CreditCardV2 = () => {
 
         let inPeriod = false;
         if (invoicePeriod) {
-          inPeriod = !isBefore(cursorDate, invoicePeriod.startDate) && !isAfter(cursorDate, invoicePeriod.closingDate);
+          inPeriod = !isBefore(cursorDate, invoicePeriod.startDate) && !isAfter(cursorDate, invoicePeriod.endDate);
         } else {
           inPeriod = isSameMonth(cursorDate, currentMonth);
         }
@@ -253,7 +254,7 @@ const CreditCardV2 = () => {
           });
         }
 
-        if (invoicePeriod && isAfter(cursor, invoicePeriod.closingDate)) break;
+        if (invoicePeriod && isAfter(cursor, invoicePeriod.endDate)) break;
         if (!invoicePeriod && isAfter(cursor, endOfMonth(currentMonth))) break;
 
         switch (period) {

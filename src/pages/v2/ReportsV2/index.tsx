@@ -40,8 +40,8 @@ export function ReportsV2() {
             setLoading(true);
             const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', user.id);
             const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
-            setClients(clientsData || []);
-            setPayments(paymentsData || []);
+            setClients((clientsData as any) || []);
+            setPayments((paymentsData as any) || []);
             setLoading(false);
         }
         fetchData();
@@ -192,6 +192,7 @@ export function ReportsV2() {
     if (!reportData) return null;
 
     return (
+        <>
         <div className="text-slate-900 w-full max-w-7xl mx-auto font-['Inter']">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -409,6 +410,7 @@ export function ReportsV2() {
             confirmLabel="OK"
             confirmColor="blue"
         />
+        </>
     );
 }
 

@@ -98,13 +98,15 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
             const planPrice = plan ? plan.price_monthly : 0;
             const creditsToUse = (useCredits && planPrice > 0) ? Math.min(userCredits || 0, 5) : 0;
 
-            const { data, error } = await supabase.rpc('register_manual_payment', {
+            const { data: responseData, error } = await supabase.rpc('register_manual_payment', {
                 p_user_id: user.id,
                 p_payment_date: paymentDate,
                 p_amount: paymentAmount,
                 p_plan_name: plan ? plan.name : selectedPlan,
                 p_credits_used: creditsToUse
             });
+            
+            const data = responseData as any;
 
             if (error) throw error;
 
@@ -243,6 +245,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
     ];
 
     return (
+        <>
         <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
             onClick={onClose}
@@ -513,5 +516,6 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
             confirmLabel="EXCLUIR"
             confirmColor="red"
         />
+        </>
     );
 }

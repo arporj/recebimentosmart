@@ -18,6 +18,8 @@ export interface TransactionUpdate {
   installment_current?: number;
   parent_id?: string;
   is_customized?: boolean;
+  invoice_month?: string | null;
+  card_holder_name?: string | null;
 }
 
 export async function editarTransacao(

@@ -16,6 +16,8 @@ export interface TransactionInput {
   is_total_value?: boolean;
   due_day?: number;
   recurrence_interval?: number;
+  invoice_month?: string | null;
+  card_holder_name?: string | null;
 }
 
 export async function criarTransacao(input: TransactionInput) {
@@ -40,6 +42,8 @@ export async function criarTransacao(input: TransactionInput) {
     account_id: input.account_id,
     modalidade: input.modalidade,
     status: 'pending',
+    invoice_month: input.invoice_month || null,
+    card_holder_name: input.card_holder_name || null,
   };
 
   if (input.modalidade === 'unica') {
