@@ -8,11 +8,17 @@ import {
   ArrowRight,
   ChevronDown,
   Plus,
-  Tag as TagIcon
+  Tag as TagIcon,
+  Building2,
+  CreditCard,
+  TrendingUp,
+  Landmark,
+  FileText,
+  PiggyBank
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, parseISO, setDate as setDateFns, subDays, addMonths, isAfter, isBefore, addDays, subMonths } from 'date-fns';
+import { format, parseISO, setDate as setDateFns, subDays, addMonths, isAfter, isBefore, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import { ClientFormV2 } from './ClientFormV2';
 import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
@@ -65,6 +71,8 @@ interface TransactionData {
   destination_account_id?: string;
   auto_confirm?: boolean;
   tags?: { tag: { id: string; name: string; color: string } }[];
+  invoice_month?: string | null;
+  card_holder_name?: string | null;
 }
 
 interface FinancialTransactionModalProps {
@@ -135,6 +143,9 @@ const FinancialTransactionModalV2 = ({
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+  const [isDestAccountDropdownOpen, setIsDestAccountDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
@@ -178,6 +189,12 @@ const FinancialTransactionModalV2 = ({
       // Novos campos
       setModalidade((transaction as any).modalidade || 'unica');
       setDueDay((transaction as any).due_day || new Date().getDate());
+      if (transaction.invoice_month) {
+        setInvoiceMonth(transaction.invoice_month);
+      }
+      if (transaction.card_holder_name) {
+        setCardHolderName(transaction.card_holder_name);
+      }
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
@@ -289,6 +306,16 @@ const FinancialTransactionModalV2 = ({
     return labels[type] || type;
   };
 
+  const getAccountTypeIcon = (type: string) => {
+    switch (type) {
+      case 'checking': return <Landmark size={18} className="text-teal-600" />;
+      case 'savings': return <PiggyBank size={18} className="text-blue-600" />;
+      case 'credit_card': return <CreditCard size={18} className="text-indigo-600" />;
+      case 'investment': return <TrendingUp size={18} className="text-slate-600" />;
+      default: return <Landmark size={18} className="text-slate-600" />;
+    }
+  };
+
   // Calcular fatura correta ao mudar data ou cartao selecionado
   useEffect(() => {
     if (!accountId || !date || !accounts.length) return;
@@ -304,12 +331,13 @@ const FinancialTransactionModalV2 = ({
           const m = addMonths(tDate, i);
           const dueDate = setDateFns(m, Math.min(account.due_day, 28));
           const closingDate = subDays(dueDate, account.closing_days_before);
+          const endDate = subDays(closingDate, 1);
           
           const prevDueDate = setDateFns(subMonths(m, 1), Math.min(account.due_day, 28));
           const prevClosingDate = subDays(prevDueDate, account.closing_days_before);
-          const startDate = addDays(prevClosingDate, 1);
+          const startDate = prevClosingDate;
 
-          if (!isBefore(tDate, startDate) && !isAfter(tDate, closingDate)) {
+          if (!isBefore(tDate, startDate) && !isAfter(tDate, endDate)) {
              foundInvoiceMonth = format(m, 'yyyy-MM');
              break;
           }
@@ -323,6 +351,25 @@ const FinancialTransactionModalV2 = ({
       }
     }
   }, [date, accountId, accounts]);
+
+  useEffect(() => {
+    if (isCreditCard && accountId && accounts.length > 0) {
+      const account = accounts.find(a => a.id === accountId);
+      if (account) {
+        const holders: string[] = [];
+        if (account.main_card_name) holders.push(account.main_card_name);
+        if (Array.isArray(account.secondary_cards)) {
+          (account.secondary_cards as any[]).forEach((c) => {
+            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+            if (name) holders.push(name);
+          });
+        }
+        if (holders.length === 1 && !cardHolderName) {
+          setCardHolderName(holders[0]);
+        }
+      }
+    }
+  }, [isCreditCard, accountId, accounts, cardHolderName]);
 
   // Agrupar categorias: pais e seus filhos
   const parentCategories = categories.filter(c => !c.parent_id);
@@ -358,6 +405,8 @@ const FinancialTransactionModalV2 = ({
         due_day: modalidade === 'recorrente' ? dueDay : undefined,
         recurrence_interval: modalidade === 'recorrente' ? recurrenceInterval : undefined,
         auto_confirm: autoConfirm,
+        invoice_month: isCreditCard ? invoiceMonth : undefined,
+        card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
       };
 
       if (isEditing) {
@@ -617,7 +666,6 @@ const FinancialTransactionModalV2 = ({
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ex: Aluguel, Venda..."
                   className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                 />
               </div>
@@ -631,21 +679,61 @@ const FinancialTransactionModalV2 = ({
                     {type === 'transfer' ? 'Conta de Origem' : 'Conta'}
                   </label>
                 </div>
-                <div className="relative group">
-                  <select 
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
-                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                <div className="relative">
+                  <button 
+                    type="button"
+                    onClick={() => setIsAccountDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setIsAccountDropdownOpen(false), 200)}
+                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
                   >
-                    <option value="">Selecione a conta</option>
-                    {accounts.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} ({getAccountTypeLabel(a.type)})</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <ChevronDown size={16} />
-                  </div>
+                    {accountId ? (
+                      <div className="flex items-center gap-3">
+                        {getAccountTypeIcon(accounts.find(a => a.id === accountId)?.type || '')}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-slate-700 leading-tight">{accounts.find(a => a.id === accountId)?.name}</span>
+                          <span className="text-[10px] text-slate-400">{getAccountTypeLabel(accounts.find(a => a.id === accountId)?.type || '')}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">Selecione a conta</span>
+                    )}
+                    <ChevronDown size={16} className="text-slate-400" />
+                  </button>
+
+                  {isAccountDropdownOpen && (
+                    <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
+                      {accounts.map(a => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => {
+                            setAccountId(a.id);
+                            setIsAccountDropdownOpen(false);
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                        >
+                          {getAccountTypeIcon(a.type)}
+                          <div className="flex flex-col">
+                            <span className="font-medium text-slate-700 text-sm leading-tight">{a.name}</span>
+                            <span className="text-[10px] text-slate-400">{getAccountTypeLabel(a.type)}</span>
+                          </div>
+                        </button>
+                      ))}
+                      <div className="border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAccountDropdownOpen(false);
+                            toast.error('Tela de cadastro de contas será desenvolvida em breve!');
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
+                        >
+                          <Plus size={18} />
+                          <span className="text-sm">Adicionar conta</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -655,21 +743,61 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Conta de Destino</label>
                   </div>
-                  <div className="relative group">
-                    <select 
-                      value={destinationAccountId}
-                      onChange={(e) => setDestinationAccountId(e.target.value)}
-                      className="w-full px-4 py-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-500/20 text-sm !appearance-none bg-none cursor-pointer"
-                      style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                  <div className="relative">
+                    <button 
+                      type="button"
+                      onClick={() => setIsDestAccountDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setIsDestAccountDropdownOpen(false), 200)}
+                      className="w-full px-4 py-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-500/20 text-sm text-left flex items-center justify-between"
                     >
-                      <option value="">Selecione o destino</option>
-                      {accounts.filter(a => a.id !== accountId).map(a => (
-                        <option key={a.id} value={a.id}>{a.name} ({getAccountTypeLabel(a.type)})</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
-                      <ChevronDown size={16} />
-                    </div>
+                      {destinationAccountId ? (
+                        <div className="flex items-center gap-3">
+                          {getAccountTypeIcon(accounts.find(a => a.id === destinationAccountId)?.type || '')}
+                          <div className="flex flex-col">
+                            <span className="font-medium text-slate-700 leading-tight">{accounts.find(a => a.id === destinationAccountId)?.name}</span>
+                            <span className="text-[10px] text-slate-400">{getAccountTypeLabel(accounts.find(a => a.id === destinationAccountId)?.type || '')}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">Selecione o destino</span>
+                      )}
+                      <ChevronDown size={16} className="text-indigo-400" />
+                    </button>
+
+                    {isDestAccountDropdownOpen && (
+                      <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
+                        {accounts.filter(a => a.id !== accountId).map(a => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => {
+                              setDestinationAccountId(a.id);
+                              setIsDestAccountDropdownOpen(false);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                          >
+                            {getAccountTypeIcon(a.type)}
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-700 text-sm leading-tight">{a.name}</span>
+                              <span className="text-[10px] text-slate-400">{getAccountTypeLabel(a.type)}</span>
+                            </div>
+                          </button>
+                        ))}
+                        <div className="border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsDestAccountDropdownOpen(false);
+                              toast.error('Tela de cadastro de contas será desenvolvida em breve!');
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-indigo-600 font-bold"
+                          >
+                            <Plus size={18} />
+                            <span className="text-sm">Adicionar conta</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -677,27 +805,67 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
                   </div>
-                  <div className="relative group">
-                    <select 
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
-                      style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                  <div className="relative">
+                    <button 
+                      type="button"
+                      onClick={() => setIsCategoryDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setIsCategoryDropdownOpen(false), 200)}
+                      className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
                     >
-                      <option value="">Selecione uma categoria</option>
-                      {parentCategories.map(parent => {
-                        const children = getChildren(parent.id);
-                        return [
-                          <option key={parent.id} value={parent.id}>{parent.icon || '📁'} {parent.name}</option>,
-                          ...children.map(child => (
-                            <option key={child.id} value={child.id}>&nbsp;&nbsp;&nbsp;— {child.name}</option>
-                          ))
-                        ];
-                      })}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                      <ChevronDown size={16} />
-                    </div>
+                      {categoryId ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{categories.find(c => c.id === categoryId)?.icon || '📁'}</span>
+                          <span className="font-medium text-slate-700 leading-tight">{categories.find(c => c.id === categoryId)?.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">Selecione uma categoria</span>
+                      )}
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </button>
+
+                    {isCategoryDropdownOpen && (
+                      <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
+                        {parentCategories.map(parent => {
+                          const children = getChildren(parent.id);
+                          return (
+                            <div key={parent.id}>
+                              <button
+                                type="button"
+                                onClick={() => { setCategoryId(parent.id); setIsCategoryDropdownOpen(false); }}
+                                className="flex items-center gap-3 w-full px-4 py-2 text-left hover:bg-slate-50 transition-colors font-bold text-slate-700"
+                              >
+                                <span>{parent.icon || '📁'}</span>
+                                {parent.name}
+                              </button>
+                              {children.map(child => (
+                                <button
+                                  key={child.id}
+                                  type="button"
+                                  onClick={() => { setCategoryId(child.id); setIsCategoryDropdownOpen(false); }}
+                                  className="flex items-center gap-3 w-full pl-10 pr-4 py-2 text-left hover:bg-slate-50 transition-colors text-sm text-slate-600"
+                                >
+                                  <span>{child.icon || '↘️'}</span>
+                                  {child.name}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })}
+                        <div className="border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCategoryDropdownOpen(false);
+                              toast.error('Tela de cadastro de categorias será desenvolvida em breve!');
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
+                          >
+                            <Plus size={18} />
+                            <span className="text-sm">Adicionar categoria</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
