@@ -631,7 +631,7 @@ const FinancialTransactionsV2 = () => {
             </button>
             <span className="text-sm font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</span>
             <button
-              onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+              onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
               className="flex items-center gap-1.5 bg-[#0d9488] text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider"
             >
               <Plus size={12} /> Criar
@@ -815,7 +815,7 @@ const FinancialTransactionsV2 = () => {
               <div className="flex items-center gap-4">
                 <h2 className="text-xl font-black">Transações</h2>
                 <button
-                  onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+                  onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                   className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
                 >
                   <Plus size={14} />
