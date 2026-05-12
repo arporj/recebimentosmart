@@ -83,7 +83,6 @@ const CreditCardV2 = () => {
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -328,23 +327,17 @@ const CreditCardV2 = () => {
     }
   };
 
-  // Display instances with filter
+  // Display instances with search filter
   const displayInstances = useMemo(() => {
     return cardInstances.filter(t => {
-      const matchesFilter =
-        filter === 'all' ||
-        (filter === 'paid' && t.status === 'paid') ||
-        (filter === 'pending' && t.status !== 'paid');
       const matchesSearch = !searchTerm || t.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesFilter && matchesSearch;
+      return matchesSearch;
     });
-  }, [cardInstances, filter, searchTerm]);
+  }, [cardInstances, searchTerm]);
 
   // Invoice summary
   const invoiceSummary = useMemo(() => {
     const allExpenses = cardInstances.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0);
-    const paid = cardInstances.filter(t => t.status === 'paid').reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0);
-    const pending = allExpenses - paid;
     // Fixed expenses: recurrence_enabled
     const fixed = cardInstances.filter(t => t.recurrence_enabled && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     // Installments
@@ -352,8 +345,6 @@ const CreditCardV2 = () => {
 
     return {
       total: allExpenses,
-      paid,
-      pending,
       fixed,
       installments,
     };
@@ -382,22 +373,6 @@ const CreditCardV2 = () => {
   };
 
   // Handlers
-  const handleConfirmPayment = async (t: TransactionInstance) => {
-    if (isConfirming) return;
-    setIsConfirming(true);
-    try {
-      const { error } = await supabase.from('financial_transactions')
-        .update({ status: 'paid', paid_amount: t.amount, paid_date: format(new Date(), 'yyyy-MM-dd') })
-        .eq('id', t.id);
-      if (error) throw error;
-      toast.success('Pagamento confirmado!');
-      fetchTransactions();
-    } catch (err: any) {
-      toast.error('Erro: ' + err.message);
-    } finally {
-      setIsConfirming(false);
-    }
-  };
 
   const handleDeleteTransaction = async (scope: 'this' | 'following' | 'all') => {
     if (!itemToDelete) return;
@@ -479,11 +454,6 @@ const CreditCardV2 = () => {
           </button>
           {openDropdown === t.id + t.instanceDate && (
             <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-30">
-              {t.status !== 'paid' && !t.isVirtual && (
-                <button onClick={() => { handleConfirmPayment(t); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-emerald-600 hover:bg-emerald-50 transition-colors">
-                  <CheckCircle2 size={14} /> Confirmar Pagamento
-                </button>
-              )}
               <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
                 <Pencil size={14} /> Editar
               </button>
@@ -558,16 +528,7 @@ const CreditCardV2 = () => {
               </button>
             </div>
           </div>
-          {/* Filter bar */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex gap-1 text-[10px] font-black uppercase tracking-wider">
-              {[{ id: 'all', label: 'Todos' }, { id: 'pending', label: 'Pendentes' }, { id: 'paid', label: 'Pagos' }].map(f => (
-                <button key={f.id} onClick={() => setFilter(f.id as any)} className={`px-3 py-1.5 rounded-lg transition-all ${filter === f.id ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Filter bar removed as we have no conciliation */}
         </div>
 
         {/* Mobile: Invoice summary card */}
@@ -680,17 +641,9 @@ const CreditCardV2 = () => {
             )}
             <div className="h-px bg-slate-100" />
             <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total pago</span>
-                <span className="font-bold text-emerald-600">{formatCurrency(invoiceSummary.paid)}</span>
-              </div>
               <div className="flex justify-between font-bold">
-                <span className="text-slate-700">Total</span>
+                <span className="text-slate-700">Total da Fatura</span>
                 <span className="text-rose-600">-{formatCurrency(invoiceSummary.total)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-base pt-1 border-t border-slate-100">
-                <span className="text-slate-900">A pagar</span>
-                <span className="text-rose-600">-{formatCurrency(invoiceSummary.pending)}</span>
               </div>
             </div>
           </div>
@@ -702,14 +655,6 @@ const CreditCardV2 = () => {
               <div className="flex justify-between">
                 <span className="text-slate-400">Despesas</span>
                 <span className="font-bold text-rose-600">-{formatCurrency(invoiceSummary.total)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total conciliado</span>
-                <span className="font-bold text-emerald-600">{formatCurrency(invoiceSummary.paid)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total não conciliado</span>
-                <span className="font-bold text-amber-600">{formatCurrency(invoiceSummary.pending)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Despesas fixas</span>
@@ -736,14 +681,7 @@ const CreditCardV2 = () => {
                <ArrowRight size={14} className="ml-1 opacity-70" />
             </button>
 
-            <div className="flex gap-1 text-[10px] font-black uppercase tracking-wider ml-auto">
-              {[{ id: 'all', label: 'Todos' }, { id: 'pending', label: '● Não conciliados' }, { id: 'paid', label: '● Conciliados' }].map(f => (
-                <button key={f.id} onClick={() => setFilter(f.id as any)} className={`px-3 py-2 rounded-xl transition-all ${filter === f.id ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex-1 max-w-sm relative">
+            <div className="flex-1 max-w-sm relative ml-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
