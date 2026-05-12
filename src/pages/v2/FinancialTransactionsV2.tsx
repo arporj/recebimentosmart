@@ -680,7 +680,7 @@ const FinancialTransactionsV2 = () => {
                   </div>
                 </div>
               );
-            })
+            })}
             </>
           )}
         </div>
@@ -855,7 +855,7 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     </div>
                   );
-                })
+                })}
                 </>
               )}
             </div>
