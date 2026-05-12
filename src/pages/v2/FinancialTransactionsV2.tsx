@@ -17,7 +17,8 @@ import {
   Repeat,
   Zap,
   ArrowRight,
-  CreditCard
+  CreditCard,
+  User
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -733,10 +734,15 @@ const FinancialTransactionsV2 = () => {
                         <span className="text-[8px] font-black text-indigo-600 shrink-0">{t.installment_current}/{t.installment_total}</span>
                       )}
                     </div>
-                    {(t.account || t.category) && (
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                    {(t.account || t.category || t.client) && (
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {t.account && <span className="text-[8px] font-black text-slate-400 uppercase">{t.account.name}</span>}
                         {t.category && <span className="text-[8px] font-medium text-slate-300">· {t.category.name}</span>}
+                        {t.client && (
+                          <span className="text-[8px] font-bold text-sky-600 bg-sky-50 px-1 py-0.5 rounded flex items-center gap-0.5 border border-sky-100/50">
+                            <User size={8} /> {t.client.name}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -926,6 +932,13 @@ const FinancialTransactionsV2 = () => {
                           {t.category && (
                             <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
                               <span className="text-[9px] font-bold text-slate-400">{t.category.name}</span>
+                            </div>
+                          )}
+
+                          {t.client && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 border border-sky-100/50 rounded-md text-sky-600">
+                              <User size={10} />
+                              <span className="text-[9px] font-bold">{t.client.name}</span>
                             </div>
                           )}
 
