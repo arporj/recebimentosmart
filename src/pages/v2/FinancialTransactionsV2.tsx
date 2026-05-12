@@ -83,7 +83,7 @@ const FinancialTransactionsV2 = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'income' | 'expense' | 'transfer'>('income');
+  const [modalType, setModalType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
