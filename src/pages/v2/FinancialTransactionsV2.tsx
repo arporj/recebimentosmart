@@ -260,6 +260,7 @@ const FinancialTransactionsV2 = () => {
               ...t,
               instanceDate: dateStr,
               isVirtual: dateStr !== t.date,
+              status: dateStr !== t.date ? 'pending' : t.status,
               installment_current: currentInst
             });
           }
@@ -300,11 +301,42 @@ const FinancialTransactionsV2 = () => {
     setOpenDropdown(null);
   };
 
-  const handleConfirmAction = (t: FinancialTransaction) => {
-    setEditingTransaction(t);
-    setModalType(t.type);
-    setIsConfirming(true);
-    setIsModalOpen(true);
+  const handleConfirmPayment = async (t: TransactionInstance) => {
+    try {
+      if (t.isVirtual) {
+        // Create a physical child instance for the virtual occurrence
+        const { error } = await supabase.from('financial_transactions').insert({
+          user_id: user!.id,
+          type: t.type,
+          amount: t.amount,
+          date: t.instanceDate,
+          description: t.description,
+          status: 'paid',
+          client_id: t.client_id || null,
+          account_id: t.account_id || null,
+          category_id: t.category_id || null,
+          destination_account_id: t.destination_account_id || null,
+          parent_id: t.parent_id || t.id,
+          modalidade: 'unica',
+          is_customized: true,
+          installment_current: t.installment_current,
+          invoice_month: t.invoice_month
+        });
+        if (error) throw error;
+      } else {
+        // Update the existing physical transaction
+        const { error } = await supabase.from('financial_transactions')
+          .update({ status: 'paid' })
+          .eq('id', t.id);
+        if (error) throw error;
+      }
+
+      toast.success('Lançamento confirmado!');
+      fetchTransactions();
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao confirmar lançamento.');
+    }
     setOpenDropdown(null);
   };
 
@@ -751,7 +783,7 @@ const FinancialTransactionsV2 = () => {
                     {openDropdown === dropdownKey && (
                       <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
-                          <button onClick={() => handleConfirmAction(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
+                          <button onClick={() => handleConfirmPayment(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
                         )}
                         <button onClick={() => handleEdit(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Pencil size={12} /> Editar</button>
                         <button onClick={() => handleClone(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Copy size={12} /> Clonar</button>
@@ -945,7 +977,7 @@ const FinancialTransactionsV2 = () => {
                         {openDropdown === dropdownKey && (
                           <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
-                              <button onClick={() => handleConfirmAction(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                              <button onClick={() => handleConfirmPayment(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
                             )}
                             <button onClick={() => handleEdit(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
                             <button onClick={() => handleClone(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
