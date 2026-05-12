@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   Repeat,
   Zap,
-  ArrowRight
+  ArrowRight,
+  CreditCard
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,6 +53,8 @@ interface FinancialTransaction {
   installment_current?: number;
   auto_confirm?: boolean;
   tags?: { tag: { id: string; name: string; color: string } }[];
+  invoice_month?: string | null;
+  account_type?: string;
 }
 
 interface TransactionInstance extends FinancialTransaction {
@@ -65,6 +68,7 @@ const FinancialTransactionsV2 = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [creditCardAccounts, setCreditCardAccounts] = useState<any[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -97,6 +101,7 @@ const FinancialTransactionsV2 = () => {
       const mappedData = (data || []).map((t: any) => ({
         ...t,
         account: t.account_name ? { name: t.account_name, type: t.account_type } : null,
+        account_type: t.account_type || null,
         destination_account: t.destination_account_name ? { name: t.destination_account_name, type: t.destination_account_type } : null,
         client: t.client_name ? { name: t.client_name } : null,
         category: t.category_name ? { name: t.category_name, icon: t.category_icon, parent_id: t.category_parent_id } : null
@@ -141,9 +146,27 @@ const FinancialTransactionsV2 = () => {
     }
   };
 
+  const fetchCreditCardAccounts = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('financial_accounts')
+        .select('id, name, type, due_day')
+        .eq('type', 'credit_card')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      setCreditCardAccounts(data || []);
+    } catch (err) {
+      console.error('Erro ao buscar cartões:', err);
+    }
+  };
+
   useEffect(() => {
     fetchTransactions();
     fetchAccounts();
+    fetchCreditCardAccounts();
   }, [user]);
 
   useEffect(() => {
@@ -414,6 +437,41 @@ const FinancialTransactionsV2 = () => {
     });
   }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth]);
 
+  // Generate credit card invoice summary lines for the current month
+  const invoiceSummaries = useMemo(() => {
+    const currentMonthStr = format(currentMonth, 'yyyy-MM');
+    
+    // Group all transactions with invoice_month matching current month by account_id
+    const invoiceMap = new Map<string, { accountName: string; total: number; dueDay: number | null }>();
+    
+    for (const t of transactions) {
+      if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr) continue;
+      
+      const existing = invoiceMap.get(t.account_id!);
+      const amount = Number(t.amount) || 0;
+      
+      if (existing) {
+        existing.total += amount;
+      } else {
+        const card = creditCardAccounts.find(c => c.id === t.account_id);
+        invoiceMap.set(t.account_id!, {
+          accountName: card?.name || t.account?.name || 'Cartão',
+          total: amount,
+          dueDay: card?.due_day || null,
+        });
+      }
+    }
+
+    return Array.from(invoiceMap.entries()).map(([accountId, data]) => ({
+      id: `invoice-${accountId}-${currentMonthStr}`,
+      accountId,
+      accountName: data.accountName,
+      total: data.total,
+      dueDay: data.dueDay,
+      invoiceMonth: currentMonthStr,
+    }));
+  }, [transactions, creditCardAccounts, currentMonth]);
+
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   const SidebarContent = () => (
@@ -547,10 +605,28 @@ const FinancialTransactionsV2 = () => {
 
         {/* Mobile Transaction List - Layout tabular compacto */}
         <div className="flex-1 overflow-y-auto bg-white">
-          {displayInstances.length === 0 ? (
+          {displayInstances.length === 0 && invoiceSummaries.length === 0 ? (
             <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
           ) : (
-            displayInstances.map((t, index) => {
+            <>
+            {invoiceSummaries.map((inv) => (
+              <div key={inv.id} className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40">
+                <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+                <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{inv.dueDay ? `Dia ${String(inv.dueDay).padStart(2, '0')}` : '—'}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard size={12} className="text-amber-600 shrink-0" />
+                    <span className="font-black text-xs text-slate-800 truncate">Fatura {inv.accountName}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-black text-xs text-amber-700">
+                    -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.total)}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {displayInstances.map((t, index) => {
               const status = getVisualStatus(t);
               const dropdownKey = `${t.id}-${t.instanceDate}`;
               const isEven = index % 2 === 0;
@@ -605,6 +681,7 @@ const FinancialTransactionsV2 = () => {
                 </div>
               );
             })
+            </>
           )}
         </div>
       </div>
@@ -670,10 +747,36 @@ const FinancialTransactionsV2 = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-              {displayInstances.length === 0 ? (
+              {displayInstances.length === 0 && invoiceSummaries.length === 0 ? (
                 <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
               ) : (
-                displayInstances.map((t, index) => {
+                <>
+                {invoiceSummaries.map((inv) => (
+                  <div key={inv.id} className="group flex items-center gap-4 px-8 py-4 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
+                    <div className="p-3 rounded-2xl shrink-0 bg-amber-100 text-amber-600">
+                      <CreditCard size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                        <h4 className="font-black text-slate-800 text-sm">Fatura {inv.accountName}</h4>
+                      </div>
+                      <div className="flex items-center gap-x-3 mt-1">
+                        <p className="text-[10px] font-bold text-slate-400">{inv.dueDay ? `Vencimento dia ${String(inv.dueDay).padStart(2, '0')}` : '—'}</p>
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100/60 rounded-md">
+                          <span className="text-[9px] font-black text-amber-700 uppercase">{inv.accountName}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-base text-amber-700">
+                        -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.total)}
+                      </p>
+                      <p className="text-[10px] font-bold text-amber-500/70">Fatura consolidada</p>
+                    </div>
+                  </div>
+                ))}
+                {displayInstances.map((t, index) => {
                   const status = getVisualStatus(t);
                   const dropdownKey = `${t.id}-${t.instanceDate}`;
                   const isEven = index % 2 === 0;
@@ -753,6 +856,7 @@ const FinancialTransactionsV2 = () => {
                     </div>
                   );
                 })
+                </>
               )}
             </div>
           </div>
