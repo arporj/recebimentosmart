@@ -8,6 +8,7 @@ export interface TransactionUpdate {
   amount?: number;
   category_id?: string;
   account_id?: string;
+  client_id?: string;
   date?: string;
   status?: string;
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
