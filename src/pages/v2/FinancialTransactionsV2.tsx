@@ -18,7 +18,8 @@ import {
   Zap,
   ArrowRight,
   CreditCard,
-  User
+  User,
+  Wallet
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -507,7 +508,7 @@ const FinancialTransactionsV2 = () => {
     });
 
     // Início do saldo acumulado para as contas selecionadas no início do mês
-    let runningBalance = totals.confirmed - monthInstances
+    const openingBalance = totals.confirmed - monthInstances
       .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth) && t.status === 'paid' && ((t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id))))
       .reduce((sum, t) => {
         if (t.type === 'income') return sum + t.amount;
@@ -518,6 +519,8 @@ const FinancialTransactionsV2 = () => {
         }
         return sum;
       }, 0);
+
+    let runningBalance = openingBalance;
 
     const withBalance = filtered.map(t => {
       if (t.type === 'income') runningBalance += t.amount;
@@ -546,7 +549,27 @@ const FinancialTransactionsV2 = () => {
       return matchesFilter && matchesSearch;
     });
 
-    return [...withBalance, ...filteredInvoices].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+    const sortedList = [...withBalance, ...filteredInvoices].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+
+    // Inject opening balance if no search filter is active
+    if (searchTerm === '') {
+      const lastDayPrevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 0);
+      const openingBalanceInstance = {
+        id: `opening-balance-${format(currentMonth, 'yyyy-MM')}`,
+        type: 'income',
+        amount: 0,
+        date: format(lastDayPrevMonth, 'yyyy-MM-dd'),
+        description: 'Saldo do mês anterior',
+        status: 'paid',
+        instanceDate: format(lastDayPrevMonth, 'yyyy-MM-dd'),
+        isVirtual: true,
+        isOpeningBalance: true,
+        runningBalance: openingBalance,
+      } as any;
+      return [openingBalanceInstance, ...sortedList];
+    }
+
+    return sortedList;
   }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances]);
 
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
@@ -688,6 +711,27 @@ const FinancialTransactionsV2 = () => {
             displayInstances.map((t, index) => {
               const dropdownKey = `${t.id}-${t.instanceDate}`;
               const isEven = index % 2 === 0;
+
+              if (t.isOpeningBalance) {
+                return (
+                  <div key={dropdownKey} className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80">
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-slate-300" />
+                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Wallet size={12} className="text-slate-500 shrink-0" />
+                        <span className="font-black text-xs text-slate-700 truncate">{t.description}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`font-black text-xs ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                      </p>
+                    </div>
+                    <div className="relative shrink-0 w-6"></div>
+                  </div>
+                );
+              }
 
               if (t.isInvoiceSummary) {
                 return (
@@ -856,6 +900,30 @@ const FinancialTransactionsV2 = () => {
                 displayInstances.map((t, index) => {
                   const dropdownKey = `${t.id}-${t.instanceDate}`;
                   const isEven = index % 2 === 0;
+
+                  if (t.isOpeningBalance) {
+                    return (
+                      <div key={dropdownKey} className="group flex items-center gap-4 px-8 py-4 bg-slate-50/80 border-b border-slate-100">
+                        <div className="p-3 rounded-2xl shrink-0 bg-slate-200 text-slate-600">
+                          <Wallet size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <h4 className="font-black text-slate-700 text-sm">{t.description}</h4>
+                          </div>
+                          <div className="flex items-center gap-x-3 mt-1">
+                            <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`font-black text-base ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                          </p>
+                        </div>
+                        <div className="relative w-10"></div>
+                      </div>
+                    );
+                  }
 
                   if (t.isInvoiceSummary) {
                     return (
