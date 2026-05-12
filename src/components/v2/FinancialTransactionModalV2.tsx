@@ -663,16 +663,26 @@ const FinancialTransactionModalV2 = ({
                   </div>
 
                   {/* Toggle Valor Total vs Unitário */}
-                  <div className="flex items-center justify-center gap-4 bg-white/50 p-3 rounded-2xl border border-slate-100">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Valor Unitário</span>
-                    <button
-                      type="button"
-                      onClick={() => setIsTotalValue(!isTotalValue)}
-                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
-                    >
-                      <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-6' : 'translate-x-0'}`} />
-                    </button>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Valor Total</span>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center justify-center gap-4 bg-white/50 p-3 rounded-2xl border border-slate-100 w-full">
+                      <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Valor Unitário</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsTotalValue(!isTotalValue)}
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-6' : 'translate-x-0'}`} />
+                      </button>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Valor Total</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 w-full text-center">
+                      As parcelas serão no valor de <span className="font-bold text-slate-700">{(() => {
+                        const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.')) || 0;
+                        const numInstallments = parseInt(installmentTotal) || 1;
+                        const value = isTotalValue ? parsedAmount / numInstallments : parsedAmount;
+                        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+                      })()}</span>
+                    </p>
                   </div>
                 </div>
               )}
