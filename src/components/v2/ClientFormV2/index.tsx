@@ -15,10 +15,10 @@ type CustomField = Database['public']['Tables']['custom_fields']['Row'];
 interface ClientFormV2Props {
     client?: Client;
     onClose: () => void;
+    onSuccess?: (clientId: string) => void;
 }
 
-
-export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
+export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) {
     const { clients, refreshClients } = useClients();
     const { user, plano } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -164,6 +164,9 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
 
             await refreshClients();
             toast.success(client ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
+            if (onSuccess && clientResult?.id) {
+                onSuccess(clientResult.id);
+            }
             onClose();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao processar cliente');

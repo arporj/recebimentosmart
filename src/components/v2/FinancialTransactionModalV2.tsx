@@ -550,21 +550,21 @@ const FinancialTransactionModalV2 = ({
               <div className="bg-slate-100 p-1 rounded-2xl flex items-center w-full max-w-xs shadow-inner">
                 <button 
                   type="button"
-                  onClick={() => setType('income')}
+                  onClick={() => { setType('income'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${type === 'income' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
                 >
                   Receita
                 </button>
                 <button 
                   type="button"
-                  onClick={() => setType('expense')}
+                  onClick={() => { setType('expense'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${type === 'expense' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
                 >
                   Despesa
                 </button>
                 <button 
                   type="button"
-                  onClick={() => setType('transfer')}
+                  onClick={() => { setType('transfer'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${type === 'transfer' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
                 >
                   Transferência
@@ -1213,6 +1213,12 @@ const FinancialTransactionModalV2 = ({
             setIsClientModalOpen(false);
             fetchClients();
           }} 
+          onSuccess={(newClientId) => {
+            fetchClients().then(() => {
+              setClientId(newClientId);
+            });
+            setIsClientModalOpen(false);
+          }}
         />
       )}
 
