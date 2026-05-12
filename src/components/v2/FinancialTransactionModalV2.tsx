@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Search, 
@@ -173,6 +173,15 @@ const FinancialTransactionModalV2 = ({
   const [isQuickAddAccountOpen, setIsQuickAddAccountOpen] = useState(false);
   const [isQuickAddCategoryOpen, setIsQuickAddCategoryOpen] = useState(false);
   const [pendingAccountType, setPendingAccountType] = useState<'origin' | 'destination'>('origin');
+
+  const amountInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus amount field when modal opens for a new transaction
+  useEffect(() => {
+    if (isOpen && !transaction) {
+      setTimeout(() => amountInputRef.current?.focus(), 100);
+    }
+  }, [isOpen, transaction]);
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
@@ -545,6 +554,7 @@ const FinancialTransactionModalV2 = ({
               <div className="flex items-baseline justify-center gap-2">
                 <span className={`text-2xl font-bold opacity-60 ${type === 'income' ? 'text-teal-600' : type === 'expense' ? 'text-rose-600' : 'text-indigo-600'}`}>R$</span>
                 <input 
+                  ref={amountInputRef}
                   type="text"
                   inputMode="numeric"
                   value={amount}
