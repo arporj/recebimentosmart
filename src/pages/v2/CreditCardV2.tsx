@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, CalendarDays, Pencil, Search,
   MoreVertical, Trash2, CheckCircle2, CreditCard,
@@ -84,9 +85,11 @@ const CreditCardV2 = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isCardDropdownOpen, setIsCardDropdownOpen] = useState(false);
+  const [hasInitializedParams, setHasInitializedParams] = useState(false);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,9 +124,25 @@ const CreditCardV2 = () => {
       .order('name');
     const cardList = (data as Account[]) || [];
     setCards(cardList);
-    if (cardList.length > 0 && !selectedCardId) {
-      setSelectedCardId(cardList[0].id);
-      setCurrentMonth(getSmartCurrentMonth(cardList[0]));
+    
+    if (!hasInitializedParams) {
+      const initialCardId = searchParams.get('cardId');
+      const initialMonth = searchParams.get('month'); // format: yyyy-MM
+      
+      const foundCard = cardList.find(c => c.id === initialCardId);
+      if (foundCard) {
+        setSelectedCardId(foundCard.id);
+        if (initialMonth) {
+          const [year, month] = initialMonth.split('-');
+          setCurrentMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
+        } else {
+          setCurrentMonth(getSmartCurrentMonth(foundCard));
+        }
+      } else if (cardList.length > 0 && !selectedCardId) {
+        setSelectedCardId(cardList[0].id);
+        setCurrentMonth(getSmartCurrentMonth(cardList[0]));
+      }
+      setHasInitializedParams(true);
     }
   };
 
@@ -158,10 +177,22 @@ const CreditCardV2 = () => {
 
   // When card changes, update smart month
   useEffect(() => {
-    if (selectedCard) {
-      setCurrentMonth(getSmartCurrentMonth(selectedCard));
+    if (selectedCard && hasInitializedParams) {
+      // Check if we are changing cards through user click vs initial load
+      // Since we only want to auto-change month when user selects a different card manually
+      // We can rely on the fact that initialCard is handled in fetchCards.
+      // But we need to make sure we don't override the month right after initial load.
+      // A safe way is to only update if it's not the initial mount.
+      // We can use a ref to track if it's the first render.
     }
   }, [selectedCardId]);
+
+  // Handle manual card change via select
+  const handleCardChange = (card: Account) => {
+    setSelectedCardId(card.id);
+    setCurrentMonth(getSmartCurrentMonth(card));
+    setIsCardDropdownOpen(false);
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -334,20 +365,20 @@ const CreditCardV2 = () => {
     setCurrentMonth(getSmartCurrentMonth(selectedCard));
   };
 
-  // Visual status
-  const getVisualStatus = (t: TransactionInstance): 'paid' | 'pending' | 'overdue' | 'partial' => {
-    if (t.status === 'paid') return 'paid';
-    if (t.status === 'partial') return 'partial';
-    const dueDate = parseISO(t.instanceDate);
-    if (isBefore(dueDate, today) && !isSameDay(dueDate, today)) return 'overdue';
-    return 'pending';
-  };
+  const isInvoiceOverdue = useMemo(() => {
+    if (!invoicePeriod) return false;
+    const todayDate = new Date();
+    const isPastDue = isBefore(invoicePeriod.dueDate, todayDate) && !isSameDay(invoicePeriod.dueDate, todayDate);
+    if (!isPastDue) return false;
+    if (billPaymentTransaction) {
+      return billPaymentTransaction.status !== 'paid';
+    }
+    return true;
+  }, [invoicePeriod, billPaymentTransaction]);
 
   const statusDot: Record<string, string> = {
-    paid: 'bg-emerald-400',
-    pending: 'bg-amber-400',
+    default: 'bg-slate-300',
     overdue: 'bg-rose-500',
-    partial: 'bg-sky-400',
   };
 
   // Handlers
@@ -412,10 +443,10 @@ const CreditCardV2 = () => {
 
   // Transaction row component
   const TransactionRow = ({ t }: { t: TransactionInstance }) => {
-    const status = getVisualStatus(t);
+    const visualStatus = isInvoiceOverdue ? 'overdue' : 'default';
     return (
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
-        <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[status]}`} />
+        <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[visualStatus]}`} />
         <span className="text-xs text-slate-400 font-mono w-[70px] shrink-0">
           {format(parseISO(t.instanceDate), 'dd/MM/yy')}
         </span>
@@ -448,7 +479,7 @@ const CreditCardV2 = () => {
           </button>
           {openDropdown === t.id + t.instanceDate && (
             <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-30">
-              {status !== 'paid' && !t.isVirtual && (
+              {t.status !== 'paid' && !t.isVirtual && (
                 <button onClick={() => { handleConfirmPayment(t); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-emerald-600 hover:bg-emerald-50 transition-colors">
                   <CheckCircle2 size={14} /> Confirmar Pagamento
                 </button>
@@ -498,7 +529,7 @@ const CreditCardV2 = () => {
               {isCardDropdownOpen && (
                 <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1">
                   {cards.map(c => (
-                    <button key={c.id} onClick={() => { setSelectedCardId(c.id); setIsCardDropdownOpen(false); }} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${c.id === selectedCardId ? 'font-bold text-purple-600' : 'text-slate-700'}`}>
+                    <button key={c.id} onClick={() => handleCardChange(c)} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${c.id === selectedCardId ? 'font-bold text-purple-600' : 'text-slate-700'}`}>
                       {c.name}
                     </button>
                   ))}
@@ -580,7 +611,7 @@ const CreditCardV2 = () => {
                 {isCardDropdownOpen && (
                   <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1">
                     {cards.map(c => (
-                      <button key={c.id} onClick={() => { setSelectedCardId(c.id); setIsCardDropdownOpen(false); }} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${c.id === selectedCardId ? 'font-bold text-purple-600 bg-purple-50' : 'text-slate-700'}`}>
+                      <button key={c.id} onClick={() => handleCardChange(c)} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${c.id === selectedCardId ? 'font-bold text-purple-600 bg-purple-50' : 'text-slate-700'}`}>
                         {c.name}
                       </button>
                     ))}
