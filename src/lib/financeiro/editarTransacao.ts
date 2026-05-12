@@ -83,8 +83,12 @@ export async function editarTransacao(
   // Lógica para Parcelas e Recorrências
   const refId = parent_id || current.id; // ID da transação "mãe" ou referência
 
+  // Protect invoice_month from uniform overwrite on bulk updates.
+  // Each installment/occurrence has its own invoice cycle.
+  const { invoice_month: _removedInvoiceMonth, ...safeBulkUpdate } = update;
+
   if (scope === 'all') {
-    let query = supabase.from('financial_transactions').update(update);
+    let query = supabase.from('financial_transactions').update(safeBulkUpdate);
     
     if (currentModalidade === 'parcelada') {
       query = query.or(`id.eq.${refId},parent_id.eq.${refId}`);
@@ -98,7 +102,7 @@ export async function editarTransacao(
   if (scope === 'following') {
     return await supabase
       .from('financial_transactions')
-      .update(update)
+      .update(safeBulkUpdate)
       .or(`id.eq.${refId},parent_id.eq.${refId}`)
       .gte('date', currentDate)
       .neq('is_customized', true);

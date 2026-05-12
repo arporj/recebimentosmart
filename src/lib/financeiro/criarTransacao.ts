@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { format } from 'date-fns';
 import { addPeriod, parseLocalDate, gerarInstanciasRecorrentes } from './recorrenciaUtils';
+import { calcularMesFatura, type AccountInvoiceConfig } from './faturaUtils';
 
 export interface TransactionInput {
   description: string;
@@ -20,6 +21,23 @@ export interface TransactionInput {
   card_holder_name?: string | null;
 }
 
+/**
+ * Fetches the account configuration needed for invoice month calculation.
+ * Returns null if account_id is missing or query fails.
+ */
+async function fetchAccountConfig(accountId?: string): Promise<AccountInvoiceConfig | null> {
+  if (!accountId) return null;
+
+  const { data, error } = await supabase
+    .from('financial_accounts')
+    .select('type, due_day, closing_days_before')
+    .eq('id', accountId)
+    .single();
+
+  if (error || !data) return null;
+  return data as AccountInvoiceConfig;
+}
+
 export async function criarTransacao(input: TransactionInput) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Usuário não autenticado');
@@ -28,10 +46,13 @@ export async function criarTransacao(input: TransactionInput) {
   const startInstallment = input.start_installment || 1;
   const recurrencePeriod = input.recurrence_period || 'monthly';
   
-  // Ajustar o valor se for o valor total
+  // Adjust value if total was provided
   const finalAmount = input.is_total_value 
     ? Number((input.amount / installmentTotal).toFixed(2))
     : input.amount;
+
+  // Fetch account config for credit card invoice calculation
+  const accountConfig = await fetchAccountConfig(input.account_id);
 
   const baseTransaction = {
     user_id: userData.user.id,
@@ -50,7 +71,7 @@ export async function criarTransacao(input: TransactionInput) {
     return await supabase.from('financial_transactions').insert({
       ...baseTransaction,
       date: input.date,
-      amount: input.amount // Valor único não divide
+      amount: input.amount // Single transaction doesn't split
     });
   }
 
@@ -61,14 +82,21 @@ export async function criarTransacao(input: TransactionInput) {
     for (let i = startInstallment; i <= installmentTotal; i++) {
         const indexOffset = i - startInstallment;
         const dueDate = addPeriod(startDate, indexOffset, recurrencePeriod);
+        const dueDateStr = format(dueDate, 'yyyy-MM-dd');
         
+        // Dynamically calculate invoice_month for each installment
+        const invoiceMonth = accountConfig
+          ? calcularMesFatura(dueDateStr, accountConfig)
+          : baseTransaction.invoice_month;
+
         parcels.push({
           ...baseTransaction,
           description: `${input.description} (${i}/${installmentTotal})`,
-          date: format(dueDate, 'yyyy-MM-dd'),
+          date: dueDateStr,
           installment_current: i,
           installment_total: installmentTotal,
-          modalidade: 'parcelada'
+          modalidade: 'parcelada',
+          invoice_month: invoiceMonth,
         });
     }
     
@@ -103,7 +131,9 @@ export async function criarTransacao(input: TransactionInput) {
         parentData,
         baseTransaction,
         recurrencePeriod,
-        recurrenceInterval
+        recurrenceInterval,
+        12,
+        accountConfig
       );
       return { data: parentData, error: null };
     } catch (error: any) {

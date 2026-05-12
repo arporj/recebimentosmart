@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { addDays, addWeeks, addMonths, addYears, format } from 'date-fns';
+import { calcularMesFatura, type AccountInvoiceConfig } from './faturaUtils';
 
 export const addPeriod = (date: Date, amount: number, period: string) => {
   switch (period) {
@@ -20,19 +21,28 @@ export async function gerarInstanciasRecorrentes(
   baseTransaction: any,
   periodicidade: string,
   intervalo: number,
-  quantidade: number = 12
+  quantidade: number = 12,
+  accountConfig?: AccountInvoiceConfig | null
 ) {
   const occurrences = [];
   const startDate = parseLocalDate(parentData.date);
 
   for (let i = 1; i <= quantidade; i++) {
     const occurrenceDate = addPeriod(startDate, i * intervalo, periodicidade);
+    const occurrenceDateStr = format(occurrenceDate, 'yyyy-MM-dd');
+
+    // Dynamically calculate invoice_month for each occurrence
+    const invoiceMonth = accountConfig
+      ? calcularMesFatura(occurrenceDateStr, accountConfig)
+      : baseTransaction.invoice_month;
+
     occurrences.push({
       ...baseTransaction,
       parent_id: parentData.id,
-      date: format(occurrenceDate, 'yyyy-MM-dd'),
+      date: occurrenceDateStr,
       recurrence_period: periodicidade,
       recurrence_interval: intervalo,
+      invoice_month: invoiceMonth,
     });
   }
 
