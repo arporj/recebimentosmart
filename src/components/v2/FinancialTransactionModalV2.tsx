@@ -451,6 +451,7 @@ const FinancialTransactionModalV2 = ({
         amount: parsedAmount,
         type,
         date,
+        client_id: clientId || undefined,
         category_id: categoryId || undefined,
         account_id: accountId || undefined,
         modalidade,
