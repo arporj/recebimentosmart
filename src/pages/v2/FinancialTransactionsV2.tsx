@@ -293,52 +293,26 @@ const FinancialTransactionsV2 = () => {
     return 'pending';
   };
 
-  const handleEdit = (t: FinancialTransaction) => {
-    setEditingTransaction(t);
+  const handleEdit = (t: TransactionInstance) => {
+    // Para edições de instâncias virtuais, a data exibida no modal deve ser a data da instância (instanceDate)
+    const transactionToEdit = { ...t, date: t.instanceDate || t.date };
+    setEditingTransaction(transactionToEdit);
     setModalType(t.type);
     setIsConfirming(false);
     setIsModalOpen(true);
     setOpenDropdown(null);
   };
 
-  const handleConfirmPayment = async (t: TransactionInstance) => {
-    try {
-      if (t.isVirtual) {
-        // Create a physical child instance for the virtual occurrence
-        const { error } = await supabase.from('financial_transactions').insert({
-          user_id: user!.id,
-          type: t.type,
-          amount: t.amount,
-          date: t.instanceDate,
-          description: t.description,
-          status: 'paid',
-          client_id: t.client_id || null,
-          account_id: t.account_id || null,
-          category_id: t.category_id || null,
-          destination_account_id: t.destination_account_id || null,
-          parent_id: t.parent_id || t.id,
-          modalidade: 'unica',
-          is_customized: true,
-          installment_current: t.installment_current,
-          invoice_month: t.invoice_month
-        });
-        if (error) throw error;
-      } else {
-        // Update the existing physical transaction
-        const { error } = await supabase.from('financial_transactions')
-          .update({ status: 'paid' })
-          .eq('id', t.id);
-        if (error) throw error;
-      }
-
-      toast.success('Lançamento confirmado!');
-      fetchTransactions();
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao confirmar lançamento.');
-    }
+  const handleConfirmAction = (t: TransactionInstance) => {
+    const transactionToEdit = { ...t, date: t.instanceDate || t.date };
+    setEditingTransaction(transactionToEdit);
+    setModalType(t.type);
+    setIsConfirming(true);
+    setIsModalOpen(true);
     setOpenDropdown(null);
   };
+
+
 
   const handleClone = async (t: FinancialTransaction) => {
     try {
@@ -783,7 +757,7 @@ const FinancialTransactionsV2 = () => {
                     {openDropdown === dropdownKey && (
                       <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
-                          <button onClick={() => handleConfirmPayment(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
+                          <button onClick={() => handleConfirmAction(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
                         )}
                         <button onClick={() => handleEdit(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Pencil size={12} /> Editar</button>
                         <button onClick={() => handleClone(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Copy size={12} /> Clonar</button>

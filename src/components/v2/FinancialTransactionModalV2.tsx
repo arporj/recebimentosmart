@@ -446,7 +446,7 @@ const FinancialTransactionModalV2 = ({
 
       const mappedRecurrencePeriod = periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly';
 
-      const payload = {
+      const payload: any = {
         description,
         amount: parsedAmount,
         type,
@@ -465,8 +465,13 @@ const FinancialTransactionModalV2 = ({
         card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
       };
 
+      if (isConfirming) {
+        payload.status = 'paid';
+      }
+
       if (isEditing) {
-        if (modalidade !== 'unica' && !isScopeModalOpen) {
+        // Se estiver confirmando, o escopo é SEMPRE 'this' e não abre o modal de escopo
+        if (!isConfirming && modalidade !== 'unica' && !isScopeModalOpen) {
           setTempFormData(payload);
           setScopeType('edit');
           setIsScopeModalOpen(true);
@@ -474,11 +479,29 @@ const FinancialTransactionModalV2 = ({
           return;
         }
 
-        const scope = tempFormData?.scope || 'this';
-        const { error } = await editarTransacaoFinanceira(transaction!.id, payload as any, scope);
-        if (error) throw error;
+        const scope = isConfirming ? 'this' : (tempFormData?.scope || 'this');
+        
+        // Se for uma instância virtual (gerada pela recorrência mas que não existe no BD) 
+        // e o escopo for 'this', precisamos INSERIR um novo registro físico (filho)
+        if ((transaction as any).isVirtual && scope === 'this') {
+          const newChildPayload = {
+            ...payload,
+            user_id: user.id,
+            parent_id: transaction!.parent_id || transaction!.id,
+            modalidade: 'unica', // a instância filha não carrega as regras de recorrência do pai
+            is_customized: true,
+            installment_current: (transaction as any).installment_current || 1,
+            recurrence_enabled: false
+          };
+          const { error } = await supabase.from('financial_transactions').insert(newChildPayload);
+          if (error) throw error;
+        } else {
+          // Edição normal de registro existente físico ou atualização do pai
+          const { error } = await editarTransacaoFinanceira(transaction!.id, payload, scope);
+          if (error) throw error;
+        }
       } else {
-        const { error } = await criarTransacaoFinanceira(payload as any);
+        const { error } = await criarTransacaoFinanceira(payload);
         if (error) throw error;
       }
 
