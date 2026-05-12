@@ -60,6 +60,12 @@ interface FinancialTransaction {
 interface TransactionInstance extends FinancialTransaction {
   instanceDate: string;
   isVirtual: boolean;
+  isInvoiceSummary?: boolean;
+  invoiceData?: {
+    cardName: string;
+    linkedAccountName: string | null;
+    total: number;
+  };
 }
 
 const FinancialTransactionsV2 = () => {
@@ -151,13 +157,28 @@ const FinancialTransactionsV2 = () => {
     try {
       const { data, error } = await supabase
         .from('financial_accounts')
-        .select('id, name, type, due_day')
+        .select('id, name, type, due_day, invoice_payment_account_id')
         .eq('type', 'credit_card')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
-      setCreditCardAccounts(data || []);
+
+      // Resolve linked account names
+      const linkedIds = (data || []).map(c => c.invoice_payment_account_id).filter(Boolean);
+      let linkedMap = new Map<string, string>();
+      if (linkedIds.length > 0) {
+        const { data: linkedAccounts } = await supabase
+          .from('financial_accounts')
+          .select('id, name')
+          .in('id', linkedIds);
+        linkedMap = new Map((linkedAccounts || []).map(a => [a.id, a.name]));
+      }
+
+      setCreditCardAccounts((data || []).map(c => ({
+        ...c,
+        linkedAccountName: c.invoice_payment_account_id ? linkedMap.get(c.invoice_payment_account_id) || null : null,
+      })));
     } catch (err) {
       console.error('Erro ao buscar cartões:', err);
     }
@@ -403,6 +424,59 @@ const FinancialTransactionsV2 = () => {
     };
   }, [accountsData, selectedAccountIds, monthInstances]);
 
+  // Generate credit card invoice summary lines as TransactionInstance items
+  const invoiceInstances = useMemo((): TransactionInstance[] => {
+    const currentMonthStr = format(currentMonth, 'yyyy-MM');
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    const invoiceMap = new Map<string, { cardName: string; linkedAccountName: string | null; total: number; dueDay: number | null }>();
+    
+    for (const t of transactions) {
+      if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr) continue;
+      
+      const existing = invoiceMap.get(t.account_id!);
+      const amount = Number(t.amount) || 0;
+      
+      if (existing) {
+        existing.total += amount;
+      } else {
+        const card = creditCardAccounts.find(c => c.id === t.account_id);
+        invoiceMap.set(t.account_id!, {
+          cardName: card?.name || t.account?.name || 'Cartão',
+          linkedAccountName: card?.linkedAccountName || null,
+          total: amount,
+          dueDay: card?.due_day || null,
+        });
+      }
+    }
+
+    return Array.from(invoiceMap.entries()).map(([accountId, data]) => {
+      const dueDay = data.dueDay || 1;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const safeDay = Math.min(dueDay, lastDay);
+      const instanceDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+
+      return {
+        id: `invoice-${accountId}-${currentMonthStr}`,
+        type: 'expense' as const,
+        amount: data.total,
+        date: instanceDate,
+        description: `Fatura ${data.cardName}`,
+        status: 'pending' as const,
+        account_id: accountId,
+        instanceDate,
+        isVirtual: true,
+        isInvoiceSummary: true,
+        invoiceData: {
+          cardName: data.cardName,
+          linkedAccountName: data.linkedAccountName,
+          total: data.total,
+        },
+      };
+    });
+  }, [transactions, creditCardAccounts, currentMonth]);
+
   const displayInstances = useMemo(() => {
     const filtered = monthInstances.filter(t => {
       const isSelected = (t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
@@ -424,7 +498,7 @@ const FinancialTransactionsV2 = () => {
         return sum;
       }, 0);
 
-    return filtered.map(t => {
+    const withBalance = filtered.map(t => {
       if (t.type === 'income') runningBalance += t.amount;
       else if (t.type === 'expense') runningBalance -= t.amount;
       else if (t.type === 'transfer') {
@@ -435,42 +509,16 @@ const FinancialTransactionsV2 = () => {
       }
       return { ...t, runningBalance };
     });
-  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth]);
 
-  // Generate credit card invoice summary lines for the current month
-  const invoiceSummaries = useMemo(() => {
-    const currentMonthStr = format(currentMonth, 'yyyy-MM');
-    
-    // Group all transactions with invoice_month matching current month by account_id
-    const invoiceMap = new Map<string, { accountName: string; total: number; dueDay: number | null }>();
-    
-    for (const t of transactions) {
-      if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr) continue;
-      
-      const existing = invoiceMap.get(t.account_id!);
-      const amount = Number(t.amount) || 0;
-      
-      if (existing) {
-        existing.total += amount;
-      } else {
-        const card = creditCardAccounts.find(c => c.id === t.account_id);
-        invoiceMap.set(t.account_id!, {
-          accountName: card?.name || t.account?.name || 'Cartão',
-          total: amount,
-          dueDay: card?.due_day || null,
-        });
-      }
-    }
+    // Inject invoice instances into the list, sorted by date
+    const filteredInvoices = invoiceInstances.filter(inv => {
+      const matchesFilter = filter === 'all' || filter === 'expense';
+      const matchesSearch = searchTerm === '' || inv.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
 
-    return Array.from(invoiceMap.entries()).map(([accountId, data]) => ({
-      id: `invoice-${accountId}-${currentMonthStr}`,
-      accountId,
-      accountName: data.accountName,
-      total: data.total,
-      dueDay: data.dueDay,
-      invoiceMonth: currentMonthStr,
-    }));
-  }, [transactions, creditCardAccounts, currentMonth]);
+    return [...withBalance, ...filteredInvoices].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances]);
 
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
@@ -605,32 +653,39 @@ const FinancialTransactionsV2 = () => {
 
         {/* Mobile Transaction List - Layout tabular compacto */}
         <div className="flex-1 overflow-y-auto bg-white">
-          {displayInstances.length === 0 && invoiceSummaries.length === 0 ? (
+          {displayInstances.length === 0 ? (
             <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
           ) : (
-            <>
-            {invoiceSummaries.map((inv) => (
-              <div key={inv.id} className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40">
-                <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
-                <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{inv.dueDay ? `Dia ${String(inv.dueDay).padStart(2, '0')}` : '—'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <CreditCard size={12} className="text-amber-600 shrink-0" />
-                    <span className="font-black text-xs text-slate-800 truncate">Fatura {inv.accountName}</span>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-black text-xs text-amber-700">
-                    -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.total)}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {displayInstances.map((t, index) => {
-              const status = getVisualStatus(t);
+            displayInstances.map((t, index) => {
               const dropdownKey = `${t.id}-${t.instanceDate}`;
               const isEven = index % 2 === 0;
 
+              if (t.isInvoiceSummary) {
+                return (
+                  <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40`}>
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <CreditCard size={12} className="text-amber-600 shrink-0" />
+                        <span className="font-black text-xs text-slate-800 truncate">{t.description}</span>
+                      </div>
+                      {t.invoiceData?.linkedAccountName && (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[8px] font-black text-slate-400 uppercase">{t.invoiceData.linkedAccountName}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-xs text-amber-700">
+                        -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
+              const status = getVisualStatus(t);
               return (
                 <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}>
                   {/* Status dot */}
@@ -680,8 +735,7 @@ const FinancialTransactionsV2 = () => {
                   </div>
                 </div>
               );
-            })}
-            </>
+            })
           )}
         </div>
       </div>
@@ -747,39 +801,44 @@ const FinancialTransactionsV2 = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-              {displayInstances.length === 0 && invoiceSummaries.length === 0 ? (
+              {displayInstances.length === 0 ? (
                 <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
               ) : (
-                <>
-                {invoiceSummaries.map((inv) => (
-                  <div key={inv.id} className="group flex items-center gap-4 px-8 py-4 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
-                    <div className="p-3 rounded-2xl shrink-0 bg-amber-100 text-amber-600">
-                      <CreditCard size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
-                        <h4 className="font-black text-slate-800 text-sm">Fatura {inv.accountName}</h4>
-                      </div>
-                      <div className="flex items-center gap-x-3 mt-1">
-                        <p className="text-[10px] font-bold text-slate-400">{inv.dueDay ? `Vencimento dia ${String(inv.dueDay).padStart(2, '0')}` : '—'}</p>
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100/60 rounded-md">
-                          <span className="text-[9px] font-black text-amber-700 uppercase">{inv.accountName}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-black text-base text-amber-700">
-                        -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.total)}
-                      </p>
-                      <p className="text-[10px] font-bold text-amber-500/70">Fatura consolidada</p>
-                    </div>
-                  </div>
-                ))}
-                {displayInstances.map((t, index) => {
-                  const status = getVisualStatus(t);
+                displayInstances.map((t, index) => {
                   const dropdownKey = `${t.id}-${t.instanceDate}`;
                   const isEven = index % 2 === 0;
+
+                  if (t.isInvoiceSummary) {
+                    return (
+                      <div key={dropdownKey} className="group flex items-center gap-4 px-8 py-4 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
+                        <div className="p-3 rounded-2xl shrink-0 bg-amber-100 text-amber-600">
+                          <CreditCard size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                            <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
+                          </div>
+                          <div className="flex items-center gap-x-3 mt-1">
+                            <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
+                            {t.invoiceData?.linkedAccountName && (
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-black text-base text-amber-700">
+                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                          </p>
+                          <p className="text-[10px] font-bold text-amber-500/70">Fatura consolidada</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const status = getVisualStatus(t);
 
                   return (
                     <div key={dropdownKey} className={`group flex items-center gap-4 px-8 py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
@@ -855,8 +914,7 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     </div>
                   );
-                })}
-                </>
+                })
               )}
             </div>
           </div>
