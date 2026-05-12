@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   ArrowDownCircle,
@@ -62,8 +63,10 @@ interface TransactionInstance extends FinancialTransaction {
   isVirtual: boolean;
   isInvoiceSummary?: boolean;
   invoiceData?: {
+    cardId: string;
     cardName: string;
     linkedAccountName: string | null;
+    invoicePaymentAccountId: string | null;
     total: number;
   };
 }
@@ -85,6 +88,7 @@ const FinancialTransactionsV2 = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Estados para exclusão em cadeia
   const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
@@ -430,7 +434,7 @@ const FinancialTransactionsV2 = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
-    const invoiceMap = new Map<string, { cardName: string; linkedAccountName: string | null; total: number; dueDay: number | null }>();
+    const invoiceMap = new Map<string, { cardName: string; linkedAccountName: string | null; invoicePaymentAccountId: string | null; total: number; dueDay: number | null }>();
     
     for (const t of transactions) {
       if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr) continue;
@@ -445,6 +449,7 @@ const FinancialTransactionsV2 = () => {
         invoiceMap.set(t.account_id!, {
           cardName: card?.name || t.account?.name || 'Cartão',
           linkedAccountName: card?.linkedAccountName || null,
+          invoicePaymentAccountId: card?.invoice_payment_account_id || null,
           total: amount,
           dueDay: card?.due_day || null,
         });
@@ -469,8 +474,10 @@ const FinancialTransactionsV2 = () => {
         isVirtual: true,
         isInvoiceSummary: true,
         invoiceData: {
+          cardId: accountId,
           cardName: data.cardName,
           linkedAccountName: data.linkedAccountName,
+          invoicePaymentAccountId: data.invoicePaymentAccountId,
           total: data.total,
         },
       };
@@ -512,6 +519,10 @@ const FinancialTransactionsV2 = () => {
 
     // Inject invoice instances into the list, sorted by date
     const filteredInvoices = invoiceInstances.filter(inv => {
+      // Hide if linked account is not selected
+      if (inv.invoiceData?.invoicePaymentAccountId && !selectedAccountIds.has(inv.invoiceData.invoicePaymentAccountId)) {
+        return false;
+      }
       const matchesFilter = filter === 'all' || filter === 'expense';
       const matchesSearch = searchTerm === '' || inv.description?.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesFilter && matchesSearch;
@@ -681,6 +692,21 @@ const FinancialTransactionsV2 = () => {
                         -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                       </p>
                     </div>
+                    <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
+                      <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-400 hover:text-slate-600"><MoreVertical size={16} /></button>
+                      {openDropdown === dropdownKey && (
+                        <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+                          <button onClick={() => {
+                            setOpenDropdown(null);
+                            const cardId = t.invoiceData?.cardId;
+                            const currentMonthStr = format(currentMonth, 'yyyy-MM');
+                            if (cardId) navigate(`/v2/financeiro/cartoes?cardId=${cardId}&month=${currentMonthStr}`);
+                          }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                            <CreditCard size={12} className="text-purple-600" /> Visualizar Fatura
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               }
@@ -833,6 +859,21 @@ const FinancialTransactionsV2 = () => {
                             -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                           </p>
                           <p className="text-[10px] font-bold text-amber-500/70">Fatura consolidada</p>
+                        </div>
+                        <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
+                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
+                          {openDropdown === dropdownKey && (
+                            <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+                              <button onClick={() => {
+                                setOpenDropdown(null);
+                                const cardId = t.invoiceData?.cardId;
+                                const currentMonthStr = format(currentMonth, 'yyyy-MM');
+                                if (cardId) navigate(`/v2/financeiro/cartoes?cardId=${cardId}&month=${currentMonthStr}`);
+                              }} className="w-full px-4 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+                                <CreditCard size={14} className="text-purple-600" /> Visualizar Fatura
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
