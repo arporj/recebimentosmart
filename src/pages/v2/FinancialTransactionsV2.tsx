@@ -495,7 +495,14 @@ const FinancialTransactionsV2 = () => {
     const filtered = monthInstances.filter(t => {
       const isSelected = (t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
       const matchesFilter = filter === 'all' || t.type === filter;
-      const matchesSearch = searchTerm === '' || t.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = searchTerm === '' || 
+        t.description?.toLowerCase().includes(search) ||
+        t.client?.name?.toLowerCase().includes(search) ||
+        t.account?.name?.toLowerCase().includes(search) ||
+        t.destination_account?.name?.toLowerCase().includes(search) ||
+        t.category?.name?.toLowerCase().includes(search) ||
+        t.amount?.toString().includes(search);
       return isSelected && matchesFilter && matchesSearch;
     });
 
@@ -531,7 +538,11 @@ const FinancialTransactionsV2 = () => {
         return false;
       }
       const matchesFilter = filter === 'all' || filter === 'expense';
-      const matchesSearch = searchTerm === '' || inv.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = searchTerm === '' || 
+        inv.description?.toLowerCase().includes(search) ||
+        inv.invoiceData?.cardName?.toLowerCase().includes(search) ||
+        inv.invoiceData?.total?.toString().includes(search);
       return matchesFilter && matchesSearch;
     });
 
