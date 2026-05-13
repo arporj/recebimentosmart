@@ -500,28 +500,6 @@ const FinancialTransactionsV2 = () => {
     });
   }, [accounts, allInstancesUpToMonth, currentMonth, creditCardAccounts, transactions]);
 
-  const totals = useMemo(() => {
-    const selected = accountsData.filter(a => selectedAccountIds.has(a.id));
-    const confirmed = selected.reduce((sum, a) => sum + a.confirmed, 0);
-    const projected = selected.reduce((sum, a) => sum + a.projected, 0);
-    const previousProjected = selected.reduce((sum, a) => sum + a.previousProjected, 0);
-
-    const monthTrans = monthInstances.filter(t => 
-      (t.account_id && selectedAccountIds.has(t.account_id)) || 
-      (t.destination_account_id && selectedAccountIds.has(t.destination_account_id))
-    );
-
-    const totalIncome = monthTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpense = monthTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const transfersIn = monthTrans.filter(t => t.type === 'transfer' && t.destination_account_id && selectedAccountIds.has(t.destination_account_id)).reduce((sum, t) => sum + t.amount, 0);
-    const transfersOut = monthTrans.filter(t => t.type === 'transfer' && t.account_id && selectedAccountIds.has(t.account_id)).reduce((sum, t) => sum + t.amount, 0);
-
-    return { 
-      confirmed, projected, previousProjected, income: totalIncome, expense: totalExpense, transfersIn, transfersOut,
-      result: totalIncome - totalExpense + (transfersIn - transfersOut)
-    };
-  }, [accountsData, selectedAccountIds, monthInstances]);
-
   // Generate credit card invoice summary lines as TransactionInstance items
   const invoiceInstances = useMemo((): TransactionInstance[] => {
     const currentMonthStr = format(currentMonth, 'yyyy-MM');
@@ -586,6 +564,50 @@ const FinancialTransactionsV2 = () => {
       };
     });
   }, [allInstancesUpToMonth, transactions, creditCardAccounts, currentMonth]);
+
+  const totals = useMemo(() => {
+    const selected = accountsData.filter(a => selectedAccountIds.has(a.id));
+    const confirmed = selected.reduce((sum, a) => sum + a.confirmed, 0);
+    const projected = selected.reduce((sum, a) => sum + a.projected, 0);
+    const previousProjected = selected.reduce((sum, a) => sum + a.previousProjected, 0);
+
+    const monthTrans = monthInstances.filter(t => 
+      (t.account_id && selectedAccountIds.has(t.account_id)) || 
+      (t.destination_account_id && selectedAccountIds.has(t.destination_account_id))
+    );
+
+    // Credit card IDs set to recognize bill payments and exclude them from standard transfers out
+    const creditCardIds = new Set(creditCardAccounts.map(c => c.id));
+
+    const totalIncome = monthTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    
+    // Standard expense transactions (excludes credit cards, since their IDs aren't in selectedAccountIds)
+    const standardExpenses = monthTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+    // Include relevant Credit Card invoice totals linked to selected payment accounts
+    const invoicesExpense = invoiceInstances
+      .filter(inv => inv.invoiceData?.invoicePaymentAccountId && selectedAccountIds.has(inv.invoiceData.invoicePaymentAccountId))
+      .reduce((sum, inv) => sum + inv.amount, 0);
+
+    const totalExpense = standardExpenses + invoicesExpense;
+
+    const transfersIn = monthTrans.filter(t => t.type === 'transfer' && t.destination_account_id && selectedAccountIds.has(t.destination_account_id)).reduce((sum, t) => sum + t.amount, 0);
+    
+    // Transfers out, EXCEPT those sent to a credit card account (which are already counted as invoicesExpense)
+    const transfersOut = monthTrans
+      .filter(t => 
+        t.type === 'transfer' && 
+        t.account_id && 
+        selectedAccountIds.has(t.account_id) &&
+        !(t.destination_account_id && creditCardIds.has(t.destination_account_id))
+      )
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return { 
+      confirmed, projected, previousProjected, income: totalIncome, expense: totalExpense, transfersIn, transfersOut,
+      result: totalIncome - totalExpense + (transfersIn - transfersOut)
+    };
+  }, [accountsData, selectedAccountIds, monthInstances, creditCardAccounts, invoiceInstances]);
 
   const displayInstances = useMemo(() => {
     const filtered = monthInstances.filter(t => {
