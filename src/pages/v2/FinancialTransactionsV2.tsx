@@ -750,11 +750,11 @@ const FinancialTransactionsV2 = () => {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <span className="text-[10px] uppercase font-black text-white/50">Ganhos</span>
-              <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income)}</p>
+              <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
             </div>
             <div>
               <span className="text-[10px] uppercase font-black text-white/50">Gastos</span>
-              <p className="text-lg font-black">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense)}</p>
+              <p className="text-lg font-black">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
             </div>
           </div>
         </div>
