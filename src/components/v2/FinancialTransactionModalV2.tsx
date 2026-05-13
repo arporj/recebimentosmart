@@ -451,8 +451,8 @@ const FinancialTransactionModalV2 = ({
     };
   }, [categories, categorySearch]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, selectedScope?: 'this' | 'following' | 'all') => {
+    e?.preventDefault();
     if (!user) return;
     
     const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
@@ -493,7 +493,7 @@ const FinancialTransactionModalV2 = ({
 
       if (isEditing) {
         // Se estiver confirmando, o escopo é SEMPRE 'this' e não abre o modal de escopo
-        if (!isConfirming && modalidade !== 'unica' && !isScopeModalOpen) {
+        if (!isConfirming && modalidade !== 'unica' && !isScopeModalOpen && !selectedScope) {
           setTempFormData(payload);
           setScopeType('edit');
           setIsScopeModalOpen(true);
@@ -501,7 +501,7 @@ const FinancialTransactionModalV2 = ({
           return;
         }
 
-        const scope = isConfirming ? 'this' : (tempFormData?.scope || 'this');
+        const scope = isConfirming ? 'this' : (selectedScope || 'this');
         
         // Se for uma instância virtual (gerada pela recorrência mas que não existe no BD) 
         // e o escopo for 'this', precisamos INSERIR um novo registro físico (filho)
@@ -1268,12 +1268,8 @@ const FinancialTransactionModalV2 = ({
         onClose={() => setIsScopeModalOpen(false)}
         onSelect={(scope) => {
           setIsScopeModalOpen(false);
-          setTempFormData({ ...tempFormData, scope });
-          // Re-disparar o submit com o escopo definido
-          setTimeout(() => {
-            const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-            handleSubmit(fakeEvent);
-          }, 0);
+          // Re-disparar o submit passando o escopo selecionado como argumento para evitar closures estáticas com estado assíncrono
+          handleSubmit(undefined, scope as any);
         }}
         type={scopeType}
         modalidade={modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}

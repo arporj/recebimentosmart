@@ -86,9 +86,9 @@ export async function editarTransacao(
   // Lógica para Parcelas e Recorrências
   const refId = parent_id || current.id; // ID da transação "mãe" ou referência
 
-  // Protect invoice_month from uniform overwrite on bulk updates.
-  // Each installment/occurrence has its own invoice cycle.
-  const { invoice_month: _removedInvoiceMonth, ...safeBulkUpdate } = update;
+  // Protect invoice_month and date from uniform overwrite on bulk updates.
+  // Each installment/occurrence has its own invoice cycle and date.
+  const { invoice_month: _removedInvoiceMonth, date: _removedDate, ...safeBulkUpdate } = update;
 
   if (scope === 'all') {
     let query = supabase.from('financial_transactions').update(safeBulkUpdate);
