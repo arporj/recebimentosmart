@@ -43,12 +43,13 @@ interface FinancialTransaction {
   amount: number;
   date: string;
   description: string;
-  status: 'pending' | 'paid' | 'partial';
+  status: 'pending' | 'paid' | 'partial' | 'cancelled';
   paid_amount?: number;
   paid_date?: string;
   recurrence_enabled?: boolean;
   recurrence_period?: string;
   recurrence_interval?: number;
+  recurrence_end_date?: string | null;
   account_id?: string;
   destination_account_id?: string;
   category_id?: string;
@@ -239,6 +240,9 @@ const CreditCardV2 = () => {
     }
 
     for (const t of cardTransactions) {
+      // Skip cancelled records — they are blockers, not displayable items
+      if (t.status === 'cancelled') continue;
+
       const tDate = parseISO(t.date);
 
       if (!t.recurrence_enabled) {
@@ -254,11 +258,15 @@ const CreditCardV2 = () => {
 
       const interval = t.recurrence_interval || 1;
       const period = t.recurrence_period || 'monthly';
+      const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
       const absMax = addYears(today, 5);
       let cursor = new Date(tDate);
       const parentId = t.id;
 
       while (isBefore(cursor, absMax)) {
+        // Respect recurrence_end_date
+        if (recEndDate && isAfter(cursor, recEndDate)) break;
+
         const dateStr = format(cursor, 'yyyy-MM-dd');
         const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
         const cursorDate = parseISO(dateStr);
@@ -377,7 +385,11 @@ const CreditCardV2 = () => {
   const handleDeleteTransaction = async (scope: 'this' | 'following' | 'all') => {
     if (!itemToDelete) return;
     try {
-      await deletarTransacao(itemToDelete.id, scope);
+      await deletarTransacao({
+        transactionId: itemToDelete.id,
+        scope,
+        instanceDate: (itemToDelete as any).instanceDate || itemToDelete.date,
+      });
       toast.success('Lançamento excluído!');
       setIsDeleteScopeModalOpen(false);
       setItemToDelete(null);
@@ -457,7 +469,7 @@ const CreditCardV2 = () => {
               <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
                 <Pencil size={14} /> Editar
               </button>
-              <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao(t.id, 'this').then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
+              <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao({ transactionId: t.id, scope: 'this', instanceDate: t.instanceDate || t.date }).then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
                 <Trash2 size={14} /> Excluir
               </button>
             </div>

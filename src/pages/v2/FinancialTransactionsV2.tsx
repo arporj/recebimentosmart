@@ -36,12 +36,13 @@ interface FinancialTransaction {
   amount: number;
   date: string;
   description: string;
-  status: 'pending' | 'paid' | 'partial';
+  status: 'pending' | 'paid' | 'partial' | 'cancelled';
   paid_amount?: number;
   paid_date?: string;
   recurrence_enabled?: boolean;
   recurrence_period?: string;
   recurrence_interval?: number;
+  recurrence_end_date?: string | null;
   client_id?: string;
   account_id?: string;
   destination_account_id?: string;
@@ -212,7 +213,7 @@ const FinancialTransactionsV2 = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const monthInstances = useMemo((): TransactionInstance[] => {
+  const allInstancesUpToMonth = useMemo((): TransactionInstance[] => {
     const instances: TransactionInstance[] = [];
 
     // 1. Identificar registros físicos daquela cadeia para evitar sobreposição
@@ -225,11 +226,16 @@ const FinancialTransactionsV2 = () => {
       physicalDatesByParent.get(parentId)!.add(t.date);
     }
 
+    const maxDate = endOfMonth(currentMonth);
+
     for (const t of transactions) {
+      // Skip cancelled records entirely — they are blockers, not displayable items
+      if (t.status === 'cancelled') continue;
+
       const tDate = parseISO(t.date);
 
       if (!t.recurrence_enabled) {
-        if (isSameMonth(tDate, currentMonth)) {
+        if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
           instances.push({ ...t, instanceDate: t.date, isVirtual: false });
         }
         continue;
@@ -237,38 +243,36 @@ const FinancialTransactionsV2 = () => {
 
       const interval = t.recurrence_interval || 1;
       const period = t.recurrence_period || 'monthly';
-      const maxDate = endOfMonth(currentMonth);
-      const absMax = addYears(today, 5);
+      const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
       
       let cursor = new Date(tDate);
       const parentId = t.id; // Se tem recurrence_enabled é o pai
       
-      while (isBefore(cursor, absMax)) {
+      while (isBefore(cursor, maxDate) || isSameDay(cursor, maxDate)) {
+        // Respect recurrence_end_date: stop generating after this date
+        if (recEndDate && isAfter(cursor, recEndDate)) break;
+
         const dateStr = format(cursor, 'yyyy-MM-dd');
         // Só gera virtual se não houver registro físico correspondente
         const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
 
-        if (isSameMonth(cursor, currentMonth)) {
-          // Se for a data original do pai ou uma virtual que não existe fisicamente
-          if (!alreadyHasPhysical || dateStr === t.date) {
-            const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-            const currentInst = (t.installment_current || 1) + monthsDiff;
+        // Se for a data original do pai ou uma virtual que não existe fisicamente
+        if (!alreadyHasPhysical || dateStr === t.date) {
+          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+          const currentInst = (t.installment_current || 1) + monthsDiff;
 
-            if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
-              break;
-            }
-
-            instances.push({
-              ...t,
-              instanceDate: dateStr,
-              isVirtual: dateStr !== t.date,
-              status: dateStr !== t.date ? 'pending' : t.status,
-              installment_current: currentInst
-            });
+          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
+            break;
           }
+
+          instances.push({
+            ...t,
+            instanceDate: dateStr,
+            isVirtual: dateStr !== t.date,
+            status: dateStr !== t.date ? 'pending' : t.status,
+            installment_current: currentInst
+          });
         }
-        
-        if (isAfter(cursor, maxDate)) break;
         
         switch (period) {
           case 'daily': cursor = addDays(cursor, interval); break;
@@ -282,6 +286,10 @@ const FinancialTransactionsV2 = () => {
 
     return instances.sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
   }, [transactions, currentMonth]);
+
+  const monthInstances = useMemo(() => {
+    return allInstancesUpToMonth.filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth));
+  }, [allInstancesUpToMonth, currentMonth]);
 
   const getVisualStatus = (t: TransactionInstance): 'paid' | 'pending' | 'overdue' | 'partial' => {
     if (t.status === 'paid') return 'paid';
@@ -343,7 +351,7 @@ const FinancialTransactionsV2 = () => {
     setOpenDropdown(null);
   };
 
-  const handleDelete = async (t: FinancialTransaction, scope: 'this' | 'following' | 'all' = 'this') => {
+  const handleDelete = async (t: TransactionInstance, scope: 'this' | 'following' | 'all' = 'this') => {
     const isRecurring = t.modalidade === 'recorrente' || t.modalidade === 'parcelada' || !!t.parent_id || t.recurrence_enabled;
     
     if (isRecurring && !isDeleteScopeModalOpen && scope === 'this') {
@@ -354,7 +362,11 @@ const FinancialTransactionsV2 = () => {
     }
 
     try {
-      const { error } = await deletarTransacao(t.id, scope);
+      const { error } = await deletarTransacao({
+        transactionId: t.id,
+        scope,
+        instanceDate: t.instanceDate || t.date,
+      });
       if (error) throw error;
       toast.success('Excluído!');
       fetchTransactions();
@@ -369,11 +381,11 @@ const FinancialTransactionsV2 = () => {
 
   const accountsData = useMemo(() => {
     return accounts.map(acc => {
-      const accTransactions = transactions.filter(t => t.account_id === acc.id || t.destination_account_id === acc.id);
       const monthStart = startOfMonth(currentMonth);
+      const allAccInstances = allInstancesUpToMonth.filter(t => t.account_id === acc.id || t.destination_account_id === acc.id);
       
-      const previousTotal = accTransactions
-        .filter(t => isBefore(parseISO(t.date), monthStart) && t.status === 'paid')
+      const previousTotal = allAccInstances
+        .filter(t => isBefore(parseISO(t.instanceDate), monthStart) && t.status === 'paid')
         .reduce((sum, t) => {
           const valValue = Number(t.amount) || 0;
           if (t.type === 'income') return sum + valValue;
@@ -385,8 +397,8 @@ const FinancialTransactionsV2 = () => {
           return sum;
         }, Number(acc.initial_balance) || 0);
 
-      const monthConfirmed = accTransactions
-        .filter(t => isSameMonth(parseISO(t.date), currentMonth) && t.status === 'paid')
+      const monthConfirmed = allAccInstances
+        .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth) && t.status === 'paid')
         .reduce((sum, t) => {
           const valValue = Number(t.amount) || 0;
           if (t.type === 'income') return sum + valValue;
@@ -398,8 +410,21 @@ const FinancialTransactionsV2 = () => {
           return sum;
         }, 0);
 
-      const monthProjected = accTransactions
-        .filter(t => isSameMonth(parseISO(t.date), currentMonth))
+      const previousProjectedTotal = allAccInstances
+        .filter(t => isBefore(parseISO(t.instanceDate), monthStart))
+        .reduce((sum, t) => {
+          const valValue = Number(t.amount) || 0;
+          if (t.type === 'income') return sum + valValue;
+          if (t.type === 'expense') return sum - valValue;
+          if (t.type === 'transfer') {
+             if (t.destination_account_id === acc.id) return sum + valValue;
+             if (t.account_id === acc.id) return sum - valValue;
+          }
+          return sum;
+        }, Number(acc.initial_balance) || 0);
+
+      const monthProjected = allAccInstances
+        .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth))
         .reduce((sum, t) => {
           const valValue = Number(t.amount) || 0;
           if (t.type === 'income') return sum + valValue;
@@ -411,14 +436,20 @@ const FinancialTransactionsV2 = () => {
           return sum;
         }, 0);
 
-      return { ...acc, confirmed: previousTotal + monthConfirmed, projected: previousTotal + monthProjected };
+      return { 
+        ...acc, 
+        confirmed: previousTotal + monthConfirmed, 
+        projected: previousProjectedTotal + monthProjected,
+        previousProjected: previousProjectedTotal
+      };
     });
-  }, [accounts, transactions, currentMonth]);
+  }, [accounts, allInstancesUpToMonth, currentMonth]);
 
   const totals = useMemo(() => {
     const selected = accountsData.filter(a => selectedAccountIds.has(a.id));
     const confirmed = selected.reduce((sum, a) => sum + a.confirmed, 0);
     const projected = selected.reduce((sum, a) => sum + a.projected, 0);
+    const previousProjected = selected.reduce((sum, a) => sum + a.previousProjected, 0);
 
     const monthTrans = monthInstances.filter(t => 
       (t.account_id && selectedAccountIds.has(t.account_id)) || 
@@ -431,7 +462,7 @@ const FinancialTransactionsV2 = () => {
     const transfersOut = monthTrans.filter(t => t.type === 'transfer' && t.account_id && selectedAccountIds.has(t.account_id)).reduce((sum, t) => sum + t.amount, 0);
 
     return { 
-      confirmed, projected, income: totalIncome, expense: totalExpense, transfersIn, transfersOut,
+      confirmed, projected, previousProjected, income: totalIncome, expense: totalExpense, transfersIn, transfersOut,
       result: totalIncome - totalExpense + (transfersIn - transfersOut)
     };
   }, [accountsData, selectedAccountIds, monthInstances]);
@@ -507,18 +538,8 @@ const FinancialTransactionsV2 = () => {
       return isSelected && matchesFilter && matchesSearch;
     });
 
-    // Início do saldo acumulado para as contas selecionadas no início do mês
-    const openingBalance = totals.confirmed - monthInstances
-      .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth) && t.status === 'paid' && ((t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id))))
-      .reduce((sum, t) => {
-        if (t.type === 'income') return sum + t.amount;
-        if (t.type === 'expense') return sum - t.amount;
-        if (t.type === 'transfer') {
-          if (t.destination_account_id && selectedAccountIds.has(t.destination_account_id)) sum += t.amount;
-          if (t.account_id && selectedAccountIds.has(t.account_id)) sum -= t.amount;
-        }
-        return sum;
-      }, 0);
+    // Início do saldo acumulado para as contas selecionadas no início do mês (usando saldo previsto)
+    const openingBalance = totals.previousProjected;
 
     let runningBalance = openingBalance;
 
