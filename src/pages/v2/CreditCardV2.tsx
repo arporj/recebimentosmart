@@ -77,6 +77,54 @@ interface TransactionInstance extends FinancialTransaction {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+const BRAZILIAN_BANKS = [
+  { name: 'Banco Inter', domain: 'inter.co', color: '#ff7a00' },
+  { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
+  { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
+  { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
+  { name: 'Santander', domain: 'santander.com.br', color: '#ec0000' },
+  { name: 'Banco do Brasil', domain: 'bb.com.br', color: '#fcf200' },
+  { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
+  { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
+  { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
+  { name: 'C6 Bank', domain: 'c6.com.br', color: '#252525' },
+  { name: 'PagBank', domain: 'pagseguro.uol.com.br', color: '#53d21e' },
+  { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
+  { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
+  { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
+  { name: 'Mercado Pago', domain: 'mercadopago.com.br', color: '#009ee3' },
+  { name: 'Avenue', domain: 'avenue.us', color: '#000000' },
+  { name: 'Nomad', domain: 'nomadglobal.com', color: '#000000' },
+];
+
+const CardIcon = ({ card, size = 20 }: { card: Account | null | undefined; size?: number }) => {
+  if (!card) return <CreditCard size={size} className="text-purple-600 shrink-0" />;
+
+  if (card.bank_icon) {
+    return (
+      <div style={{ width: size, height: size }} className="rounded-md border border-slate-200 overflow-hidden shrink-0 relative bg-white flex items-center justify-center">
+        <img 
+          src={`https://www.google.com/s2/favicons?domain=${card.bank_icon}&sz=64`} 
+          alt={card.bank_name || ''} 
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.classList.add('hidden');
+            if (target.nextElementSibling) {
+              target.nextElementSibling.classList.remove('hidden');
+            }
+          }}
+        />
+        <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-white leading-none uppercase" style={{ width: size, height: size, fontSize: `${Math.max(6, Math.floor(size * 0.4))}px`, backgroundColor: BRAZILIAN_BANKS.find(b => b.domain === card.bank_icon)?.color || '#94a3b8' }}>
+          {card.bank_name?.charAt(0) || <CreditCard size={size * 0.6} />}
+        </div>
+      </div>
+    );
+  }
+
+  return <CreditCard size={size} className="text-purple-600 shrink-0" />;
+};
+
 const CreditCardV2 = () => {
   const { user } = useAuth();
   const [cards, setCards] = useState<Account[]>([]);
@@ -504,15 +552,20 @@ const CreditCardV2 = () => {
                 onClick={() => setIsCardDropdownOpen(!isCardDropdownOpen)}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-sm font-bold text-slate-800"
               >
-                <CreditCard size={16} className="text-purple-600 shrink-0" />
+                <CardIcon card={selectedCard} size={18} />
                 <span className="truncate">{selectedCard?.name || 'Selecione'}</span>
                 <ChevronDown size={14} className="ml-auto text-slate-400" />
               </button>
               {isCardDropdownOpen && (
                 <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1">
                   {cards.map(c => (
-                    <button key={c.id} onClick={() => handleCardChange(c)} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${c.id === selectedCardId ? 'font-bold text-purple-600' : 'text-slate-700'}`}>
-                      {c.name}
+                    <button 
+                      key={c.id} 
+                      onClick={() => handleCardChange(c)} 
+                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${c.id === selectedCardId ? 'font-bold text-purple-600 bg-purple-50' : 'text-slate-700'}`}
+                    >
+                      <CardIcon card={c} size={16} />
+                      <span className="truncate">{c.name}</span>
                     </button>
                   ))}
                 </div>
@@ -577,15 +630,20 @@ const CreditCardV2 = () => {
                   onClick={() => setIsCardDropdownOpen(!isCardDropdownOpen)}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-800 hover:bg-slate-100 transition-colors"
                 >
-                  <CreditCard size={20} className="text-purple-600 shrink-0" />
+                  <CardIcon card={selectedCard} size={22} />
                   <span className="truncate flex-1 text-left">{selectedCard?.name || 'Selecione'}</span>
                   <ChevronDown size={16} className="text-slate-400 shrink-0" />
                 </button>
                 {isCardDropdownOpen && (
                   <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1">
                     {cards.map(c => (
-                      <button key={c.id} onClick={() => handleCardChange(c)} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${c.id === selectedCardId ? 'font-bold text-purple-600 bg-purple-50' : 'text-slate-700'}`}>
-                        {c.name}
+                      <button 
+                        key={c.id} 
+                        onClick={() => handleCardChange(c)} 
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${c.id === selectedCardId ? 'font-bold text-purple-600 bg-purple-50' : 'text-slate-700'}`}
+                      >
+                        <CardIcon card={c} size={18} />
+                        <span className="truncate">{c.name}</span>
                       </button>
                     ))}
                   </div>
