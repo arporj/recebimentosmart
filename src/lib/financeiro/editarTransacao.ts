@@ -8,6 +8,7 @@ export interface TransactionUpdate {
   amount?: number;
   category_id?: string;
   account_id?: string;
+  destination_account_id?: string;
   client_id?: string;
   date?: string;
   status?: string;
@@ -59,6 +60,7 @@ export async function editarTransacao(
         type: type,
         category_id: update.category_id || current.category_id,
         account_id: update.account_id || current.account_id,
+        destination_account_id: update.destination_account_id || current.destination_account_id,
         modalidade: 'recorrente',
         status: 'pending',
       };

@@ -6,10 +6,11 @@ import { calcularMesFatura, type AccountInvoiceConfig } from './faturaUtils';
 export interface TransactionInput {
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   date: string;
   category_id?: string;
   account_id?: string;
+  destination_account_id?: string;
   client_id?: string;
   modalidade: 'unica' | 'parcelada' | 'recorrente';
   installment_total?: number;
@@ -62,6 +63,7 @@ export async function criarTransacao(input: TransactionInput) {
     type: input.type,
     category_id: input.category_id,
     account_id: input.account_id,
+    destination_account_id: input.destination_account_id || null,
     client_id: input.client_id,
     modalidade: input.modalidade,
     status: 'pending',

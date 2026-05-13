@@ -474,6 +474,7 @@ const FinancialTransactionModalV2 = ({
         client_id: clientId || undefined,
         category_id: categoryId || undefined,
         account_id: accountId || undefined,
+        destination_account_id: type === 'transfer' ? (destinationAccountId || undefined) : undefined,
         modalidade,
         installment_total: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
         recurrence_period: (modalidade === 'parcelada' || modalidade === 'recorrente') ? mappedRecurrencePeriod : undefined,

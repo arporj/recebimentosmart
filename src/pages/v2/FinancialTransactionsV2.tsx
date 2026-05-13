@@ -881,9 +881,22 @@ const FinancialTransactionsV2 = () => {
                         <span className="text-[8px] font-black text-indigo-600 shrink-0">{t.installment_current}/{t.installment_total}</span>
                       )}
                     </div>
-                    {(t.account || t.category || t.client) && (
+                    {(t.account || t.category || t.client || t.type === 'transfer') && (
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {t.account && <span className="text-[8px] font-black text-slate-400 uppercase">{t.account.name}</span>}
+                        {t.type === 'transfer' && (
+                          <>
+                            {t.destination_account && (
+                              <>
+                                <ArrowRight size={8} className="text-slate-300" />
+                                <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-1 py-0.5 rounded uppercase leading-none">{t.destination_account.name}</span>
+                              </>
+                            )}
+                            <span className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1 py-0.5 rounded flex items-center gap-0.5 uppercase leading-none border border-blue-100/50">
+                              <ArrowRightLeft size={8} /> Transf.
+                            </span>
+                          </>
+                        )}
                         {t.category && <span className="text-[8px] font-medium text-slate-300">· {t.category.name}</span>}
                         {t.client && (
                           <span className="text-[8px] font-bold text-sky-600 bg-sky-50 px-1 py-0.5 rounded flex items-center gap-0.5 border border-sky-100/50">
@@ -1095,11 +1108,19 @@ const FinancialTransactionsV2 = () => {
                             </div>
                           )}
 
-                          {t.type === 'transfer' && t.destination_account && (
+                          {t.type === 'transfer' && (
                             <>
-                              <ArrowRight size={10} className="text-slate-300" />
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
-                                <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                              {t.destination_account && (
+                                <>
+                                  <ArrowRight size={10} className="text-slate-300" />
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
+                                    <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                                  </div>
+                                </>
+                              )}
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-100/50 text-blue-600 rounded-md">
+                                <ArrowRightLeft size={10} />
+                                <span className="text-[9px] font-black uppercase">Transferência</span>
                               </div>
                             </>
                           )}
