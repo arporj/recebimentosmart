@@ -265,12 +265,23 @@ const FinancialTransactionsV2 = () => {
             break;
           }
 
+          // Compute correct invoice_month for virtual credit card transactions
+          let newInvoiceMonth = t.invoice_month;
+          if (t.account_type === 'credit_card' && t.invoice_month) {
+             const [y, m] = t.invoice_month.split('-');
+             const origInvoiceDate = new Date(Number(y), Number(m) - 1, 1);
+             const diffMonths = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+             const newDate = addMonths(origInvoiceDate, diffMonths);
+             newInvoiceMonth = format(newDate, 'yyyy-MM');
+          }
+
           instances.push({
             ...t,
             instanceDate: dateStr,
             isVirtual: dateStr !== t.date,
             status: dateStr !== t.date ? 'pending' : t.status,
-            installment_current: currentInst
+            installment_current: currentInst,
+            invoice_month: newInvoiceMonth,
           });
         }
         
@@ -410,7 +421,7 @@ const FinancialTransactionsV2 = () => {
           return sum;
         }, 0);
 
-      const previousProjectedTotal = allAccInstances
+      let previousProjectedTotal = allAccInstances
         .filter(t => isBefore(parseISO(t.instanceDate), monthStart))
         .reduce((sum, t) => {
           const valValue = Number(t.amount) || 0;
@@ -423,7 +434,7 @@ const FinancialTransactionsV2 = () => {
           return sum;
         }, Number(acc.initial_balance) || 0);
 
-      const monthProjected = allAccInstances
+      let monthProjected = allAccInstances
         .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth))
         .reduce((sum, t) => {
           const valValue = Number(t.amount) || 0;
@@ -436,6 +447,50 @@ const FinancialTransactionsV2 = () => {
           return sum;
         }, 0);
 
+      // Deduct pending credit card invoices linked to this account
+      const linkedCards = creditCardAccounts.filter(c => c.invoice_payment_account_id === acc.id);
+      
+      let pendingInvoiceDeduction = 0;
+      let previousPendingInvoiceDeduction = 0;
+
+      for (const card of linkedCards) {
+         // Get all transactions for this card
+         const cardTrans = allInstancesUpToMonth.filter(t => t.account_id === card.id && t.type === 'expense' && t.status !== 'cancelled');
+         
+         // Group by invoice_month
+         const byMonth = new Map<string, number>();
+         for (const ct of cardTrans) {
+            const m = ct.invoice_month;
+            if (m) {
+               byMonth.set(m, (byMonth.get(m) || 0) + Number(ct.amount));
+            }
+         }
+
+         // Check which ones are paid
+         for (const [m, total] of byMonth.entries()) {
+             const isPaid = transactions.some(t => 
+                 t.destination_account_id === card.id && 
+                 t.type === 'transfer' && 
+                 t.invoice_month === m &&
+                 t.status !== 'cancelled'
+             );
+             if (!isPaid) {
+                 const [y, mo] = m.split('-');
+                 const dueDay = card.due_day || 1;
+                 const invoiceDate = new Date(Number(y), Number(mo) - 1, dueDay, 12, 0, 0);
+                 
+                 if (isSameMonth(invoiceDate, currentMonth)) {
+                    pendingInvoiceDeduction += total;
+                 } else if (isBefore(invoiceDate, monthStart)) {
+                    previousPendingInvoiceDeduction += total;
+                 }
+             }
+         }
+      }
+
+      previousProjectedTotal -= previousPendingInvoiceDeduction;
+      monthProjected -= pendingInvoiceDeduction;
+
       return { 
         ...acc, 
         confirmed: previousTotal + monthConfirmed, 
@@ -443,7 +498,7 @@ const FinancialTransactionsV2 = () => {
         previousProjected: previousProjectedTotal
       };
     });
-  }, [accounts, allInstancesUpToMonth, currentMonth]);
+  }, [accounts, allInstancesUpToMonth, currentMonth, creditCardAccounts, transactions]);
 
   const totals = useMemo(() => {
     const selected = accountsData.filter(a => selectedAccountIds.has(a.id));
@@ -475,8 +530,8 @@ const FinancialTransactionsV2 = () => {
     
     const invoiceMap = new Map<string, { cardName: string; linkedAccountName: string | null; invoicePaymentAccountId: string | null; total: number; dueDay: number | null }>();
     
-    for (const t of transactions) {
-      if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr) continue;
+    for (const t of allInstancesUpToMonth) {
+      if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr || t.status === 'cancelled') continue;
       
       const existing = invoiceMap.get(t.account_id!);
       const amount = Number(t.amount) || 0;
@@ -501,13 +556,21 @@ const FinancialTransactionsV2 = () => {
       const safeDay = Math.min(dueDay, lastDay);
       const instanceDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
 
+      // Check if bill is paid
+      const isPaid = transactions.some(t => 
+        t.destination_account_id === accountId && 
+        t.type === 'transfer' && 
+        t.invoice_month === currentMonthStr &&
+        t.status !== 'cancelled'
+      );
+
       return {
         id: `invoice-${accountId}-${currentMonthStr}`,
         type: 'expense' as const,
         amount: data.total,
         date: instanceDate,
         description: `Fatura ${data.cardName}`,
-        status: 'pending' as const,
+        status: isPaid ? ('paid' as const) : ('pending' as const),
         account_id: accountId,
         instanceDate,
         isVirtual: true,
@@ -518,10 +581,11 @@ const FinancialTransactionsV2 = () => {
           linkedAccountName: data.linkedAccountName,
           invoicePaymentAccountId: data.invoicePaymentAccountId,
           total: data.total,
+          isPaid,
         },
       };
     });
-  }, [transactions, creditCardAccounts, currentMonth]);
+  }, [allInstancesUpToMonth, transactions, creditCardAccounts, currentMonth]);
 
   const displayInstances = useMemo(() => {
     const filtered = monthInstances.filter(t => {
@@ -536,23 +600,6 @@ const FinancialTransactionsV2 = () => {
         t.category?.name?.toLowerCase().includes(search) ||
         t.amount?.toString().includes(search);
       return isSelected && matchesFilter && matchesSearch;
-    });
-
-    // Início do saldo acumulado para as contas selecionadas no início do mês (usando saldo previsto)
-    const openingBalance = totals.previousProjected;
-
-    let runningBalance = openingBalance;
-
-    const withBalance = filtered.map(t => {
-      if (t.type === 'income') runningBalance += t.amount;
-      else if (t.type === 'expense') runningBalance -= t.amount;
-      else if (t.type === 'transfer') {
-        const isOut = t.account_id && selectedAccountIds.has(t.account_id);
-        const isIn = t.destination_account_id && selectedAccountIds.has(t.destination_account_id);
-        if (isIn && !isOut) runningBalance += t.amount;
-        else if (isOut && !isIn) runningBalance -= t.amount;
-      }
-      return { ...t, runningBalance };
     });
 
     // Inject invoice instances into the list, sorted by date
@@ -570,7 +617,31 @@ const FinancialTransactionsV2 = () => {
       return matchesFilter && matchesSearch;
     });
 
-    const sortedList = [...withBalance, ...filteredInvoices].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+    // Combine and sort ALL transactions BEFORE calculating running balance
+    const combined = [...filtered, ...filteredInvoices].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+
+    // Início do saldo acumulado para as contas selecionadas no início do mês (usando saldo previsto)
+    const openingBalance = totals.previousProjected;
+
+    let runningBalance = openingBalance;
+
+    const sortedList = combined.map(t => {
+      if (t.isInvoiceSummary) {
+         if (!t.invoiceData?.isPaid) {
+            runningBalance -= t.amount;
+         }
+      } else if (t.type === 'income') {
+         runningBalance += t.amount;
+      } else if (t.type === 'expense') {
+         runningBalance -= t.amount;
+      } else if (t.type === 'transfer') {
+        const isOut = t.account_id && selectedAccountIds.has(t.account_id);
+        const isIn = t.destination_account_id && selectedAccountIds.has(t.destination_account_id);
+        if (isIn && !isOut) runningBalance += t.amount;
+        else if (isOut && !isIn) runningBalance -= t.amount;
+      }
+      return { ...t, runningBalance };
+    });
 
     // Inject opening balance if no search filter is active
     if (searchTerm === '') {
@@ -970,7 +1041,11 @@ const FinancialTransactionsV2 = () => {
                           <p className="font-black text-base text-amber-700">
                             -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                           </p>
-                          <p className="text-[10px] font-bold text-amber-500/70">Fatura consolidada</p>
+                          <p className={`text-[10px] font-bold ${t.runningBalance !== undefined && t.runningBalance >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
+                             {t.runningBalance !== undefined && !isNaN(t.runningBalance) 
+                                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance) 
+                                : 'Fatura consolidada'}
+                          </p>
                         </div>
                         <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
                           <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
