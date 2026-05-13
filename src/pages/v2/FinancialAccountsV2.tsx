@@ -110,6 +110,7 @@ const FinancialAccountsV2 = () => {
   const [saving, setSaving] = useState(false);
   const [bankSearch, setBankSearch] = useState('');
   const [showBankOptions, setShowBankOptions] = useState(false);
+  const [isDebitAccountDropdownOpen, setIsDebitAccountDropdownOpen] = useState(false);
 
   // Computed: closing date preview
   const closingDatePreview = useMemo(() => {
@@ -197,6 +198,11 @@ const FinancialAccountsV2 = () => {
     [accounts, editing]
   );
 
+  const selectedDebitAccount = useMemo(() => 
+    paymentAccounts.find(a => a.id === invoicePaymentAccountId),
+    [paymentAccounts, invoicePaymentAccountId]
+  );
+
   const fetchAccounts = async () => {
     if (!user) return;
     setLoading(true);
@@ -220,6 +226,7 @@ const FinancialAccountsV2 = () => {
     setSecondaryCards([]); setNewSecondaryCard('');
     setBankName(''); setBankIcon(''); setCardBrand('');
     setBankSearch(''); setShowBankOptions(false);
+    setIsDebitAccountDropdownOpen(false);
     setEditing(null);
   };
 
@@ -738,18 +745,108 @@ const FinancialAccountsV2 = () => {
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Prever Débito na Conta</label>
                     <div className="relative">
-                      <select 
-                        value={invoicePaymentAccountId} 
-                        onChange={e => setInvoicePaymentAccountId(e.target.value)} 
-                        className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-teal-500/20 appearance-none cursor-pointer" 
-                        style={{ appearance: 'none' }}
+                      <button
+                        type="button"
+                        onClick={() => setIsDebitAccountDropdownOpen(!isDebitAccountDropdownOpen)}
+                        className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border-none text-sm flex items-center justify-between text-left focus:ring-2 focus:ring-teal-500/20 hover:bg-slate-100/60 transition-colors duration-200"
                       >
-                        <option value="">Nenhuma</option>
-                        {paymentAccounts.map(a => (
-                          <option key={a.id} value={a.id}>{a.name} ({typeLabels[a.type]})</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        {selectedDebitAccount ? (
+                          <div className="flex items-center gap-2 truncate">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center border overflow-hidden shrink-0 ${typeColors[selectedDebitAccount.type]} border-slate-200/60`}>
+                              {selectedDebitAccount.bank_icon ? (
+                                <div className="w-full h-full relative flex items-center justify-center">
+                                  <img 
+                                    src={`https://www.google.com/s2/favicons?domain=${selectedDebitAccount.bank_icon}&sz=64`} 
+                                    alt="" 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.classList.add('hidden');
+                                      if (target.nextElementSibling) target.nextElementSibling.classList.remove('hidden');
+                                    }}
+                                  />
+                                  <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-[9px] text-white" style={{ backgroundColor: BRAZILIAN_BANKS.find(b => b.domain === selectedDebitAccount.bank_icon)?.color || '#94a3b8' }}>
+                                    {selectedDebitAccount.bank_name?.charAt(0) || '?'}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-current scale-75">{typeIcons[selectedDebitAccount.type]}</div>
+                              )}
+                            </div>
+                            <div className="truncate leading-none py-0.5">
+                              <span className="font-medium text-slate-700 block text-xs leading-tight truncate">{selectedDebitAccount.name}</span>
+                              <span className="text-[9px] text-slate-400 block font-medium uppercase tracking-wider leading-none mt-0.5">{typeLabels[selectedDebitAccount.type]}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs">Nenhuma</span>
+                        )}
+                        <ChevronDown size={14} className="text-slate-400 shrink-0 ml-2" />
+                      </button>
+
+                      {isDebitAccountDropdownOpen && (
+                        <>
+                          {/* Backdrop invisível para fechar ao clicar fora */}
+                          <div className="fixed inset-0 z-40" onClick={() => setIsDebitAccountDropdownOpen(false)} />
+                          
+                          {/* Painel flutuante */}
+                          <div className="absolute z-50 mt-1 w-full bg-white rounded-2xl shadow-xl border border-slate-100 max-h-56 overflow-y-auto p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setInvoicePaymentAccountId('');
+                                setIsDebitAccountDropdownOpen(false);
+                              }}
+                              className="flex items-center w-full px-3 py-2 text-left rounded-xl hover:bg-slate-50 text-slate-500 text-xs font-medium hover:text-slate-700 transition-colors mb-0.5"
+                            >
+                              Nenhuma
+                            </button>
+                            
+                            {paymentAccounts.map(a => (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => {
+                                  setInvoicePaymentAccountId(a.id);
+                                  setIsDebitAccountDropdownOpen(false);
+                                }}
+                                className={`flex items-center gap-2.5 w-full px-2.5 py-2 text-left rounded-xl transition-all duration-200 mb-0.5 ${
+                                  invoicePaymentAccountId === a.id 
+                                    ? 'bg-teal-50 text-teal-700 ring-1 ring-teal-600/10' 
+                                    : 'hover:bg-slate-50 text-slate-600'
+                                }`}
+                              >
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center border overflow-hidden shrink-0 ${typeColors[a.type]} border-slate-200/60`}>
+                                  {a.bank_icon ? (
+                                    <div className="w-full h-full relative flex items-center justify-center">
+                                      <img 
+                                        src={`https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=64`} 
+                                        alt="" 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.classList.add('hidden');
+                                          if (target.nextElementSibling) target.nextElementSibling.classList.remove('hidden');
+                                        }}
+                                      />
+                                      <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-[10px] text-white" style={{ backgroundColor: BRAZILIAN_BANKS.find(b => b.domain === a.bank_icon)?.color || '#94a3b8' }}>
+                                        {a.bank_name?.charAt(0) || '?'}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-current scale-75">{typeIcons[a.type]}</div>
+                                  )}
+                                </div>
+                                
+                                <div className="truncate">
+                                  <span className={`block text-xs leading-tight truncate ${invoicePaymentAccountId === a.id ? 'font-bold' : 'font-medium'}`}>{a.name}</span>
+                                  <span className={`block text-[9px] mt-0.5 tracking-wider uppercase ${invoicePaymentAccountId === a.id ? 'text-teal-600/70' : 'text-slate-400'}`}>{typeLabels[a.type]}</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
