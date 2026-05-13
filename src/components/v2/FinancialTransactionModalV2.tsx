@@ -142,6 +142,7 @@ const FinancialTransactionModalV2 = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [autoConfirm, setAutoConfirm] = useState(false);
+  const [status, setStatus] = useState<'pending' | 'paid'>('pending');
 
   const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
   const [loading, setLoading] = useState(false);
@@ -193,6 +194,7 @@ const FinancialTransactionModalV2 = ({
       setDestinationAccountId(transaction.destination_account_id || '');
       setCategoryId(transaction.category_id || '');
       setAutoConfirm(transaction.auto_confirm || false);
+      setStatus(transaction.status === 'paid' ? 'paid' : 'pending');
       
       // Formatar o valor para exibição
       const amountCents = Math.round(transaction.amount * 100);
@@ -241,6 +243,7 @@ const FinancialTransactionModalV2 = ({
       setCardHolderName('');
       setInstallmentTotal('1');
       setAutoConfirm(false);
+      setStatus('pending');
       setClientId('');
       setAccountId(initialAccountId || '');
       setCategoryId('');
@@ -487,9 +490,7 @@ const FinancialTransactionModalV2 = ({
         card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
       };
 
-      if (isConfirming) {
-        payload.status = 'paid';
-      }
+      payload.status = isConfirming ? 'paid' : status;
 
       if (isEditing) {
         // Se estiver confirmando, o escopo é SEMPRE 'this' e não abre o modal de escopo
@@ -1217,22 +1218,44 @@ const FinancialTransactionModalV2 = ({
               </div>
             </div>
 
-            {/* Auto Confirm Toggle */}
-            <div className="p-6 bg-slate-50 rounded-3xl space-y-2">
-              <div className="flex items-center gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setAutoConfirm(!autoConfirm)}
-                  className={`p-1 rounded-lg transition-all ${autoConfirm ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-300 border border-slate-200'}`}
-                >
-                  {autoConfirm ? <CheckSquare size={20} /> : <Square size={20} />}
-                </button>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Confirmação Automática</h3>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Confirmar ao atingir a data</p>
+            {/* Toggles de Status e Confirmação */}
+            {!isConfirming && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Lançamento Pago/Recebido Toggle */}
+                <div className="p-6 bg-slate-50 rounded-3xl flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setStatus(status === 'paid' ? 'pending' : 'paid')}
+                    className={`p-1 rounded-lg transition-all ${status === 'paid' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-300 border border-slate-200'}`}
+                  >
+                    {status === 'paid' ? <CheckSquare size={20} /> : <Square size={20} />}
+                  </button>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      {type === 'income' ? 'Recebido' : type === 'transfer' ? 'Transferido' : 'Pago'}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                      {type === 'income' ? 'Marcar como recebido' : type === 'transfer' ? 'Marcar como efetuado' : 'Marcar como pago'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Auto Confirm Toggle */}
+                <div className="p-6 bg-slate-50 rounded-3xl flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setAutoConfirm(!autoConfirm)}
+                    className={`p-1 rounded-lg transition-all ${autoConfirm ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-300 border border-slate-200'}`}
+                  >
+                    {autoConfirm ? <CheckSquare size={20} /> : <Square size={20} />}
+                  </button>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Confirmação Automática</h3>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Confirmar ao atingir a data</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </form>
         </div>
 
