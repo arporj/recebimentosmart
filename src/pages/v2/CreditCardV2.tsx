@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, endOfMonth, addMonths, subMonths, subDays, setDate, parseISO, isBefore, isAfter, isSameMonth, addDays, addWeeks, addYears, isSameDay } from 'date-fns';
+import { format, endOfMonth, addMonths, subMonths, subDays, setDate, parseISO, isBefore, isAfter, isSameMonth, addDays, addWeeks, addYears, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactionModalV2';
@@ -131,7 +131,7 @@ const CreditCardV2 = () => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -155,8 +155,8 @@ const CreditCardV2 = () => {
 
   // Compute smart "current month" for a card
   const getSmartCurrentMonth = (card: Account | null): Date => {
-    if (!card?.due_day) return new Date();
-    const now = new Date();
+    if (!card?.due_day) return startOfDay(new Date());
+    const now = startOfDay(new Date());
     return now.getDate() >= card.due_day ? addMonths(now, 1) : now;
   };
 
@@ -260,13 +260,13 @@ const CreditCardV2 = () => {
     const closingDaysBefore = selectedCard.closing_days_before;
 
     // Vencimento do mês selecionado
-    const dueDate = setDate(currentMonth, Math.min(dueDay, 28));
+    const dueDate = startOfDay(setDate(currentMonth, Math.min(dueDay, 28)));
     // Fechamento = vencimento - closing_days_before
-    const closingDate = subDays(dueDate, closingDaysBefore);
-    const endDate = subDays(closingDate, 1);
+    const closingDate = startOfDay(subDays(dueDate, closingDaysBefore));
+    const endDate = startOfDay(subDays(closingDate, 1));
     // Início = fechamento do mês anterior (dia do fechamento cai nesta nova fatura)
-    const prevDueDate = setDate(subMonths(currentMonth, 1), Math.min(dueDay, 28));
-    const prevClosingDate = subDays(prevDueDate, closingDaysBefore);
+    const prevDueDate = startOfDay(setDate(subMonths(currentMonth, 1), Math.min(dueDay, 28)));
+    const prevClosingDate = startOfDay(subDays(prevDueDate, closingDaysBefore));
     const startDate = prevClosingDate;
 
     return { startDate, closingDate, dueDate, endDate };
