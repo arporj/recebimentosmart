@@ -16,6 +16,7 @@ import CloseBillModal from '../../components/v2/CloseBillModal';
 import ConfirmModal from '../../components/v2/ConfirmModal';
 import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
+import { BRAZILIAN_BANKS } from '../../constants/banks';
 
 interface Account {
   id: string;
@@ -77,25 +78,7 @@ interface TransactionInstance extends FinancialTransaction {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-const BRAZILIAN_BANKS = [
-  { name: 'Banco Inter', domain: 'inter.co', color: '#ff7a00' },
-  { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
-  { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
-  { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
-  { name: 'Santander', domain: 'santander.com.br', color: '#ec0000' },
-  { name: 'Banco do Brasil', domain: 'bb.com.br', color: '#fcf200' },
-  { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
-  { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
-  { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
-  { name: 'C6 Bank', domain: 'c6.com.br', color: '#252525' },
-  { name: 'PagBank', domain: 'pagseguro.uol.com.br', color: '#53d21e' },
-  { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
-  { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
-  { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
-  { name: 'Mercado Pago', domain: 'mercadopago.com.br', color: '#009ee3' },
-  { name: 'Avenue', domain: 'avenue.us', color: '#000000' },
-  { name: 'Nomad', domain: 'nomadglobal.com', color: '#000000' },
-];
+
 
 const CardIcon = ({ card, size = 20 }: { card: Account | null | undefined; size?: number }) => {
   if (!card) return <CreditCard size={size} className="text-purple-600 shrink-0" />;

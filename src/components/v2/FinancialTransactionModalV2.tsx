@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, 
   Search, 
@@ -26,6 +26,7 @@ import { editarTransacao as editarTransacaoFinanceira } from '../../lib/financei
 import { ModalOpcaoRecorrente } from '../financeiro/ModalOpcaoRecorrente';
 import QuickAddAccountModal from './QuickAddAccountModal';
 import QuickAddCategoryModal from './QuickAddCategoryModal';
+import { BRAZILIAN_BANKS } from '../../constants/banks';
 
 interface Tag {
   id: string;
@@ -51,25 +52,7 @@ interface Account {
   card_brand?: string | null;
 }
 
-const BRAZILIAN_BANKS = [
-  { name: 'Banco Inter', domain: 'inter.co', color: '#ff7a00' },
-  { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
-  { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
-  { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
-  { name: 'Santander', domain: 'santander.com.br', color: '#ec0000' },
-  { name: 'Banco do Brasil', domain: 'bb.com.br', color: '#fcf200' },
-  { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
-  { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
-  { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
-  { name: 'C6 Bank', domain: 'c6.com.br', color: '#252525' },
-  { name: 'PagBank', domain: 'pagseguro.uol.com.br', color: '#53d21e' },
-  { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
-  { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
-  { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
-  { name: 'Mercado Pago', domain: 'mercadopago.com.br', color: '#009ee3' },
-  { name: 'Avenue', domain: 'avenue.us', color: '#000000' },
-  { name: 'Nomad', domain: 'nomadglobal.com', color: '#000000' },
-];
+
 
 interface Category {
   id: string;
@@ -172,6 +155,7 @@ const FinancialTransactionModalV2 = ({
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isQuickAddAccountOpen, setIsQuickAddAccountOpen] = useState(false);
   const [isQuickAddCategoryOpen, setIsQuickAddCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
   const [pendingAccountType, setPendingAccountType] = useState<'origin' | 'destination'>('origin');
 
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -427,9 +411,45 @@ const FinancialTransactionModalV2 = ({
     }
   }, [isCreditCard, accountId, accounts, cardHolderName]);
 
-  // Agrupar categorias: pais e seus filhos
-  const parentCategories = categories.filter(c => !c.parent_id);
-  const getChildren = (parentId: string) => categories.filter(c => c.parent_id === parentId);
+  // Filtragem de categorias baseada no termo de busca
+  const filteredCategories = useMemo(() => {
+    const search = categorySearch.trim().toLowerCase();
+    if (!search) {
+      return {
+        parentCategories: categories.filter(c => !c.parent_id),
+        getChildren: (parentId: string) => categories.filter(c => c.parent_id === parentId)
+      };
+    }
+
+    // Achar as categorias e subcategorias cujos nomes batem com a pesquisa
+    const matchingCats = categories.filter(c => c.name.toLowerCase().includes(search));
+    const matchingIds = new Set(matchingCats.map(c => c.id));
+    
+    // Pais cujas subcategorias deram match
+    const parentIdsFromChildren = new Set<string>();
+    matchingCats.forEach(c => {
+      if (c.parent_id) {
+        parentIdsFromChildren.add(c.parent_id);
+      }
+    });
+
+    // Filtrar pais que batem com a busca OU que possuem filhos que batem
+    const parentCats = categories.filter(c => !c.parent_id && (matchingIds.has(c.id) || parentIdsFromChildren.has(c.id)));
+
+    // Função getChildren adaptada para retornar apenas os filhos que dão match (ou todos se o pai for o match principal)
+    const getFilteredChildren = (parentId: string) => {
+      const parentMatches = matchingCats.some(c => c.id === parentId && !c.parent_id);
+      return categories.filter(c => 
+        c.parent_id === parentId && 
+        (parentMatches || c.name.toLowerCase().includes(search))
+      );
+    };
+
+    return {
+      parentCategories: parentCats,
+      getChildren: getFilteredChildren
+    };
+  }, [categories, categorySearch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -901,8 +921,7 @@ const FinancialTransactionModalV2 = ({
                   <div className="relative">
                     <button 
                       type="button"
-                      onClick={() => setIsCategoryDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setIsCategoryDropdownOpen(false), 200)}
+                      onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                       className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
                     >
                       {categoryId ? (
@@ -917,52 +936,104 @@ const FinancialTransactionModalV2 = ({
                     </button>
 
                     {isCategoryDropdownOpen && (
-                      <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
-                        {parentCategories.map(parent => {
-                          const children = getChildren(parent.id);
-                          return (
-                            <div key={parent.id} className="border-b border-slate-50 last:border-0 last:mb-0 mb-1 pb-1">
+                      <>
+                        {/* Backdrop transparente para fechar ao clicar fora sem atrapalhar o foco do input */}
+                        <div 
+                          className="fixed inset-0 z-20" 
+                          onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
+                        />
+                        <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[320px]">
+                          {/* Campo de busca de categoria */}
+                          <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
+                            <Search size={14} className="text-slate-400 shrink-0 ml-2" />
+                            <input
+                              type="text"
+                              value={categorySearch}
+                              onChange={(e) => setCategorySearch(e.target.value)}
+                              placeholder="Buscar categoria..."
+                              autoFocus
+                              className="w-full bg-transparent border-none focus:ring-0 text-xs py-1 placeholder:text-slate-400 text-slate-700 focus:outline-none focus:border-none"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                }
+                              }}
+                            />
+                            {categorySearch && (
                               <button
                                 type="button"
-                                onClick={() => { setCategoryId(parent.id); setIsCategoryDropdownOpen(false); }}
-                                className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                                onClick={() => setCategorySearch('')}
+                                className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
                               >
-                                <span className="text-xl">{parent.icon || '📁'}</span>
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-slate-700 text-sm leading-tight">{parent.name}</span>
-                                  {children.length > 0 && (
-                                    <span className="text-[10px] text-slate-400">Possui subcategorias</span>
-                                  )}
-                                </div>
+                                <X size={12} />
                               </button>
-                              {children.map(child => (
-                                <button
-                                  key={child.id}
-                                  type="button"
-                                  onClick={() => { setCategoryId(child.id); setIsCategoryDropdownOpen(false); }}
-                                  className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
-                                >
-                                  <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
-                                  <span className="text-sm font-medium text-slate-600">{child.name}</span>
-                                </button>
-                              ))}
+                            )}
+                          </div>
+
+                          {/* Container com rolagem */}
+                          <div className="overflow-y-auto flex-1">
+                            {filteredCategories.parentCategories.length === 0 ? (
+                              <div className="px-4 py-6 text-center text-xs text-slate-400">
+                                Nenhuma categoria encontrada para "{categorySearch}"
+                              </div>
+                            ) : (
+                              filteredCategories.parentCategories.map(parent => {
+                                const children = filteredCategories.getChildren(parent.id);
+                                return (
+                                  <div key={parent.id} className="border-b border-slate-50 last:border-0 last:mb-0 mb-1 pb-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => { 
+                                        setCategoryId(parent.id); 
+                                        setIsCategoryDropdownOpen(false); 
+                                        setCategorySearch(''); 
+                                      }}
+                                      className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                                    >
+                                      <span className="text-xl">{parent.icon || '📁'}</span>
+                                      <div className="flex flex-col">
+                                        <span className="font-bold text-slate-700 text-sm leading-tight">{parent.name}</span>
+                                        {children.length > 0 && (
+                                          <span className="text-[10px] text-slate-400">Possui subcategorias</span>
+                                        )}
+                                      </div>
+                                    </button>
+                                    {children.map(child => (
+                                      <button
+                                        key={child.id}
+                                        type="button"
+                                        onClick={() => { 
+                                          setCategoryId(child.id); 
+                                          setIsCategoryDropdownOpen(false); 
+                                          setCategorySearch(''); 
+                                        }}
+                                        className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
+                                      >
+                                        <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
+                                        <span className="text-sm font-medium text-slate-600">{child.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                );
+                              })
+                            )}
+                            <div className="border-t border-slate-100 bg-white sticky bottom-0 z-10">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsCategoryDropdownOpen(false);
+                                  setCategorySearch('');
+                                  setIsQuickAddCategoryOpen(true);
+                                }}
+                                className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
+                              >
+                                <Plus size={18} />
+                                <span className="text-sm">Adicionar categoria</span>
+                              </button>
                             </div>
-                          );
-                        })}
-                        <div className="border-t border-slate-100">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsCategoryDropdownOpen(false);
-                              setIsQuickAddCategoryOpen(true);
-                            }}
-                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
-                          >
-                            <Plus size={18} />
-                            <span className="text-sm">Adicionar categoria</span>
-                          </button>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>

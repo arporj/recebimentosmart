@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../components/v2/ConfirmModal';
 import { format, subDays, setDate, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { BRAZILIAN_BANKS, inferBankDomain } from '../../constants/banks';
 
 interface Account {
   id: string;
@@ -52,25 +53,7 @@ const typeColors: Record<string, string> = {
   investment: 'bg-amber-50 text-amber-700 border-amber-200'
 };
 
-const BRAZILIAN_BANKS = [
-  { name: 'Banco Inter', domain: 'inter.co', color: '#ff7a00' },
-  { name: 'Nubank', domain: 'nubank.com.br', color: '#8a05be' },
-  { name: 'Itaú', domain: 'itau.com.br', color: '#ec7000' },
-  { name: 'Bradesco', domain: 'bradesco.com.br', color: '#cc092f' },
-  { name: 'Santander', domain: 'santander.com.br', color: '#ec0000' },
-  { name: 'Banco do Brasil', domain: 'bb.com.br', color: '#fcf200' },
-  { name: 'Caixa Econômica', domain: 'caixa.gov.br', color: '#105291' },
-  { name: 'XP Investimentos', domain: 'xpi.com.br', color: '#000000' },
-  { name: 'BTG Pactual', domain: 'btgpactual.com', color: '#000000' },
-  { name: 'C6 Bank', domain: 'c6.com.br', color: '#252525' },
-  { name: 'PagBank', domain: 'pagseguro.uol.com.br', color: '#53d21e' },
-  { name: 'Neon', domain: 'neon.com.br', color: '#00e5ff' },
-  { name: 'Banco Pan', domain: 'bancopan.com.br', color: '#00aff0' },
-  { name: 'Digio', domain: 'digio.com.br', color: '#001e32' },
-  { name: 'Mercado Pago', domain: 'mercadopago.com.br', color: '#009ee3' },
-  { name: 'Avenue', domain: 'avenue.us', color: '#000000' },
-  { name: 'Nomad', domain: 'nomadglobal.com', color: '#000000' },
-];
+
 
 const CARD_BRANDS = [
   { name: 'Visa', id: 'visa', icon: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@0.1.1/flat/visa.svg' },
@@ -493,10 +476,23 @@ const FinancialAccountsV2 = () => {
                     type="text" 
                     value={bankSearch} 
                     onChange={e => {
-                      setBankSearch(e.target.value);
-                      setBankName(e.target.value);
+                      const val = e.target.value;
+                      setBankSearch(val);
+                      setBankName(val);
                       setShowBankOptions(true);
-                      if (e.target.value === '') { setBankIcon(''); }
+                      
+                      if (val === '') { 
+                        setBankIcon(''); 
+                      } else {
+                        // Se for correspondente exato, pega o ícone oficial
+                        const officialBank = BRAZILIAN_BANKS.find(b => b.name.toLowerCase() === val.toLowerCase());
+                        if (officialBank) {
+                          setBankIcon(officialBank.domain);
+                        } else {
+                          // Se for customizado, infere o domínio inicial
+                          setBankIcon(inferBankDomain(val));
+                        }
+                      }
                     }} 
                     onFocus={() => setShowBankOptions(true)}
                     placeholder="Busque ou digite o nome do banco" 
@@ -569,6 +565,22 @@ const FinancialAccountsV2 = () => {
                          Fechar lista
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Input de site do banco customizado se não for da lista oficial */}
+                {bankSearch && !BRAZILIAN_BANKS.some(b => b.name.toLowerCase() === bankSearch.toLowerCase()) && (
+                  <div className="mt-2 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="flex items-center gap-1 px-1">
+                      <label className="text-[9px] font-bold text-teal-600 uppercase tracking-wider">Site/Domínio do Banco (para o ícone)</label>
+                    </div>
+                    <input 
+                      type="text"
+                      value={bankIcon}
+                      onChange={e => setBankIcon(e.target.value.toLowerCase().trim())}
+                      placeholder="Ex: portoseguro.com.br"
+                      className="w-full px-4 py-2.5 bg-teal-50/50 border border-teal-100 rounded-lg focus:ring-1 focus:ring-teal-500/30 text-xs text-slate-600 placeholder-slate-400 transition-all"
+                    />
                   </div>
                 )}
               </div>
