@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { Sparkles, ExternalLink } from 'lucide-react';
 
 // Tipos suportados de posicionamento do banner
@@ -17,6 +18,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   className = '' 
 }) => {
   const { plano } = useAuth();
+  const { pathname } = useLocation();
   const [isDev, setIsDev] = useState(false);
 
   // Apenas usuários no plano Free visualizam anúncios
@@ -29,6 +31,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   }, []);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     // Apenas injeta a lógica do AdSense se NÃO for dev, se for Free, e se houver a variável global pronta
     if (shouldShowAd && !isDev) {
       try {
@@ -45,15 +49,25 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           document.head.appendChild(script);
         }
 
-        // Chama o push do Adsense para renderizar a tag ins do DOM
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const win = window as any;
-        (win.adsbygoogle = win.adsbygoogle || []).push({});
+        // Chama o push do Adsense após o DOM renderizar completamente para evitar conflitos em SPAs
+        timeoutId = setTimeout(() => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const win = window as any;
+            (win.adsbygoogle = win.adsbygoogle || []).push({});
+          } catch (err) {
+            console.warn('AdSense falhou ou bloqueador de anúncios ativo:', err);
+          }
+        }, 200);
       } catch (err) {
-        console.warn('AdSense falhou ou bloqueador de anúncios ativo:', err);
+        console.warn('Configuração inicial do AdSense falhou:', err);
       }
     }
-  }, [shouldShowAd, isDev, format, slotId]);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [shouldShowAd, isDev, format, slotId, pathname]);
 
   if (!shouldShowAd) return null;
 
@@ -66,7 +80,10 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   // Em produção (quando não é localhost), renderiza o bloco padrão do Google AdSense
   if (!isDev) {
     return (
-      <div className={`ad-container flex justify-center my-4 w-full overflow-hidden ${className}`}>
+      <div 
+        key={`${pathname}-${slotId}`}
+        className={`ad-container flex justify-center my-4 w-full overflow-hidden ${className}`}
+      >
         <ins 
           className="adsbygoogle"
           style={{ display: 'block' }}
