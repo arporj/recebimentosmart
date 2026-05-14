@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { format } from 'date-fns';
 import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
 import toast from 'react-hot-toast';
@@ -110,6 +111,7 @@ const FinancialTransactionModalV2 = ({
   isConfirming = false
 }: FinancialTransactionModalProps) => {
   const { user } = useAuth();
+  const { checkLimit } = usePlanLimits();
   const isEditing = !!transaction;
 
   const [type, setType] = useState<'income' | 'expense' | 'transfer'>(initialType);
@@ -457,6 +459,10 @@ const FinancialTransactionModalV2 = ({
   const handleSubmit = async (e?: React.FormEvent, selectedScope?: 'this' | 'following' | 'all') => {
     e?.preventDefault();
     if (!user) return;
+    
+    if (!checkLimit('transactions')) {
+      return;
+    }
     
     const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (!amount || parsedAmount <= 0) {
