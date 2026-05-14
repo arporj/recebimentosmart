@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../components/v2/ConfirmModal';
 import { format, subDays, setDate, addMonths } from 'date-fns';
@@ -85,6 +86,7 @@ const parsePushMask = (formatted: string): number =>
 
 const FinancialAccountsV2 = () => {
   const { user } = useAuth();
+  const { checkLimit } = usePlanLimits();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -230,7 +232,11 @@ const FinancialAccountsV2 = () => {
     setEditing(null);
   };
 
-  const openNew = () => { resetForm(); setIsModalOpen(true); };
+  const openNew = () => { 
+    if (!checkLimit('accounts')) return;
+    resetForm(); 
+    setIsModalOpen(true); 
+  };
 
   const openEdit = (a: Account) => {
     setEditing(a);
@@ -277,6 +283,10 @@ const FinancialAccountsV2 = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error('Informe o nome da conta.'); return; }
+
+    if (!editing && !checkLimit('accounts')) {
+      return;
+    }
 
     setSaving(true);
     const isCC = type === 'credit_card';

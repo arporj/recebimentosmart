@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ArrowRight, Building2, Landmark, CreditCard, TrendingUp } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 import { BRAZILIAN_BANKS, inferBankDomain } from '../../constants/banks';
 
@@ -15,6 +16,7 @@ interface QuickAddAccountModalProps {
 
 const QuickAddAccountModal: React.FC<QuickAddAccountModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
+  const { checkLimit } = usePlanLimits();
   const [name, setName] = useState('');
   const [type, setType] = useState<string>('checking');
   const [bankName, setBankName] = useState('');
@@ -41,6 +43,10 @@ const QuickAddAccountModal: React.FC<QuickAddAccountModalProps> = ({ isOpen, onC
     e.preventDefault();
     if (!name.trim()) return toast.error('Informe o nome da conta');
     if (!user) return;
+
+    if (!checkLimit('accounts')) {
+      return;
+    }
 
     setSaving(true);
     try {
