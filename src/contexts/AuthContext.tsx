@@ -254,12 +254,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.sessionStorage.removeItem('use_session_storage');
       }
 
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Limpa o estado local imediatamente para evitar flashes de conteúdo logado e loop de redirecionamento
       setUser(null);
+      setOriginalUser(null);
+      setHasFullAccess(false);
+      setIsAdmin(false);
+      setPlano(null);
+
+      // Tenta o sign out do Supabase, ignorando falhas de rede/sessão para garantir a desconexão local
+      await supabase.auth.signOut().catch(err => {
+        console.warn("Aviso durante o signOut remoto:", err);
+      });
+
+      // Redireciona apenas após limpar o contexto local
       navigate('/login');
     } catch (error) {
-      console.error(error);
+      console.error("Erro no signOut:", error);
+      // Em caso de erro drástico, garante a limpeza local final
+      setUser(null);
+      setOriginalUser(null);
+      navigate('/login');
     } finally {
       setLoading(false);
     }

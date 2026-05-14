@@ -91,7 +91,6 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
     const handleSignOut = async () => {
         await signOut();
-        navigate('/v2/login');
     };
 
     const toggleExpand = (label: string) => {
