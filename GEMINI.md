@@ -2,6 +2,9 @@
 trigger: always_on
 system_files:
   - C:\Users\andre\.gemini\antigravity\MASTER_INDEX.md
+  - docs/design.md
+  - docs/migracao_v2.md
+  - docs/planejamento_financeiro.md
 ---
 
 # GEMINI.md - Antigravity Kit
