@@ -215,7 +215,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
                 {/* Espaço publicitário contextual para planos free */}
                 <div className="px-4 py-2 mt-auto mb-2 flex-shrink-0">
-                    <AdBanner format="sidebar" />
+                    <AdBanner format="sidebar" slotId="4023170366" />
                 </div>
 
                 {/* User section */}
@@ -276,6 +276,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                         </div>
                     )}
                     <div className="p-4 md:p-8 flex-1 w-full max-w-full overflow-x-hidden">
+                        <AdBanner format="horizontal" slotId="5916047981" className="mb-6" />
                         {children}
                     </div>
                 </main>
