@@ -1,5 +1,9 @@
--- Migration: Extensões Administrativas para Limites e Transações
+-- Migration: Extensões Administrativas para Limites e Transações (Corrigida com Drop Functions)
 -- Data: 14/05/2026
+
+-- Drop the existing functions first since the return type has changed
+DROP FUNCTION IF EXISTS public.get_all_users_admin();
+DROP FUNCTION IF EXISTS public.get_all_plans_with_prices();
 
 -- 1. Redefinir get_all_users_admin para incluir total_transactions e fixar status 'free'
 CREATE OR REPLACE FUNCTION public.get_all_users_admin()
