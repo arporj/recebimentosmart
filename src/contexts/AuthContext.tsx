@@ -115,12 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? validUntilDate > new Date()
           : false;
 
-        const isInTrial = isFuture(trialEndDate);
-        const currentHasFullAccess = hasPaidAccess || isInTrial;
+        const planoAtual = profile?.plano || 'free';
+        setPlano(planoAtual);
+
+        const isFree = planoAtual === 'free';
+        const currentHasFullAccess = hasPaidAccess || isInTrial || isFree;
 
         setHasFullAccess(currentHasFullAccess);
         setIsAdmin(profile?.is_admin || false);
-        setPlano(profile?.plano || 'basico');
 
       if (!originalUser) {
         // Verifica se o usuário tem acesso (assinatura ou trial)

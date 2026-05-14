@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
+import { AdBanner } from '../AdBanner';
 import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
@@ -213,8 +214,13 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     )}
                 </nav>
 
+                {/* Espaço publicitário contextual para planos free */}
+                <div className="px-4 py-2 mt-auto mb-2 flex-shrink-0">
+                    <AdBanner format="sidebar" />
+                </div>
+
                 {/* User section */}
-                <div className="p-4 border-t border-slate-800">
+                <div className="p-4 border-t border-slate-800 flex-shrink-0">
                     <div
                         onClick={handleSignOut}
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"

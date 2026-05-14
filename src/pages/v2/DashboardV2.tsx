@@ -12,6 +12,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactionModalV2';
+import { AdBanner } from '../../components/v2/AdBanner';
 
 interface FinancialTransaction {
   id: string;
@@ -96,6 +97,9 @@ const DashboardV2 = () => {
           </button>
         </div>
       </div>
+
+      {/* Espaço de publicidade horizontal para contas do plano free */}
+      <AdBanner format="horizontal" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
