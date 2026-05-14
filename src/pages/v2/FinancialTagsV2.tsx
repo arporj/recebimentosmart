@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, ArrowRight, Check, Tag as TagIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../components/v2/ConfirmModal';
 
@@ -27,6 +28,7 @@ const COLORS = [
 
 const FinancialTagsV2 = () => {
   const { user } = useAuth();
+  const { checkLimit } = usePlanLimits();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,7 +56,11 @@ const FinancialTagsV2 = () => {
   useEffect(() => { fetchTags(); }, [user]);
 
   const resetForm = () => { setName(''); setColor(COLORS[0].value); setEditing(null); };
-  const openNew = () => { resetForm(); setIsModalOpen(true); };
+  const openNew = () => { 
+    if (!checkLimit('tags')) return;
+    resetForm(); 
+    setIsModalOpen(true); 
+  };
   const openEdit = (t: Tag) => {
     setEditing(t);
     setName(t.name);
@@ -73,6 +79,10 @@ const FinancialTagsV2 = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error('Informe o nome da tag.'); return; }
+
+    if (!editing && !checkLimit('tags')) {
+      return;
+    }
 
     setSaving(true);
     const payload = {
