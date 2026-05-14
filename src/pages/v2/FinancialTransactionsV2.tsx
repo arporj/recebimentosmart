@@ -325,7 +325,12 @@ const FinancialTransactionsV2 = () => {
   };
 
   const handleConfirmAction = (t: TransactionInstance) => {
-    const transactionToEdit = { ...t, date: t.instanceDate || t.date };
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const originalDate = t.instanceDate || t.date;
+    // Se a data original for maior que hoje (futuro), força data de hoje, senão mantém original
+    const dateToSet = originalDate > todayStr ? todayStr : originalDate;
+
+    const transactionToEdit = { ...t, date: dateToSet };
     setEditingTransaction(transactionToEdit);
     setModalType(t.type);
     setIsConfirming(true);

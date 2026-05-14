@@ -21,6 +21,7 @@ export interface TransactionInput {
   recurrence_interval?: number;
   invoice_month?: string | null;
   card_holder_name?: string | null;
+  status?: 'pending' | 'paid' | 'partial';
 }
 
 /**
@@ -66,7 +67,7 @@ export async function criarTransacao(input: TransactionInput) {
     destination_account_id: input.destination_account_id || null,
     client_id: input.client_id,
     modalidade: input.modalidade,
-    status: 'pending',
+    status: input.status || 'pending',
     invoice_month: input.invoice_month || null,
     card_holder_name: input.card_holder_name || null,
   };

@@ -16,7 +16,7 @@ O sistema encontra-se atualmente em um estado de **transição parcial de dados*
 * **Arquivo:** [ClientListV2/index.tsx](../src/components/v2/ClientListV2/index.tsx)
 * **Função:** `registerPayment`
 * **Comportamento Atual:** Ao registrar um pagamento pela listagem de clientes, a função executa um `insert` direto na tabela legada `payments`.
-* **Impacto:** A transação correspondente na tabela `financial_transactions` (módulo financeiro) permanece intocada com status `pending` ou `late`. O usuário paga o cliente, mas a dívida continua constando no Painel Financeiro.
+* **Impacto:** A transação correspondente na tabela `financial_transactions` (módulo financeiro) permanece intocada com status `pending` ou `late`. O cliente paga o usuário, mas a dívida continua constando no Painel Financeiro.
 
 ### ❌ Falha B: Calendário de Histórico Defasado
 * **Arquivo:** [PaymentHistoryV2/index.tsx](../src/components/v2/PaymentHistoryV2/index.tsx)
