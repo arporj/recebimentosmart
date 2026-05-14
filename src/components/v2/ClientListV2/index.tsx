@@ -11,6 +11,7 @@ import { ClientFormV2 } from '../ClientFormV2';
 import type { Database } from '../../../types/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePlanLimits } from '../../../hooks/usePlanLimits';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 type CustomField = Database['public']['Tables']['custom_fields']['Row'];
@@ -102,6 +103,7 @@ export function ClientListV2() {
     const [financialTransactions, setFinancialTransactions] = useState<FinancialTransaction[]>([]);
 
     const { user } = useAuth();
+    const { checkLimit } = usePlanLimits();
 
     const fetchCustomFields = useCallback(async () => {
         if (!user) return;
@@ -208,7 +210,11 @@ export function ClientListV2() {
                     <p className="text-slate-500 text-sm mt-1">Gerencie seus recebimentos e status de clientes.</p>
                 </div>
                 <button
-                    onClick={() => setShowNewClientForm(true)}
+                    onClick={() => {
+                        if (checkLimit('clients')) {
+                            setShowNewClientForm(true);
+                        }
+                    }}
                     className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm"
                 >
                     <UserPlus size={18} /> Novo Cliente
