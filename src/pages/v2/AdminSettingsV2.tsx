@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Settings, Save, RefreshCw, Shield, Zap, Star, Award } from 'lucide-react';
+import { Settings, Save, RefreshCw, Shield, Zap, Star, Award, UserCheck, Tags, Wallet, Activity } from 'lucide-react';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { supabase } from '../../lib/supabase';
 
@@ -10,11 +10,18 @@ interface PlanPrices {
     premium: number;
 }
 
+interface SinglePlanLimits {
+    transactions: number;
+    clients: number;
+    tags: number;
+    accounts: number;
+}
+
 interface PlanLimits {
-    free: number;
-    basico: number;
-    pro: number;
-    premium: number;
+    free: SinglePlanLimits;
+    basico: SinglePlanLimits;
+    pro: SinglePlanLimits;
+    premium: SinglePlanLimits;
 }
 
 const normalizePlanName = (name: string) =>
@@ -24,8 +31,18 @@ export default function AdminSettingsV2() {
     const [prices, setPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
     const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
     
-    const [limits, setLimits] = useState<PlanLimits>({ free: 30, basico: 60, pro: 120, premium: -1 });
-    const [initialLimits, setInitialLimits] = useState<PlanLimits>({ free: 30, basico: 60, pro: 120, premium: -1 });
+    const [limits, setLimits] = useState<PlanLimits>({
+        free: { transactions: 30, clients: 15, tags: 10, accounts: 2 },
+        basico: { transactions: 60, clients: -1, tags: -1, accounts: -1 },
+        pro: { transactions: 120, clients: -1, tags: -1, accounts: -1 },
+        premium: { transactions: -1, clients: -1, tags: -1, accounts: -1 },
+    });
+    const [initialLimits, setInitialLimits] = useState<PlanLimits>({
+        free: { transactions: 30, clients: 15, tags: 10, accounts: 2 },
+        basico: { transactions: 60, clients: -1, tags: -1, accounts: -1 },
+        pro: { transactions: 120, clients: -1, tags: -1, accounts: -1 },
+        premium: { transactions: -1, clients: -1, tags: -1, accounts: -1 },
+    });
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -42,38 +59,36 @@ export default function AdminSettingsV2() {
 
             if (plansData) {
                 const fetchedPrices: Partial<PlanPrices> = {};
-                const fetchedLimits: Partial<PlanLimits> = {};
+                const fetchedLimits: Partial<Record<keyof PlanLimits, SinglePlanLimits>> = {};
 
                 plansData.forEach((plan: any) => {
-                    const slug = plan.slug || normalizePlanName(plan.name);
+                    const slug = (plan.slug || normalizePlanName(plan.name)) as keyof PlanLimits;
                     const price = Math.round(parseFloat(plan.price_monthly || '0') * 100);
-                    const limit = plan.limit_transactions ?? -1;
+                    
+                    const planLimits: SinglePlanLimits = {
+                        transactions: plan.limit_transactions ?? -1,
+                        clients: plan.limit_clients ?? -1,
+                        tags: plan.limit_tags ?? -1,
+                        accounts: plan.limit_accounts ?? -1
+                    };
 
-                    if (slug === 'free') {
-                        fetchedLimits.free = limit;
-                    } else if (slug === 'basico') {
-                        fetchedPrices.basico = price;
-                        fetchedLimits.basico = limit;
-                    } else if (slug === 'pro') {
-                        fetchedPrices.pro = price;
-                        fetchedLimits.pro = limit;
-                    } else if (slug === 'premium') {
-                        fetchedPrices.premium = price;
-                        fetchedLimits.premium = limit;
+                    fetchedLimits[slug] = planLimits;
+                    if (slug !== 'free') {
+                        fetchedPrices[slug as keyof PlanPrices] = price;
                     }
                 });
 
                 const numericPrices: PlanPrices = {
-                    basico: fetchedPrices.basico || 0,
-                    pro: fetchedPrices.pro || 0,
-                    premium: fetchedPrices.premium || 0,
+                    basico: fetchedPrices.basico ?? 0,
+                    pro: fetchedPrices.pro ?? 0,
+                    premium: fetchedPrices.premium ?? 0,
                 };
 
                 const numericLimits: PlanLimits = {
-                    free: fetchedLimits.free ?? 30,
-                    basico: fetchedLimits.basico ?? 60,
-                    pro: fetchedLimits.pro ?? 120,
-                    premium: fetchedLimits.premium ?? -1,
+                    free: fetchedLimits.free ?? { transactions: 30, clients: 15, tags: 10, accounts: 2 },
+                    basico: fetchedLimits.basico ?? { transactions: 60, clients: -1, tags: -1, accounts: -1 },
+                    pro: fetchedLimits.pro ?? { transactions: 120, clients: -1, tags: -1, accounts: -1 },
+                    premium: fetchedLimits.premium ?? { transactions: -1, clients: -1, tags: -1, accounts: -1 },
                 };
 
                 setPrices(numericPrices);
@@ -93,8 +108,14 @@ export default function AdminSettingsV2() {
         setPrices(prev => ({ ...prev, [plan]: value || 0 }));
     };
 
-    const handleLimitChange = (plan: keyof PlanLimits, value: number) => {
-        setLimits(prev => ({ ...prev, [plan]: value }));
+    const handleLimitFieldChange = (plan: keyof PlanLimits, field: keyof SinglePlanLimits, value: number) => {
+        setLimits(prev => ({
+            ...prev,
+            [plan]: {
+                ...prev[plan],
+                [field]: value
+            }
+        }));
     };
 
     const handleUpdateSettings = async () => {
@@ -119,6 +140,80 @@ export default function AdminSettingsV2() {
     const hasChanges = JSON.stringify(prices) !== JSON.stringify(initialPrices) || 
                        JSON.stringify(limits) !== JSON.stringify(initialLimits);
 
+    const renderPlanLimitsGrid = (slug: keyof PlanLimits) => {
+        const planLimits = limits[slug];
+        return (
+            <div className="border-t border-dashed border-slate-200 pt-4 mt-2 space-y-3">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-extrabold text-slate-600 uppercase tracking-widest">Cotas do Plano</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                            <Activity className="w-3 h-3 text-slate-400" />
+                            Transações
+                        </label>
+                        <input
+                            type="number"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 font-bold text-sm transition-all"
+                            value={planLimits.transactions}
+                            min="-1"
+                            onChange={(e) => handleLimitFieldChange(slug, 'transactions', parseInt(e.target.value) || 0)}
+                            disabled={saving}
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                            <UserCheck className="w-3 h-3 text-slate-400" />
+                            Clientes
+                        </label>
+                        <input
+                            type="number"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 font-bold text-sm transition-all"
+                            value={planLimits.clients}
+                            min="-1"
+                            onChange={(e) => handleLimitFieldChange(slug, 'clients', parseInt(e.target.value) || 0)}
+                            disabled={saving}
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                            <Tags className="w-3 h-3 text-slate-400" />
+                            Tags
+                        </label>
+                        <input
+                            type="number"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 font-bold text-sm transition-all"
+                            value={planLimits.tags}
+                            min="-1"
+                            onChange={(e) => handleLimitFieldChange(slug, 'tags', parseInt(e.target.value) || 0)}
+                            disabled={saving}
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                            <Wallet className="w-3 h-3 text-slate-400" />
+                            Contas
+                        </label>
+                        <input
+                            type="number"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 font-bold text-sm transition-all"
+                            value={planLimits.accounts}
+                            min="-1"
+                            onChange={(e) => handleLimitFieldChange(slug, 'accounts', parseInt(e.target.value) || 0)}
+                            disabled={saving}
+                        />
+                    </div>
+                </div>
+                <p className="text-[9px] text-slate-400 mt-2 font-medium italic">* Digite -1 para liberar cota ilimitada</p>
+            </div>
+        );
+    };
+
     return (
         <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
             {/* Header Section */}
@@ -129,7 +224,7 @@ export default function AdminSettingsV2() {
                     </div>
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight text-slate-900">Configurações Globais</h2>
-                        <p className="text-slate-500">Gerencie as configurações de valores e cotas operacionais de todos os planos.</p>
+                        <p className="text-slate-500">Gerencie as configurações de valores e limites de todos os planos da plataforma.</p>
                     </div>
                 </div>
             </div>
@@ -142,8 +237,8 @@ export default function AdminSettingsV2() {
                             <Shield className="w-5 h-5 text-custom" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900">Estrutura de Planos & Limites</h2>
-                            <p className="text-sm text-slate-500">Defina o preço mensal e o limite de transações permitidas por mês.</p>
+                            <h2 className="text-lg font-bold text-slate-900">Precificação e Cotas Operacionais</h2>
+                            <p className="text-sm text-slate-500">Defina o preço recorrente e as barreiras de uso de recursos por plano.</p>
                         </div>
                     </div>
                     {loading && (
@@ -155,7 +250,7 @@ export default function AdminSettingsV2() {
                     {loading ? (
                         <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-custom"></div>
-                            <span className="text-sm font-medium">Carregando configurações dos planos...</span>
+                            <span className="text-sm font-medium">Carregando as configurações integradas...</span>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -182,18 +277,7 @@ export default function AdminSettingsV2() {
                                     />
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider">Limite Mensal de Transações</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 transition-all font-semibold"
-                                        value={limits.free}
-                                        min="-1"
-                                        onChange={(e) => handleLimitChange('free', parseInt(e.target.value) || 0)}
-                                        disabled={saving}
-                                    />
-                                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Utilize -1 para transações ilimitadas</p>
-                                </div>
+                                {renderPlanLimitsGrid('free')}
                             </div>
 
                             {/* PLANO BÁSICO */}
@@ -218,18 +302,7 @@ export default function AdminSettingsV2() {
                                     />
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider">Limite Mensal de Transações</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 transition-all font-semibold"
-                                        value={limits.basico}
-                                        min="-1"
-                                        onChange={(e) => handleLimitChange('basico', parseInt(e.target.value) || 0)}
-                                        disabled={saving}
-                                    />
-                                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Utilize -1 para transações ilimitadas</p>
-                                </div>
+                                {renderPlanLimitsGrid('basico')}
                             </div>
 
                             {/* PLANO PRÓ */}
@@ -254,18 +327,7 @@ export default function AdminSettingsV2() {
                                     />
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider">Limite Mensal de Transações</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 transition-all font-semibold"
-                                        value={limits.pro}
-                                        min="-1"
-                                        onChange={(e) => handleLimitChange('pro', parseInt(e.target.value) || 0)}
-                                        disabled={saving}
-                                    />
-                                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Utilize -1 para transações ilimitadas</p>
-                                </div>
+                                {renderPlanLimitsGrid('pro')}
                             </div>
 
                             {/* PLANO PREMIUM */}
@@ -290,18 +352,7 @@ export default function AdminSettingsV2() {
                                     />
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider">Limite Mensal de Transações</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 transition-all font-semibold"
-                                        value={limits.premium}
-                                        min="-1"
-                                        onChange={(e) => handleLimitChange('premium', parseInt(e.target.value) || 0)}
-                                        disabled={saving}
-                                    />
-                                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Utilize -1 para transações ilimitadas</p>
-                                </div>
+                                {renderPlanLimitsGrid('premium')}
                             </div>
 
                         </div>
@@ -322,13 +373,12 @@ export default function AdminSettingsV2() {
 
             <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100 flex gap-4 items-start">
                 <div className="p-2 bg-amber-100 rounded-lg text-amber-600 shrink-0">
-                    <Settings className="w-5 h-5" />
+                    <Shield className="w-5 h-5" />
                 </div>
                 <div>
-                    <h4 className="font-bold text-amber-900">Painel de Operações & Limites</h4>
+                    <h4 className="font-bold text-amber-900">Painel de Operações & Segurança de Cotas</h4>
                     <p className="text-sm text-amber-800 leading-relaxed mt-1">
-                        O limite mensal de transações impõe uma barreira para criação/alteração financeira pelo usuário em seu ciclo de cota atual.
-                        Ao mudar limites para um valor inferior ao consumido atual de um usuário, ele continuará enxergando seus registros porém terá bloqueio de novas adições no mês corrente.
+                        Os limites operacionais impõem barreiras de uso do sistema. Ao reduzir uma cota abaixo da quantidade atual consumida por um cliente, ele continuará visualizando seus registros antigos, mas ficará temporariamente impedido de adicionar novas entidades (clientes, transações, tags ou contas bancárias) até que faça upgrade ou libere cotas.
                     </p>
                 </div>
             </div>
