@@ -16,6 +16,7 @@ export interface UserProfile {
   created_at: string;
   last_sign_in_at: string | null;
   valid_until: string | null;
+  total_transactions?: number | null;
 }
 
 const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
