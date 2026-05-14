@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 
 interface Category {
@@ -20,6 +21,7 @@ interface QuickAddCategoryModalProps {
 
 const QuickAddCategoryModal: React.FC<QuickAddCategoryModalProps> = ({ isOpen, onClose, onSuccess, categories: existingCategories }) => {
   const { user } = useAuth();
+  const { canUseFeature } = usePlanLimits();
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('📁');
   const [parentId, setParentId] = useState('');
@@ -39,6 +41,10 @@ const QuickAddCategoryModal: React.FC<QuickAddCategoryModalProps> = ({ isOpen, o
     e.preventDefault();
     if (!name.trim()) return toast.error('Informe o nome da categoria');
     if (!user) return;
+
+    if (!canUseFeature('custom_categories')) {
+      return;
+    }
 
     setSaving(true);
     try {

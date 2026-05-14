@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../components/v2/ConfirmModal';
 
@@ -18,6 +19,7 @@ interface Category {
 
 const FinancialCategoriesV2 = () => {
   const { user } = useAuth();
+  const { canUseFeature } = usePlanLimits();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,6 +62,7 @@ const FinancialCategoriesV2 = () => {
 
   const resetForm = () => { setName(''); setIcon(''); setParentId(''); setEditing(null); };
   const openNew = (presetParentId?: string) => { 
+    if (!canUseFeature('custom_categories')) return;
     resetForm(); 
     if (presetParentId) setParentId(presetParentId);
     setIsModalOpen(true); 
@@ -91,6 +94,10 @@ const FinancialCategoriesV2 = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error('Informe o nome.'); return; }
+
+    if (!editing && !canUseFeature('custom_categories')) {
+      return;
+    }
 
     setSaving(true);
     const payload = {
