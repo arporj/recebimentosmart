@@ -105,10 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Pode ser necessário criar o perfil ou lidar com isso.
         }
 
-        const trialDays = 7;
-        const createdAt = parseISO(currentUser.created_at);
-        const trialEndDate = addDays(createdAt, trialDays);
-
         // Verificação mais robusta de validade
         const validUntilDate = profile?.valid_until ? new Date(profile.valid_until) : null;
         const hasPaidAccess = validUntilDate && !isNaN(validUntilDate.getTime())
@@ -119,19 +115,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setPlano(planoAtual);
 
         const isFree = planoAtual === 'free';
-        const currentHasFullAccess = hasPaidAccess || isInTrial || isFree;
+        const isSystemAdmin = !!profile?.is_admin;
+        
+        // Se for administrador, ignora outras validações e concede acesso total automaticamente
+        const currentHasFullAccess = isSystemAdmin || hasPaidAccess || isFree;
 
         setHasFullAccess(currentHasFullAccess);
-        setIsAdmin(profile?.is_admin || false);
+        setIsAdmin(isSystemAdmin);
 
       if (!originalUser) {
-        // Verifica se o usuário tem acesso (assinatura ou trial)
+        // Verifica se o usuário tem acesso
         const isAtAllowedPages = location.pathname === '/payment' || 
                                  location.pathname === '/v2/assinatura' || 
                                  location.pathname === '/profile' || 
                                  location.pathname === '/v2/perfil';
 
-        if (!currentHasFullAccess && !profile?.is_admin && !isAtAllowedPages) {
+        if (!currentHasFullAccess && !isSystemAdmin && !isAtAllowedPages) {
           // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
           navigate('/v2/assinatura');
         }
