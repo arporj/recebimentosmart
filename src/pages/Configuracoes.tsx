@@ -116,11 +116,7 @@ const Configuracoes = () => {
 
     const cleanedCpfCnpj = cpfCnpj.replace(/[^0-9]/g, '');
 
-    if (!cleanedCpfCnpj) {
-      setCpfCnpjError('CPF/CNPJ é obrigatório.');
-      return;
-    }
-    if (cleanedCpfCnpj.length !== 11 && cleanedCpfCnpj.length !== 14) {
+    if (cleanedCpfCnpj && (cleanedCpfCnpj.length !== 11 && cleanedCpfCnpj.length !== 14)) {
       setCpfCnpjError('CPF/CNPJ inválido. Deve conter 11 ou 14 dígitos.');
       return;
     }

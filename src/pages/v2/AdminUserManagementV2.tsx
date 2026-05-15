@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import UserDetailsModalV2 from '../../components/v2/UserDetailsModalV2';
 import { UserProfile } from '../../components/admin/UserTable';
+import ConfirmModal from '../../components/v2/ConfirmModal';
 
 interface KpiData {
     monthlyRevenue: number;
@@ -150,17 +151,20 @@ export default function AdminUserManagementV2() {
         return email.substring(0, 2).toUpperCase();
     };
 
-    const handleNotifyDuePayments = async (user: UserProfile) => {
-        if (!window.confirm(`Deseja enviar o e-mail de notificação de vencimentos para ${user.name || user.email}?`)) return;
+    const [userToNotify, setUserToNotify] = useState<UserProfile | null>(null);
+
+    const handleNotifyDuePayments = async (u: UserProfile) => {
         const toastId = toast.loading('Enviando notificação...');
         try {
-            const { data, error } = await supabase.functions.invoke('notify-due-clients', { body: { userId: user.id } });
+            const { data, error } = await supabase.functions.invoke('notify-due-clients', { body: { userId: u.id } });
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
             toast.success('E-mail enviado com sucesso!', { id: toastId });
         } catch (error) {
             console.error('Erro ao enviar notificação:', error);
             toast.error('Erro ao enviar e-mail. Verifique o console.', { id: toastId });
+        } finally {
+            setUserToNotify(null);
         }
     };
 
@@ -266,6 +270,9 @@ export default function AdminUserManagementV2() {
                                 <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('subscription_status')}>
                                     Status {getSortIcon('subscription_status')}
                                 </th>
+                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('total_transactions')}>
+                                    Transações {getSortIcon('total_transactions')}
+                                </th>
                                 <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('last_sign_in_at')}>
                                     Último Login {getSortIcon('last_sign_in_at')}
                                 </th>
@@ -275,7 +282,7 @@ export default function AdminUserManagementV2() {
                         <tbody className="divide-y divide-slate-100">
                             {loadingUsers ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                                         <div className="flex flex-col items-center justify-center gap-3">
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-custom"></div>
                                             <span className="font-medium">Carregando usuários...</span>
@@ -284,7 +291,7 @@ export default function AdminUserManagementV2() {
                                 </tr>
                             ) : currentUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
                                         Nenhum usuário encontrado.
                                     </td>
                                 </tr>
@@ -308,13 +315,16 @@ export default function AdminUserManagementV2() {
                                         <td className="px-6 py-4">
                                             <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
                                         </td>
+                                        <td className="px-6 py-4 text-sm text-slate-600 font-bold">
+                                             {user.total_transactions ?? 0}
+                                        </td>
                                         <td className="px-6 py-4 text-sm text-slate-600 font-medium">
                                             {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '-'}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => handleNotifyDuePayments(user)}
+                                                    onClick={() => setUserToNotify(user)}
                                                     className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
                                                     title="Notificar Vencimentos"
                                                 >
@@ -375,6 +385,16 @@ export default function AdminUserManagementV2() {
                     }}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={!!userToNotify}
+                onClose={() => setUserToNotify(null)}
+                onConfirm={() => userToNotify && handleNotifyDuePayments(userToNotify)}
+                title="Enviar notificação"
+                message={<>Deseja enviar o e-mail de notificação de vencimentos para <strong>{userToNotify?.name || userToNotify?.email}</strong>?</>}
+                confirmLabel="Enviar"
+                confirmColor="blue"
+            />
         </div>
     );
 }

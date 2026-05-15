@@ -31,6 +31,15 @@ import FeedbackV2 from './pages/v2/FeedbackV2';
 import UserProfileSettingsV2 from './pages/v2/UserProfileSettingsV2';
 import AdminFeedbackPageV2 from './pages/v2/AdminFeedbackPageV2';
 import AdminSettingsV2 from './pages/v2/AdminSettingsV2';
+import DashboardV2 from './pages/v2/DashboardV2';
+import FinancialTransactionsV2 from './pages/v2/FinancialTransactionsV2';
+import FinancialAccountsV2 from './pages/v2/FinancialAccountsV2';
+import FinancialCategoriesV2 from './pages/v2/FinancialCategoriesV2';
+import FinancialTagsV2 from './pages/v2/FinancialTagsV2';
+import CreditCardV2 from './pages/v2/CreditCardV2';
+import RecurrenceV2 from './pages/v2/RecurrenceV2';
+import SharedWithMeV2 from './pages/v2/SharedWithMeV2';
+import ClientsV2 from './pages/v2/ClientsV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -45,7 +54,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAdmin) {
-    return <Navigate to="/v2/clientes" replace />;
+    return <Navigate to="/v2/financeiro/lancamentos" replace />;
   }
 
   return <>{children}</>;
@@ -98,6 +107,21 @@ function AppRoutes() {
           <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/indicacoes" element={<ProtectedRoute><MainLayoutV2><ReferralPageV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/assinatura" element={<ProtectedRoute><MainLayoutV2><SubscriptionPageV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/recorrencia" element={<ProtectedRoute><MainLayoutV2><RecurrenceV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/compartilhado" element={<ProtectedRoute><MainLayoutV2><SharedWithMeV2 /></MainLayoutV2></ProtectedRoute>} />
+          
+          {/* Novas Rotas Financeiras */}
+          <Route path="/v2/dashboard" element={<ProtectedRoute><MainLayoutV2><DashboardV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/lancamentos" element={<ProtectedRoute><MainLayoutV2><FinancialTransactionsV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/clientes" element={<ProtectedRoute><MainLayoutV2><ClientsV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/contas" element={<ProtectedRoute><MainLayoutV2><FinancialAccountsV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/categorias" element={<ProtectedRoute><MainLayoutV2><FinancialCategoriesV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/tags" element={<ProtectedRoute><MainLayoutV2><FinancialTagsV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/financeiro/cartoes" element={<ProtectedRoute><MainLayoutV2><CreditCardV2 /></MainLayoutV2></ProtectedRoute>} />
+          
+          {/* Redirecionamentos para compatibilidade */}
+          <Route path="/v2/financeiro/despesas" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2/financeiro/receitas" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
 
           {/* Rotas de Admin V2 */}
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
@@ -108,7 +132,7 @@ function AppRoutes() {
             REDIRECIONAMENTOS V1 -> V2 
             Se qualquer usuário acessar links antigos salvos nos favoritos, será jogado para a V2 correspondente 
           */}
-          <Route path="/dashboard" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/v2/dashboard" replace />} />
           <Route path="/monthly" element={<Navigate to="/v2/pagamentos" replace />} />
           <Route path="/reports" element={<Navigate to="/v2/relatorios" replace />} />
           <Route path="/feedback" element={<Navigate to="/v2/feedbacks" replace />} />
@@ -120,20 +144,20 @@ function AppRoutes() {
 
           {/* 
             Se o usuário já está logado e tenta acessar as rotas de auth (públicas) da raiz 
-            ou qualquer caminho não mapeado, manda para a HomePage da Área Logada (Clientes V2)
+            ou qualquer caminho não mapeado, manda para a HomePage da Área Logada (Lançamentos Financeiros)
           */}
-          <Route path="/login" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/cadastro" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/v2" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/v2/login" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/v2/cadastro" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="/login" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/cadastro" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2/login" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2/cadastro" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
           {/* Páginas institucionais (acessíveis também logado) */}
           <Route path="/privacidade" element={<PrivacyPolicyPage />} />
           <Route path="/termos" element={<TermsOfUsePage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
           <Route path="/contato" element={<ContactPage />} />
-          <Route path="*" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="*" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
         </>
       )}
     </Routes>

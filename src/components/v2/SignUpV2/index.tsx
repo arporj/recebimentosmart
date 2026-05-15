@@ -51,9 +51,7 @@ export default function SignUpV2() {
         if (!formData.name) newErrors.name = 'Nome é obrigatório.';
 
         const cpfCnpj = formData.cpf_cnpj.replace(/[^0-9]/g, '');
-        if (!cpfCnpj) {
-            newErrors.cpf_cnpj = 'CPF/CNPJ é obrigatório.';
-        } else if (cpfCnpj.length !== 11 && cpfCnpj.length !== 14) {
+        if (cpfCnpj && cpfCnpj.length !== 11 && cpfCnpj.length !== 14) {
             newErrors.cpf_cnpj = 'CPF/CNPJ inválido. Deve conter 11 ou 14 dígitos.';
         }
 
@@ -212,7 +210,6 @@ export default function SignUpV2() {
                                 className={inputClass('cpf_cnpj')}
                                 placeholder="000.000.000-00"
                                 type="text"
-                                required
                                 value={formData.cpf_cnpj}
                                 onChange={handleChange}
                             />

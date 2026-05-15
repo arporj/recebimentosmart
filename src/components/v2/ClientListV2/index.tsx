@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { isSameDay, addMonths, format, startOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react';
 import { useClients } from '../../../contexts/ClientContext';
 import { PaymentModalV2 } from '../PaymentModalV2';
@@ -11,84 +11,78 @@ import { ClientFormV2 } from '../ClientFormV2';
 import type { Database } from '../../../types/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePlanLimits } from '../../../hooks/usePlanLimits';
 
 type Client = Database['public']['Tables']['clients']['Row'];
-type Payment = Database['public']['Tables']['payments']['Row'];
 type CustomField = Database['public']['Tables']['custom_fields']['Row'];
+
+interface FinancialTransaction {
+    id: string;
+    type: 'income' | 'expense';
+    amount: number;
+    date: string;
+    description: string | null;
+    client_id: string | null;
+    recurrence_enabled: boolean;
+    recurrence_period: string | null;
+    recurrence_interval: number | null;
+    status: string;
+}
 
 interface ClientWithCustomFields extends Client {
     custom_field_values?: { [key: string]: string };
 }
 
-const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
+const RECURRENCE_LABELS: Record<string, string> = {
+    daily: 'Diária',
+    weekly: 'Semanal',
     monthly: 'Mensal',
-    bimonthly: 'Bimestral',
     quarterly: 'Trimestral',
-    semiannual: 'Semestral',
-    annual: 'Anual',
+    yearly: 'Anual',
 };
 
-const FREQUENCY_MONTHS = { monthly: 1, bimonthly: 2, quarterly: 3, semiannual: 6, annual: 12 };
 
-function gerarPeriodosDevidos(startDate: string, frequency: keyof typeof FREQUENCY_MONTHS): string[] {
-    const mesesPorPeriodo = FREQUENCY_MONTHS[frequency];
-    const periodos: string[] = [];
-    const [year, month, day] = startDate.split('-').map(Number);
-    let atual = startOfMonth(new Date(year, month - 1, day));
-    const hoje = startOfMonth(new Date());
-    while (format(atual, 'yyyy-MM') <= format(hoje, 'yyyy-MM')) {
-        periodos.push(format(atual, 'yyyy-MM'));
-        atual = addMonths(atual, mesesPorPeriodo);
+
+function getClientFinancialSummary(clientId: string, transactions: FinancialTransaction[]) {
+    const clientTransactions = transactions.filter(t => t.client_id === clientId);
+    if (clientTransactions.length === 0) {
+        return { hasTransactions: false, totalValue: 0, nextDue: null, recurrenceLabel: '', pendingCount: 0, lateCount: 0 };
     }
-    return periodos;
-}
 
-function getPeriodosPendentes(client: Client, payments: Payment[]): string[] {
-    const periodosDevidos = gerarPeriodosDevidos(client.start_date, client.payment_frequency);
-    const periodosPagos = payments.filter(p => p.client_id === client.id && p.reference_month).map(p => p.reference_month!);
-    return periodosDevidos.filter(periodo => !periodosPagos.includes(periodo));
-}
-
-function getClientPaymentStatus(client: Client, payments: Payment[]): 'paid' | 'late' | 'due-today' {
-    const pendentes = getPeriodosPendentes(client, payments);
-    if (pendentes.length === 0) return 'paid';
-    const periodoMaisAntigo = pendentes[0];
-    const [ano, mes] = periodoMaisAntigo.split('-').map(Number);
-    const vencimento = new Date(ano, mes - 1, client.payment_due_day);
     const hoje = new Date();
-    if (isSameDay(vencimento, hoje)) return 'due-today';
-    if (vencimento < hoje) return 'late';
-    return 'paid';
-}
+    hoje.setHours(0, 0, 0, 0);
 
-function formatarMesAnoCurto(yyyyMM: string) {
-    if (!yyyyMM) return '';
-    const [ano, mes] = yyyyMM.split('-');
-    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return `${meses[parseInt(mes, 10) - 1]}/${ano.slice(2)}`;
-}
+    const pending = clientTransactions.filter(t => t.status !== 'paid');
+    const late = pending.filter(t => new Date(t.date + 'T00:00:00') < hoje);
 
-// ─── Delete Modal ───
-function DeleteModal({ client, onClose, onConfirm }: { client: Client; onClose: () => void; onConfirm: () => void }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Confirmar Exclusão</h3>
-                <p className="text-sm text-slate-600 mb-6">
-                    Tem certeza que deseja excluir o cliente <span className="font-bold text-slate-900">{client.name}</span>?
-                    Esta ação não pode ser desfeita e todos os pagamentos associados serão removidos.
-                </p>
-                <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
-                        Cancelar
-                    </button>
-                    <button onClick={onConfirm} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors">
-                        Excluir
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+    // Pega a recorrência da transação mais recente (se existir)
+    const recurring = clientTransactions.find(t => t.recurrence_enabled);
+    let recurrenceLabel = '';
+    if (recurring?.recurrence_period) {
+        const interval = recurring.recurrence_interval ?? 1;
+        recurrenceLabel = interval > 1
+            ? `A cada ${interval} ${RECURRENCE_LABELS[recurring.recurrence_period]?.toLowerCase() || recurring.recurrence_period}`
+            : RECURRENCE_LABELS[recurring.recurrence_period] || recurring.recurrence_period;
+    }
+
+    // Valor total de receita pendente
+    const totalValue = clientTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    // Próximo vencimento
+    const nextPending = pending
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+    return {
+        hasTransactions: true,
+        totalValue,
+        nextDue: nextPending ? nextPending.date : null,
+        recurrenceLabel,
+        pendingCount: pending.length,
+        lateCount: late.length,
+        transactions: clientTransactions,
+    };
 }
 
 // ─── Main Component ───
@@ -96,18 +90,20 @@ export function ClientListV2() {
     const { clients, refreshClients } = useClients();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-    const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'late' | 'due-today'>('all');
+    const [paymentFilter, setPaymentFilter] = useState<'all' | 'ok' | 'late' | 'none'>('all');
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [expandedClient, setExpandedClient] = useState<string | null>(null);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [deletingClient, setDeletingClient] = useState<Client | null>(null);
-    const [payments, setPayments] = useState<Payment[]>([]);
+
     const [refreshPayments, setRefreshPayments] = useState(0);
     const [customFields, setCustomFields] = useState<CustomField[]>([]);
     const [clientsWithCustomFields, setClientsWithCustomFields] = useState<ClientWithCustomFields[]>([]);
     const [showNewClientForm, setShowNewClientForm] = useState(false);
+    const [financialTransactions, setFinancialTransactions] = useState<FinancialTransaction[]>([]);
 
     const { user } = useAuth();
+    const { checkLimit } = usePlanLimits();
 
     const fetchCustomFields = useCallback(async () => {
         if (!user) return;
@@ -122,14 +118,24 @@ export function ClientListV2() {
 
     useEffect(() => { fetchCustomFields(); }, [fetchCustomFields]);
 
-    useEffect(() => {
-        const fetchPayments = async () => {
-            const { data, error } = await supabase.from('payments').select('*');
-            if (error) { console.error('Error fetching payments:', error); return; }
-            setPayments(data);
-        };
-        fetchPayments();
-    }, []);
+    // Buscar transações financeiras
+    const fetchFinancialTransactions = useCallback(async () => {
+        if (!user) return;
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('user_id', user.id)
+            .not('client_id', 'is', null);
+        if (error) {
+            console.error('Erro ao buscar transações:', error);
+        } else {
+            setFinancialTransactions(data as FinancialTransaction[]);
+        }
+    }, [user]);
+
+    useEffect(() => { fetchFinancialTransactions(); }, [fetchFinancialTransactions]);
+
+
 
     useEffect(() => {
         const combineClientData = async () => {
@@ -138,8 +144,10 @@ export function ClientListV2() {
             const { data: customValues, error } = await supabase.from('client_custom_field_values').select('client_id, field_id, value').in('client_id', clientIds);
             if (error) { console.error('Erro:', error); setClientsWithCustomFields(clients); return; }
             const valuesMap = customValues.reduce((acc, cv) => {
-                if (!acc[cv.client_id]) acc[cv.client_id] = {};
-                acc[cv.client_id][cv.field_id] = cv.value;
+                const clientId = cv.client_id as string;
+                const fieldId = cv.field_id as string;
+                if (!acc[clientId]) acc[clientId] = {};
+                acc[clientId][fieldId] = cv.value ?? '';
                 return acc;
             }, {} as { [clientId: string]: { [fieldId: string]: string } });
             setClientsWithCustomFields(clients.map(client => ({ ...client, custom_field_values: valuesMap[client.id] || {} })));
@@ -150,9 +158,15 @@ export function ClientListV2() {
     const filteredClients = clientsWithCustomFields.filter(client => {
         const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all' ? true : statusFilter === 'active' ? client.status : !client.status;
-        const clientStatus = getClientPaymentStatus(client, payments);
-        const matchesPayment = paymentFilter === 'all' ? true : paymentFilter === clientStatus;
-        return matchesSearch && matchesStatus && matchesPayment;
+        
+        if (paymentFilter === 'all') return matchesSearch && matchesStatus;
+        
+        const summary = getClientFinancialSummary(client.id, financialTransactions);
+        if (paymentFilter === 'none') return matchesSearch && matchesStatus && !summary.hasTransactions;
+        if (paymentFilter === 'late') return matchesSearch && matchesStatus && summary.lateCount > 0;
+        if (paymentFilter === 'ok') return matchesSearch && matchesStatus && summary.hasTransactions && summary.lateCount === 0;
+        
+        return matchesSearch && matchesStatus;
     });
 
     async function registerPayment(clientId: string, monthlyPayment: number, paymentDate: string, referenceMonth: string) {
@@ -162,8 +176,7 @@ export function ClientListV2() {
             const { error } = await supabase.from('payments').insert([{ client_id: clientId, amount: monthlyPayment, payment_date: paymentDate, reference_month: referenceMonth, user_id: userId }]);
             if (error) throw error;
             await refreshClients();
-            const { data: newPayments, error: paymentsError } = await supabase.from('payments').select('*');
-            if (!paymentsError && newPayments) { setPayments(newPayments); setRefreshPayments(prev => prev + 1); }
+            setRefreshPayments(prev => prev + 1);
             toast.success('Pagamento registrado com sucesso!');
         } catch (error: unknown) {
             toast.error('Erro ao registrar pagamento: ' + (error instanceof Error ? error.message : String(error)));
@@ -193,15 +206,13 @@ export function ClientListV2() {
             {/* ─── Header ─── */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Listagem de Clientes</h1>
-                    <p className="text-slate-500 text-sm mt-1">Gerencie seus recebimentos e status de clientes.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Clientes - Legado</h1>
+                    <p className="text-slate-500 text-sm mt-1">Visualização histórica de clientes no formato antigo.</p>
                 </div>
-                <button
-                    onClick={() => setShowNewClientForm(true)}
-                    className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm"
-                >
-                    <UserPlus size={18} /> Novo Cliente
-                </button>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-amber-800 text-xs font-medium flex items-center gap-2">
+                    <span className="font-bold text-amber-600 uppercase">Modo Leitura:</span>
+                    Novas transações e recorrências devem ser feitas no menu financeiro.
+                </div>
             </header>
 
             {/* ─── Search and Filters ─── */}
@@ -210,7 +221,7 @@ export function ClientListV2() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                         className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-custom/20 transition-all"
-                        placeholder="Buscar clientes pelo nome, e-mail ou CPF..."
+                        placeholder="Buscar clientes pelo nome..."
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -228,13 +239,13 @@ export function ClientListV2() {
                     </select>
                     <select
                         value={paymentFilter}
-                        onChange={(e) => setPaymentFilter(e.target.value as 'all' | 'paid' | 'late' | 'due-today')}
+                        onChange={(e) => setPaymentFilter(e.target.value as 'all' | 'ok' | 'late' | 'none')}
                         className="bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-custom/20 py-2 px-4 cursor-pointer w-full md:w-48"
                     >
-                        <option value="all">Todos os pagamentos</option>
-                        <option value="paid">Em dia</option>
-                        <option value="due-today">Vencendo hoje</option>
+                        <option value="all">Todos</option>
+                        <option value="ok">Em dia</option>
                         <option value="late">Em atraso</option>
+                        <option value="none">Sem lançamentos</option>
                     </select>
                 </div>
             </div>
@@ -248,21 +259,20 @@ export function ClientListV2() {
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10">Status</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Frequência</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Vencimento</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Recorrência</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Próx. Vencimento</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filteredClients.map((client) => {
-                                const status = getClientPaymentStatus(client, payments);
+                                const summary = getClientFinancialSummary(client.id, financialTransactions);
                                 const isExpanded = expandedClient === client.id;
-                                const periodosPendentes = getPeriodosPendentes(client, payments);
 
                                 return (
                                     <React.Fragment key={client.id}>
                                         <tr className="group">
-                                            {/* Linha principal */}
+                                            {/* Status ativo/inativo */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {client.status ? (
                                                     <CheckCircle className="text-custom" size={20} />
@@ -285,53 +295,53 @@ export function ClientListV2() {
                                                             <span key={field.id} className="text-xs text-slate-400 mt-0.5">{field.name}: {value}</span>
                                                         ) : null;
                                                     })}
-                                                    {/* Atrasos */}
-                                                    {periodosPendentes.length > 0 && (
+                                                    {/* Info de atraso */}
+                                                    {summary.lateCount > 0 && (
                                                         <div className="flex items-center gap-1 mt-1">
                                                             <XCircle className="text-red-500 flex-shrink-0" size={12} />
-                                                            <span className="text-[11px] text-red-500 font-medium truncate max-w-[400px]">
-                                                                Em atraso: {periodosPendentes.map(formatarMesAnoCurto).join(', ')}
+                                                            <span className="text-[11px] text-red-500 font-medium">
+                                                                {summary.lateCount} lançamento{summary.lateCount > 1 ? 's' : ''} em atraso
                                                             </span>
                                                         </div>
+                                                    )}
+                                                    {!summary.hasTransactions && (
+                                                        <span className="text-[11px] text-slate-400 italic mt-1">Sem lançamentos vinculados</span>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">
-                                                R$ {client.monthly_payment.toFixed(2).replace('.', ',')}
+                                                {summary.hasTransactions
+                                                    ? `R$ ${summary.totalValue.toFixed(2).replace('.', ',')}`
+                                                    : <span className="text-slate-300">—</span>
+                                                }
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
-                                                    {PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}
-                                                </span>
+                                                {summary.recurrenceLabel ? (
+                                                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
+                                                        {summary.recurrenceLabel}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-300">—</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-sm">
-                                                Dia {client.payment_due_day}
+                                                {summary.nextDue
+                                                    ? format(new Date(summary.nextDue + 'T00:00:00'), 'dd/MM/yyyy')
+                                                    : <span className="text-slate-300">—</span>
+                                                }
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {/* Status badge */}
-                                                    {status === 'late' && (
+                                                    {summary.lateCount > 0 && (
                                                         <span className="px-2 py-0.5 rounded bg-red-50 text-red-600 text-[10px] font-bold uppercase mr-1">Em atraso</span>
                                                     )}
-                                                    {status === 'due-today' && (
-                                                        <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 text-[10px] font-bold uppercase mr-1">Vence hoje</span>
+                                                    {summary.hasTransactions && summary.lateCount === 0 && summary.pendingCount > 0 && (
+                                                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold uppercase mr-1">A vencer</span>
                                                     )}
-                                                    {/* Pagar */}
-                                                    <button
-                                                        onClick={() => setSelectedClient(client)}
-                                                        className="bg-custom hover:bg-custom-hover text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1 transition-colors"
-                                                        title="Registrar Pagamento"
-                                                    >
-                                                        <DollarSign size={14} /> Pagar
-                                                    </button>
-                                                    {/* Excluir */}
-                                                    <button
-                                                        onClick={() => setDeletingClient(client)}
-                                                        className="text-slate-400 hover:text-red-500 p-1 transition-colors"
-                                                        title="Excluir"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
+                                                    {summary.hasTransactions && summary.pendingCount === 0 && (
+                                                        <span className="px-2 py-0.5 rounded bg-teal-50 text-teal-600 text-[10px] font-bold uppercase mr-1">Em dia</span>
+                                                    )}
                                                     {/* Expandir */}
                                                     <button
                                                         onClick={() => setExpandedClient(isExpanded ? null : client.id)}
@@ -343,30 +353,28 @@ export function ClientListV2() {
                                                 </div>
                                             </td>
                                         </tr>
-                                        {/* Expanded row para histórico — tr separado */}
+                                        {/* Expanded row para histórico */}
                                         {isExpanded && (
                                             <tr>
                                                 <td colSpan={6} className="px-6 py-6 bg-slate-50/50 border-t border-slate-100">
-                                                    {/* Client detail header */}
                                                     <div className="flex items-center justify-between mb-4">
                                                         <div className="flex items-center gap-3">
                                                             <h3 className="text-lg font-bold text-slate-900">{client.name}</h3>
-                                                            {getClientPaymentStatus(client, payments) === 'paid' && (
+                                                            {summary.hasTransactions && summary.lateCount === 0 && (
                                                                 <span className="px-3 py-1 bg-teal-50 text-[#14b8a6] text-xs font-bold rounded-full border border-teal-100">EM DIA</span>
                                                             )}
-                                                            {getClientPaymentStatus(client, payments) === 'late' && (
+                                                            {summary.lateCount > 0 && (
                                                                 <span className="px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-100">EM ATRASO</span>
-                                                            )}
-                                                            {getClientPaymentStatus(client, payments) === 'due-today' && (
-                                                                <span className="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-bold rounded-full border border-yellow-100">VENCE HOJE</span>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="grid grid-cols-3 gap-8 text-sm mb-6">
-                                                        <p className="text-slate-500">Valor: <span className="font-semibold text-slate-900">R$ {client.monthly_payment.toFixed(2).replace('.', ',')}</span></p>
-                                                        <p className="text-slate-500">Frequência: <span className="font-medium text-slate-900">{PAYMENT_FREQUENCY_LABELS[client.payment_frequency]}</span></p>
-                                                        <p className="text-slate-500">Vencimento: <span className="font-medium text-slate-900">Dia {client.payment_due_day}</span></p>
-                                                    </div>
+                                                    {summary.hasTransactions && (
+                                                        <div className="grid grid-cols-3 gap-8 text-sm mb-6">
+                                                            <p className="text-slate-500">Receitas: <span className="font-semibold text-slate-900">R$ {summary.totalValue.toFixed(2).replace('.', ',')}</span></p>
+                                                            {summary.recurrenceLabel && <p className="text-slate-500">Recorrência: <span className="font-medium text-slate-900">{summary.recurrenceLabel}</span></p>}
+                                                            {summary.nextDue && <p className="text-slate-500">Próx. Vencimento: <span className="font-medium text-slate-900">{format(new Date(summary.nextDue + 'T00:00:00'), 'dd/MM/yyyy')}</span></p>}
+                                                        </div>
+                                                    )}
                                                     <PaymentHistoryV2 client={client} refreshKey={refreshPayments} />
                                                 </td>
                                             </tr>
@@ -413,3 +421,4 @@ export function ClientListV2() {
 }
 
 export default ClientListV2;
+

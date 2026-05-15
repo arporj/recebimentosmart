@@ -5,6 +5,7 @@ import { isBefore, isSameMonth, startOfMonth, subMonths, addMonths } from 'date-
 import Plot from 'react-plotly.js';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Download } from 'lucide-react';
+import ConfirmModal from '../../../components/v2/ConfirmModal';
 
 type Client = {
     id: string;
@@ -39,8 +40,8 @@ export function ReportsV2() {
             setLoading(true);
             const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', user.id);
             const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
-            setClients(clientsData || []);
-            setPayments(paymentsData || []);
+            setClients((clientsData as any) || []);
+            setPayments((paymentsData as any) || []);
             setLoading(false);
         }
         fetchData();
@@ -150,10 +151,12 @@ export function ReportsV2() {
         annual: 'Anual',
     };
 
+    const [showNoClientsAlert, setShowNoClientsAlert] = useState(false);
+
     function handleExportBase() {
         const activeClients = clients.filter(c => c.status && !c.deleted_at);
         if (activeClients.length === 0) {
-            alert('Não há clientes ativos para exportar.');
+            setShowNoClientsAlert(true);
             return;
         }
 
@@ -189,6 +192,7 @@ export function ReportsV2() {
     if (!reportData) return null;
 
     return (
+        <>
         <div className="text-slate-900 w-full max-w-7xl mx-auto font-['Inter']">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -396,6 +400,17 @@ export function ReportsV2() {
             </div>
 
         </div >
+
+        <ConfirmModal
+            isOpen={showNoClientsAlert}
+            onClose={() => setShowNoClientsAlert(false)}
+            onConfirm={() => setShowNoClientsAlert(false)}
+            title="Aviso"
+            message="Não há clientes ativos para exportar."
+            confirmLabel="OK"
+            confirmColor="blue"
+        />
+        </>
     );
 }
 

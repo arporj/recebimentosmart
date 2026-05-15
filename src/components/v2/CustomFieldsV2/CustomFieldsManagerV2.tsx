@@ -3,17 +3,20 @@ import { PlusCircle, Search, Trash2, Edit2, FormInput, Lock } from 'lucide-react
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePlanLimits } from '../../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 import { ManageCustomFieldModalV2, CustomField } from './ManageCustomFieldModalV2';
+import ConfirmModal from '../ConfirmModal';
 
 
 
 export function CustomFieldsManagerV2() {
-    const { user, plano, isAdmin } = useAuth();
+    const { user, isAdmin } = useAuth();
+    const { planUsage, loading: loadingLimits } = usePlanLimits();
     const [fields, setFields] = useState<CustomField[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const isProOrAdmin = isAdmin || (plano && ['pro', 'pró', 'premium'].includes(plano.trim().toLowerCase()));
+    const hasAccess = isAdmin || (planUsage ? planUsage.limits.can_custom_fields : true);
 
     // Modals state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,9 +41,9 @@ export function CustomFieldsManagerV2() {
         }
     };
 
-    const handleDeleteField = async (id: number) => {
-        if (!window.confirm("Certeza que deseja excluir este campo?")) return;
+    const [fieldToDeleteId, setFieldToDeleteId] = useState<number | null>(null);
 
+    const handleDeleteField = async (id: number) => {
         const { error } = await supabase.from('custom_fields').delete().eq('id', id);
 
         if (error) {
@@ -49,6 +52,7 @@ export function CustomFieldsManagerV2() {
             setFields(fields.filter((field) => field.id !== id));
             toast.success('Campo excluído.');
         }
+        setFieldToDeleteId(null);
     };
 
     const openCreateModal = () => {
@@ -63,7 +67,7 @@ export function CustomFieldsManagerV2() {
 
     const filteredFields = fields.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    if (!isProOrAdmin) {
+    if (!loadingLimits && !hasAccess) {
         return (
             <div className="w-full max-w-5xl mx-auto pb-12 animate-in fade-in duration-500 mt-10">
                 <div className="bg-white border border-slate-200 rounded-[2rem] p-16 text-center flex flex-col items-center justify-center shadow-2xl relative overflow-hidden">
@@ -155,7 +159,7 @@ export function CustomFieldsManagerV2() {
                                     <Edit2 className="w-5 h-5" />
                                 </button>
                                 <button
-                                    onClick={() => handleDeleteField(field.id)}
+                                    onClick={() => setFieldToDeleteId(field.id)}
                                     className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                                     title="Excluir campo"
                                 >
@@ -174,6 +178,16 @@ export function CustomFieldsManagerV2() {
                     onSuccess={fetchFields}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={!!fieldToDeleteId}
+                onClose={() => setFieldToDeleteId(null)}
+                onConfirm={() => fieldToDeleteId && handleDeleteField(fieldToDeleteId)}
+                title="Excluir campo"
+                message="Certeza que deseja excluir este campo?"
+                confirmLabel="Excluir"
+                confirmColor="red"
+            />
 
         </div>
     );

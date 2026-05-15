@@ -16,6 +16,7 @@ export interface UserProfile {
   created_at: string;
   last_sign_in_at: string | null;
   valid_until: string | null;
+  total_transactions?: number | null;
 }
 
 const PlanBadge: React.FC<{ plan: string | null }> = ({ plan }) => {
@@ -245,6 +246,15 @@ export default function UserTable() {
               <th
                 scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
+                onClick={() => handleSort('total_transactions')}
+              >
+                <div className="flex items-center">
+                  Transações {getSortIcon('total_transactions')}
+                </div>
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sticky top-0 bg-gray-50"
                 onClick={() => handleSort('last_sign_in_at')}
               >
                 <div className="flex items-center">
@@ -259,13 +269,13 @@ export default function UserTable() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">
+                <td colSpan={6} className="px-6 py-4 text-center">
                   Carregando...
                 </td>
               </tr>
             ) : filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">
+                <td colSpan={6} className="px-6 py-4 text-center">
                   Nenhum usuário encontrado
                 </td>
               </tr>
@@ -281,6 +291,9 @@ export default function UserTable() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-semibold">
+                    {user.total_transactions ?? 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '-'}

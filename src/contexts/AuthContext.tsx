@@ -12,7 +12,7 @@ interface AuthContextType {
   plano: string | null;
   loading: boolean;
   signIn: (email: string, password: string, redirectTo?: string) => Promise<void>;
-  signUp: (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
+  signUp: (name: string, email: string, cpf_cnpj: string | undefined, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
@@ -79,7 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setLoading(true);
+      // Only show full-screen loading if we don't have basic profile data yet
+      if (!plano) {
+        setLoading(true);
+      }
       try {
         if (!originalUser) {
           const lastUpdate = localStorage.getItem('lastSeenUpdate');
@@ -102,41 +105,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Pode ser necessário criar o perfil ou lidar com isso.
         }
 
-        const trialDays = 7;
-        const createdAt = parseISO(currentUser.created_at);
-        const trialEndDate = addDays(createdAt, trialDays);
-
         // Verificação mais robusta de validade
         const validUntilDate = profile?.valid_until ? new Date(profile.valid_until) : null;
         const hasPaidAccess = validUntilDate && !isNaN(validUntilDate.getTime())
           ? validUntilDate > new Date()
           : false;
 
-        const isInTrial = isFuture(trialEndDate);
-        const currentHasFullAccess = hasPaidAccess || isInTrial;
+        const planoAtual = profile?.plano || 'free';
+        setPlano(planoAtual);
+
+        const isFree = planoAtual === 'free';
+        const isSystemAdmin = !!profile?.is_admin;
+        
+        // Se for administrador, ignora outras validações e concede acesso total automaticamente
+        const currentHasFullAccess = isSystemAdmin || hasPaidAccess || isFree;
 
         setHasFullAccess(currentHasFullAccess);
-        setIsAdmin(profile?.is_admin || false);
-        setPlano(profile?.plano || 'basico');
+        setIsAdmin(isSystemAdmin);
 
       if (!originalUser) {
-        // Verifica se o usuário precisa preencher o CPF/CNPJ
-        const isAtProfilePage = location.pathname === '/profile' || location.pathname === '/v2/perfil';
-        
-        if (!profile?.cpf_cnpj && !isAtProfilePage) {
-          toast.error('Por favor, preencha seu CPF/CNPJ para continuar.');
-          navigate('/v2/perfil');
-        } else {
-          // Verifica se o usuário tem acesso (assinatura ou trial)
-          const isAtAllowedPages = location.pathname === '/payment' || 
+        // Verifica se o usuário tem acesso
+        const isAtAllowedPages = location.pathname === '/payment' || 
                                  location.pathname === '/v2/assinatura' || 
                                  location.pathname === '/profile' || 
                                  location.pathname === '/v2/perfil';
 
-          if (!currentHasFullAccess && !profile?.is_admin && !isAtAllowedPages) {
-            // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
-            navigate('/v2/assinatura');
-          }
+        if (!currentHasFullAccess && !isSystemAdmin && !isAtAllowedPages) {
+          // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
+          navigate('/v2/assinatura');
         }
       }
 
@@ -166,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, cpf_cnpj: string, password: string, referralCode?: string, redirectTo: string = '/login') => {
+  const signUp = async (name: string, email: string, cpf_cnpj: string | undefined, password: string, referralCode?: string, redirectTo: string = '/login') => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -258,12 +254,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.sessionStorage.removeItem('use_session_storage');
       }
 
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Limpa o estado local imediatamente para evitar flashes de conteúdo logado e loop de redirecionamento
       setUser(null);
+      setOriginalUser(null);
+      setHasFullAccess(false);
+      setIsAdmin(false);
+      setPlano(null);
+
+      // Tenta o sign out do Supabase, ignorando falhas de rede/sessão para garantir a desconexão local
+      await supabase.auth.signOut().catch(err => {
+        console.warn("Aviso durante o signOut remoto:", err);
+      });
+
+      // Redireciona apenas após limpar o contexto local
       navigate('/login');
     } catch (error) {
-      console.error(error);
+      console.error("Erro no signOut:", error);
+      // Em caso de erro drástico, garante a limpeza local final
+      setUser(null);
+      setOriginalUser(null);
+      navigate('/login');
     } finally {
       setLoading(false);
     }

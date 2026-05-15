@@ -71,11 +71,11 @@ export default function UserProfileSettingsV2() {
 
         // CPF / CNPJ Update
         const cleanedCpfCnpj = currentCpfCnpj.replace(/[^0-9]/g, '');
-        if (cleanedCpfCnpj && (cleanedCpfCnpj.length === 11 || cleanedCpfCnpj.length === 14)) {
+        if (!cleanedCpfCnpj || cleanedCpfCnpj.length === 11 || cleanedCpfCnpj.length === 14) {
             try {
                 const { error } = await supabase
                     .from('profiles')
-                    .update({ cpf_cnpj: cleanedCpfCnpj })
+                    .update({ cpf_cnpj: cleanedCpfCnpj || null })
                     .eq('id', user?.id);
 
                 if (error) throw error;
@@ -85,7 +85,7 @@ export default function UserProfileSettingsV2() {
                 console.error(error);
                 toast.error('Erro ao atualizar CPF/CNPJ.');
             }
-        } else if (cleanedCpfCnpj) {
+        } else {
             success = false;
             setCpfCnpjError('CPF/CNPJ inválido. Deve conter 11 ou 14 dígitos.');
             toast.error('CPF/CNPJ inválido.');

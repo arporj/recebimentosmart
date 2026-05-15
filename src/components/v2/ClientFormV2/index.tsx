@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { UserPlus, X, PlusCircle } from 'lucide-react';
@@ -6,8 +7,6 @@ import { useClients } from '../../../contexts/ClientContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../../../lib/dates';
 import type { Database, PaymentFrequency } from '../../../types/supabase';
-import { setDate } from 'date-fns';
-import { CurrencyInput } from '../../ui/CurrencyInput';
 import { AddCustomFieldModal } from '../../AddCustomFieldModal';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -16,17 +15,10 @@ type CustomField = Database['public']['Tables']['custom_fields']['Row'];
 interface ClientFormV2Props {
     client?: Client;
     onClose: () => void;
+    onSuccess?: (clientId: string) => void;
 }
 
-const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; label: string }[] = [
-    { value: 'monthly', label: 'Mensal' },
-    { value: 'bimonthly', label: 'Bimestral' },
-    { value: 'quarterly', label: 'Trimestral' },
-    { value: 'semiannual', label: 'Semestral' },
-    { value: 'annual', label: 'Anual' },
-];
-
-export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
+export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) {
     const { clients, refreshClients } = useClients();
     const { user, plano } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,8 +28,8 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
         name: '',
         phone: '',
         monthly_payment: 0,
-        payment_due_day: '',
-        start_date: '',
+        payment_due_day: '1',
+        start_date: formatToSP(new Date(), 'yyyy-MM-dd'),
         status: true,
         payment_frequency: 'monthly' as PaymentFrequency,
     });
@@ -109,22 +101,6 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
         }
     };
 
-    const handleDueDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '');
-        const day = parseInt(value);
-        if (!value || (day >= 1 && day <= 31)) {
-            setFormData({ ...formData, payment_due_day: value });
-        }
-    };
-
-    const calculateNextPaymentDate = (startDate: Date, paymentDueDay: number): Date => {
-        const today = new Date();
-        let nextPaymentDate = setDate(startDate, paymentDueDay);
-        if (nextPaymentDate < today) {
-            nextPaymentDate = setDate(today, paymentDueDay);
-        }
-        return nextPaymentDate;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -135,18 +111,14 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                     throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
                 }
             }
-            if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
-                throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
+            if (!formData.name) {
+                throw new Error('O nome do cliente é obrigatório');
             }
 
-            const monthlyPayment = formData.monthly_payment / 100;
-            if (isNaN(monthlyPayment) || monthlyPayment <= 0) throw new Error('Valor do pagamento inválido');
-
-            const paymentDueDay = parseInt(formData.payment_due_day);
-            if (isNaN(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 31) throw new Error('Dia de vencimento deve ser entre 1 e 31');
-
-            const startDate = new Date(formData.start_date);
-            const nextPaymentDate = calculateNextPaymentDate(startDate, paymentDueDay);
+            const monthlyPayment = 0;
+            const paymentDueDay = 1;
+            const startDate = new Date();
+            const nextPaymentDate = new Date();
 
             const clientData = {
                 name: formData.name.trim(),
@@ -192,6 +164,9 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
 
             await refreshClients();
             toast.success(client ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
+            if (onSuccess && clientResult?.id) {
+                onSuccess(clientResult.id);
+            }
             onClose();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao processar cliente');
@@ -208,7 +183,7 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        {client ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}
+                        Visualizar Cliente (Legado)
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <X size={24} />
@@ -217,16 +192,25 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
 
                 {/* Form body — scrollable */}
                 <div className="px-8 py-6 overflow-y-auto">
-                    <form onSubmit={handleSubmit} id="clientFormV2" className="space-y-6">
+                    {/* Aviso Geral Somente Leitura */}
+                    <div className="mb-6 bg-amber-50 border border-amber-100 text-amber-900 rounded-xl p-4 flex items-start gap-3 text-sm">
+                        <span className="material-symbols-outlined text-amber-500 mt-0.5">warning</span>
+                        <div>
+                            <p className="font-bold text-amber-800">Modo Somente Leitura Ativado</p>
+                            <p className="text-amber-700 text-xs mt-0.5">Para garantir a estabilidade das novas finanças unificadas, cadastros antigos estão congelados.</p>
+                        </div>
+                    </div>
+
+                    <form onSubmit={(e) => e.preventDefault()} id="clientFormV2" className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
                                 <label className={labelClass}>Nome Completo</label>
                                 <input
                                     type="text"
                                     required
+                                    disabled
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className={inputClass}
+                                    className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
                                     placeholder="Digite o nome completo"
                                 />
                             </div>
@@ -234,63 +218,36 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                                 <label className={labelClass}>Telefone</label>
                                 <input
                                     type="tel"
+                                    disabled
                                     value={formData.phone}
-                                    onChange={handlePhoneChange}
-                                    className={inputClass}
+                                    className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
                                     placeholder="(00) 00000-0000"
                                 />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Data de Início</label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={formData.start_date}
-                                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                    max={formatToSP(new Date(), 'yyyy-MM-dd')}
-                                    className={inputClass}
-                                />
+                        </div>
+
+                        {/* Aviso sobre novos lançamentos */}
+                        <div className="bg-teal-50 border border-teal-100 rounded-2xl p-6 flex items-start gap-4">
+                            <div className="p-2 bg-teal-100 rounded-lg shrink-0">
+                                <PlusCircle className="text-teal-600" size={20} />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Valor do Pagamento</label>
-                                <div className="relative">
-                                    <CurrencyInput
-                                        id="monthly_payment_v2"
-                                        value={formData.monthly_payment}
-                                        onValueChange={(value) => setFormData({ ...formData, monthly_payment: value })}
-                                        className={inputClass}
-                                        placeholder="R$ 0,00"
-                                    />
+                            <div className="space-y-1">
+                                <h4 className="text-sm font-bold text-teal-900 uppercase tracking-tight">Novos Lançamentos Financeiros</h4>
+                                <p className="text-xs text-teal-700 leading-relaxed">
+                                    Para cadastrar mensalidades, cobranças recorrentes ou avulsas para este cliente, utilize o novo módulo de finanças.
+                                </p>
+                                <div className="pt-2">
+                                    <Link 
+                                        to="/v2/financeiro/lancamentos"
+                                        onClick={onClose}
+                                        className="text-xs font-extrabold text-teal-600 hover:text-teal-700 uppercase tracking-widest flex items-center gap-1"
+                                    >
+                                        Ir para Lançamentos <PlusCircle size={14} />
+                                    </Link>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Frequência</label>
-                                <select
-                                    value={formData.payment_frequency}
-                                    onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value as PaymentFrequency })}
-                                    className={inputClass}
-                                >
-                                    {PAYMENT_FREQUENCY_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className={labelClass}>Dia do Vencimento</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.payment_due_day}
-                                    onChange={handleDueDayChange}
-                                    className={inputClass}
-                                    placeholder="1 a 31"
-                                />
-                                <p className="text-[11px] text-gray-500 mt-1 italic">Dia do mês em que o pagamento deve ser realizado.</p>
-                            </div>
-                        </div>
 
                         {/* Campos Personalizados — subtítulo com linha */}
                         {customFields.length > 0 && (
@@ -305,10 +262,10 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                                             <label className={labelClass}>{field.name}</label>
                                             <input
                                                 type="text"
+                                                disabled
                                                 value={customFieldValues[field.id] || ''}
-                                                onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
-                                                className={inputClass}
-                                                placeholder="Campo personalizado"
+                                                className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                                                placeholder="Sem informação"
                                             />
                                         </div>
                                     ))}
@@ -316,31 +273,17 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                             </div>
                         )}
 
-                        {/* Botão de adicionar campo personalizado se não houver nenhum */}
-                        {customFields.length === 0 && (
-                            <div className="pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(true)}
-                                    className="inline-flex items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-lg text-gray-500 bg-transparent hover:bg-gray-50 transition-colors"
-                                >
-                                    <PlusCircle className="h-5 w-5 mr-2" />
-                                    Adicionar Campo Personalizado
-                                </button>
-                            </div>
-                        )}
-
                         {/* Toggle Cliente Ativo */}
                         <div className="flex items-center gap-3 pt-2">
-                            <label className="relative inline-flex items-center cursor-pointer">
+                            <label className="relative inline-flex items-center cursor-not-allowed">
                                 <input
                                     type="checkbox"
                                     checked={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
+                                    disabled
                                     className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-custom" />
-                                <span className="ml-3 text-sm font-medium text-gray-700">Cliente Ativo</span>
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-400" />
+                                <span className="ml-3 text-sm font-medium text-gray-400">Cliente Ativo</span>
                             </label>
                         </div>
 
@@ -349,16 +292,9 @@ export function ClientFormV2({ client, onClose }: ClientFormV2Props) {
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="px-6 py-2.5 text-sm font-semibold text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-md transition-colors flex items-center gap-2"
                             >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                className="px-8 py-2.5 text-sm font-semibold text-white bg-custom hover:bg-custom-hover rounded-lg shadow-lg shadow-custom/20 transition-all flex items-center gap-2"
-                            >
-                                <UserPlus size={18} />
-                                {client ? 'Atualizar Cliente' : 'Salvar Cliente'}
+                                Fechar
                             </button>
                         </div>
                     </form>

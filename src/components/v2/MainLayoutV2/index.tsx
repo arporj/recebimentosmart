@@ -2,29 +2,61 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
+import { AdBanner } from '../AdBanner';
 import {
-    Users, CalendarDays, BarChart3, MessageSquare,
+    Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
-    Shield, Settings, LogOut, Gift, Eye, Menu, X
+    Shield, Settings, LogOut, Eye, Menu, X,
+    Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
+    UserCheck, Share2
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
     children: React.ReactNode;
 }
 
-const sidebarSections = [
+interface SidebarItem {
+    label: string;
+    icon: any;
+    href?: string;
+    subItems?: SidebarItem[];
+}
+
+interface SidebarSection {
+    title: string;
+    items: SidebarItem[];
+}
+
+const sidebarSections: SidebarSection[] = [
     {
         title: 'Geral',
         items: [
-            { label: 'Clientes', icon: Users, href: '/v2/clientes' },
-            { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
-            { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
-            { label: 'Críticas e Sugestões', icon: MessageSquare, href: '/v2/feedbacks' },
-            { label: 'Indique e Ganhe', icon: Gift, href: '/v2/indicacoes', className: 'text-custom font-semibold' },
+            { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
+            { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
+            { label: 'Compartilhado comigo', icon: Share2, href: '/v2/compartilhado' },
+            { label: 'Clientes - Antigo', icon: Users, href: '/v2/clientes' },
         ],
     },
     {
-        title: 'Gestão',
+        title: 'Gestão Financeira',
+        items: [
+            { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos' },
+            { label: 'Cartão de Crédito', icon: CreditCard, href: '/v2/financeiro/cartoes' },
+            { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
+            {
+                label: 'Cadastros',
+                icon: FormInput,
+                subItems: [
+                    { label: 'Clientes', icon: Users, href: '/v2/financeiro/clientes' },
+                    { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas' },
+                    { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias' },
+                    { label: 'Tags', icon: Tag, href: '/v2/financeiro/tags' },
+                ]
+            },
+        ],
+    },
+    {
+        title: 'Configurações',
         items: [
             { label: 'Campos Personalizados', icon: FormInput, href: '/v2/campos-personalizados' },
             { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil' },
@@ -33,7 +65,7 @@ const sidebarSections = [
     },
 ];
 
-const adminSection = {
+const adminSection: SidebarSection = {
     title: 'Admin',
     items: [
         { label: 'Gerenciar Usuários', icon: Shield, href: '/v2/admin/users' },
@@ -53,6 +85,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [expandedItems, setExpandedItems] = useState<string[]>(['Cadastros']); // Cadastro aberto por padrão
 
     // Fechar o menu mobile sempre que a rota mudar
     useEffect(() => {
@@ -61,7 +94,59 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
     const handleSignOut = async () => {
         await signOut();
-        navigate('/v2/login');
+    };
+
+    const toggleExpand = (label: string) => {
+        setExpandedItems(prev =>
+            prev.includes(label)
+                ? prev.filter(item => item !== label)
+                : [...prev, label]
+        );
+    };
+
+    const renderItem = (item: SidebarItem, level = 1) => {
+        const hasSubItems = item.subItems && item.subItems.length > 0;
+        const isExpanded = expandedItems.includes(item.label);
+        const isActive = item.href ? location.pathname === item.href : false;
+        const isChildActive = item.subItems?.some(sub => sub.href === location.pathname);
+
+        if (hasSubItems) {
+            return (
+                <div key={item.label} className="space-y-1">
+                    <button
+                        onClick={() => toggleExpand(item.label)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+                            isChildActive 
+                                ? 'text-white bg-slate-800/50' 
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                        <item.icon size={20} />
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </button>
+                    {isExpanded && (
+                        <div className="ml-4 pl-4 border-l border-slate-800 space-y-1">
+                            {item.subItems!.map(sub => renderItem(sub, level + 1))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <Link
+                key={item.href + item.label}
+                to={item.href!}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${isActive
+                    ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }`}
+            >
+                <item.icon size={level === 1 ? 20 : 18} />
+                <span className={level === 1 ? '' : 'text-sm'}>{item.label}</span>
+            </Link>
+        );
     };
 
     return (
@@ -106,29 +191,14 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-4 py-4 space-y-8 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 px-4 py-2 space-y-6 overflow-y-auto custom-scrollbar">
                     {sidebarSections.map((section) => (
                         <div key={section.title}>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2">
                                 {section.title}
                             </p>
                             <div className="space-y-1">
-                                {section.items.map((item) => {
-                                    const isActive = location.pathname === item.href;
-                                    return (
-                                        <Link
-                                            key={item.href + item.label}
-                                            to={item.href}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${isActive
-                                                ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
-                                                : 'hover:bg-slate-800 hover:text-white'
-                                                }`}
-                                        >
-                                            <item.icon size={20} />
-                                            {item.label}
-                                        </Link>
-                                    );
-                                })}
+                                {section.items.map(item => renderItem(item))}
                             </div>
                         </div>
                     ))}
@@ -136,33 +206,23 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     {/* Admin section */}
                     {isAdmin && (
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2">
                                 {adminSection.title}
                             </p>
                             <div className="space-y-1">
-                                {adminSection.items.map((item) => {
-                                    const isActive = location.pathname === item.href;
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            to={item.href}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${isActive
-                                                ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
-                                                : 'hover:bg-slate-800 hover:text-white'
-                                                }`}
-                                        >
-                                            <item.icon size={20} />
-                                            {item.label}
-                                        </Link>
-                                    );
-                                })}
+                                {adminSection.items.map(item => renderItem(item))}
                             </div>
                         </div>
                     )}
                 </nav>
 
+                {/* Espaço publicitário contextual para planos free */}
+                <div className="px-4 py-2 mt-auto mb-2 flex-shrink-0">
+                    <AdBanner format="sidebar" slotId="4023170366" />
+                </div>
+
                 {/* User section */}
-                <div className="p-4 border-t border-slate-800">
+                <div className="p-4 border-t border-slate-800 flex-shrink-0">
                     <div
                         onClick={handleSignOut}
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
@@ -219,6 +279,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                         </div>
                     )}
                     <div className="p-4 md:p-8 flex-1 w-full max-w-full overflow-x-hidden">
+                        <AdBanner format="horizontal" slotId="5916047981" className="mb-6" />
                         {children}
                     </div>
                 </main>

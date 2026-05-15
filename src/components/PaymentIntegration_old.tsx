@@ -1,4 +1,4 @@
-// Webhook para receber notificações de pagamento PIX do Banco Inter
+// Webhook para receber notificações de pagamento PIX de Instituição Financeira
 import express from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -10,7 +10,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Função para verificar a assinatura do webhook do Banco Inter
+// Função para verificar a assinatura do webhook de Instituição Financeira
 function verifyInterWebhookSignature(req) {
   try {
     // Obter cabeçalhos relevantes da requisição
@@ -30,7 +30,7 @@ function verifyInterWebhookSignature(req) {
     // Concatenar timestamp e corpo da requisição
     const signatureData = timestamp + requestBody;
     
-    // Obter o certificado CA do Banco Inter
+    // Obter o certificado CA de Instituição Financeira
     let caCertificate;
     if (process.env.INTER_CA_CERTIFICATE_CONTENT) {
       // Usar o conteúdo diretamente da variável de ambiente (para Netlify/Vercel)
@@ -39,7 +39,7 @@ function verifyInterWebhookSignature(req) {
       // Ou ler do arquivo (para desenvolvimento local)
       caCertificate = fs.readFileSync(process.env.INTER_CA_CERTIFICATE_PATH);
     } else {
-      console.error('Certificado CA do Banco Inter não configurado');
+      console.error('Certificado CA de Instituição Financeira não configurado');
       return false;
     }
     
@@ -92,7 +92,7 @@ const router = express.Router();
 
 // Endpoint do webhook
 router.post('/', async (req, res) => {
-  console.log('Webhook recebido do Banco Inter:', req.body);
+  console.log('Webhook recebido de Instituição Financeira:', req.body);
   
   // Verificar a assinatura do webhook
   if (!verifyInterWebhookSignature(req)) {

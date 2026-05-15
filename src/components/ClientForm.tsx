@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { UserPlus, X, PlusCircle } from 'lucide-react';
+import { UserPlus, X, PlusCircle, Mail, Loader2, Check, CheckCircle, AlertCircle } from 'lucide-react';
 import { useClients } from '../contexts/ClientContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../lib/dates';
@@ -44,6 +44,12 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     payment_frequency: 'monthly' as PaymentFrequency
   });
 
+  const [receiverEmail, setReceiverEmail] = useState('');
+  const [searchResult, setSearchResult] = useState<{ name: string; email: string } | null>(null);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const [originalShare, setOriginalShare] = useState<{ id: string, receiver_email: string } | null>(null);
+
   useEffect(() => {
     const fetchCustomFields = async () => {
       if (user) {
@@ -78,6 +84,67 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       });
     }
   }, [client]);
+
+  useEffect(() => {
+    const fetchShare = async () => {
+      if (client) {
+        const { data, error } = await supabase
+          .from('client_shares')
+          .select('id, receiver_email')
+          .eq('client_id', client.id)
+          .maybeSingle();
+
+        if (data && !error) {
+          setReceiverEmail(data.receiver_email);
+          setOriginalShare(data);
+          
+          try {
+            const { data: profileData, error: profileError } = await supabase.rpc('get_profile_by_email', { email_search: data.receiver_email.toLowerCase() });
+            if (!profileError && profileData && profileData.length > 0) {
+              setSearchResult({ name: profileData[0].name, email: data.receiver_email });
+              setIsConfirmed(true);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
+    fetchShare();
+  }, [client]);
+
+  useEffect(() => {
+    if (isConfirmed) return;
+
+    if (!receiverEmail || !receiverEmail.includes('@') || receiverEmail.length < 5) {
+      setSearchResult(null);
+      return;
+    }
+
+    const searchProfile = async () => {
+      setIsSearchingUser(true);
+      try {
+        const { data, error } = await supabase.rpc('get_profile_by_email', { email_search: receiverEmail.trim().toLowerCase() });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setSearchResult({ name: data[0].name, email: receiverEmail.trim() });
+        } else {
+          setSearchResult(null);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar perfil:', err);
+        setSearchResult(null);
+      } finally {
+        setIsSearchingUser(false);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      searchProfile();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [receiverEmail, isConfirmed]);
 
   useEffect(() => {
     if (client && customFields.length > 0) {
@@ -148,17 +215,14 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
         }
       }
-      if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
-        throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
+      if (!formData.name) {
+        throw new Error('Nome completo é obrigatório');
       }
 
-      const monthlyPayment = formData.monthly_payment / 100;
-      if (isNaN(monthlyPayment) || monthlyPayment <= 0) throw new Error('Valor do pagamento inválido');
-
-      const paymentDueDay = parseInt(formData.payment_due_day);
-      if (isNaN(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 31) throw new Error('Dia de vencimento deve ser entre 1 e 31');
-
-      const startDate = new Date(formData.start_date);
+      // Manter lógica de recorrência com valores padrão não visíveis
+      const monthlyPayment = 0;
+      const paymentDueDay = 1;
+      const startDate = new Date();
       const nextPaymentDate = calculateNextPaymentDate(startDate, paymentDueDay);
 
       const clientData = {
@@ -169,7 +233,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         start_date: convertToUTC(startDate.toISOString()),
         next_payment_date: convertToUTC(nextPaymentDate.toISOString()),
         status: formData.status,
-        payment_frequency: formData.payment_frequency,
+        payment_frequency: 'monthly' as const,
         user_id: user.id
       };
 
@@ -188,6 +252,47 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
       if (error) throw error;
       if (!clientResult) throw new Error('Falha ao obter dados do cliente.');
+
+      // Validação de confirmação de e-mail se ele preencheu
+      if (receiverEmail && !isConfirmed) {
+        throw new Error('É necessário clicar no usuário encontrado para confirmar o vínculo antes de salvar.');
+      }
+
+      // Persistência do vínculo de compartilhamento na tabela client_shares
+      const cleanEmail = isConfirmed ? receiverEmail.trim().toLowerCase() : '';
+      const originalEmail = originalShare?.receiver_email?.trim().toLowerCase() || '';
+
+      if (cleanEmail !== originalEmail) {
+        if (originalShare && !cleanEmail) {
+          const { error: deleteShareErr } = await supabase
+            .from('client_shares')
+            .delete()
+            .eq('id', originalShare.id);
+          
+          if (deleteShareErr) throw deleteShareErr;
+        } else if (cleanEmail) {
+          if (cleanEmail === user.email?.toLowerCase()) {
+            throw new Error('Você não pode compartilhar um cliente com seu próprio e-mail.');
+          }
+
+          const shareData: any = {
+            client_id: clientResult.id,
+            sender_id: user.id,
+            receiver_email: cleanEmail,
+            status: 'pending'
+          };
+          
+          if (originalShare?.id) {
+            shareData.id = originalShare.id;
+          }
+
+          const { error: upsertShareErr } = await supabase
+            .from('client_shares')
+            .upsert(shareData);
+
+          if (upsertShareErr) throw upsertShareErr;
+        }
+      }
 
       const allValues = Object.entries(customFieldValues);
       const valuesToUpsert = allValues.filter(([, value]) => value).map(([fieldId, value]) => ({ client_id: clientResult.id, field_id: fieldId, value: value }));
@@ -209,6 +314,10 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       if (!client) {
         setFormData({ name: '', phone: '', monthly_payment: 0, payment_due_day: '', start_date: '', status: true, payment_frequency: 'monthly' });
         setCustomFieldValues({});
+        setReceiverEmail('');
+        setSearchResult(null);
+        setIsConfirmed(false);
+        setOriginalShare(null);
         setIsOpen(false);
       } else if (onClose) {
         onClose();
@@ -246,58 +355,93 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="start_date">Data de Início</label>
-        <input
-          id="start_date"
-          type="date"
-          required
-          value={formData.start_date}
-          onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-          max={formatToSP(new Date(), 'yyyy-MM-dd')}
-          className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-        />
-      </div>
+      <div className="md:col-span-2 mt-2 border-t border-dashed border-neutral-200 pt-4">
+        <label className="block text-sm font-medium text-neutral-700" htmlFor="receiver_email">
+          Associar com usuário existente (Vínculo por E-mail)
+        </label>
+        {!isConfirmed ? (
+          <div className="mt-1 relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Mail className="h-5 w-5 text-neutral-400" />
+            </div>
+            <input
+              id="receiver_email"
+              type="email"
+              value={receiverEmail}
+              onChange={(e) => {
+                setReceiverEmail(e.target.value);
+                setSearchResult(null);
+              }}
+              className="focus:ring-custom focus:border-custom block w-full pl-10 sm:text-sm border-neutral-300 rounded-md"
+              placeholder="Digite o e-mail do usuário para buscar"
+            />
+            {isSearchingUser && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <Loader2 className="h-5 w-5 text-neutral-400 animate-spin" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-2 flex w-full items-center justify-between p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg transition-all duration-300 animate-fade-in">
+            <div className="flex items-center gap-3.5">
+              <div className="bg-emerald-600 p-2.5 rounded-full text-white shadow-sm">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-emerald-700 font-semibold tracking-wider uppercase">Vínculo Confirmado</p>
+                <p className="text-base font-bold text-neutral-900 leading-tight mt-0.5">{searchResult?.name}</p>
+                <p className="text-xs text-neutral-600 mt-0.5">{receiverEmail}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsConfirmed(false);
+                setSearchResult(null);
+                setReceiverEmail('');
+              }}
+              className="text-xs font-bold text-red-700 bg-white hover:bg-red-50 border border-red-200 px-3 py-2 rounded-md shadow-xs transition-all duration-200 flex items-center gap-1"
+            >
+              <X className="h-3.5 w-3.5" />
+              Desvincular
+            </button>
+          </div>
+        )}
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="monthly_payment">Valor do Pagamento</label>
-        <div className="mt-1">
-          <CurrencyInput
-            id="monthly_payment"
-            value={formData.monthly_payment}
-            onValueChange={(value) => setFormData({ ...formData, monthly_payment: value })}
-            className="block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-            placeholder="R$ 0,00"
-          />
-        </div>
-      </div>
+        {searchResult && !isConfirmed && (
+          <button
+            type="button"
+            onClick={() => setIsConfirmed(true)}
+            className="mt-3 flex w-full items-center justify-between p-3.5 bg-neutral-900 border border-neutral-800 hover:bg-emerald-950 hover:border-emerald-800 rounded-xl text-left transition-all duration-300 hover:shadow-lg group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 transform hover:-translate-y-0.5 animate-bounce-short"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="bg-emerald-500/10 p-2 rounded-lg group-hover:bg-emerald-500/20 text-emerald-400 transition-colors">
+                <Check className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-[10px] text-emerald-400 font-bold tracking-widest uppercase">Usuário Encontrado! Clique para Confirmar</p>
+                <p className="text-base font-bold text-white leading-tight mt-0.5">{searchResult.name}</p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 group-hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg border border-emerald-500/20 shadow-xs uppercase tracking-wider transition-all">
+              Confirmar
+            </span>
+          </button>
+        )}
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="payment_frequency">Frequência</label>
-        <select
-          id="payment_frequency"
-          value={formData.payment_frequency}
-          onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value as PaymentFrequency })}
-          className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-        >
-          {PAYMENT_FREQUENCY_OPTIONS.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </div>
+        {!searchResult && !isSearchingUser && receiverEmail && receiverEmail.includes('@') && receiverEmail.length > 5 && !isConfirmed && (
+          <div className="mt-2.5 p-3 bg-rose-50 border border-rose-100 rounded-lg flex items-start gap-2 text-rose-700">
+            <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold">Usuário não encontrado</p>
+              <p className="text-xs text-rose-600 leading-relaxed">Nenhum perfil cadastrado com esse e-mail no sistema.</p>
+            </div>
+          </div>
+        )}
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="payment_due_day">Dia do Vencimento</label>
-        <input
-          id="payment_due_day"
-          type="text"
-          required
-          value={formData.payment_due_day}
-          onChange={handleDueDayChange}
-          className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-          placeholder="1 a 31"
-        />
-        <p className="mt-1 text-sm text-neutral-500">Dia do mês em que o pagamento deve ser realizado.</p>
+        <p className="mt-2 text-xs text-neutral-500">
+          Ao associar um usuário pelo e-mail cadastrado, os lançamentos vinculados a este cliente ficarão disponíveis no menu "Compartilhado comigo" dele.
+        </p>
       </div>
 
       <div className="md:col-span-2">
