@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { UserPlus, X, PlusCircle } from 'lucide-react';
+import { UserPlus, X, PlusCircle, Mail, Loader2 } from 'lucide-react';
 import { useClients } from '../contexts/ClientContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../lib/dates';
@@ -44,6 +44,11 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     payment_frequency: 'monthly' as PaymentFrequency
   });
 
+  const [receiverEmail, setReceiverEmail] = useState('');
+  const [associatedUserName, setAssociatedUserName] = useState('');
+  const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const [originalShare, setOriginalShare] = useState<{ id: string, receiver_email: string } | null>(null);
+
   useEffect(() => {
     const fetchCustomFields = async () => {
       if (user) {
@@ -78,6 +83,64 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       });
     }
   }, [client]);
+
+  useEffect(() => {
+    const fetchShare = async () => {
+      if (client) {
+        const { data, error } = await supabase
+          .from('client_shares')
+          .select('id, receiver_email')
+          .eq('client_id', client.id)
+          .maybeSingle();
+
+        if (data && !error) {
+          setReceiverEmail(data.receiver_email);
+          setOriginalShare(data);
+          
+          try {
+            const { data: profileData, error: profileError } = await supabase.rpc('get_profile_by_email', { email_input: data.receiver_email.toLowerCase() });
+            if (!profileError && profileData && profileData.length > 0) {
+              setAssociatedUserName(profileData[0].name);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
+    fetchShare();
+  }, [client]);
+
+  useEffect(() => {
+    if (!receiverEmail || !receiverEmail.includes('@')) {
+      setAssociatedUserName('');
+      return;
+    }
+
+    const searchProfile = async () => {
+      setIsSearchingUser(true);
+      try {
+        const { data, error } = await supabase.rpc('get_profile_by_email', { email_input: receiverEmail.trim().toLowerCase() });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setAssociatedUserName(data[0].name);
+        } else {
+          setAssociatedUserName('Usuário não cadastrado no sistema');
+        }
+      } catch (err) {
+        console.error('Erro ao buscar perfil:', err);
+        setAssociatedUserName('');
+      } finally {
+        setIsSearchingUser(false);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      searchProfile();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [receiverEmail]);
 
   useEffect(() => {
     if (client && customFields.length > 0) {
@@ -148,17 +211,14 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           throw new Error('O plano Básico permite cadastrar apenas 20 clientes. Faça o upgrade para o plano Pró para cadastrar clientes ilimitados.');
         }
       }
-      if (!formData.name || formData.monthly_payment <= 0 || !formData.payment_due_day || !formData.start_date) {
-        throw new Error('Nome, valor do pagamento, dia do vencimento e data de início são obrigatórios');
+      if (!formData.name) {
+        throw new Error('Nome completo é obrigatório');
       }
 
-      const monthlyPayment = formData.monthly_payment / 100;
-      if (isNaN(monthlyPayment) || monthlyPayment <= 0) throw new Error('Valor do pagamento inválido');
-
-      const paymentDueDay = parseInt(formData.payment_due_day);
-      if (isNaN(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 31) throw new Error('Dia de vencimento deve ser entre 1 e 31');
-
-      const startDate = new Date(formData.start_date);
+      // Manter lógica de recorrência com valores padrão não visíveis
+      const monthlyPayment = 0;
+      const paymentDueDay = 1;
+      const startDate = new Date();
       const nextPaymentDate = calculateNextPaymentDate(startDate, paymentDueDay);
 
       const clientData = {
@@ -169,7 +229,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         start_date: convertToUTC(startDate.toISOString()),
         next_payment_date: convertToUTC(nextPaymentDate.toISOString()),
         status: formData.status,
-        payment_frequency: formData.payment_frequency,
+        payment_frequency: 'monthly' as const,
         user_id: user.id
       };
 
@@ -188,6 +248,42 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
       if (error) throw error;
       if (!clientResult) throw new Error('Falha ao obter dados do cliente.');
+
+      // Persistência do vínculo de compartilhamento na tabela client_shares
+      const cleanEmail = receiverEmail.trim().toLowerCase();
+      const originalEmail = originalShare?.receiver_email?.trim().toLowerCase() || '';
+
+      if (cleanEmail !== originalEmail) {
+        if (originalShare && !cleanEmail) {
+          const { error: deleteShareErr } = await supabase
+            .from('client_shares')
+            .delete()
+            .eq('id', originalShare.id);
+          
+          if (deleteShareErr) throw deleteShareErr;
+        } else if (cleanEmail) {
+          if (cleanEmail === user.email?.toLowerCase()) {
+            throw new Error('Você não pode compartilhar um cliente com seu próprio e-mail.');
+          }
+
+          const shareData: any = {
+            client_id: clientResult.id,
+            sender_id: user.id,
+            receiver_email: cleanEmail,
+            status: 'pending'
+          };
+          
+          if (originalShare?.id) {
+            shareData.id = originalShare.id;
+          }
+
+          const { error: upsertShareErr } = await supabase
+            .from('client_shares')
+            .upsert(shareData);
+
+          if (upsertShareErr) throw upsertShareErr;
+        }
+      }
 
       const allValues = Object.entries(customFieldValues);
       const valuesToUpsert = allValues.filter(([, value]) => value).map(([fieldId, value]) => ({ client_id: clientResult.id, field_id: fieldId, value: value }));
@@ -209,6 +305,9 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
       if (!client) {
         setFormData({ name: '', phone: '', monthly_payment: 0, payment_due_day: '', start_date: '', status: true, payment_frequency: 'monthly' });
         setCustomFieldValues({});
+        setReceiverEmail('');
+        setAssociatedUserName('');
+        setOriginalShare(null);
         setIsOpen(false);
       } else if (onClose) {
         onClose();
@@ -246,58 +345,36 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="start_date">Data de Início</label>
-        <input
-          id="start_date"
-          type="date"
-          required
-          value={formData.start_date}
-          onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-          max={formatToSP(new Date(), 'yyyy-MM-dd')}
-          className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="monthly_payment">Valor do Pagamento</label>
-        <div className="mt-1">
-          <CurrencyInput
-            id="monthly_payment"
-            value={formData.monthly_payment}
-            onValueChange={(value) => setFormData({ ...formData, monthly_payment: value })}
-            className="block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-            placeholder="R$ 0,00"
+      <div className="md:col-span-2 mt-2 border-t border-dashed border-neutral-200 pt-4">
+        <label className="block text-sm font-medium text-neutral-700" htmlFor="receiver_email">
+          Associar com usuário existente (Vínculo por E-mail)
+        </label>
+        <div className="mt-1 relative rounded-md shadow-sm">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Mail className="h-5 w-5 text-neutral-400" />
+          </div>
+          <input
+            id="receiver_email"
+            type="email"
+            value={receiverEmail}
+            onChange={(e) => setReceiverEmail(e.target.value)}
+            className="focus:ring-custom focus:border-custom block w-full pl-10 sm:text-sm border-neutral-300 rounded-md"
+            placeholder="usuario@sistema.com"
           />
+          {isSearchingUser && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <Loader2 className="h-5 w-5 text-neutral-400 animate-spin" />
+            </div>
+          )}
         </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="payment_frequency">Frequência</label>
-        <select
-          id="payment_frequency"
-          value={formData.payment_frequency}
-          onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value as PaymentFrequency })}
-          className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-        >
-          {PAYMENT_FREQUENCY_OPTIONS.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="payment_due_day">Dia do Vencimento</label>
-        <input
-          id="payment_due_day"
-          type="text"
-          required
-          value={formData.payment_due_day}
-          onChange={handleDueDayChange}
-          className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-custom focus:ring-custom sm:text-sm"
-          placeholder="1 a 31"
-        />
-        <p className="mt-1 text-sm text-neutral-500">Dia do mês em que o pagamento deve ser realizado.</p>
+        {associatedUserName && (
+          <p className={`mt-2 text-sm font-medium ${associatedUserName.includes('não cadastrado') ? 'text-red-600' : 'text-emerald-600 animate-pulse'}`}>
+            {associatedUserName.includes('não cadastrado') ? associatedUserName : `Nome vinculado: ${associatedUserName}`}
+          </p>
+        )}
+        <p className="mt-1 text-xs text-neutral-500">
+          Ao associar um usuário pelo e-mail cadastrado, os lançamentos vinculados a este cliente ficarão disponíveis no menu "Compartilhado comigo" dele.
+        </p>
       </div>
 
       <div className="md:col-span-2">
