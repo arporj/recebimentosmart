@@ -70,11 +70,13 @@ export default function RecurrenceV2() {
   }, [user]);
 
   const fetchSummaries = async () => {
+    if (!user) return;
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('client_financial_summary')
         .select('*')
+        .eq('user_id', user.id)
         .order('client_name', { ascending: true });
 
       if (error) throw error;
