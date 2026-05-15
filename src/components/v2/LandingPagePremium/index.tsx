@@ -33,7 +33,7 @@ const initialTiers = [
         features: [
             { text: 'Cota flexível de clientes', available: true },
             { text: 'Cota de transações mensais', available: true },
-            { text: 'Gestão de cobranças', available: true },
+            { text: 'Gestão financeira', available: true },
             { text: 'Sem anúncios', available: true },
             { text: 'Campos personalizados', available: true },
         ],
@@ -149,8 +149,8 @@ export const LandingPagePremium: React.FC = () => {
     const features = [
         {
             icon: 'payments',
-            title: 'Gestão de Cobranças',
-            description: 'Automatize o envio de cobranças e lembretes para seus clientes, reduzindo drasticamente a inadimplência com zero esforço manual.',
+            title: 'Gestão Financeira',
+            description: 'Centralize contas correntes reais com favicons automáticos dos bancos, monitore cartões de crédito, controle receitas e despesas e acompanhe o fluxo de caixa em uma visão unificada.',
         },
         {
             icon: 'groups',

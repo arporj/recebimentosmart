@@ -13,7 +13,7 @@ const initialTiers = [
     price: '--,--',
     features: [
       'Até 20 clientes',
-      'Gestão de cobranças',
+      'Gestão financeira',
       'Dashboard simples',
       'Sem campos personalizados',
     ],
@@ -71,8 +71,8 @@ const LandingPage: React.FC = () => {
   const features = [
     {
       icon: <DollarSign size={32} />,
-      title: 'Gestão de Cobranças',
-      description: 'Automatize o envio de cobranças e lembretes para seus clientes, reduzindo a inadimplência.',
+      title: 'Gestão Financeira',
+      description: 'Centralize suas contas bancárias e cartões de crédito. Lance receitas e despesas unificadas e monitore o fluxo de caixa.',
     },
     {
       icon: <Users size={32} />,
