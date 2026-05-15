@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, TrendingDown, Calendar, Clock, AlertCircle, CheckCircle2, FileText, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { format, parseISO, isBefore, startOfDay } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface ClientStatementModalProps {
@@ -9,6 +9,7 @@ interface ClientStatementModalProps {
   onClose: () => void;
   clientId: string;
   clientName: string;
+  selectedMonth?: Date;
 }
 
 interface StatementTransaction {
@@ -24,7 +25,7 @@ interface StatementTransaction {
   account_name?: string;
 }
 
-export default function ClientStatementModalV2({ isOpen, onClose, clientId, clientName }: ClientStatementModalProps) {
+export default function ClientStatementModalV2({ isOpen, onClose, clientId, clientName, selectedMonth }: ClientStatementModalProps) {
   const [transactions, setTransactions] = useState<StatementTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -33,17 +34,25 @@ export default function ClientStatementModalV2({ isOpen, onClose, clientId, clie
     if (isOpen && clientId) {
       fetchStatement();
     }
-  }, [isOpen, clientId]);
+  }, [isOpen, clientId, selectedMonth]);
 
   const fetchStatement = async () => {
     try {
       setLoading(true);
       // Consulta direta à view estendida ou tabela transactions trazendo as infos necessárias
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('v_financial_transactions') // Usando a view do sistema que já faz resolve de nomes
         .select('id, type, amount, date, description, status, paid_amount, paid_date, category_name, account_name')
-        .eq('client_id', clientId)
-        .order('date', { ascending: false });
+        .eq('client_id', clientId);
+
+      // Se um mês específico for fornecido, filtra as transações daquele mês
+      if (selectedMonth) {
+        const start = startOfMonth(selectedMonth).toISOString();
+        const end = endOfMonth(selectedMonth).toISOString();
+        query = query.gte('date', start).lte('date', end);
+      }
+
+      const { data, error } = await query.order('date', { ascending: false });
 
       if (error) throw error;
       setTransactions(data || []);

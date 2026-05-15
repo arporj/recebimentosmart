@@ -1111,6 +1111,7 @@ export default function RecurrenceV2() {
           }}
           clientId={selectedClient.id}
           clientName={selectedClient.name}
+          selectedMonth={currentMonth}
         />
       )}
 
