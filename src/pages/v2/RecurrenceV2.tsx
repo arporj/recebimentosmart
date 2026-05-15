@@ -13,7 +13,8 @@ import {
   User, 
   Phone,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  UserCheck
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -187,12 +188,12 @@ export default function RecurrenceV2() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
             <div className="bg-teal-50 p-2 rounded-2xl">
-              <CalendarDays className="text-[#0d9488] w-8 h-8" />
+              <UserCheck className="text-[#0d9488] w-8 h-8" />
             </div>
-            Recorrências & Saldo Líquido
+            Resumo por Clientes
           </h1>
           <p className="text-slate-500 mt-1 text-xs sm:text-sm font-bold tracking-wide">
-            Gestão consolidada de obrigações por cliente e conciliação automática de fluxos (Netting).
+            Gestão consolidada de obrigações, receitas e despesas com conciliação automática de fluxos (Netting).
           </p>
         </div>
         

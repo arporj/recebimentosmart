@@ -7,7 +7,8 @@ import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
-    Wallet, FolderOpen, Tag, ChevronDown, ChevronRight
+    Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
+    UserCheck, Share2
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -31,7 +32,8 @@ const sidebarSections: SidebarSection[] = [
         title: 'Geral',
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
-            { label: 'Recorrências', icon: CalendarDays, href: '/v2/recorrencia' },
+            { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
+            { label: 'Compartilhado comigo', icon: Share2, href: '/v2/compartilhado' },
             { label: 'Clientes - Antigo', icon: Users, href: '/v2/clientes' },
         ],
     },
