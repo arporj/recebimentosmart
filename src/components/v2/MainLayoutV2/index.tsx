@@ -33,7 +33,6 @@ const sidebarSections: SidebarSection[] = [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Recorrências', icon: CalendarDays, href: '/v2/recorrencia' },
             { label: 'Clientes - Antigo', icon: Users, href: '/v2/clientes' },
-            { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
         ],
     },
     {

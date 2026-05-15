@@ -206,19 +206,13 @@ export function ClientListV2() {
             {/* ─── Header ─── */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Listagem de Clientes</h1>
-                    <p className="text-slate-500 text-sm mt-1">Gerencie seus recebimentos e status de clientes.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Clientes - Legado</h1>
+                    <p className="text-slate-500 text-sm mt-1">Visualização histórica de clientes no formato antigo.</p>
                 </div>
-                <button
-                    onClick={() => {
-                        if (checkLimit('clients')) {
-                            setShowNewClientForm(true);
-                        }
-                    }}
-                    className="bg-custom hover:bg-custom-hover text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm"
-                >
-                    <UserPlus size={18} /> Novo Cliente
-                </button>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-amber-800 text-xs font-medium flex items-center gap-2">
+                    <span className="font-bold text-amber-600 uppercase">Modo Leitura:</span>
+                    Novas transações e recorrências devem ser feitas no menu financeiro.
+                </div>
             </header>
 
             {/* ─── Search and Filters ─── */}
@@ -348,22 +342,6 @@ export function ClientListV2() {
                                                     {summary.hasTransactions && summary.pendingCount === 0 && (
                                                         <span className="px-2 py-0.5 rounded bg-teal-50 text-teal-600 text-[10px] font-bold uppercase mr-1">Em dia</span>
                                                     )}
-                                                    {/* Pagar */}
-                                                    <button
-                                                        onClick={() => setSelectedClient(client)}
-                                                        className="bg-custom hover:bg-custom-hover text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1 transition-colors"
-                                                        title="Registrar Pagamento"
-                                                    >
-                                                        <DollarSign size={14} /> Pagar
-                                                    </button>
-                                                    {/* Excluir */}
-                                                    <button
-                                                        onClick={() => setDeletingClient(client)}
-                                                        className="text-slate-400 hover:text-red-500 p-1 transition-colors"
-                                                        title="Excluir"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
                                                     {/* Expandir */}
                                                     <button
                                                         onClick={() => setExpandedClient(isExpanded ? null : client.id)}

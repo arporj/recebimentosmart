@@ -183,7 +183,7 @@ export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) 
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        {client ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}
+                        Visualizar Cliente (Legado)
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <X size={24} />
@@ -192,16 +192,25 @@ export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) 
 
                 {/* Form body — scrollable */}
                 <div className="px-8 py-6 overflow-y-auto">
-                    <form onSubmit={handleSubmit} id="clientFormV2" className="space-y-6">
+                    {/* Aviso Geral Somente Leitura */}
+                    <div className="mb-6 bg-amber-50 border border-amber-100 text-amber-900 rounded-xl p-4 flex items-start gap-3 text-sm">
+                        <span className="material-symbols-outlined text-amber-500 mt-0.5">warning</span>
+                        <div>
+                            <p className="font-bold text-amber-800">Modo Somente Leitura Ativado</p>
+                            <p className="text-amber-700 text-xs mt-0.5">Para garantir a estabilidade das novas finanças unificadas, cadastros antigos estão congelados.</p>
+                        </div>
+                    </div>
+
+                    <form onSubmit={(e) => e.preventDefault()} id="clientFormV2" className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
                                 <label className={labelClass}>Nome Completo</label>
                                 <input
                                     type="text"
                                     required
+                                    disabled
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className={inputClass}
+                                    className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
                                     placeholder="Digite o nome completo"
                                 />
                             </div>
@@ -209,9 +218,9 @@ export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) 
                                 <label className={labelClass}>Telefone</label>
                                 <input
                                     type="tel"
+                                    disabled
                                     value={formData.phone}
-                                    onChange={handlePhoneChange}
-                                    className={inputClass}
+                                    className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
                                     placeholder="(00) 00000-0000"
                                 />
                             </div>
@@ -253,10 +262,10 @@ export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) 
                                             <label className={labelClass}>{field.name}</label>
                                             <input
                                                 type="text"
+                                                disabled
                                                 value={customFieldValues[field.id] || ''}
-                                                onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
-                                                className={inputClass}
-                                                placeholder="Campo personalizado"
+                                                className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                                                placeholder="Sem informação"
                                             />
                                         </div>
                                     ))}
@@ -264,31 +273,17 @@ export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) 
                             </div>
                         )}
 
-                        {/* Botão de adicionar campo personalizado se não houver nenhum */}
-                        {customFields.length === 0 && (
-                            <div className="pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(true)}
-                                    className="inline-flex items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-lg text-gray-500 bg-transparent hover:bg-gray-50 transition-colors"
-                                >
-                                    <PlusCircle className="h-5 w-5 mr-2" />
-                                    Adicionar Campo Personalizado
-                                </button>
-                            </div>
-                        )}
-
                         {/* Toggle Cliente Ativo */}
                         <div className="flex items-center gap-3 pt-2">
-                            <label className="relative inline-flex items-center cursor-pointer">
+                            <label className="relative inline-flex items-center cursor-not-allowed">
                                 <input
                                     type="checkbox"
                                     checked={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
+                                    disabled
                                     className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-custom" />
-                                <span className="ml-3 text-sm font-medium text-gray-700">Cliente Ativo</span>
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-400" />
+                                <span className="ml-3 text-sm font-medium text-gray-400">Cliente Ativo</span>
                             </label>
                         </div>
 
@@ -297,16 +292,9 @@ export function ClientFormV2({ client, onClose, onSuccess }: ClientFormV2Props) 
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="px-6 py-2.5 text-sm font-semibold text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-md transition-colors flex items-center gap-2"
                             >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                className="px-8 py-2.5 text-sm font-semibold text-white bg-custom hover:bg-custom-hover rounded-lg shadow-lg shadow-custom/20 transition-all flex items-center gap-2"
-                            >
-                                <UserPlus size={18} />
-                                {client ? 'Atualizar Cliente' : 'Salvar Cliente'}
+                                Fechar
                             </button>
                         </div>
                     </form>
