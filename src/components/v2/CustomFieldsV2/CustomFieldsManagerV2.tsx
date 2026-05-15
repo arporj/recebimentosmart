@@ -80,7 +80,7 @@ export function CustomFieldsManagerV2() {
                         </div>
                         <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">Recurso Exclusivo</h2>
                         <p className="text-slate-600 mb-10 max-w-lg text-lg leading-relaxed">
-                            Crie campos personalizados ilimitados e organize as informações dos seus clientes como quiser. Funcionalidade apenas para assinantes <strong>Pro</strong> e <strong>Premium</strong>.
+                            Crie campos personalizados ilimitados e organize as informações dos seus clientes como quiser. Funcionalidade apenas para os planos <strong>Básico</strong> e <strong>Pró</strong>.
                         </p>
                         <Link to="/payment" className="bg-custom hover:bg-custom-hover text-white font-bold text-lg py-4 px-12 rounded-xl shadow-xl shadow-custom/30 transition-all hover:scale-105 active:scale-95 flex items-center gap-3">
                             Fazer Upgrade Agora
