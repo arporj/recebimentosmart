@@ -99,7 +99,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           setOriginalShare(data);
           
           try {
-            const { data: profileData, error: profileError } = await supabase.rpc('get_profile_by_email', { email_input: data.receiver_email.toLowerCase() });
+            const { data: profileData, error: profileError } = await supabase.rpc('get_profile_by_email', { email_search: data.receiver_email.toLowerCase() });
             if (!profileError && profileData && profileData.length > 0) {
               setSearchResult({ name: profileData[0].name, email: data.receiver_email });
               setIsConfirmed(true);
@@ -124,7 +124,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     const searchProfile = async () => {
       setIsSearchingUser(true);
       try {
-        const { data, error } = await supabase.rpc('get_profile_by_email', { email_input: receiverEmail.trim().toLowerCase() });
+        const { data, error } = await supabase.rpc('get_profile_by_email', { email_search: receiverEmail.trim().toLowerCase() });
         if (error) throw error;
         if (data && data.length > 0) {
           setSearchResult({ name: data[0].name, email: receiverEmail.trim() });
