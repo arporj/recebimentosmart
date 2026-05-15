@@ -6,7 +6,7 @@
 ---
 
 ## 📋 Visão Geral do Problema
-O sistema encontra-se atualmente em um estado de **transição parcial de dados**. A nova infraestrutura financeira (baseada na tabela `financial_transactions`) foi desenvolvida, mas a área de Clientes legada ainda se baseia na tabela `payments` para gravação e consulta de históricos, gerando silos de dados e inconsistências visuais profundas para o usuário.
+O sistema encontra-se atualmente em um estado de **transição parcial de dados**. A nova infraestrutura financeira (baseada na tabela `financial_transactions`) foi desenvolvida, mas a área de Clientes legada ainda se baseia na tabela `payments` para gravação e consulta de históricos. Para eliminar este débito técnico, **a tabela `payments` será completamente extinta**, e todo pagamento passará a ser registrado diretamente na nova infraestrutura financeira como uma transação recorrente.
 
 ---
 
@@ -42,16 +42,16 @@ Para unificar o sistema e fazer com que "o que fizer em uma reflete na outra", s
 Modificar o componente `PaymentHistoryV2` para parar de ler `payments` e ler da tabela `financial_transactions` onde `type = 'income'` e `client_id = client.id`.
 
 ### Passo 2: Modificar a Ação de Pagamento
-Ajustar o `registerPayment` na listagem de clientes. Ao invés de inserir em `payments`, a função deve:
-1. Buscar a transação `pending` correspondente ao mês de referência na tabela `financial_transactions`.
-2. Fazer o `update` do status dessa transação para `paid`.
-3. Se não houver transação criada, criar uma nova transação diretamente em `financial_transactions` já marcada como `paid`.
+Ajustar o `registerPayment` na listagem de clientes. Ao invés de inserir em `payments`, a função deve registrar o pagamento diretamente em `financial_transactions` seguindo estas regras mandatórias:
+1. **Configuração do Tipo:** A transação deve ser marcada obrigatoriamente como `modalidade = 'recorrente'` e `recurrence_enabled = true`.
+2. **Associação e Descrição:** O campo `description` deve ser preenchido com o nome do cliente e a transação deve estar devidamente vinculada através do `client_id`.
+3. **Fluxo de Status:** Buscar a transação recorrente `pending` correspondente ao mês de referência na tabela financeira para atualizá-la para `paid`. Se não houver transação criada, criar uma nova já com status `paid`.
 
 ### Passo 3: Corrigir Coleta de Valor
 Atualizar o `PaymentModalV2` para obter o valor sugerido buscando a última transação (ou a transação padrão configurada) do cliente na tabela financeira, ao invés de ler a coluna legada `clients.monthly_payment`.
 
-### Passo 4: Script de Migração Final
-Criar uma nova migration SQL no Supabase para copiar dados residuais de `payments` legados para `financial_transactions` de acordo com a estratégia de proteção de dados definida na próxima seção, garantindo que a tabela antiga possa ser desativada em segurança no futuro.
+### Passo 4: Script de Migração Final & Desativação da Tabela
+Criar uma nova migration SQL no Supabase para copiar dados residuais de `payments` legados para `financial_transactions` de acordo com a estratégia de proteção de dados definida na próxima seção. Após a validação dos dados migrados, o script deve executar a exclusão final (`DROP TABLE payments`) para remover definitivamente a tabela antiga da arquitetura do sistema.
 
 ---
 
@@ -77,20 +77,24 @@ Rodaremos um script de "Match Inteligente" para vincular os registros existentes
 Após marcar o que já foi resolvido pelo passo anterior, a migração real dos dados restantes se resume a uma consulta simples de exclusão:
 ```sql
 INSERT INTO financial_transactions (
-  user_id, type, amount, date, description, client_id, status, paid_amount, paid_date, legacy_payment_id
+  user_id, type, amount, date, description, client_id, status, paid_amount, paid_date, 
+  modalidade, recurrence_enabled, legacy_payment_id
 )
 SELECT 
   p.user_id,
   'income',
   p.amount,
   p.payment_date::date,
-  'Migração de Pagamento Histórico (Mês Ref: ' || p.reference_month || ')',
+  c.name || ' - Pagamento Recorrente (Ref: ' || p.reference_month || ')',
   p.client_id,
   'paid',
   p.amount,
   p.payment_date::date,
+  'recorrente',
+  true,
   p.id
 FROM payments p
+JOIN clients c ON p.client_id = c.id
 WHERE p.id NOT IN (
   -- Ignora registros que já possuem correspondência vinculada
   SELECT legacy_payment_id FROM financial_transactions WHERE legacy_payment_id IS NOT NULL
@@ -102,5 +106,5 @@ Executar uma conferência sumária via `COUNT` agrupado por usuário e mês em a
 
 ---
 
-> **Ponto de Atenção:** Qualquer tentativa de corrigir isso pontualmente criando "triggers de sincronização dupla" no banco criará um débito técnico complexo de manter. O caminho ideal é a **substituição total** da dependência da tabela `payments` pelas `financial_transactions`.
+> **Ponto de Atenção:** Qualquer tentativa de manter a sincronização dupla será rejeitada. O objetivo é a **extinção definitiva** da tabela `payments` através do comando `DROP TABLE` assim que a migração estruturada for aprovada e executada.
 
