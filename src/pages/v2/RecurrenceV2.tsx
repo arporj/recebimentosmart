@@ -14,7 +14,10 @@ import {
   Phone,
   CheckCircle2,
   RefreshCw,
-  UserCheck
+  UserCheck,
+  Share2,
+  X,
+  Mail
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -49,6 +52,14 @@ export default function RecurrenceV2() {
 
   // Estado de carregamento atômico por card de importação
   const [importingClientId, setImportingClientId] = useState<string | null>(null);
+
+  // Estados do Modal de Compartilhamento
+  const [sharingClient, setSharingClient] = useState<{ id: string; name: string } | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [receiverEmail, setReceiverEmail] = useState('');
+  const [activeShares, setActiveShares] = useState<any[]>([]);
+  const [loadingShares, setLoadingShares] = useState(false);
+  const [submittingShare, setSubmittingShare] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -178,6 +189,128 @@ export default function RecurrenceV2() {
   const handleOpenStatement = (id: string, name: string) => {
     setSelectedClient({ id, name });
     setIsStatementOpen(true);
+  };
+
+  const handleOpenShare = async (id: string, name: string) => {
+    setSharingClient({ id, name });
+    setIsShareModalOpen(true);
+    setReceiverEmail('');
+    fetchActiveShares(id);
+  };
+
+  const fetchActiveShares = async (clientId: string) => {
+    try {
+      setLoadingShares(true);
+      const { data, error } = await supabase
+        .from('client_shares')
+        .select('*')
+        .eq('client_id', clientId);
+      
+      if (error) throw error;
+      setActiveShares(data || []);
+    } catch (err) {
+      console.error('Erro ao buscar compartilhamentos:', err);
+      toast.error('Não foi possível listar os compartilhamentos ativos.');
+    } finally {
+      setLoadingShares(false);
+    }
+  };
+
+  const handleShareSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sharingClient || !user) return;
+    if (!receiverEmail.trim()) {
+      toast.error('Por favor, insira um e-mail válido.');
+      return;
+    }
+
+    try {
+      setSubmittingShare(true);
+      
+      const { data, error } = await supabase
+        .from('client_shares')
+        .insert({
+          sender_id: user.id,
+          client_id: sharingClient.id,
+          receiver_email: receiverEmail.trim().toLowerCase(),
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Este cliente já está compartilhado com este e-mail.');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      toast.success('Cliente compartilhado com sucesso!');
+      setReceiverEmail('');
+      fetchActiveShares(sharingClient.id);
+
+      // Opcional: Enviar e-mail de notificação ao destinatário via Edge Function
+      try {
+        const userName = user.user_metadata?.name || user.email || 'Um usuário';
+        const primaryColor = '#0d9488'; // Teal
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <body style="font-family: sans-serif; color: #333; line-height: 1.6; background: #f9fafb; padding: 20px;">
+            <div style="max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 16px; border: 1px solid #e5e7eb;">
+              <h2 style="color: ${primaryColor}; font-weight: 800; margin-top: 0;">Resumo Compartilhado com Você!</h2>
+              <p>Olá,</p>
+              <p><strong>${userName}</strong> acabou de compartilhar o acesso ao extrato financeiro do cliente <strong>${sharingClient.name}</strong> com você no <strong>Recebimento $mart</strong>.</p>
+              <div style="background: #f0fdfa; border-left: 4px solid ${primaryColor}; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                Acesse o sistema com sua conta para aceitar o convite e começar a visualizar as transações em tempo real.
+              </div>
+              <a href="https://www.recebimentosmart.com.br/login" style="display: inline-block; background: ${primaryColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">Acessar Sistema</a>
+              <p style="font-size: 12px; color: #6b7280; margin-top: 30px;">Equipe Recebimento $mart.</p>
+            </div>
+          </body>
+          </html>
+        `;
+
+        supabase.functions.invoke('send-notification-email', {
+          body: {
+            recipientEmail: receiverEmail.trim().toLowerCase(),
+            subject: `Acesso Compartilhado: ${sharingClient.name}`,
+            htmlContent: emailHtml
+          }
+        }).catch(err => console.warn('Falha silenciosa ao enviar e-mail:', err));
+
+      } catch (eMailErr) {
+        console.warn('Não foi possível notificar por e-mail:', eMailErr);
+      }
+
+    } catch (err) {
+      console.error('Erro ao compartilhar cliente:', err);
+      toast.error('Erro ao realizar compartilhamento.');
+    } finally {
+      setSubmittingShare(false);
+    }
+  };
+
+  const handleRevokeShare = async (shareId: string) => {
+    if (!sharingClient) return;
+    const confirm = window.confirm('Tem certeza que deseja remover o acesso deste usuário?');
+    if (!confirm) return;
+
+    try {
+      const { error } = await supabase
+        .from('client_shares')
+        .delete()
+        .eq('id', shareId);
+
+      if (error) throw error;
+      toast.success('Compartilhamento revogado.');
+      fetchActiveShares(sharingClient.id);
+    } catch (err) {
+      console.error('Erro ao revogar compartilhamento:', err);
+      toast.error('Não foi possível remover o compartilhamento.');
+    }
   };
 
   return (
@@ -485,14 +618,24 @@ export default function RecurrenceV2() {
                     </button>
                   )}
 
-                  {/* Botão Visualizar Extrato Cronológico */}
-                  <button
-                    onClick={() => handleOpenStatement(cliente.client_id, cliente.client_name)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-white hover:bg-slate-900 active:bg-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all"
-                  >
-                    <FileText size={14} />
-                    Visualizar Extrato
-                  </button>
+                  {/* Botões Visualizar Extrato Cronológico e Compartilhar */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenStatement(cliente.client_id, cliente.client_name)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-white hover:bg-slate-900 active:bg-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all"
+                    >
+                      <FileText size={14} />
+                      Extrato
+                    </button>
+
+                    <button
+                      onClick={() => handleOpenShare(cliente.client_id, cliente.client_name)}
+                      title="Compartilhar acesso ao extrato"
+                      className="flex items-center justify-center p-2.5 bg-teal-50 border border-teal-200/80 text-[#0d9488] hover:bg-teal-100 hover:border-teal-300 active:scale-95 rounded-xl transition-all"
+                    >
+                      <Share2 size={15} />
+                    </button>
+                  </div>
 
                 </div>
               </div>
@@ -513,6 +656,146 @@ export default function RecurrenceV2() {
           clientId={selectedClient.id}
           clientName={selectedClient.name}
         />
+      )}
+
+      {/* Modal de Compartilhamento Premium */}
+      {isShareModalOpen && sharingClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-fadeIn"
+            onClick={() => setIsShareModalOpen(false)}
+          />
+
+          {/* Card do Modal */}
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative z-10 overflow-hidden animate-slideUp">
+            
+            {/* Header do Modal */}
+            <div className="px-6 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="bg-teal-100/80 p-2 rounded-xl text-[#0d9488]">
+                  <Share2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800 leading-tight">
+                    Compartilhar Extrato
+                  </h3>
+                  <span className="text-xs font-bold text-teal-700 block mt-0.5 truncate max-w-[240px]">
+                    Cliente: {sharingClient.name}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsShareModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 active:scale-95 rounded-lg transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="p-6 space-y-6">
+              
+              {/* Formulário de Convite */}
+              <form onSubmit={handleShareSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                    E-mail do Destinatário
+                  </label>
+                  <div className="relative flex items-center">
+                    <Mail size={16} className="absolute left-3.5 text-slate-400" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="exemplo@email.com"
+                      value={receiverEmail}
+                      onChange={(e) => setReceiverEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingShare}
+                  className="w-full py-2.5 px-4 bg-[#0d9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  {submittingShare ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      Compartilhando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />
+                      Conceder Acesso
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <hr className="border-slate-100" />
+
+              {/* Lista de Compartilhamentos Existentes */}
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Acessos Concedidos</span>
+                  {loadingShares && <RefreshCw size={10} className="animate-spin text-teal-600" />}
+                </h4>
+
+                {loadingShares && activeShares.length === 0 ? (
+                  <div className="py-8 text-center text-xs font-bold text-slate-400">
+                    Carregando acessos...
+                  </div>
+                ) : activeShares.length === 0 ? (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-center flex flex-col items-center gap-2">
+                    <User size={24} className="text-slate-300" />
+                    <p className="text-xs font-bold text-slate-400 leading-relaxed">
+                      Ninguém além de você tem acesso ao extrato consolidado deste cliente atualmente.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                    {activeShares.map((share) => (
+                      <div 
+                        key={share.id}
+                        className="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-colors group"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-xs font-black text-slate-700 truncate" title={share.receiver_email}>
+                            {share.receiver_email}
+                          </span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                              share.status === 'pending' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'
+                            }`} />
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                              {share.status === 'pending' ? 'Aguardando aceite' : 'Ativo'}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRevokeShare(share.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-95 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          title="Revogar acesso"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Rodapé informativo discreto */}
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 text-[10px] font-bold text-slate-400 leading-normal flex items-center gap-2">
+              <AlertTriangle size={12} className="text-amber-500 shrink-0" />
+              <span>O receptor do link poderá visualizar todo o histórico financeiro desse cliente em tempo real.</span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
