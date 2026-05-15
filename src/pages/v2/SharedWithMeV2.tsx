@@ -92,7 +92,7 @@ export default function SharedWithMeV2() {
         const { data: txData, error: txError } = await supabase
           .from('financial_transactions')
           .select('client_id, type, amount')
-          .eq('is_paid', false)
+          .eq('status', 'pending')
           .in('client_id', clientIds);
 
         if (!txError && txData) {

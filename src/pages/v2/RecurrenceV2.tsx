@@ -60,6 +60,8 @@ export default function RecurrenceV2() {
   const [activeShares, setActiveShares] = useState<any[]>([]);
   const [loadingShares, setLoadingShares] = useState(false);
   const [submittingShare, setSubmittingShare] = useState(false);
+  const [recipientName, setRecipientName] = useState<string | null>(null);
+  const [isSearchingRecipient, setIsSearchingRecipient] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -195,19 +197,46 @@ export default function RecurrenceV2() {
     setSharingClient({ id, name });
     setIsShareModalOpen(true);
     setReceiverEmail('');
+    setRecipientName(null); // Limpa busca anterior
     fetchActiveShares(id);
   };
 
   const fetchActiveShares = async (clientId: string) => {
     try {
       setLoadingShares(true);
-      const { data, error } = await supabase
+      const { data: shares, error } = await supabase
         .from('client_shares')
         .select('*')
         .eq('client_id', clientId);
       
       if (error) throw error;
-      setActiveShares(data || []);
+      
+      if (shares && shares.length > 0) {
+        const emails = shares.map((s: any) => s.receiver_email.toLowerCase());
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('name, email')
+          .in('email', emails);
+
+        if (!profilesError && profiles) {
+          const emailToNameMap = profiles.reduce((acc: any, curr: any) => {
+            if (curr.email) {
+              acc[curr.email.toLowerCase()] = curr.name;
+            }
+            return acc;
+          }, {});
+
+          const sharesWithNames = shares.map((s: any) => ({
+            ...s,
+            receiver_name: emailToNameMap[s.receiver_email.toLowerCase()] || null
+          }));
+          setActiveShares(sharesWithNames);
+        } else {
+          setActiveShares(shares);
+        }
+      } else {
+        setActiveShares([]);
+      }
     } catch (err) {
       console.error('Erro ao buscar compartilhamentos:', err);
       toast.error('Não foi possível listar os compartilhamentos ativos.');
@@ -215,6 +244,41 @@ export default function RecurrenceV2() {
       setLoadingShares(false);
     }
   };
+
+  // Busca automática do nome do destinatário por e-mail
+  useEffect(() => {
+    const email = receiverEmail.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    
+    if (!isValidEmail) {
+      setRecipientName(null);
+      return;
+    }
+
+    const searchTimeout = setTimeout(async () => {
+      try {
+        setIsSearchingRecipient(true);
+        const { data, error } = await supabase.rpc('get_profile_by_email', {
+          email_search: email
+        });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setRecipientName(data[0].name);
+        } else {
+          setRecipientName(null);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar perfil pelo e-mail:', err);
+        setRecipientName(null);
+      } finally {
+        setIsSearchingRecipient(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(searchTimeout);
+  }, [receiverEmail]);
 
   const handleShareSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -702,16 +766,35 @@ export default function RecurrenceV2() {
                   <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
                     E-mail do Destinatário
                   </label>
-                  <div className="relative flex items-center">
-                    <Mail size={16} className="absolute left-3.5 text-slate-400" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="exemplo@email.com"
-                      value={receiverEmail}
-                      onChange={(e) => setReceiverEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                    />
+                  <div className="relative">
+                    <div className="relative flex items-center">
+                      <Mail size={16} className="absolute left-3.5 text-slate-400" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="exemplo@email.com"
+                        value={receiverEmail}
+                        onChange={(e) => setReceiverEmail(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      />
+                    </div>
+                    
+                    {isSearchingRecipient ? (
+                      <div className="mt-1.5 text-xs text-teal-600 flex items-center gap-1.5 font-bold animate-pulse">
+                        <RefreshCw size={10} className="animate-spin" />
+                        Buscando usuário no sistema...
+                      </div>
+                    ) : recipientName ? (
+                      <div className="mt-1.5 text-xs text-teal-600 font-black flex items-center gap-1.5 bg-teal-50/50 p-2 rounded-lg border border-teal-100/50 animate-fadeIn">
+                        <CheckCircle2 size={12} className="text-[#0d9488]" />
+                        <span>Destinatário encontrado: <strong className="text-[#0f766e]">{recipientName}</strong></span>
+                      </div>
+                    ) : receiverEmail.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiverEmail.trim()) ? (
+                      <div className="mt-1.5 text-xs text-amber-600 font-bold flex items-center gap-1.5 bg-amber-50/50 p-2 rounded-lg border border-amber-100/50 animate-fadeIn">
+                        <AlertTriangle size={12} className="text-amber-500" />
+                        <span>Este e-mail não possui conta ativa. Um convite será enviado.</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -763,8 +846,13 @@ export default function RecurrenceV2() {
                       >
                         <div className="min-w-0 flex-1">
                           <span className="block text-xs font-black text-slate-700 truncate" title={share.receiver_email}>
-                            {share.receiver_email}
+                            {share.receiver_name || share.receiver_email}
                           </span>
+                          {share.receiver_name && (
+                            <span className="block text-[10px] text-slate-400 truncate mt-0.5" title={share.receiver_email}>
+                              {share.receiver_email}
+                            </span>
+                          )}
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className={`inline-block w-1.5 h-1.5 rounded-full ${
                               share.status === 'pending' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'
