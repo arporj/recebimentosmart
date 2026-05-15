@@ -51,8 +51,56 @@ Ajustar o `registerPayment` na listagem de clientes. Ao invés de inserir em `pa
 Atualizar o `PaymentModalV2` para obter o valor sugerido buscando a última transação (ou a transação padrão configurada) do cliente na tabela financeira, ao invés de ler a coluna legada `clients.monthly_payment`.
 
 ### Passo 4: Script de Migração Final
-Criar uma nova migration SQL no Supabase para copiar dados residuais de `payments` legados para `financial_transactions` (gerando as devidas categorias/contas padrão) e desativar a tabela antiga se desejado.
+Criar uma nova migration SQL no Supabase para copiar dados residuais de `payments` legados para `financial_transactions` de acordo com a estratégia de proteção de dados definida na próxima seção, garantindo que a tabela antiga possa ser desativada em segurança no futuro.
+
+---
+
+## 🛡️ Estratégia de Garantia de Dados e Antiduplicidade (v1 → v2)
+
+Dado que a V2 já se encontra em produção e algumas cargas manuais de dados podem ter ocorrido no início da implantação, é imperativo garantir a integridade referencial histórica sem introduzir transações duplicadas no extrato financeiro. A solução proposta opera em 4 estágios robustos no banco de dados:
+
+### 1️⃣ Rastreabilidade Mecânica (Coluna de Auditoria)
+Adicionaremos uma coluna de controle na tabela destino para armazenar de forma única a origem do dado:
+- **Ação**: Adicionar a coluna `legacy_payment_id` (`UUID`, `NULLABLE`, `UNIQUE`) na tabela `financial_transactions`.
+- **Benefício**: O banco de dados impedirá nativamente, via restrição de unicidade, que qualquer registro V1 seja copiado mais de uma vez para a V2.
+
+### 2️⃣ Reconciliação Retroativa (Identificação do que Já Existe)
+Antes de qualquer importação de registros novos, faremos a identificação dos registros que já foram migrados manualmente no passado.
+Rodaremos um script de "Match Inteligente" para vincular os registros existentes baseados em chaves de negócio idênticas:
+- **Critérios de Correspondência (Match):**
+  - Mesmo `client_id`
+  - Mesmo valor (`amount`)
+  - Coincidência temporal (mês/ano da coluna `reference_month` da V1 batendo com o mês/ano da coluna `date` na V2)
+- **Comportamento**: O script fará um `UPDATE` nos registros correspondentes já presentes na `financial_transactions`, salvando o `id` da V1 em `legacy_payment_id`.
+
+### 3️⃣ Migração Incremental Protegida
+Após marcar o que já foi resolvido pelo passo anterior, a migração real dos dados restantes se resume a uma consulta simples de exclusão:
+```sql
+INSERT INTO financial_transactions (
+  user_id, type, amount, date, description, client_id, status, paid_amount, paid_date, legacy_payment_id
+)
+SELECT 
+  p.user_id,
+  'income',
+  p.amount,
+  p.payment_date::date,
+  'Migração de Pagamento Histórico (Mês Ref: ' || p.reference_month || ')',
+  p.client_id,
+  'paid',
+  p.amount,
+  p.payment_date::date,
+  p.id
+FROM payments p
+WHERE p.id NOT IN (
+  -- Ignora registros que já possuem correspondência vinculada
+  SELECT legacy_payment_id FROM financial_transactions WHERE legacy_payment_id IS NOT NULL
+);
+```
+
+### 4️⃣ Auditoria de Encerramento
+Executar uma conferência sumária via `COUNT` agrupado por usuário e mês em ambas as tabelas. Uma vez confirmado que o somatório e a quantidade batem com a V1, podemos remover opcionalmente a coluna `legacy_payment_id` (embora mantê-la por um tempo seja uma boa prática para auditoria de suporte).
 
 ---
 
 > **Ponto de Atenção:** Qualquer tentativa de corrigir isso pontualmente criando "triggers de sincronização dupla" no banco criará um débito técnico complexo de manter. O caminho ideal é a **substituição total** da dependência da tabela `payments` pelas `financial_transactions`.
+
