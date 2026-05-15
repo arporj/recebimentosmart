@@ -31,7 +31,8 @@ const sidebarSections: SidebarSection[] = [
         title: 'Geral',
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
-            { label: 'Clientes', icon: Users, href: '/v2/clientes' },
+            { label: 'Recorrências', icon: CalendarDays, href: '/v2/recorrencia' },
+            { label: 'Clientes - Antigo', icon: Users, href: '/v2/clientes' },
             { label: 'Pagamentos do Mês', icon: CalendarDays, href: '/v2/pagamentos' },
         ],
     },

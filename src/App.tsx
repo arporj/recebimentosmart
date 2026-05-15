@@ -37,6 +37,7 @@ import FinancialAccountsV2 from './pages/v2/FinancialAccountsV2';
 import FinancialCategoriesV2 from './pages/v2/FinancialCategoriesV2';
 import FinancialTagsV2 from './pages/v2/FinancialTagsV2';
 import CreditCardV2 from './pages/v2/CreditCardV2';
+import RecurrenceV2 from './pages/v2/RecurrenceV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -51,7 +52,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAdmin) {
-    return <Navigate to="/v2/clientes" replace />;
+    return <Navigate to="/v2/financeiro/lancamentos" replace />;
   }
 
   return <>{children}</>;
@@ -104,6 +105,7 @@ function AppRoutes() {
           <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/indicacoes" element={<ProtectedRoute><MainLayoutV2><ReferralPageV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/assinatura" element={<ProtectedRoute><MainLayoutV2><SubscriptionPageV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/recorrencia" element={<ProtectedRoute><MainLayoutV2><RecurrenceV2 /></MainLayoutV2></ProtectedRoute>} />
           
           {/* Novas Rotas Financeiras */}
           <Route path="/v2/dashboard" element={<ProtectedRoute><MainLayoutV2><DashboardV2 /></MainLayoutV2></ProtectedRoute>} />
@@ -138,20 +140,20 @@ function AppRoutes() {
 
           {/* 
             Se o usuário já está logado e tenta acessar as rotas de auth (públicas) da raiz 
-            ou qualquer caminho não mapeado, manda para a HomePage da Área Logada (Clientes V2)
+            ou qualquer caminho não mapeado, manda para a HomePage da Área Logada (Lançamentos Financeiros)
           */}
-          <Route path="/login" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/cadastro" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/v2" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/v2/login" element={<Navigate to="/v2/clientes" replace />} />
-          <Route path="/v2/cadastro" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="/login" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/cadastro" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2/login" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
+          <Route path="/v2/cadastro" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
           {/* Páginas institucionais (acessíveis também logado) */}
           <Route path="/privacidade" element={<PrivacyPolicyPage />} />
           <Route path="/termos" element={<TermsOfUsePage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
           <Route path="/contato" element={<ContactPage />} />
-          <Route path="*" element={<Navigate to="/v2/clientes" replace />} />
+          <Route path="*" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
         </>
       )}
     </Routes>
