@@ -47,6 +47,7 @@ const sidebarSections: SidebarSection[] = [
                 label: 'Cadastros',
                 icon: FormInput,
                 subItems: [
+                    { label: 'Clientes', icon: Users, href: '/v2/financeiro/clientes' },
                     { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas' },
                     { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias' },
                     { label: 'Tags', icon: Tag, href: '/v2/financeiro/tags' },
