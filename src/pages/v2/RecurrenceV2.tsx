@@ -17,12 +17,57 @@ import {
   UserCheck,
   Share2,
   X,
-  Mail
+  Mail,
+  ChevronLeft,
+  ChevronRight,
+  Calendar
 } from 'lucide-react';
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  parseISO, 
+  isBefore, 
+  isSameDay, 
+  isAfter, 
+  addDays, 
+  addWeeks, 
+  addMonths, 
+  addYears, 
+  subMonths, 
+  startOfDay 
+} from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import ClientStatementModalV2 from '../../components/v2/ClientStatementModalV2';
+
+interface Client {
+  id: string;
+  name: string;
+  phone: string | null;
+  status: boolean;
+  created_at: string;
+}
+
+interface FinancialTransaction {
+  id: string;
+  type: 'income' | 'expense';
+  amount: number;
+  date: string;
+  description: string | null;
+  status: 'paid' | 'pending' | 'cancelled';
+  client_id: string | null;
+  modalidade: string | null;
+  recurrence_enabled: boolean;
+  recurrence_period: string | null;
+  recurrence_interval: number | null;
+  recurrence_end_date: string | null;
+  installment_total: number | null;
+  installment_current: number | null;
+  parent_id: string | null;
+}
 
 interface ClientFinancialSummary {
   client_id: string;
@@ -39,7 +84,9 @@ interface ClientFinancialSummary {
 
 export default function RecurrenceV2() {
   const { user } = useAuth();
-  const [summaries, setSummaries] = useState<ClientFinancialSummary[]>([]);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [clients, setClients] = useState<Client[]>([]);
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -73,17 +120,48 @@ export default function RecurrenceV2() {
     if (!user) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('client_financial_summary')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('client_name', { ascending: true });
 
-      if (error) throw error;
-      setSummaries(data || []);
+      // 1. Buscar todos os clientes ativos (não deletados) do usuário
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('id, name, phone, status, created_at')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .order('name', { ascending: true });
+
+      if (clientsError) throw clientsError;
+
+      // 2. Buscar todas as transações financeiras associadas a clientes deste usuário que não estejam canceladas
+      const { data: txData, error: txError } = await supabase
+        .from('financial_transactions')
+        .select(`
+          id, 
+          type, 
+          amount, 
+          date, 
+          description, 
+          status, 
+          client_id,
+          modalidade,
+          recurrence_enabled,
+          recurrence_period,
+          recurrence_interval,
+          recurrence_end_date,
+          installment_total,
+          installment_current,
+          parent_id
+        `)
+        .eq('user_id', user.id)
+        .not('client_id', 'is', null)
+        .neq('status', 'cancelled');
+
+      if (txError) throw txError;
+
+      setClients(clientsData || []);
+      setTransactions(txData || []);
     } catch (err) {
-      console.error('Erro ao carregar resumos de netting:', err);
-      toast.error('Não foi possível carregar as recorrências.');
+      console.error('Erro ao carregar dados financeiros por cliente:', err);
+      toast.error('Não foi possível carregar os resumos de recorrência.');
     } finally {
       setLoading(false);
     }
@@ -138,35 +216,184 @@ export default function RecurrenceV2() {
     }
   };
 
-  // Filtragem em Memória
+  // --- MOTOR DE VIRTUALIZAÇÃO TEMPORAL DE RECORRÊNCIAS E AGREGADOR DE NETTING ---
+  
+  // 1. Expande e processa todas as transações (pontuais e recorrentes virtuais) relevantes até o fim do mês selecionado
+  const expandedTransactions = useMemo(() => {
+    if (transactions.length === 0) return [];
+
+    const limitDate = endOfMonth(currentMonth); // Limite superior para projeções virtuais
+    const allInstances: FinancialTransaction[] = [];
+
+    transactions.forEach(tx => {
+      // Caso 1: Transação Pontual ou Filha de Recorrência (Instância já materializada com parent_id)
+      if (!tx.recurrence_enabled || tx.parent_id !== null) {
+        allInstances.push(tx);
+        return;
+      }
+
+      // Caso 2: Recorrência Pai (Mãe). Projeta instâncias dinâmicas virtuais.
+      const startDate = parseISO(tx.date);
+      const interval = tx.recurrence_interval || 1;
+      const period = tx.recurrence_period || 'monthly';
+      const endDate = tx.recurrence_end_date ? parseISO(tx.recurrence_end_date) : null;
+
+      let instanceDate = startDate;
+      let iteration = 0;
+      const maxIterations = 500; // Proteção contra loop infinito
+
+      while (iteration < maxIterations) {
+        // Se ultrapassou o fim do mês visualizado, para a projeção temporal
+        if (isAfter(startOfDay(instanceDate), limitDate)) break;
+
+        // Se há data de término na recorrência e passou dela, para
+        if (endDate && isAfter(startOfDay(instanceDate), endDate)) break;
+
+        // Adiciona a instância se for a primeira (mãe original) ou se já passou da primeira
+        if (iteration === 0) {
+          allInstances.push(tx); // A mãe original carrega o status real do banco
+        } else {
+          // Verifica se já existe uma instância REAL materializada no banco para esta mesma data de recorrência
+          // para não duplicar a cobrança (o banco materializa quando o usuário paga ou altera uma específica)
+          const hasMaterializedChild = transactions.some(child => 
+            child.parent_id === tx.id && 
+            isSameDay(parseISO(child.date), instanceDate)
+          );
+
+          if (!hasMaterializedChild) {
+            // Cria instância virtual pendente
+            allInstances.push({
+              ...tx,
+              id: `${tx.id}-virtual-${instanceDate.getTime()}`,
+              date: instanceDate.toISOString(),
+              status: 'pending', // Virtuais são sempre geradas em aberto
+              parent_id: tx.id
+            });
+          }
+        }
+
+        // Avança a data da recorrência
+        iteration++;
+        switch (period) {
+          case 'daily':
+            instanceDate = addDays(instanceDate, interval);
+            break;
+          case 'weekly':
+            instanceDate = addWeeks(instanceDate, interval);
+            break;
+          case 'monthly':
+            instanceDate = addMonths(instanceDate, interval);
+            break;
+          case 'yearly':
+            instanceDate = addYears(instanceDate, interval);
+            break;
+          default:
+            iteration = maxIterations; // Sai do loop em caso de inconsistência
+        }
+      }
+    });
+
+    return allInstances;
+  }, [transactions, currentMonth]);
+
+  // 2. Agrega os dados das transações virtualizadas agrupando-as por cliente e filtrando pelo mês corrente
+  const clientSummaries = useMemo(() => {
+    if (clients.length === 0) return [];
+
+    const startOfCurrent = startOfMonth(currentMonth);
+    const endOfCurrent = endOfMonth(currentMonth);
+    const today = startOfDay(new Date());
+
+    const summariesMap = new Map<string, ClientFinancialSummary>();
+
+    // Pré-popula o mapa com todos os clientes para garantir que apareçam na lista
+    clients.forEach(c => {
+      summariesMap.set(c.id, {
+        client_id: c.id,
+        client_name: c.name,
+        client_phone: c.phone,
+        client_status: c.status ? 'active' : 'inactive',
+        total_income_pending: 0,
+        total_expense_pending: 0,
+        net_balance: 0,
+        overdue_balance: 0,
+        pending_transactions_count: 0,
+        has_recurrence: false
+      });
+    });
+
+    // Varre todas as transações expandidas para alimentar os saldos
+    expandedTransactions.forEach(tx => {
+      if (!tx.client_id || !summariesMap.has(tx.client_id)) return;
+
+      const clientData = summariesMap.get(tx.client_id)!;
+      const txDate = parseISO(tx.date);
+      const isPending = tx.status === 'pending';
+
+      // Determina se o cliente tem qualquer transação configurada com recorrência ativa
+      if (tx.recurrence_enabled) {
+        clientData.has_recurrence = true;
+      }
+
+      // Só somamos no Netting e totais as transações que caem dentro do mês selecionado e estão PENDENTES
+      const isInSelectedMonth = !isBefore(txDate, startOfCurrent) && !isAfter(txDate, endOfCurrent);
+      
+      if (isInSelectedMonth && isPending) {
+        clientData.pending_transactions_count += 1;
+        if (tx.type === 'income') {
+          clientData.total_income_pending += tx.amount;
+          clientData.net_balance += tx.amount;
+        } else if (tx.type === 'expense') {
+          clientData.total_expense_pending += tx.amount;
+          clientData.net_balance -= tx.amount; // Despesa diminui o líquido
+        }
+      }
+
+      // Cálculo de Dívidas Atrasadas (Overdue): Independe do mês visualizado. 
+      // Considera transações vencidas até ONTEM em qualquer período cronológico que ainda estejam pendentes.
+      if (isPending && isBefore(startOfDay(txDate), today)) {
+        if (tx.type === 'income') {
+          clientData.overdue_balance += tx.amount;
+        } else if (tx.type === 'expense') {
+          clientData.overdue_balance -= tx.amount;
+        }
+      }
+    });
+
+    return Array.from(summariesMap.values()).sort((a, b) => a.client_name.localeCompare(b.client_name));
+  }, [clients, expandedTransactions, currentMonth]);
+
+  // 3. Filtragem em memória dos resumos dos clientes de acordo com os controles da UI
   const filteredSummaries = useMemo(() => {
-    return summaries.filter(item => {
-      // Filtro de Busca
+    return clientSummaries.filter(item => {
+      // Filtro de Busca Textual
       const nameMatch = item.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         (item.client_phone && item.client_phone.includes(searchTerm));
       if (!nameMatch) return false;
 
-      // Filtro de Status do Cliente
+      // Filtro de Status Cadastral
       if (statusFilter !== 'all' && item.client_status !== statusFilter) return false;
 
-      // Filtro de Origem (V1 Legacy vs V2)
+      // Filtro de Maturidade/Origem (V1 vs V2)
       if (originFilter === 'legacy' && item.has_recurrence) return false;
       if (originFilter === 'migrated' && !item.has_recurrence) return false;
 
-      // Filtro de Situação Financeira
-      if (balanceFilter === 'overdue' && item.overdue_balance <= 0) return false; // Considera atrasado se saldo pendente vencido maior que 0
+      // Filtro de Comportamento de Saldo do Mês
+      if (balanceFilter === 'overdue' && item.overdue_balance <= 0) return false;
       if (balanceFilter === 'net-positive' && item.net_balance <= 0) return false;
       if (balanceFilter === 'net-negative' && item.net_balance >= 0) return false;
 
       return true;
     });
-  }, [summaries, searchTerm, statusFilter, originFilter, balanceFilter]);
+  }, [clientSummaries, searchTerm, statusFilter, originFilter, balanceFilter]);
 
-  // Agregações Globais
+  // 4. Agregações de KPI no nível da página inteira baseadas nos resumos atuais
   const globalStats = useMemo(() => {
-    return summaries.reduce((acc, cur) => {
+    return clientSummaries.reduce((acc, cur) => {
       acc.totalNetPending += (cur.net_balance || 0);
-      acc.totalOverdue += (cur.overdue_balance || 0);
+      acc.totalOverdue += (cur.overdue_balance > 0 ? cur.overdue_balance : 0);
+      
+      // Contagem para o banner de migração pendente (ativos sem recorrências mapeadas)
       if (!cur.has_recurrence && cur.client_status === 'active') {
         acc.pendingMigrationCount += 1;
       }
@@ -176,7 +403,7 @@ export default function RecurrenceV2() {
       totalOverdue: 0,
       pendingMigrationCount: 0
     });
-  }, [summaries]);
+  }, [clientSummaries]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -406,6 +633,42 @@ export default function RecurrenceV2() {
         </button>
       </div>
 
+      {/* Navegador Temporal Mensal */}
+      <div className="flex items-center justify-center animate-fadeIn">
+        <div className="inline-flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300">
+          <button
+            onClick={() => setCurrentMonth(prev => addMonths(prev, -1))}
+            className="p-2 hover:bg-slate-50 hover:text-teal-600 text-slate-500 active:scale-90 rounded-xl transition-all border border-transparent hover:border-slate-100"
+            title="Mês Anterior"
+          >
+            <ChevronLeft size={18} className="stroke-[2.5]" />
+          </button>
+          
+          <div className="flex items-center gap-2 px-5 py-1.5 bg-slate-50/50 border border-slate-100 rounded-xl select-none">
+            <Calendar size={15} className="text-teal-600" />
+            <span className="text-sm font-black text-slate-700 capitalize min-w-[150px] text-center tracking-tight">
+              {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+            </span>
+          </div>
+          
+          <button
+            onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
+            className="p-2 hover:bg-slate-50 hover:text-teal-600 text-slate-500 active:scale-90 rounded-xl transition-all border border-transparent hover:border-slate-100"
+            title="Próximo Mês"
+          >
+            <ChevronRight size={18} className="stroke-[2.5]" />
+          </button>
+
+          <button
+            onClick={() => setCurrentMonth(new Date())}
+            className="ml-1 px-3 py-2 bg-teal-50 border border-teal-100 text-xs font-black text-[#0d9488] hover:bg-teal-100 hover:text-[#0f766e] active:scale-95 rounded-xl transition-all"
+            title="Voltar para o mês atual"
+          >
+            Hoje
+          </button>
+        </div>
+      </div>
+
       {/* Resumo de KPIs (Cards Superiores) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card 1: Saldo Líquido Pendente Consolidado */}
@@ -553,160 +816,287 @@ export default function RecurrenceV2() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredSummaries.map((cliente) => {
-            const isOverdue = cliente.overdue_balance > 0;
-            const isPositive = cliente.net_balance >= 0;
-            const isV1 = !cliente.has_recurrence;
-            const isImporting = importingClientId === cliente.client_id;
+        <div className="animate-fadeIn space-y-4">
+          {/* 1. TABELA DESKTOP (Visível de md em diante) */}
+          <div className="hidden md:block bg-white rounded-[2rem] border border-slate-200/70 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-200/60">
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                    <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Origem</th>
+                    <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Receita Prevista</th>
+                    <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Despesa Prevista</th>
+                    <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Saldo Líquido (Netting)</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSummaries.map((cliente) => {
+                    const isOverdue = cliente.overdue_balance > 0;
+                    const isPositive = cliente.net_balance >= 0;
+                    const isV1 = !cliente.has_recurrence;
+                    const isImporting = importingClientId === cliente.client_id;
 
-            return (
-              <div 
-                key={cliente.client_id}
-                className={`bg-white rounded-[2rem] border p-5 flex flex-col shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 duration-300 group relative overflow-hidden ${
-                  isOverdue ? 'border-rose-200/80 bg-rose-50/10' : 'border-slate-200/70'
-                }`}
-              >
-                {/* Destaque Vermelho caso esteja em atraso */}
-                {isOverdue && (
-                  <div className="absolute top-0 right-0 bg-rose-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl border-l border-b border-rose-700/20 flex items-center gap-1 z-10 shadow-sm animate-pulse">
-                    <AlertTriangle size={10} /> Atrasado
-                  </div>
-                )}
-
-                {/* Header do Card (Avatar + Nome + Tags) */}
-                <div className="flex gap-3 mb-4 relative">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-black tracking-tight transition-transform group-hover:scale-105 ${
-                    cliente.client_status === 'active' 
-                      ? 'bg-teal-50 text-[#0d9488]' 
-                      : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {getInitials(cliente.client_name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-black text-slate-800 leading-snug truncate group-hover:text-teal-600 transition-colors" title={cliente.client_name}>
-                      {cliente.client_name}
-                    </h3>
-                    
-                    {cliente.client_phone ? (
-                      <a 
-                        href={`tel:${cliente.client_phone}`}
-                        className="flex items-center gap-1 text-slate-400 hover:text-teal-600 font-bold text-xs mt-0.5 transition-colors self-start"
+                    return (
+                      <tr 
+                        key={cliente.client_id} 
+                        className={`group transition-colors hover:bg-slate-50/40 ${
+                          isOverdue ? 'bg-rose-50/5' : ''
+                        }`}
                       >
-                        <Phone size={10} />
-                        {cliente.client_phone}
-                      </a>
-                    ) : (
-                      <span className="text-slate-300 text-xs italic font-medium">Sem telefone</span>
-                    )}
+                        {/* Coluna Cliente */}
+                        <td className="py-4 px-6 min-w-[220px]">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs tracking-tight shadow-sm border ${
+                              cliente.client_status === 'active' 
+                                ? 'bg-teal-50 border-teal-100 text-[#0d9488]' 
+                                : 'bg-slate-100 border-slate-200 text-slate-500'
+                            }`}>
+                              {getInitials(cliente.client_name)}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-black text-slate-700 truncate group-hover:text-teal-600 transition-colors" title={cliente.client_name}>
+                                {cliente.client_name}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {cliente.client_phone ? (
+                                  <a 
+                                    href={`tel:${cliente.client_phone}`}
+                                    className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-teal-600 font-bold transition-colors"
+                                  >
+                                    <Phone size={9} />
+                                    {cliente.client_phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-slate-300 italic font-medium">Sem telefone</span>
+                                )}
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                  cliente.client_status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'
+                                }`} title={cliente.client_status === 'active' ? 'Cadastro Ativo' : 'Cadastro Inativo'} />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
 
-                    {/* Badges de Info */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border ${
-                        cliente.client_status === 'active'
-                          ? 'bg-emerald-50/60 text-emerald-700 border-emerald-200/50'
-                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                        {/* Coluna Origem/Versão */}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          {isV1 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-lg text-[9px] font-extrabold uppercase tracking-wider shadow-sm">
+                              <DatabaseZap size={9} className="stroke-[2.5]" /> V1 Legado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-lg text-[9px] font-extrabold uppercase tracking-wider shadow-sm">
+                              <CheckCircle2 size={9} className="stroke-[2.5]" /> V2 Mapeado
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Coluna Receita */}
+                        <td className="py-4 px-4 text-right font-medium text-sm text-slate-700 whitespace-nowrap font-manrope">
+                          {cliente.total_income_pending > 0 ? (
+                            <span className="text-emerald-600 font-bold flex items-center justify-end gap-1">
+                              <ArrowUpRight size={12} className="stroke-[2.5]" />
+                              {formatCurrency(cliente.total_income_pending)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 font-bold">-</span>
+                          )}
+                        </td>
+
+                        {/* Coluna Despesa */}
+                        <td className="py-4 px-4 text-right font-medium text-sm text-slate-700 whitespace-nowrap font-manrope">
+                          {cliente.total_expense_pending > 0 ? (
+                            <span className="text-rose-500 font-bold flex items-center justify-end gap-1">
+                              <ArrowDownRight size={12} className="stroke-[2.5]" />
+                              {formatCurrency(cliente.total_expense_pending)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 font-bold">-</span>
+                          )}
+                        </td>
+
+                        {/* Coluna Saldo Líquido + Alertas */}
+                        <td className="py-4 px-4 text-right whitespace-nowrap">
+                          <div className="flex flex-col items-end">
+                            <span className={`text-[15px] font-black tracking-tight font-manrope ${
+                              isPositive ? 'text-emerald-600' : 'text-rose-600'
+                            }`}>
+                              {formatCurrency(cliente.net_balance)}
+                            </span>
+                            
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[9px] font-extrabold bg-slate-50 border border-slate-200/60 px-1 rounded text-slate-500">
+                                {cliente.pending_transactions_count} doc(s)
+                              </span>
+                              {isOverdue && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-600 text-white rounded text-[8px] font-black uppercase tracking-widest shadow-sm animate-pulse">
+                                  <AlertTriangle size={8} /> Atraso: {formatCurrency(cliente.overdue_balance)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Coluna Ações */}
+                        <td className="py-4 px-6 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-2">
+                            {isV1 && (
+                              <button
+                                onClick={() => handleImportHistory(cliente.client_id, cliente.client_name)}
+                                disabled={isImporting}
+                                title="Importar Histórico para o Novo Fluxo (V2)"
+                                className={`p-2 rounded-xl border transition-all active:scale-90 ${
+                                  isImporting 
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                                }`}
+                              >
+                                <DatabaseZap size={14} className={isImporting ? 'animate-pulse' : ''} />
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleOpenStatement(cliente.client_id, cliente.client_name)}
+                              title="Visualizar Extrato Consolidado"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white hover:bg-slate-900 active:scale-95 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm transition-all"
+                            >
+                              <FileText size={12} />
+                              Extrato
+                            </button>
+
+                            <button
+                              onClick={() => handleOpenShare(cliente.client_id, cliente.client_name)}
+                              title="Compartilhar acesso ao extrato"
+                              className="p-2 bg-teal-50 border border-teal-200/60 text-[#0d9488] hover:bg-teal-100 hover:border-teal-300 active:scale-90 rounded-xl transition-all shadow-sm"
+                            >
+                              <Share2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 2. LISTA RESPONSIVA MOBILE (Visível de md para baixo) */}
+          <div className="block md:hidden space-y-3">
+            {filteredSummaries.map((cliente) => {
+              const isOverdue = cliente.overdue_balance > 0;
+              const isPositive = cliente.net_balance >= 0;
+              const isV1 = !cliente.has_recurrence;
+              const isImporting = importingClientId === cliente.client_id;
+
+              return (
+                <div 
+                  key={cliente.client_id}
+                  className={`bg-white rounded-3xl border p-4 shadow-sm flex flex-col gap-3.5 relative overflow-hidden ${
+                    isOverdue ? 'border-rose-200 bg-rose-50/5' : 'border-slate-200/70'
+                  }`}
+                >
+                  {/* Linha 1: Info Básica + Badge de Versão */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs tracking-tight shrink-0 border ${
+                        cliente.client_status === 'active' 
+                          ? 'bg-teal-50 border-teal-100 text-[#0d9488]' 
+                          : 'bg-slate-100 border-slate-200 text-slate-500'
                       }`}>
-                        {cliente.client_status === 'active' ? 'Ativo' : 'Inativo'}
-                      </span>
+                        {getInitials(cliente.client_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-slate-700 truncate">
+                          {cliente.client_name}
+                        </h4>
+                        {cliente.client_phone && (
+                          <a href={`tel:${cliente.client_phone}`} className="flex items-center gap-1 text-[10px] text-slate-400 font-bold mt-0.5">
+                            <Phone size={9} />
+                            {cliente.client_phone}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {isV1 ? (
+                      <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded text-[8px] font-black uppercase tracking-wider">V1</span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded text-[8px] font-black uppercase tracking-wider">V2</span>
+                    )}
+                  </div>
 
-                      {isV1 ? (
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1">
-                          <DatabaseZap size={10} /> V1
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1">
-                          <CheckCircle2 size={10} /> V2 Mapeado
-                        </span>
-                      )}
+                  {/* Linha 2: Cards Internos de Receitas e Despesas */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-slate-50/50 border border-slate-200/40 rounded-xl p-2">
+                      <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block">Receita</span>
+                      <div className="text-xs font-black text-emerald-600 mt-0.5 flex items-center gap-0.5">
+                        <ArrowUpRight size={10} className="stroke-[3]" />
+                        {formatCurrency(cliente.total_income_pending)}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50/50 border border-slate-200/40 rounded-xl p-2">
+                      <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block">Despesa</span>
+                      <div className="text-xs font-black text-rose-500 mt-0.5 flex items-center gap-0.5">
+                        <ArrowDownRight size={10} className="stroke-[3]" />
+                        {formatCurrency(cliente.total_expense_pending)}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Bloco de Netting Consolidado */}
-                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 mb-4 space-y-2 flex-1 flex flex-col justify-center">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Saldo Líquido (Netting)</span>
-                    <span className={`text-xs font-extrabold rounded px-1.5 py-0.5 border ${
-                      isPositive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
-                      {cliente.pending_transactions_count} docs
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className={`text-xl font-black tracking-tight font-manrope ${
+                  {/* Linha 3: Netting & Alertas de Atrasado */}
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 flex flex-col justify-center">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Saldo Líquido (Netting)</span>
+                      <span className="text-[9px] font-extrabold bg-white border border-slate-200 px-1 rounded text-slate-500">
+                        {cliente.pending_transactions_count} doc(s)
+                      </span>
+                    </div>
+                    <div className={`text-lg font-black tracking-tight font-manrope mt-1 ${
                       isPositive ? 'text-emerald-600' : 'text-rose-600'
                     }`}>
                       {formatCurrency(cliente.net_balance)}
-                    </span>
+                    </div>
+                    
+                    {isOverdue && (
+                      <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-rose-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest animate-pulse">
+                        <AlertTriangle size={10} /> Atrasado: {formatCurrency(cliente.overdue_balance)}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Detalhamento visual (Receitas x Despesas Pendentes) */}
-                  <div className="flex items-center gap-4 pt-2 border-t border-slate-200/50 text-xs font-bold">
-                    <div className="flex items-center gap-1 text-emerald-600">
-                      <ArrowUpRight size={12} />
-                      <span>{formatCurrency(cliente.total_income_pending)}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-rose-500">
-                      <ArrowDownRight size={12} />
-                      <span>{formatCurrency(cliente.total_expense_pending)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Aviso de Atrasado Interno */}
-                {isOverdue && (
-                  <div className="bg-rose-600/10 rounded-xl border border-rose-200 p-2.5 flex items-center gap-2 mb-4">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-                    <div className="text-[11px] font-bold text-rose-700">
-                      Há <span className="font-black">{formatCurrency(cliente.overdue_balance)}</span> já vencidos para este cliente.
-                    </div>
-                  </div>
-                )}
-
-                {/* Bloco de Botões e Ações */}
-                <div className="grid grid-cols-1 gap-2 pt-2 border-t border-slate-100 mt-auto">
-                  
-                  {/* Botão de Importação (Aparece apenas para V1) */}
-                  {isV1 && (
-                    <button
-                      onClick={() => handleImportHistory(cliente.client_id, cliente.client_name)}
-                      disabled={isImporting}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
-                        isImporting 
-                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait'
-                          : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:shadow-sm active:scale-98'
-                      }`}
-                    >
-                      <DatabaseZap size={14} className={isImporting ? 'animate-pulse' : ''} />
-                      {isImporting ? 'Processando Importação...' : 'Importar Histórico V1'}
-                    </button>
-                  )}
-
-                  {/* Botões Visualizar Extrato Cronológico e Compartilhar */}
-                  <div className="flex items-center gap-2">
+                  {/* Linha 4: Botões de Ações Rápidas */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    {isV1 && (
+                      <button
+                        onClick={() => handleImportHistory(cliente.client_id, cliente.client_name)}
+                        disabled={isImporting}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all active:scale-[0.97] ${
+                          isImporting 
+                            ? 'bg-slate-100 text-slate-400 border-slate-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}
+                      >
+                        <DatabaseZap size={12} /> Importar
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenStatement(cliente.client_id, cliente.client_name)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-white hover:bg-slate-900 active:bg-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all"
+                      className="flex-[2] flex items-center justify-center gap-1.5 py-2 bg-slate-800 text-white hover:bg-slate-900 active:scale-[0.97] rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm"
                     >
-                      <FileText size={14} />
-                      Extrato
+                      <FileText size={12} /> Extrato
                     </button>
-
                     <button
                       onClick={() => handleOpenShare(cliente.client_id, cliente.client_name)}
-                      title="Compartilhar acesso ao extrato"
-                      className="flex items-center justify-center p-2.5 bg-teal-50 border border-teal-200/80 text-[#0d9488] hover:bg-teal-100 hover:border-teal-300 active:scale-95 rounded-xl transition-all"
+                      className="p-2 bg-teal-50 border border-teal-200/60 text-[#0d9488] active:scale-[0.95] rounded-xl"
                     >
-                      <Share2 size={15} />
+                      <Share2 size={14} />
                     </button>
                   </div>
-
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
