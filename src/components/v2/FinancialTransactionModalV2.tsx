@@ -185,15 +185,8 @@ const FinancialTransactionModalV2 = ({
     setAmount(formattedValue);
   };
 
-  const handleCombinedChange = (value: string) => {
-    const [newType, newModalidade] = value.split('_') as [
-      'income' | 'expense' | 'transfer',
-      'unica' | 'parcelada' | 'recorrente'
-    ];
-    setType(newType);
-    setModalidade(newModalidade);
-    setTimeout(() => amountInputRef.current?.focus(), 50);
-  };
+
+
 
   // Popular campos ao editar
   useEffect(() => {
@@ -585,10 +578,40 @@ const FinancialTransactionModalV2 = ({
           <form onSubmit={handleSubmit} className="p-4 md:p-6 flex flex-col lg:flex-row gap-6 space-y-4 lg:space-y-0">
             {/* Coluna Esquerda: Informações Básicas e Modalidade */}
             <div className="flex-1 space-y-4">
-              {/* Linha 1: Valor e Seletor Unificado de Lançamento */}
+              {/* Seletor de Tipo (Despesa / Receita / Transferência) */}
+              <div className="space-y-2">
+                <div className="h-5 flex items-center px-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
+                </div>
+                <div className="bg-slate-100/80 p-1 rounded-2xl flex items-center gap-1 w-full border border-slate-200/30">
+                  <button 
+                    type="button"
+                    onClick={() => { setType('expense'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${type === 'expense' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}`}
+                  >
+                    🔴 Despesa
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => { setType('income'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${type === 'income' ? 'bg-teal-600 text-white shadow-md shadow-teal-600/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}`}
+                  >
+                    🟢 Receita
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => { setType('transfer'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${type === 'transfer' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}`}
+                  >
+                    🔵 Transferência
+                  </button>
+                </div>
+              </div>
+
+              {/* Linha: Valor e Modalidade */}
               <div className="grid grid-cols-12 gap-4">
                 {/* Valor */}
-                <div className="col-span-4 space-y-2">
+                <div className="col-span-5 space-y-2">
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Valor (R$)</label>
                   </div>
@@ -606,36 +629,26 @@ const FinancialTransactionModalV2 = ({
                   </div>
                 </div>
 
-                {/* Tipo de Lançamento Combinado */}
-                <div className="col-span-8 space-y-2">
+                {/* Modalidade */}
+                <div className="col-span-7 space-y-2">
                   <div className="h-5 flex items-center px-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Lançamento</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Modalidade</label>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={`${type}_${modalidade}`}
-                      onChange={(e) => handleCombinedChange(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs font-bold cursor-pointer appearance-none pr-8 text-slate-700 focus:outline-none"
-                    >
-                      <optgroup label="🟢 Receitas" className="font-bold text-teal-600 bg-white">
-                        <option value="income_unica" className="text-slate-700 bg-white">🟢 Receita - Única</option>
-                        <option value="income_parcelada" className="text-slate-700 bg-white">🟢 Receita - Parcelada</option>
-                        <option value="income_recorrente" className="text-slate-700 bg-white">🟢 Receita - Recorrente</option>
-                      </optgroup>
-                      <optgroup label="🔴 Despesas" className="font-bold text-rose-600 bg-white">
-                        <option value="expense_unica" className="text-slate-700 bg-white">🔴 Despesa - Única</option>
-                        <option value="expense_parcelada" className="text-slate-700 bg-white">🔴 Despesa - Parcelada</option>
-                        <option value="expense_recorrente" className="text-slate-700 bg-white">🔴 Despesa - Recorrente</option>
-                      </optgroup>
-                      <optgroup label="🔵 Transferências" className="font-bold text-indigo-600 bg-white">
-                        <option value="transfer_unica" className="text-slate-700 bg-white">🔵 Transferência - Única</option>
-                        <option value="transfer_parcelada" className="text-slate-700 bg-white">🔵 Transferência - Parcelada</option>
-                        <option value="transfer_recorrente" className="text-slate-700 bg-white">🔵 Transferência - Recorrente</option>
-                      </optgroup>
-                    </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                      <ChevronDown size={14} />
-                    </div>
+                  <div className="bg-slate-100/80 p-1 rounded-2xl flex items-center gap-1 w-full border border-slate-200/30">
+                    {(['unica', 'parcelada', 'recorrente'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setModalidade(m)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                          modalidade === m 
+                            ? 'bg-slate-950 text-white shadow-md shadow-slate-950/10' 
+                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'
+                        }`}
+                      >
+                        {m === 'unica' ? 'Única' : m === 'parcelada' ? 'Parcelada' : 'Recorrente'}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
