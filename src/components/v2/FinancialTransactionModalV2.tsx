@@ -153,6 +153,8 @@ const FinancialTransactionModalV2 = ({
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [isModalidadeDropdownOpen, setIsModalidadeDropdownOpen] = useState(false);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [isDestAccountDropdownOpen, setIsDestAccountDropdownOpen] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -494,12 +496,12 @@ const FinancialTransactionModalV2 = ({
         is_total_value: modalidade === 'parcelada' ? isTotalValue : undefined,
         due_day: modalidade === 'recorrente' ? dueDay : undefined,
         recurrence_interval: modalidade === 'recorrente' ? recurrenceInterval : undefined,
-        auto_confirm: autoConfirm,
+        auto_confirm: isCreditCard ? false : autoConfirm,
         invoice_month: isCreditCard ? invoiceMonth : undefined,
         card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
       };
 
-      payload.status = isConfirming ? 'paid' : status;
+      payload.status = isConfirming ? 'paid' : (isCreditCard ? 'pending' : status);
 
       if (isEditing) {
         // Se estiver confirmando, o escopo é SEMPRE 'this' e não abre o modal de escopo
@@ -583,28 +585,66 @@ const FinancialTransactionModalV2 = ({
                 <div className="h-5 flex items-center px-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
                 </div>
-                <div className="bg-slate-100/80 p-1 rounded-2xl flex items-center gap-1 w-full border border-slate-200/30">
-                  <button 
+                <div className="relative">
+                  <button
                     type="button"
-                    onClick={() => { setType('expense'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
-                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${type === 'expense' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}`}
+                    onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                    className={`w-full px-4 py-2.5 rounded-2xl border-none focus:ring-2 text-sm font-extrabold flex items-center justify-between transition-all ${
+                      type === 'income' 
+                        ? 'bg-teal-50 text-teal-700 focus:ring-teal-500/20 hover:bg-teal-100/75' 
+                        : type === 'expense' 
+                          ? 'bg-rose-50 text-rose-700 focus:ring-rose-500/20 hover:bg-rose-100/75' 
+                          : 'bg-indigo-50 text-indigo-700 focus:ring-indigo-500/20 hover:bg-indigo-100/75'
+                    }`}
                   >
-                    🔴 Despesa
+                    <span>
+                      {type === 'expense' && '🔴 Despesa'}
+                      {type === 'income' && '🟢 Receita'}
+                      {type === 'transfer' && '🔵 Transferência'}
+                    </span>
+                    <ChevronDown size={16} className={`transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  <button 
-                    type="button"
-                    onClick={() => { setType('income'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
-                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${type === 'income' ? 'bg-teal-600 text-white shadow-md shadow-teal-600/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}`}
-                  >
-                    🟢 Receita
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => { setType('transfer'); setTimeout(() => amountInputRef.current?.focus(), 50); }}
-                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${type === 'transfer' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'}`}
-                  >
-                    🔵 Transferência
-                  </button>
+
+                  {isTypeDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setIsTypeDropdownOpen(false)} />
+                      <div className="absolute z-30 mt-1 w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setType('expense');
+                            setIsTypeDropdownOpen(false);
+                            setTimeout(() => amountInputRef.current?.focus(), 50);
+                          }}
+                          className={`flex items-center w-full px-4 py-3 text-left hover:bg-rose-50 text-sm font-bold text-rose-700 transition-colors ${type === 'expense' ? 'bg-rose-50/50' : ''}`}
+                        >
+                          🔴 Despesa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setType('income');
+                            setIsTypeDropdownOpen(false);
+                            setTimeout(() => amountInputRef.current?.focus(), 50);
+                          }}
+                          className={`flex items-center w-full px-4 py-3 text-left hover:bg-teal-50 text-sm font-bold text-teal-700 transition-colors ${type === 'income' ? 'bg-teal-50/50' : ''}`}
+                        >
+                          🟢 Receita
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setType('transfer');
+                            setIsTypeDropdownOpen(false);
+                            setTimeout(() => amountInputRef.current?.focus(), 50);
+                          }}
+                          className={`flex items-center w-full px-4 py-3 text-left hover:bg-indigo-50 text-sm font-bold text-indigo-700 transition-colors ${type === 'transfer' ? 'bg-indigo-50/50' : ''}`}
+                        >
+                          🔵 Transferência
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -634,21 +674,57 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Modalidade</label>
                   </div>
-                  <div className="bg-slate-100/80 p-1 rounded-2xl flex items-center gap-1 w-full border border-slate-200/30">
-                    {(['unica', 'parcelada', 'recorrente'] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setModalidade(m)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                          modalidade === m 
-                            ? 'bg-slate-950 text-white shadow-md shadow-slate-950/10' 
-                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'
-                        }`}
-                      >
-                        {m === 'unica' ? 'Única' : m === 'parcelada' ? 'Parcelada' : 'Recorrente'}
-                      </button>
-                    ))}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalidadeDropdownOpen(!isModalidadeDropdownOpen)}
+                      className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-slate-500/20 text-sm font-extrabold flex items-center justify-between text-slate-700 transition-all hover:bg-slate-100/75"
+                    >
+                      <span>
+                        {modalidade === 'unica' && '📅 Única'}
+                        {modalidade === 'parcelada' && '💳 Parcelada'}
+                        {modalidade === 'recorrente' && '🔄 Recorrente'}
+                      </span>
+                      <ChevronDown size={16} className={`transition-transform duration-200 ${isModalidadeDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isModalidadeDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setIsModalidadeDropdownOpen(false)} />
+                        <div className="absolute z-30 mt-1 w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalidade('unica');
+                              setIsModalidadeDropdownOpen(false);
+                            }}
+                            className={`flex items-center w-full px-4 py-3 text-left hover:bg-slate-50 text-sm font-bold text-slate-700 transition-colors ${modalidade === 'unica' ? 'bg-slate-50/50' : ''}`}
+                          >
+                            📅 Única
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalidade('parcelada');
+                              setIsModalidadeDropdownOpen(false);
+                            }}
+                            className={`flex items-center w-full px-4 py-3 text-left hover:bg-slate-50 text-sm font-bold text-slate-700 transition-colors ${modalidade === 'parcelada' ? 'bg-slate-50/50' : ''}`}
+                          >
+                            💳 Parcelada
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalidade('recorrente');
+                              setIsModalidadeDropdownOpen(false);
+                            }}
+                            className={`flex items-center w-full px-4 py-3 text-left hover:bg-slate-50 text-sm font-bold text-slate-700 transition-colors ${modalidade === 'recorrente' ? 'bg-slate-50/50' : ''}`}
+                          >
+                            🔄 Recorrente
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -883,8 +959,8 @@ const FinancialTransactionModalV2 = ({
                   </div>
                 </div>
 
-                {/* Destination Account Select (Transfer only) or Category Select */}
-                {type === 'transfer' ? (
+                {/* Destination Account Select (Transfer only) */}
+                {type === 'transfer' && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="h-5 flex items-center px-1">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Conta de Destino</label>
@@ -947,131 +1023,132 @@ const FinancialTransactionModalV2 = ({
                       )}
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="h-5 flex items-center px-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
-                    </div>
-                    <div className="relative">
-                      <button 
-                        type="button"
-                        onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                        className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
-                      >
-                        {categoryId ? (
-                          <div className="flex items-center gap-3">
-                            <span className="text-base">{categories.find(c => c.id === categoryId)?.icon || '📁'}</span>
-                            <span className="font-medium text-slate-700 text-xs leading-tight truncate">{categories.find(c => c.id === categoryId)?.name}</span>
+                )}
+
+                {/* Category Select (Always visible, spans 2 columns if transfer) */}
+                <div className={`space-y-2 ${type === 'transfer' ? 'md:col-span-2' : ''}`}>
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
+                  </div>
+                  <div className="relative">
+                    <button 
+                      type="button"
+                      onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                      className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
+                    >
+                      {categoryId ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-base">{categories.find(c => c.id === categoryId)?.icon || '📁'}</span>
+                          <span className="font-medium text-slate-700 text-xs leading-tight truncate">{categories.find(c => c.id === categoryId)?.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-xs">Selecione uma categoria</span>
+                      )}
+                      <ChevronDown size={14} className="text-slate-400" />
+                    </button>
+
+                    {isCategoryDropdownOpen && (
+                      <>
+                        {/* Backdrop transparente para fechar ao clicar fora sem atrapalhar o foco do input */}
+                        <div 
+                          className="fixed inset-0 z-20" 
+                          onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
+                        />
+                        <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[260px]">
+                          {/* Campo de busca de categoria */}
+                          <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
+                            <Search size={14} className="text-slate-400 shrink-0 ml-2" />
+                            <input
+                              type="text"
+                              value={categorySearch}
+                              onChange={(e) => setCategorySearch(e.target.value)}
+                              placeholder="Buscar categoria..."
+                              autoFocus
+                              className="w-full bg-transparent border-none focus:ring-0 text-xs py-1 placeholder:text-slate-400 text-slate-700 focus:outline-none focus:border-none"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                }
+                              }}
+                            />
+                            {categorySearch && (
+                              <button
+                                type="button"
+                                onClick={() => setCategorySearch('')}
+                                className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">Selecione uma categoria</span>
-                        )}
-                        <ChevronDown size={14} className="text-slate-400" />
-                      </button>
 
-                      {isCategoryDropdownOpen && (
-                        <>
-                          {/* Backdrop transparente para fechar ao clicar fora sem atrapalhar o foco do input */}
-                          <div 
-                            className="fixed inset-0 z-20" 
-                            onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
-                          />
-                          <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[260px]">
-                            {/* Campo de busca de categoria */}
-                            <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
-                              <Search size={14} className="text-slate-400 shrink-0 ml-2" />
-                              <input
-                                type="text"
-                                value={categorySearch}
-                                onChange={(e) => setCategorySearch(e.target.value)}
-                                placeholder="Buscar categoria..."
-                                autoFocus
-                                className="w-full bg-transparent border-none focus:ring-0 text-xs py-1 placeholder:text-slate-400 text-slate-700 focus:outline-none focus:border-none"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                  }
-                                }}
-                              />
-                              {categorySearch && (
-                                <button
-                                  type="button"
-                                  onClick={() => setCategorySearch('')}
-                                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Container com rolagem */}
-                            <div className="overflow-y-auto flex-1">
-                              {filteredCategories.parentCategories.length === 0 ? (
-                                <div className="px-4 py-6 text-center text-xs text-slate-400">
-                                  Nenhuma categoria encontrada para "{categorySearch}"
-                                </div>
-                              ) : (
-                                filteredCategories.parentCategories.map(parent => {
-                                  const children = filteredCategories.getChildren(parent.id);
-                                  return (
-                                    <div key={parent.id} className="border-b border-slate-50 last:border-0 last:mb-0 mb-1 pb-1">
+                          {/* Container com rolagem */}
+                          <div className="overflow-y-auto flex-1">
+                            {filteredCategories.parentCategories.length === 0 ? (
+                              <div className="px-4 py-6 text-center text-xs text-slate-400">
+                                Nenhuma categoria encontrada para "{categorySearch}"
+                              </div>
+                            ) : (
+                              filteredCategories.parentCategories.map(parent => {
+                                const children = filteredCategories.getChildren(parent.id);
+                                return (
+                                  <div key={parent.id} className="border-b border-slate-50 last:border-0 last:mb-0 mb-1 pb-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => { 
+                                        setCategoryId(parent.id); 
+                                        setIsCategoryDropdownOpen(false); 
+                                        setCategorySearch(''); 
+                                      }}
+                                      className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                                    >
+                                      <span className="text-xl">{parent.icon || '📁'}</span>
+                                      <div className="flex flex-col">
+                                        <span className="font-bold text-slate-700 text-sm leading-tight">{parent.name}</span>
+                                        {children.length > 0 && (
+                                          <span className="text-[10px] text-slate-400">Possui subcategorias</span>
+                                        )}
+                                      </div>
+                                    </button>
+                                    {children.map(child => (
                                       <button
+                                        key={child.id}
                                         type="button"
                                         onClick={() => { 
-                                          setCategoryId(parent.id); 
+                                          setCategoryId(child.id); 
                                           setIsCategoryDropdownOpen(false); 
                                           setCategorySearch(''); 
                                         }}
-                                        className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                                        className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
                                       >
-                                        <span className="text-xl">{parent.icon || '📁'}</span>
-                                        <div className="flex flex-col">
-                                          <span className="font-bold text-slate-700 text-sm leading-tight">{parent.name}</span>
-                                          {children.length > 0 && (
-                                            <span className="text-[10px] text-slate-400">Possui subcategorias</span>
-                                          )}
-                                        </div>
+                                        <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
+                                        <span className="text-sm font-medium text-slate-600">{child.name}</span>
                                       </button>
-                                      {children.map(child => (
-                                        <button
-                                          key={child.id}
-                                          type="button"
-                                          onClick={() => { 
-                                            setCategoryId(child.id); 
-                                            setIsCategoryDropdownOpen(false); 
-                                            setCategorySearch(''); 
-                                          }}
-                                          className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
-                                        >
-                                          <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
-                                          <span className="text-sm font-medium text-slate-600">{child.name}</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  );
-                                })
-                              )}
-                              <div className="border-t border-slate-100 bg-white sticky bottom-0 z-10">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsCategoryDropdownOpen(false);
-                                    setCategorySearch('');
-                                    setIsQuickAddCategoryOpen(true);
-                                  }}
-                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
-                                >
-                                  <Plus size={18} />
-                                  <span className="text-sm">Adicionar categoria</span>
-                                </button>
-                              </div>
+                                    ))}
+                                  </div>
+                                );
+                              })
+                            )}
+                            <div className="border-t border-slate-100 bg-white sticky bottom-0 z-10">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsCategoryDropdownOpen(false);
+                                  setCategorySearch('');
+                                  setIsQuickAddCategoryOpen(true);
+                                }}
+                                className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors text-teal-600 font-bold"
+                              >
+                                <Plus size={18} />
+                                <span className="text-sm">Adicionar categoria</span>
+                              </button>
                             </div>
                           </div>
-                        </>
-                      )}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Conditional Credit Card Details */}
@@ -1252,7 +1329,7 @@ const FinancialTransactionModalV2 = ({
               </div>
 
               {/* Toggles de Status e Confirmação */}
-              {!isConfirming && (
+              {!isConfirming && !isCreditCard && (
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   {/* Lançamento Pago/Recebido Toggle */}
                   <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
