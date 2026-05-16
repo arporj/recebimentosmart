@@ -554,7 +554,7 @@ const FinancialTransactionModalV2 = ({
       />
       
       <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col">
-        <header className="px-6 py-4 flex justify-between items-center border-b border-slate-100 bg-white/50 shrink-0">
+        <header className="px-4 py-3 md:px-6 md:py-4 flex justify-between items-center border-b border-slate-100 bg-white/50 shrink-0">
           <div className="flex items-center gap-3">
             <button 
               onClick={onClose}
@@ -572,7 +572,7 @@ const FinancialTransactionModalV2 = ({
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-8">
+          <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-5">
             {/* Toggle Type */}
             <div className="flex justify-center">
               <div className="bg-slate-100 p-1 rounded-2xl flex items-center w-full max-w-xs shadow-inner">
@@ -612,13 +612,13 @@ const FinancialTransactionModalV2 = ({
                   value={amount}
                   onChange={handleAmountChange}
                   placeholder="0,00"
-                  className="bg-transparent border-none focus:ring-0 text-5xl md:text-6xl font-extrabold text-slate-900 text-center w-full max-w-md placeholder-slate-200"
+                  className="bg-transparent border-none focus:ring-0 text-4xl md:text-5xl font-extrabold text-slate-900 text-center w-full max-w-md placeholder-slate-200"
                 />
               </div>
             </div>
 
             {/* Modalidade de Lançamento */}
-            <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="p-4 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center justify-between">
                 <div className="w-full text-center">
                   <h3 className="text-sm font-bold text-slate-900">Modalidade do Lançamento</h3>
@@ -626,7 +626,7 @@ const FinancialTransactionModalV2 = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {(['unica', 'parcelada', 'recorrente'] as const).map((m) => (
                   <button
                     key={m}
@@ -756,7 +756,7 @@ const FinancialTransactionModalV2 = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Date Input */}
               <div className="space-y-2">
@@ -771,7 +771,7 @@ const FinancialTransactionModalV2 = ({
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                   />
                 </div>
               </div>
@@ -785,12 +785,12 @@ const FinancialTransactionModalV2 = ({
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Account Select */}
               <div className="space-y-2">
                 <div className="h-5 flex items-center px-1">
@@ -803,7 +803,7 @@ const FinancialTransactionModalV2 = ({
                     type="button"
                     onClick={() => setIsAccountDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setIsAccountDropdownOpen(false), 200)}
-                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
                   >
                     {accountId ? (
                       <div className="flex items-center gap-3">
@@ -868,7 +868,7 @@ const FinancialTransactionModalV2 = ({
                       type="button"
                       onClick={() => setIsDestAccountDropdownOpen(true)}
                       onBlur={() => setTimeout(() => setIsDestAccountDropdownOpen(false), 200)}
-                      className="w-full px-4 py-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-500/20 text-sm text-left flex items-center justify-between"
+                      className="w-full px-4 py-3 bg-indigo-50/50 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-500/20 text-sm text-left flex items-center justify-between"
                     >
                       {destinationAccountId ? (
                         <div className="flex items-center gap-3">
@@ -930,7 +930,7 @@ const FinancialTransactionModalV2 = ({
                     <button 
                       type="button"
                       onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                      className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
+                      className="w-full px-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
                     >
                       {categoryId ? (
                         <div className="flex items-center gap-3">
@@ -1050,7 +1050,7 @@ const FinancialTransactionModalV2 = ({
 
             {/* Conditional Credit Card Details */}
             {isCreditCard && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
                 <div className="space-y-2">
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Lançar na fatura de</label>
@@ -1059,7 +1059,7 @@ const FinancialTransactionModalV2 = ({
                     type="month"
                     value={invoiceMonth}
                     onChange={(e) => setInvoiceMonth(e.target.value)}
-                    className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                   />
                 </div>
 
@@ -1071,7 +1071,7 @@ const FinancialTransactionModalV2 = ({
                     <select 
                       value={cardHolderName}
                       onChange={(e) => setCardHolderName(e.target.value)}
-                      className="w-full px-4 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer"
+                      className="w-full px-4 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer"
                       style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                     >
                       <option value="">Selecione o titular</option>
@@ -1099,7 +1099,7 @@ const FinancialTransactionModalV2 = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Client Select */}
               <div className="space-y-2">
                 <div className="h-5 flex justify-between items-center px-1">
@@ -1119,7 +1119,7 @@ const FinancialTransactionModalV2 = ({
                   <select 
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full pl-12 pr-10 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
+                    className="w-full pl-12 pr-10 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm !appearance-none bg-none cursor-pointer [&::-ms-expand]:hidden"
                     style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                   >
                     <option value="">Nenhum cliente selecionado</option>
@@ -1228,7 +1228,7 @@ const FinancialTransactionModalV2 = ({
             {!isConfirming && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Lançamento Pago/Recebido Toggle */}
-                <div className="p-6 bg-slate-50 rounded-3xl flex items-center gap-3">
+                <div className="p-4 bg-slate-50 rounded-3xl flex items-center gap-3">
                   <button 
                     type="button"
                     onClick={() => setStatus(status === 'paid' ? 'pending' : 'paid')}
@@ -1247,7 +1247,7 @@ const FinancialTransactionModalV2 = ({
                 </div>
 
                 {/* Auto Confirm Toggle */}
-                <div className="p-6 bg-slate-50 rounded-3xl flex items-center gap-3">
+                <div className="p-4 bg-slate-50 rounded-3xl flex items-center gap-3">
                   <button 
                     type="button"
                     onClick={() => setAutoConfirm(!autoConfirm)}
@@ -1265,7 +1265,7 @@ const FinancialTransactionModalV2 = ({
           </form>
         </div>
 
-        <footer className="p-6 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between shrink-0">
+        <footer className="p-4 md:px-6 md:py-4 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between shrink-0">
           <button 
             type="button"
             onClick={onClose}
