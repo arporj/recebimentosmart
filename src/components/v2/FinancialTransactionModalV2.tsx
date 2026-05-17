@@ -163,7 +163,59 @@ const FinancialTransactionModalV2 = ({
   const [categorySearch, setCategorySearch] = useState('');
   const [pendingAccountType, setPendingAccountType] = useState<'origin' | 'destination'>('origin');
 
+  const [isMobile, setIsMobile] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const tagRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const destAccountRef = useRef<HTMLDivElement>(null);
+  
+  const [openCategoryUpward, setOpenCategoryUpward] = useState(false);
+  const [openTagUpward, setOpenTagUpward] = useState(false);
+  const [openAccountUpward, setOpenAccountUpward] = useState(false);
+  const [openDestAccountUpward, setOpenDestAccountUpward] = useState(false);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [destAccountSearch, setDestAccountSearch] = useState('');
+
+  // Rastrear dispositivo mobile vs desktop
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (isCategoryDropdownOpen && categoryRef.current) {
+      const rect = categoryRef.current.getBoundingClientRect();
+      const bottomSpace = window.innerHeight - rect.bottom;
+      setOpenCategoryUpward(bottomSpace < 280);
+    }
+  }, [isCategoryDropdownOpen]);
+
+  useEffect(() => {
+    if (isTagDropdownOpen && tagRef.current) {
+      const rect = tagRef.current.getBoundingClientRect();
+      const bottomSpace = window.innerHeight - rect.bottom;
+      setOpenTagUpward(bottomSpace < 210);
+    }
+  }, [isTagDropdownOpen]);
+
+  useEffect(() => {
+    if (isAccountDropdownOpen && accountRef.current) {
+      const rect = accountRef.current.getBoundingClientRect();
+      const bottomSpace = window.innerHeight - rect.bottom;
+      setOpenAccountUpward(bottomSpace < 280);
+    }
+  }, [isAccountDropdownOpen]);
+
+  useEffect(() => {
+    if (isDestAccountDropdownOpen && destAccountRef.current) {
+      const rect = destAccountRef.current.getBoundingClientRect();
+      const bottomSpace = window.innerHeight - rect.bottom;
+      setOpenDestAccountUpward(bottomSpace < 280);
+    }
+  }, [isDestAccountDropdownOpen]);
 
   // Auto-focus amount field when modal opens for a new transaction
   useEffect(() => {
@@ -577,7 +629,7 @@ const FinancialTransactionModalV2 = ({
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <form onSubmit={handleSubmit} className="p-4 md:p-6 flex flex-col lg:flex-row gap-6 space-y-4 lg:space-y-0">
+          <form onSubmit={handleSubmit} className="p-4 md:p-6 pb-24 md:pb-32 flex flex-col lg:flex-row gap-6 space-y-4 lg:space-y-0">
             {/* Coluna Esquerda: Informações Básicas e Modalidade */}
             <div className="flex-1 space-y-4">
               {/* Seletor de Tipo (Despesa / Receita / Transferência) */}
@@ -585,7 +637,7 @@ const FinancialTransactionModalV2 = ({
                 <div className="h-5 flex items-center px-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
                 </div>
-                <div className="relative">
+                <div className={`relative ${isTypeDropdownOpen ? 'z-40' : 'z-10'}`}>
                   <button
                     type="button"
                     onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
@@ -674,7 +726,7 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Modalidade</label>
                   </div>
-                  <div className="relative">
+                  <div className={`relative ${isModalidadeDropdownOpen ? 'z-40' : 'z-10'}`}>
                     <button
                       type="button"
                       onClick={() => setIsModalidadeDropdownOpen(!isModalidadeDropdownOpen)}
@@ -900,11 +952,15 @@ const FinancialTransactionModalV2 = ({
                       {type === 'transfer' ? 'Conta de Origem' : 'Conta'}
                     </label>
                   </div>
-                  <div className="relative">
+                  <div className={`relative ${isAccountDropdownOpen ? 'z-40' : 'z-10'}`}>
                     <button 
                       type="button"
                       onClick={() => setIsAccountDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setIsAccountDropdownOpen(false), 200)}
+                      onBlur={() => {
+                        if (!isMobile) {
+                          setTimeout(() => setIsAccountDropdownOpen(false), 200);
+                        }
+                      }}
                       className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm text-left flex items-center justify-between"
                     >
                       {accountId ? (
@@ -921,8 +977,8 @@ const FinancialTransactionModalV2 = ({
                       <ChevronDown size={14} className="text-slate-400" />
                     </button>
 
-                    {isAccountDropdownOpen && (
-                      <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
+                    {isAccountDropdownOpen && !isMobile && (
+                      <div className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto`}>
                         {accounts.map(a => (
                           <button
                             key={a.id}
@@ -965,11 +1021,15 @@ const FinancialTransactionModalV2 = ({
                     <div className="h-5 flex items-center px-1">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Conta de Destino</label>
                     </div>
-                    <div className="relative">
+                    <div className={`relative ${isDestAccountDropdownOpen ? 'z-40' : 'z-10'}`}>
                       <button 
                         type="button"
                         onClick={() => setIsDestAccountDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setIsDestAccountDropdownOpen(false), 200)}
+                        onBlur={() => {
+                          if (!isMobile) {
+                            setTimeout(() => setIsDestAccountDropdownOpen(false), 200);
+                          }
+                        }}
                         className="w-full px-4 py-2.5 bg-indigo-50/50 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-500/20 text-sm text-left flex items-center justify-between"
                       >
                         {destinationAccountId ? (
@@ -986,8 +1046,8 @@ const FinancialTransactionModalV2 = ({
                         <ChevronDown size={14} className="text-indigo-400" />
                       </button>
 
-                      {isDestAccountDropdownOpen && (
-                        <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto">
+                      {isDestAccountDropdownOpen && !isMobile && (
+                        <div className={`absolute z-30 ${openDestAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto`}>
                           {accounts.filter(a => a.id !== accountId).map(a => (
                             <button
                               key={a.id}
@@ -1030,7 +1090,7 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Categoria</label>
                   </div>
-                  <div className="relative">
+                  <div ref={categoryRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-10'}`}>
                     <button 
                       type="button"
                       onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
@@ -1047,14 +1107,14 @@ const FinancialTransactionModalV2 = ({
                       <ChevronDown size={14} className="text-slate-400" />
                     </button>
 
-                    {isCategoryDropdownOpen && (
+                    {isCategoryDropdownOpen && !isMobile && (
                       <>
                         {/* Backdrop transparente para fechar ao clicar fora sem atrapalhar o foco do input */}
                         <div 
                           className="fixed inset-0 z-20" 
                           onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
                         />
-                        <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[260px]">
+                        <div className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[260px]`}>
                           {/* Campo de busca de categoria */}
                           <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
                             <Search size={14} className="text-slate-400 shrink-0 ml-2" />
@@ -1240,20 +1300,33 @@ const FinancialTransactionModalV2 = ({
                 {/* Tags */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1">Tags</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={tagSearch}
-                      onChange={e => { setTagSearch(e.target.value); setIsTagDropdownOpen(true); }}
-                      onFocus={() => setIsTagDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setIsTagDropdownOpen(false), 200)}
-                      placeholder="Adicionar tags..."
-                      className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs pr-8"
-                    />
-                    <TagIcon size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <div ref={tagRef} className={`relative ${isTagDropdownOpen ? 'z-40' : 'z-10'}`}>
+                    {isMobile ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsTagDropdownOpen(true)}
+                        className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none text-left focus:ring-2 focus:ring-teal-500/20 text-xs pr-8 text-slate-400 flex items-center justify-between"
+                      >
+                        <span>Adicionar tags...</span>
+                        <TagIcon size={12} className="text-slate-400" />
+                      </button>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={tagSearch}
+                          onChange={e => { setTagSearch(e.target.value); setIsTagDropdownOpen(true); }}
+                          onFocus={() => setIsTagDropdownOpen(true)}
+                          onBlur={() => setTimeout(() => setIsTagDropdownOpen(false), 200)}
+                          placeholder="Adicionar tags..."
+                          className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs pr-8"
+                        />
+                        <TagIcon size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </>
+                    )}
                     {/* Dropdown */}
-                    {isTagDropdownOpen && (
-                      <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto">
+                    {isTagDropdownOpen && !isMobile && (
+                      <div className={`absolute z-30 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto`}>
                         {tags
                           .filter(t => !selectedTags.includes(t.id))
                           .filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
@@ -1398,6 +1471,424 @@ const FinancialTransactionModalV2 = ({
           </button>
         </footer>
       </div>
+
+      {/* ====================================================================== */}
+      {/* OVERLAYS FULL-SCREEN MOBILE */}
+      {/* ====================================================================== */}
+      
+      {/* 1. Categoria (Mobile Full Screen) */}
+      {isMobile && isCategoryDropdownOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300">
+          <header className="px-4 py-4 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <button 
+                type="button"
+                onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <ArrowRight size={20} className="text-slate-500 rotate-180" />
+              </button>
+              <span className="text-base font-bold text-slate-900 font-manrope">Pesquisar categoria</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCategoryDropdownOpen(false);
+                setCategorySearch('');
+                setIsQuickAddCategoryOpen(true);
+              }}
+              className="p-2 bg-teal-50 text-teal-600 rounded-full hover:bg-teal-100 transition-colors"
+            >
+              <Plus size={20} />
+            </button>
+          </header>
+
+          <div className="p-4 bg-white border-b border-slate-100">
+            <div className="relative flex items-center bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+              <Search size={18} className="text-slate-400 shrink-0 mr-3" />
+              <input
+                type="text"
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                placeholder="Digite o nome da categoria..."
+                autoFocus
+                className="w-full bg-transparent border-none focus:ring-0 text-sm py-0 placeholder:text-slate-400 text-slate-700 focus:outline-none"
+              />
+              {categorySearch && (
+                <button
+                  type="button"
+                  onClick={() => setCategorySearch('')}
+                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {filteredCategories.parentCategories.length === 0 ? (
+              <div className="text-center py-12 text-sm text-slate-400">
+                Nenhuma categoria encontrada para "{categorySearch}"
+              </div>
+            ) : (
+              filteredCategories.parentCategories.map(parent => {
+                const children = filteredCategories.getChildren(parent.id);
+                return (
+                  <div key={parent.id} className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => { 
+                        setCategoryId(parent.id); 
+                        setIsCategoryDropdownOpen(false); 
+                        setCategorySearch(''); 
+                      }}
+                      className="flex items-center gap-3 w-full text-left p-1 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xl border border-slate-100/50">
+                        {parent.icon || '📁'}
+                      </div>
+                      <span className="font-bold text-slate-800 text-sm">{parent.name}</span>
+                    </button>
+                    {children.length > 0 && (
+                      <div className="pl-4 pr-1 py-1 border-l-2 border-slate-100 space-y-2">
+                        {children.map(child => (
+                          <button
+                            key={child.id}
+                            type="button"
+                            onClick={() => { 
+                              setCategoryId(child.id); 
+                              setIsCategoryDropdownOpen(false); 
+                              setCategorySearch(''); 
+                            }}
+                            className="flex items-center gap-3 w-full text-left py-2 px-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent active:bg-slate-50"
+                          >
+                            <span className="text-base shrink-0">{child.icon || '↘️'}</span>
+                            <span className="text-xs font-semibold text-slate-600 truncate">{child.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Conta de Origem (Mobile Full Screen) */}
+      {isMobile && isAccountDropdownOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300">
+          <header className="px-4 py-4 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <button 
+                type="button"
+                onClick={() => { setIsAccountDropdownOpen(false); setAccountSearch(''); }}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <ArrowRight size={20} className="text-slate-500 rotate-180" />
+              </button>
+              <span className="text-base font-bold text-slate-900 font-manrope">
+                {type === 'transfer' ? 'Pesquisar conta de origem' : 'Pesquisar conta'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAccountDropdownOpen(false);
+                setAccountSearch('');
+                setPendingAccountType('origin');
+                setIsQuickAddAccountOpen(true);
+              }}
+              className="p-2 bg-teal-50 text-teal-600 rounded-full hover:bg-teal-100 transition-colors"
+            >
+              <Plus size={20} />
+            </button>
+          </header>
+
+          <div className="p-4 bg-white border-b border-slate-100">
+            <div className="relative flex items-center bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+              <Search size={18} className="text-slate-400 shrink-0 mr-3" />
+              <input
+                type="text"
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                placeholder="Digite o nome da conta..."
+                autoFocus
+                className="w-full bg-transparent border-none focus:ring-0 text-sm py-0 placeholder:text-slate-400 text-slate-700 focus:outline-none"
+              />
+              {accountSearch && (
+                <button
+                  type="button"
+                  onClick={() => setAccountSearch('')}
+                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {accounts
+              .filter(a => !accountSearch.trim() || a.name.toLowerCase().includes(accountSearch.toLowerCase()))
+              .length === 0 ? (
+                <div className="text-center py-12 text-sm text-slate-400">
+                  Nenhuma conta encontrada para "{accountSearch}"
+                </div>
+              ) : (
+                accounts
+                  .filter(a => !accountSearch.trim() || a.name.toLowerCase().includes(accountSearch.toLowerCase()))
+                  .map(a => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => {
+                        setAccountId(a.id);
+                        setIsAccountDropdownOpen(false);
+                        setAccountSearch('');
+                      }}
+                      className="flex items-center gap-4 w-full text-left p-3.5 bg-white rounded-2xl border border-slate-100 shadow-sm active:bg-slate-50 transition-colors"
+                    >
+                      <AccountIcon account={a} />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-bold text-slate-800 text-sm block leading-tight">{a.name}</span>
+                        <span className="text-xs text-slate-400 block mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                      </div>
+                    </button>
+                  ))
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Conta de Destino (Mobile Full Screen) */}
+      {isMobile && isDestAccountDropdownOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300">
+          <header className="px-4 py-4 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <button 
+                type="button"
+                onClick={() => { setIsDestAccountDropdownOpen(false); setDestAccountSearch(''); }}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <ArrowRight size={20} className="text-slate-500 rotate-180" />
+              </button>
+              <span className="text-base font-bold text-slate-900 font-manrope">Pesquisar conta de destino</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsDestAccountDropdownOpen(false);
+                setDestAccountSearch('');
+                setPendingAccountType('destination');
+                setIsQuickAddAccountOpen(true);
+              }}
+              className="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-colors"
+            >
+              <Plus size={20} />
+            </button>
+          </header>
+
+          <div className="p-4 bg-white border-b border-slate-100">
+            <div className="relative flex items-center bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+              <Search size={18} className="text-slate-400 shrink-0 mr-3" />
+              <input
+                type="text"
+                value={destAccountSearch}
+                onChange={(e) => setDestAccountSearch(e.target.value)}
+                placeholder="Digite o nome da conta..."
+                autoFocus
+                className="w-full bg-transparent border-none focus:ring-0 text-sm py-0 placeholder:text-slate-400 text-slate-700 focus:outline-none"
+              />
+              {destAccountSearch && (
+                <button
+                  type="button"
+                  onClick={() => setDestAccountSearch('')}
+                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {accounts
+              .filter(a => a.id !== accountId)
+              .filter(a => !destAccountSearch.trim() || a.name.toLowerCase().includes(destAccountSearch.toLowerCase()))
+              .length === 0 ? (
+                <div className="text-center py-12 text-sm text-slate-400">
+                  Nenhuma conta de destino encontrada para "{destAccountSearch}"
+                </div>
+              ) : (
+                accounts
+                  .filter(a => a.id !== accountId)
+                  .filter(a => !destAccountSearch.trim() || a.name.toLowerCase().includes(destAccountSearch.toLowerCase()))
+                  .map(a => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => {
+                        setDestinationAccountId(a.id);
+                        setIsDestAccountDropdownOpen(false);
+                        setDestAccountSearch('');
+                      }}
+                      className="flex items-center gap-4 w-full text-left p-3.5 bg-white rounded-2xl border border-slate-100 shadow-sm active:bg-slate-50 transition-colors"
+                    >
+                      <AccountIcon account={a} />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-bold text-slate-800 text-sm block leading-tight">{a.name}</span>
+                        <span className="text-xs text-slate-400 block mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                      </div>
+                    </button>
+                  ))
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Tags (Mobile Full Screen) */}
+      {isMobile && isTagDropdownOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300">
+          <header className="px-4 py-4 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <button 
+                type="button"
+                onClick={() => { setIsTagDropdownOpen(false); setTagSearch(''); }}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <ArrowRight size={20} className="text-slate-500 rotate-180" />
+              </button>
+              <span className="text-base font-bold text-slate-900 font-manrope">Pesquisar tags</span>
+            </div>
+            <span className="text-xs text-slate-400 font-semibold">{selectedTags.length} selecionadas</span>
+          </header>
+
+          <div className="p-4 bg-white border-b border-slate-100 space-y-3">
+            <div className="relative flex items-center bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+              <Search size={18} className="text-slate-400 shrink-0 mr-3" />
+              <input
+                type="text"
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                placeholder="Digite para buscar ou criar tag..."
+                autoFocus
+                className="w-full bg-transparent border-none focus:ring-0 text-sm py-0 placeholder:text-slate-400 text-slate-700 focus:outline-none"
+              />
+              {tagSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTagSearch('')}
+                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {selectedTags.map(tagId => {
+                  const tag = tags.find(t => t.id === tagId);
+                  if (!tag) return null;
+                  return (
+                    <span key={tag.id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white shadow-sm shrink-0">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color || '#64748b' }} />
+                      {tag.name}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTags(prev => prev.filter(id => id !== tagId))}
+                        className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {tagSearch.trim() && !tags.some(t => t.name.toLowerCase() === tagSearch.toLowerCase()) && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!user) return;
+                  const { data, error } = await supabase
+                    .from('financial_tags')
+                    .insert({ user_id: user.id, name: tagSearch.trim(), color: '#14b8a6' })
+                    .select()
+                    .single();
+                  if (error) { toast.error('Erro ao criar tag: ' + error.message); return; }
+                  setTags(prev => [...prev, data]);
+                  setSelectedTags(prev => [...prev, data.id]);
+                  setTagSearch('');
+                  toast.success(`Tag "${data.name}" criada!`);
+                }}
+                className="flex items-center gap-3 w-full text-left p-3.5 bg-teal-50 border border-teal-100 rounded-2xl hover:bg-teal-100/70 transition-colors text-teal-600 font-bold"
+              >
+                <Plus size={18} />
+                <span className="text-sm">Criar nova tag "{tagSearch.trim()}"</span>
+              </button>
+            )}
+
+            {tags
+              .filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+              .length === 0 && !tagSearch.trim() ? (
+                <div className="text-center py-12 text-sm text-slate-400">
+                  Nenhuma tag cadastrada.
+                </div>
+              ) : (
+                tags
+                  .filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+                  .map(tag => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTags(prev => prev.filter(id => id !== tag.id));
+                          } else {
+                            setSelectedTags(prev => [...prev, tag.id]);
+                          }
+                        }}
+                        className={`flex items-center justify-between w-full text-left p-3.5 bg-white rounded-2xl border transition-all ${
+                          isSelected 
+                            ? 'border-teal-500 bg-teal-50/20 shadow-sm' 
+                            : 'border-slate-100 shadow-sm active:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-3.5 h-3.5 rounded-full shrink-0 border" style={{ backgroundColor: tag.color || '#64748b', borderColor: isSelected ? 'transparent' : '#e2e8f0' }} />
+                          <span className="font-bold text-slate-800 text-sm">{tag.name}</span>
+                        </div>
+                        {isSelected && (
+                          <div className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-[10px]">
+                            ✓
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+              )}
+          </div>
+
+          <footer className="p-4 bg-white border-t border-slate-100 flex gap-3 sticky bottom-0 z-10">
+            <button
+              type="button"
+              onClick={() => { setIsTagDropdownOpen(false); setTagSearch(''); }}
+              className="w-full py-3.5 rounded-2xl bg-slate-900 text-white font-bold text-xs uppercase tracking-widest text-center shadow-lg shadow-slate-900/10 active:scale-[0.98] transition-transform"
+            >
+              Concluir
+            </button>
+          </footer>
+        </div>
+      )}
 
       <ModalOpcaoRecorrente
         isOpen={isScopeModalOpen}
