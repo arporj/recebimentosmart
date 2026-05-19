@@ -9,6 +9,7 @@ import ConfirmModal from './ConfirmModal';
 
 interface Plan {
     name: string;
+    slug: string;
     price_monthly: number;
 }
 
@@ -31,7 +32,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
     const [isAdmin, setIsAdmin] = useState(user.is_admin);
 
     // State for Subscription
-    const [selectedPlan, setSelectedPlan] = useState<string>(user.plan_name || '');
+    const [selectedPlan, setSelectedPlan] = useState<string>(user.plan_name?.toLowerCase() || 'free');
     const [validUntil, setValidUntil] = useState(user.subscription_end_date ? new Date(user.subscription_end_date).toISOString().split('T')[0] : '');
     const [plans, setPlans] = useState<Plan[]>([]);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -75,8 +76,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
 
     useEffect(() => {
         if (selectedPlan && plans.length > 0) {
-            const normalizedSelected = normalizeString(selectedPlan);
-            const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
+            const plan = plans.find(p => p.slug === selectedPlan);
 
             if (plan) {
                 const price = Number(plan.price_monthly) || 0;
@@ -93,8 +93,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
         try {
             setUpdating(true);
 
-            const normalizedSelected = normalizeString(selectedPlan);
-            const plan = plans.find(p => normalizeString(p.name) === normalizedSelected);
+            const plan = plans.find(p => p.slug === selectedPlan);
             const planPrice = plan ? plan.price_monthly : 0;
             const creditsToUse = (useCredits && planPrice > 0) ? Math.min(userCredits || 0, 5) : 0;
 
@@ -102,7 +101,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                 p_user_id: user.id,
                 p_payment_date: paymentDate,
                 p_amount: paymentAmount,
-                p_plan_name: plan ? plan.name : selectedPlan,
+                p_plan_name: plan ? plan.slug : selectedPlan,
                 p_credits_used: creditsToUse
             });
             
@@ -172,19 +171,12 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
         setUpdating(true);
 
         try {
-            // 1. Update Plan if changed
-            if (selectedPlan !== user.plan_name) {
-                const normalizedSelected = normalizeString(selectedPlan);
-                const planMap: Record<string, string> = {
-                    'basico': 'basico', 'basic': 'basico',
-                    'pro': 'pro', 'pró': 'pro',
-                    'premium': 'premium', 'trial': 'trial'
-                };
-                const dbPlanName = planMap[normalizedSelected] || normalizedSelected;
-
+            // 1. Update Plan if changed — selectedPlan stores the slug (lowercase) from the DB
+            const currentPlanSlug = user.plan_name?.toLowerCase() || 'free';
+            if (selectedPlan !== currentPlanSlug) {
                 const { error: planError } = await supabase.rpc('admin_set_user_plan', {
                     user_id_to_update: user.id,
-                    new_plan_name: dbPlanName
+                    new_plan_name: selectedPlan
                 });
                 if (planError) throw planError;
             }
@@ -213,7 +205,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
 
             onUserUpdate({
                 ...user,
-                plan_name: selectedPlan,
+                plan_name: selectedPlan, // slug value, consistent with DB
                 is_admin: isAdmin,
                 subscription_end_date: validUntil ? new Date(validUntil).toISOString() : user.subscription_end_date
             });
@@ -370,8 +362,8 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                                     onChange={(e) => setSelectedPlan(e.target.value)}
                                     className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-custom/20 focus:border-custom outline-none transition-all"
                                 >
-                                    {plans.filter(p => p.name !== 'Premium').map((p, index) => (
-                                        <option key={`${p.name}-${index}`} value={p.name}>{p.name}</option>
+                                    {plans.map((p, index) => (
+                                        <option key={`${p.slug}-${index}`} value={p.slug}>{p.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -440,7 +432,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                                                     </label>
                                                     {useCredits && (
                                                         <p className="text-xs text-emerald-600 mt-1 font-medium">
-                                                            Desconto aplicado: R$ {(Math.min(userCredits, 5) * ((plans.find(p => p.name === selectedPlan)?.price_monthly || 0) * 0.20)).toFixed(2)}
+                                                            Desconto aplicado: R$ {(Math.min(userCredits, 5) * ((plans.find(p => p.slug === selectedPlan)?.price_monthly || 0) * 0.20)).toFixed(2)}
                                                         </p>
                                                     )}
                                                 </div>
