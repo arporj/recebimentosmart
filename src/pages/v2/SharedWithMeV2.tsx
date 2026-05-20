@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   Check, 
@@ -7,17 +7,33 @@ import {
   Clock, 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
   Mail,
-  User,
   Shield,
-  MessageSquare,
-  HelpCircle
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Calendar
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import ClientStatementModalV2 from '../../components/v2/ClientStatementModalV2';
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  isAfter, 
+  isBefore, 
+  isSameMonth, 
+  parseISO, 
+  addDays, 
+  addWeeks, 
+  addMonths, 
+  addYears, 
+  isSameDay,
+  subMonths
+} from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface SharedItem {
   id: string;
@@ -45,7 +61,9 @@ interface SharedItem {
 export default function SharedWithMeV2() {
   const { user } = useAuth();
   const [shares, setShares] = useState<SharedItem[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   
   // Controle do modal de extrato
   const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
@@ -65,12 +83,12 @@ export default function SharedWithMeV2() {
       const { data: sharesData, error: sharesError } = await supabase
         .from('client_shares')
         .select(`
-          id,
-          client_id,
-          status,
-          created_at,
-          client:clients!inner(id, name, phone),
-          sender:profiles!client_shares_sender_id_fkey(id, name, email)
+           id,
+           client_id,
+           status,
+           created_at,
+           client:clients!inner(id, name, phone),
+           sender:profiles!client_shares_sender_id_fkey(id, name, email)
         `)
         .eq('receiver_email', user?.email)
         .order('created_at', { ascending: false });
@@ -82,42 +100,22 @@ export default function SharedWithMeV2() {
       // Filtra compartilhamentos rejeitados (não exibir na interface de recebidos)
       items = items.filter(item => item.status !== 'rejected');
 
-      // 2. Para itens aceitos, buscar saldo consolidado dinamicamente das transações pendentes
+      // 2. Para itens aceitos, buscar transações físicas ativas para expansão local de recorrências
       const acceptedItems = items.filter(item => item.status === 'accepted');
       
       if (acceptedItems.length > 0) {
         const clientIds = acceptedItems.map(item => item.client_id);
         
-        // Buscar todas as transações pendentes vinculadas a esses clientes (a RLS vai filtrar corretamente)
         const { data: txData, error: txError } = await supabase
           .from('financial_transactions')
-          .select('client_id, type, amount')
-          .eq('status', 'pending')
+          .select('id, client_id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current')
+          .neq('status', 'cancelled')
           .in('client_id', clientIds);
 
-        if (!txError && txData) {
-          // Processa totais por cliente
-          items = items.map(item => {
-            if (item.status !== 'accepted') return item;
-
-            const clientTx = txData.filter(t => t.client_id === item.client_id);
-            const totalIncome = clientTx
-              .filter(t => t.type === 'income')
-              .reduce((sum, t) => sum + Number(t.amount), 0);
-            const totalExpense = clientTx
-              .filter(t => t.type === 'expense')
-              .reduce((sum, t) => sum + Number(t.amount), 0);
-
-            return {
-              ...item,
-              financials: {
-                totalIncome,
-                totalExpense,
-                netBalance: totalIncome - totalExpense
-              }
-            };
-          });
-        }
+        if (txError) throw txError;
+        setRawTransactions(txData || []);
+      } else {
+        setRawTransactions([]);
       }
 
       setShares(items);
@@ -128,6 +126,104 @@ export default function SharedWithMeV2() {
       setLoading(false);
     }
   };
+
+  const processedShares = useMemo((): SharedItem[] => {
+    const instances: any[] = [];
+    const maxDate = endOfMonth(currentMonth);
+
+    // Identificar registros físicos daquela cadeia por cliente para evitar duplicações
+    const physicalDatesByParent = new Map<string, Set<string>>();
+    for (const t of rawTransactions) {
+      const parentId = t.parent_id || t.id;
+      const key = `${t.client_id}_${parentId}`;
+      if (!physicalDatesByParent.has(key)) {
+        physicalDatesByParent.set(key, new Set());
+      }
+      physicalDatesByParent.get(key)!.add(t.date);
+    }
+
+    for (const t of rawTransactions) {
+      const tDate = parseISO(t.date);
+
+      if (!t.recurrence_enabled) {
+        if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
+          instances.push({ ...t, instanceDate: t.date, isVirtual: false });
+        }
+        continue;
+      }
+
+      const interval = t.recurrence_interval || 1;
+      const period = t.recurrence_period || 'monthly';
+      const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
+      
+      let cursor = new Date(tDate);
+      const parentId = t.id;
+      const key = `${t.client_id}_${parentId}`;
+      
+      while (isBefore(cursor, maxDate) || isSameDay(cursor, maxDate)) {
+        if (recEndDate && isAfter(cursor, recEndDate)) break;
+
+        const dateStr = format(cursor, 'yyyy-MM-dd');
+        const alreadyHasPhysical = physicalDatesByParent.get(key)?.has(dateStr);
+
+        if (!alreadyHasPhysical || dateStr === t.date) {
+          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+          const currentInst = (t.installment_current || 1) + monthsDiff;
+
+          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
+            break;
+          }
+
+          instances.push({
+            ...t,
+            instanceDate: dateStr,
+            isVirtual: dateStr !== t.date,
+            status: dateStr !== t.date ? 'pending' : t.status,
+            installment_current: currentInst,
+          });
+        }
+        
+        switch (period) {
+          case 'daily': cursor = addDays(cursor, interval); break;
+          case 'weekly': cursor = addWeeks(cursor, interval); break;
+          case 'monthly': cursor = addMonths(cursor, interval); break;
+          case 'yearly': cursor = addYears(cursor, interval); break;
+          default: cursor = addMonths(cursor, interval);
+        }
+      }
+    }
+
+    return shares.map(share => {
+      if (share.status !== 'accepted') return share;
+
+      const clientInstances = instances.filter(inst => 
+        inst.client_id === share.client_id && 
+        isSameMonth(parseISO(inst.instanceDate), currentMonth)
+      );
+
+      const pendingInstances = clientInstances.filter(inst => inst.status === 'pending');
+
+      // Inversão de perspectiva:
+      // - Despesa original do Remetente ('expense') -> Receita para o Receptor ('income', verde, A Receber)
+      // - Receita original do Remetente ('income') -> Despesa para o Receptor ('expense', vermelho, A Pagar)
+      const totalIncome = pendingInstances
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      const totalExpense = pendingInstances
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      return {
+        ...share,
+        financials: {
+          totalIncome,
+          totalExpense,
+          netBalance: totalIncome - totalExpense
+        }
+      };
+    });
+  }, [shares, rawTransactions, currentMonth]);
 
   const handleAcceptShare = async (shareId: string, clientName: string) => {
     try {
@@ -170,32 +266,55 @@ export default function SharedWithMeV2() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  const pendingShares = shares.filter(s => s.status === 'pending');
-  const acceptedShares = shares.filter(s => s.status === 'accepted');
+  const pendingShares = processedShares.filter(s => s.status === 'pending');
+  const acceptedShares = processedShares.filter(s => s.status === 'accepted');
+  const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Topo da página */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 border-b border-slate-200 pb-6">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-teal-50 text-teal-600 rounded-lg">
+            <div className="p-2.5 bg-teal-50 text-teal-600 rounded-2xl shadow-sm border border-teal-100/50">
               <Users className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
               Compartilhado Comigo
             </h1>
           </div>
-          <p className="text-slate-500 mt-2">
+          <p className="text-slate-500 mt-2 text-sm max-w-xl">
             Acesse resumos e extratos compartilhados por outros parceiros e clientes no sistema.
           </p>
         </div>
+
+        {/* Seletor Mensal Premium */}
+        {acceptedShares.length > 0 && (
+          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between gap-4 shrink-0 min-w-[280px]">
+            <button 
+              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} 
+              className="p-2 hover:bg-slate-50 active:scale-95 rounded-xl transition-all border border-slate-100"
+            >
+              <ChevronLeft size={18} className="text-slate-600" />
+            </button>
+            <div className="text-center flex-1">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Mês de Referência</span>
+              <h2 className="text-sm font-black text-slate-800 capitalize font-manrope">{monthLabel}</h2>
+            </div>
+            <button 
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} 
+              className="p-2 hover:bg-slate-50 active:scale-95 rounded-xl transition-all border border-slate-100"
+            >
+              <ChevronRight size={18} className="text-slate-600" />
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500 space-y-4">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600"></div>
-          <p>Carregando convites e permissões...</p>
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Carregando convites e permissões...</p>
         </div>
       ) : (
         <>
@@ -204,19 +323,19 @@ export default function SharedWithMeV2() {
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center gap-2 text-amber-700 font-bold">
                 <Clock className="w-5 h-5 animate-pulse" />
-                <h2>Convites Pendentes ({pendingShares.length})</h2>
+                <h2 className="text-sm font-black uppercase tracking-wider">Convites Pendentes ({pendingShares.length})</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {pendingShares.map((share) => (
                   <div 
                     key={share.id} 
-                    className="bg-white rounded-xl shadow-sm border-2 border-amber-100 hover:border-amber-200 overflow-hidden transition-all"
+                    className="bg-white rounded-2xl shadow-sm border-2 border-amber-100 hover:border-amber-200 overflow-hidden transition-all"
                   >
                     <div className="bg-amber-50/60 p-4 border-b border-amber-100 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-amber-800">
                         <Shield className="w-4 h-4" />
-                        <span className="text-xs font-semibold uppercase tracking-wider">Novo Pedido</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">Novo Pedido</span>
                       </div>
                       <span className="text-xs text-slate-400">
                         {new Date(share.created_at).toLocaleDateString('pt-BR')}
@@ -227,7 +346,7 @@ export default function SharedWithMeV2() {
                       <div>
                         <span className="text-slate-400 text-xs block mb-1">Remetente</span>
                         <div className="flex items-center gap-2 text-slate-800 font-medium">
-                          <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-sm">
+                          <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-sm font-black">
                             {share.sender.name?.substring(0, 2).toUpperCase() || 'RS'}
                           </div>
                           <div>
@@ -242,10 +361,10 @@ export default function SharedWithMeV2() {
 
                       <div>
                         <span className="text-slate-400 text-xs block mb-1">Visualização Solicitada</span>
-                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
                           <div>
-                            <span className="text-xs text-slate-400 block">Cliente</span>
-                            <strong className="text-slate-800">{share.client.name}</strong>
+                            <span className="text-xs text-slate-400 block">Cliente Original</span>
+                            <strong className="text-slate-800 text-sm">{share.client.name}</strong>
                           </div>
                           <HelpCircle className="w-5 h-5 text-slate-300" title="Ao aceitar, você verá o histórico de lançamentos deste cliente." />
                         </div>
@@ -277,18 +396,18 @@ export default function SharedWithMeV2() {
           {/* SEÇÃO 2: CONTAS COMPARTILHADAS ATIVAS */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h2 className="text-lg font-bold text-slate-800">
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
                 Resumos Compartilhados ({acceptedShares.length})
               </h2>
             </div>
 
             {acceptedShares.length === 0 ? (
-              <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-12 text-center max-w-lg mx-auto mt-8">
+              <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-lg mx-auto mt-8 shadow-sm">
                 <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-800">Nenhum resumo disponível</h3>
-                <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">
+                <h3 className="text-base font-black text-slate-800">Nenhum resumo disponível</h3>
+                <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
                   Você ainda não tem contas ativas compartilhadas com você ou aguardando visualização.
                 </p>
               </div>
@@ -301,50 +420,50 @@ export default function SharedWithMeV2() {
                   return (
                     <div 
                       key={share.id} 
-                      className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
+                      className="bg-white rounded-[2rem] shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
                     >
-                      {/* Header do Card */}
-                      <div className="p-5 border-b border-slate-100">
+                      {/* Header do Card com Nome do Remetente */}
+                      <div className="p-6 border-b border-slate-100">
                         <div className="flex justify-between items-start mb-3">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-100">
                             Ativo
                           </span>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-[10px] font-black tracking-wide text-slate-400 uppercase">
                             Desde {new Date(share.created_at).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
                         
-                        <h3 className="text-lg font-bold text-slate-900 line-clamp-1 group-hover:text-teal-700 transition-colors">
-                          {share.client.name}
+                        <h3 className="text-xl font-extrabold text-slate-900 line-clamp-1 group-hover:text-teal-700 transition-colors tracking-tight">
+                          {share.sender.name}
                         </h3>
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                          <User className="w-3 h-3" />
-                          Por: <strong className="font-medium text-slate-700">{share.sender.name}</strong>
+                        <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1 font-bold uppercase tracking-wider">
+                          <Mail className="w-3 h-3 text-slate-300" />
+                          {share.sender.email}
                         </p>
                       </div>
 
-                      {/* Seção de Valores Rápidos */}
-                      <div className="bg-slate-50/50 px-5 py-4 grid grid-cols-2 gap-4 border-b border-slate-100 flex-grow">
+                      {/* Seção de Valores Rápidos (Inversão aplicada no totalIncome e totalExpense) */}
+                      <div className="bg-slate-50/50 px-6 py-5 grid grid-cols-2 gap-4 border-b border-slate-100 flex-grow">
                         <div>
-                          <span className="text-xs text-slate-400 block">A Receber</span>
-                          <div className="text-emerald-600 font-semibold text-sm flex items-center mt-0.5">
-                            <TrendingUp className="w-3 h-3 mr-1" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">A Receber</span>
+                          <div className="text-emerald-600 font-black text-base flex items-center mt-1">
+                            <TrendingUp className="w-4 h-4 mr-1 text-emerald-500" />
                             {formatCurrency(share.financials?.totalIncome ?? 0)}
                           </div>
                         </div>
                         <div>
-                          <span className="text-xs text-slate-400 block">A Pagar</span>
-                          <div className="text-rose-600 font-semibold text-sm flex items-center mt-0.5">
-                            <TrendingDown className="w-3 h-3 mr-1" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">A Pagar</span>
+                          <div className="text-rose-600 font-black text-base flex items-center mt-1">
+                            <TrendingDown className="w-4 h-4 mr-1 text-rose-500" />
                             {formatCurrency(share.financials?.totalExpense ?? 0)}
                           </div>
                         </div>
                       </div>
 
                       {/* Saldo Netting e Ação */}
-                      <div className="p-4 bg-white mt-auto">
-                        <div className="flex items-center justify-between mb-4 px-1">
-                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Netting Total</span>
+                      <div className="p-6 bg-white mt-auto">
+                        <div className="flex items-center justify-between mb-5 px-1">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Netting do Mês</span>
                           <span className={`text-lg font-black tracking-tight ${isNegative ? 'text-rose-600' : balance > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
                             {formatCurrency(balance)}
                           </span>
@@ -353,10 +472,10 @@ export default function SharedWithMeV2() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
-                              setSelectedClient({ id: share.client_id, name: share.client.name });
+                              setSelectedClient({ id: share.client_id, name: share.sender.name });
                               setIsStatementOpen(true);
                             }}
-                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-sm shadow-sm transition-colors duration-150"
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-sm shadow-sm transition-colors duration-150 active:scale-95"
                           >
                             <FileText className="w-4 h-4" />
                             Visualizar Extrato
@@ -365,7 +484,7 @@ export default function SharedWithMeV2() {
                           <button
                             onClick={() => handleRejectShare(share.id)}
                             title="Remover acesso"
-                            className="p-2.5 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 rounded-xl transition-colors"
+                            className="p-3 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 rounded-2xl transition-colors active:scale-95"
                           >
                             <X className="w-5 h-5" />
                           </button>
@@ -390,6 +509,7 @@ export default function SharedWithMeV2() {
           }}
           clientId={selectedClient.id}
           clientName={selectedClient.name}
+          selectedMonth={currentMonth}
         />
       )}
     </div>
