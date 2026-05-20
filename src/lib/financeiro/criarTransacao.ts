@@ -22,6 +22,7 @@ export interface TransactionInput {
   invoice_month?: string | null;
   card_holder_name?: string | null;
   status?: 'pending' | 'paid' | 'partial';
+  tags?: string[];
 }
 
 /**
@@ -73,11 +74,28 @@ export async function criarTransacao(input: TransactionInput) {
   };
 
   if (input.modalidade === 'unica') {
-    return await supabase.from('financial_transactions').insert({
-      ...baseTransaction,
-      date: input.date,
-      amount: input.amount // Single transaction doesn't split
-    });
+    const { data: created, error } = await supabase
+      .from('financial_transactions')
+      .insert({
+        ...baseTransaction,
+        date: input.date,
+        amount: input.amount // Single transaction doesn't split
+      })
+      .select()
+      .single();
+
+    if (error) return { data: null, error };
+
+    if (input.tags && input.tags.length > 0 && created) {
+      const junctionRows = input.tags.map(tagId => ({
+        transaction_id: created.id,
+        tag_id: tagId
+      }));
+      const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+      if (tagError) console.error('Erro ao salvar tags da transação única:', tagError);
+    }
+
+    return { data: created, error: null };
   }
 
   if (input.modalidade === 'parcelada') {
@@ -107,12 +125,44 @@ export async function criarTransacao(input: TransactionInput) {
     
     if (parcels.length === 0) return { data: null, error: new Error('Nenhuma parcela a criar') };
 
-    const { data: firstData, error: firstError } = await supabase.from('financial_transactions').insert(parcels[0]).select().single();
+    const { data: firstData, error: firstError } = await supabase
+      .from('financial_transactions')
+      .insert(parcels[0])
+      .select()
+      .single();
+    
     if (firstError) return { data: null, error: firstError };
+
+    // Salvar tags para a primeira parcela
+    if (input.tags && input.tags.length > 0 && firstData) {
+      const junctionRows = input.tags.map(tagId => ({
+        transaction_id: firstData.id,
+        tag_id: tagId
+      }));
+      const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+      if (tagError) console.error('Erro ao salvar tags da primeira parcela:', tagError);
+    }
 
     if (parcels.length > 1) {
         const remainingParcels = parcels.slice(1).map(p => ({ ...p, parent_id: firstData.id }));
-        return await supabase.from('financial_transactions').insert(remainingParcels);
+        const { data: remainingData, error: remainingError } = await supabase
+          .from('financial_transactions')
+          .insert(remainingParcels)
+          .select('id');
+
+        if (remainingError) return { data: firstData, error: remainingError };
+
+        // Salvar tags para as parcelas filhas
+        if (input.tags && input.tags.length > 0 && remainingData) {
+          const junctionRows = remainingData.flatMap(p => 
+            input.tags!.map(tagId => ({
+              transaction_id: p.id,
+              tag_id: tagId
+            }))
+          );
+          const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+          if (tagError) console.error('Erro ao salvar tags das parcelas filhas:', tagError);
+        }
     }
 
     return { data: firstData, error: null };
@@ -131,6 +181,16 @@ export async function criarTransacao(input: TransactionInput) {
 
     if (parentError) return { data: null, error: parentError };
 
+    // Salvar tags para a transação recorrente mãe
+    if (input.tags && input.tags.length > 0 && parentData) {
+      const junctionRows = input.tags.map(tagId => ({
+        transaction_id: parentData.id,
+        tag_id: tagId
+      }));
+      const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+      if (tagError) console.error('Erro ao salvar tags da transação recorrente mãe:', tagError);
+    }
+
     try {
       await gerarInstanciasRecorrentes(
         parentData,
@@ -138,7 +198,8 @@ export async function criarTransacao(input: TransactionInput) {
         recurrencePeriod,
         recurrenceInterval,
         12,
-        accountConfig
+        accountConfig,
+        input.tags
       );
       return { data: parentData, error: null };
     } catch (error: any) {
