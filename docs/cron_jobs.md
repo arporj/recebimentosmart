@@ -156,12 +156,12 @@ SELECT jobid, jobname, schedule, command, active FROM cron.job ORDER BY jobid;
 
 ### Desativar um job temporariamente
 ```sql
-UPDATE cron.job SET active = false WHERE jobid = <ID>;
+SELECT cron.alter_job(<ID>, active := false);
 ```
 
 ### Reativar um job
 ```sql
-UPDATE cron.job SET active = true WHERE jobid = <ID>;
+SELECT cron.alter_job(<ID>, active := true);
 ```
 
 ### Remover um job
