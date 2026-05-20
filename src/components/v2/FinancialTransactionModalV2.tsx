@@ -662,14 +662,14 @@ const FinancialTransactionModalV2 = ({
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <form onSubmit={handleSubmit} className="p-4 md:p-6 pb-24 md:pb-32 flex flex-col lg:flex-row gap-6 space-y-4 lg:space-y-0">
+          <form onSubmit={handleSubmit} className="p-4 md:p-6 pb-24 md:pb-32 flex flex-col">
             {/* Coluna Esquerda: Informações Básicas e Modalidade */}
             <div className="flex-1 space-y-4">
-              {/* Seletor de Tipo (Despesa / Receita / Transferência) */}
-              <div className="space-y-2">
-                <div className="h-5 flex items-center px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
-                </div>
+            {/* Linha 1: Seletor de Tipo (Despesa / Receita / Transferência) */}
+            <div className="w-full space-y-2 mb-6">
+              <div className="h-5 flex items-center px-1">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
+              </div>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
@@ -713,16 +713,20 @@ const FinancialTransactionModalV2 = ({
                   >
                     🔵 Transf.
                   </button>
-                </div>
               </div>
+            </div>
 
-              {/* Linha: Valor e Modalidade */}
-              <div className="grid grid-cols-12 gap-4">
-                {/* Valor */}
-                <div className="col-span-5 space-y-2">
-                  <div className="h-5 flex items-center px-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Valor (R$)</label>
-                  </div>
+            {/* Restante do Formulário */}
+            <div className="flex flex-col lg:flex-row gap-6 space-y-4 lg:space-y-0">
+              {/* Coluna Esquerda: Informações Básicas e Modalidade */}
+              <div className="flex-1 space-y-4">
+                {/* Linha 2: Valor, Data, Modalidade, Descrição */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 1. Valor */}
+                  <div className="space-y-2">
+                    <div className="h-5 flex items-center px-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Valor (R$)</label>
+                    </div>
                   <div className="relative flex items-center">
                     <span className={`absolute left-3 text-xs font-extrabold ${type === 'income' ? 'text-teal-600' : type === 'expense' ? 'text-rose-600' : 'text-indigo-600'}`}>R$</span>
                     <input 
@@ -737,8 +741,26 @@ const FinancialTransactionModalV2 = ({
                   </div>
                 </div>
 
-                {/* Modalidade */}
-                <div className="col-span-7 space-y-2">
+                {/* 2. Data Efetiva */}
+                <div className="space-y-2">
+                  <div className="h-5 flex items-center px-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                      <CalendarIcon size={16} />
+                    </div>
+                    <input 
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Modalidade (Repetição) */}
+                <div className="space-y-2">
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Modalidade</label>
                   </div>
@@ -795,11 +817,8 @@ const FinancialTransactionModalV2 = ({
                     )}
                   </div>
                 </div>
-              </div>
 
-              {/* Linha 2: Descrição e Data */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Descrição */}
+                {/* 4. Descrição */}
                 <div className="space-y-2">
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Descrição</label>
@@ -811,24 +830,6 @@ const FinancialTransactionModalV2 = ({
                     placeholder="Descrição do lançamento"
                     className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm placeholder-slate-400"
                   />
-                </div>
-
-                {/* Date Input */}
-                <div className="space-y-2">
-                  <div className="h-5 flex items-center px-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
-                      <CalendarIcon size={16} />
-                    </div>
-                    <input 
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
-                    />
-                  </div>
                 </div>
               </div>
 

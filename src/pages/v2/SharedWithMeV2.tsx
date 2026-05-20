@@ -114,6 +114,16 @@ export default function SharedWithMeV2() {
 
         if (txError) throw txError;
         setRawTransactions(txData || []);
+
+        // Define o mês inicial baseado na transação compartilhada mais antiga
+        if (txData && txData.length > 0) {
+          const earliestDate = txData.reduce((minDate: Date, tx: any) => {
+            const txDate = parseISO(tx.date);
+            return isBefore(txDate, minDate) ? txDate : minDate;
+          }, parseISO(txData[0].date));
+          
+          setCurrentMonth(startOfMonth(earliestDate));
+        }
       } else {
         setRawTransactions([]);
       }
