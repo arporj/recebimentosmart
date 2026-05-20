@@ -1475,6 +1475,7 @@ const FinancialTransactionModalV2 = ({
                 </div>
               )}
             </div>
+            </div>
           </form>
         </div>
 
