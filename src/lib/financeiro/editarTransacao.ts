@@ -22,6 +22,7 @@ export interface TransactionUpdate {
   is_customized?: boolean;
   invoice_month?: string | null;
   card_holder_name?: string | null;
+  tags?: string[];
 }
 
 export async function editarTransacao(
@@ -42,14 +43,31 @@ export async function editarTransacao(
 
   // Se for única ou escopo 'este', apenas atualiza uma
   if (currentModalidade === 'unica' || scope === 'this') {
+    // Protect tags from direct insert into financial_transactions table
+    const { tags: inputTags, ...dbUpdate } = update;
+
     const { data, error } = await supabase
       .from('financial_transactions')
-      .update({ ...update, is_customized: currentModalidade !== 'unica' })
+      .update({ ...dbUpdate, is_customized: currentModalidade !== 'unica' })
       .eq('id', transactionId)
       .select()
       .single();
 
     if (error) return { data, error };
+
+    // Sincronizar tags fisicamente no BD
+    if (inputTags) {
+      await supabase.from('transaction_tags').delete().eq('transaction_id', transactionId);
+
+      if (inputTags.length > 0) {
+        const junctionRows = inputTags.map(tagId => ({
+          transaction_id: transactionId,
+          tag_id: tagId
+        }));
+        const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+        if (tagError) console.error('Erro ao atualizar tags para escopo this:', tagError);
+      }
+    }
 
     // LÓGICA ESPECIAL: Se mudou de única para recorrente, gera os filhos
     if (currentModalidade === 'unica' && update.modalidade === 'recorrente') {
@@ -70,7 +88,10 @@ export async function editarTransacao(
           data, // A própria transação atualizada (mãe)
           baseTransaction,
           update.recurrence_period || 'monthly',
-          update.recurrence_interval || 1
+          update.recurrence_interval || 1,
+          12,
+          null,
+          inputTags || undefined
         );
         
         // Habilitar recorrência no registro principal se não foi feito
@@ -88,18 +109,32 @@ export async function editarTransacao(
 
   // Protect invoice_month and date from uniform overwrite on bulk updates.
   // Each installment/occurrence has its own invoice cycle and date.
-  const { invoice_month: _removedInvoiceMonth, date: _removedDate, ...safeBulkUpdate } = update;
+  const { invoice_month: _removedInvoiceMonth, date: _removedDate, tags: inputTags, ...safeBulkUpdate } = update;
 
   if (scope === 'all') {
     let query = supabase.from('financial_transactions').update(safeBulkUpdate);
     
-    if (currentModalidade === 'parcelada') {
-      query = query.or(`id.eq.${refId},parent_id.eq.${refId}`);
-    } else {
-      query = query.or(`id.eq.${refId},parent_id.eq.${refId}`);
+    query = query.or(`id.eq.${refId},parent_id.eq.${refId}`).neq('is_customized', true).select('id');
+    const { data: updatedRows, error } = await query;
+    if (error) return { data: null, error };
+
+    if (inputTags && updatedRows && updatedRows.length > 0) {
+      const ids = updatedRows.map(r => r.id);
+      await supabase.from('transaction_tags').delete().in('transaction_id', ids);
+
+      if (inputTags.length > 0) {
+        const junctionRows = updatedRows.flatMap(row =>
+          inputTags.map(tagId => ({
+            transaction_id: row.id,
+            tag_id: tagId
+          }))
+        );
+        const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+        if (tagError) console.error('Erro ao atualizar tags para escopo all:', tagError);
+      }
     }
     
-    return await query.neq('is_customized', true);
+    return { data: updatedRows, error: null };
   }
 
   if (scope === 'following') {
@@ -136,15 +171,54 @@ export async function editarTransacao(
       const results = await Promise.all(dateUpdates);
       const firstError = results.find(r => r.error)?.error;
       if (firstError) return { data: null, error: firstError };
+
+      // Sincronizar tags para o escopo following (com data)
+      if (inputTags && futureTransactions.length > 0) {
+        const ids = futureTransactions.map(t => t.id);
+        await supabase.from('transaction_tags').delete().in('transaction_id', ids);
+
+        if (inputTags.length > 0) {
+          const junctionRows = futureTransactions.flatMap(t =>
+            inputTags.map(tagId => ({
+              transaction_id: t.id,
+              tag_id: tagId
+            }))
+          );
+          const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+          if (tagError) console.error('Erro ao atualizar tags para escopo following:', tagError);
+        }
+      }
+
       return { data: futureTransactions, error: null };
     } else {
-      const { data, error } = await supabase
+      const { data: updatedRows, error } = await supabase
         .from('financial_transactions')
         .update(safeBulkUpdate)
         .or(`id.eq.${refId},parent_id.eq.${refId}`)
         .gte('date', currentDate)
-        .neq('is_customized', true);
-      return { data, error };
+        .neq('is_customized', true)
+        .select('id');
+
+      if (error) return { data: null, error };
+
+      // Sincronizar tags para o escopo following (sem data)
+      if (inputTags && updatedRows && updatedRows.length > 0) {
+        const ids = updatedRows.map(r => r.id);
+        await supabase.from('transaction_tags').delete().in('transaction_id', ids);
+
+        if (inputTags.length > 0) {
+          const junctionRows = updatedRows.flatMap(row =>
+            inputTags.map(tagId => ({
+              transaction_id: row.id,
+              tag_id: tagId
+            }))
+          );
+          const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+          if (tagError) console.error('Erro ao atualizar tags para escopo following (sem data):', tagError);
+        }
+      }
+
+      return { data: updatedRows, error };
     }
   }
 
