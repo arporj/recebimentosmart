@@ -538,7 +538,6 @@ const FinancialTransactionModalV2 = ({
       toast.error('Informe um valor válido');
       return;
     }
-
     try {
       setLoading(true);
 
@@ -563,6 +562,7 @@ const FinancialTransactionModalV2 = ({
         auto_confirm: isCreditCard ? false : autoConfirm,
         invoice_month: isCreditCard ? invoiceMonth : undefined,
         card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
+        tags: selectedTags,
       };
 
       payload.status = isConfirming ? 'paid' : (isCreditCard ? 'pending' : status);
@@ -582,8 +582,9 @@ const FinancialTransactionModalV2 = ({
         // Se for uma instância virtual (gerada pela recorrência mas que não existe no BD) 
         // e o escopo for 'this', precisamos INSERIR um novo registro físico (filho)
         if ((transaction as any).isVirtual && scope === 'this') {
+          const { tags: virtualTags, ...dbPayload } = payload;
           const newChildPayload = {
-            ...payload,
+            ...dbPayload,
             user_id: user.id,
             parent_id: transaction!.parent_id || transaction!.id,
             modalidade: 'unica', // a instância filha não carrega as regras de recorrência do pai
@@ -591,8 +592,22 @@ const FinancialTransactionModalV2 = ({
             installment_current: (transaction as any).installment_current || 1,
             recurrence_enabled: false
           };
-          const { error } = await supabase.from('financial_transactions').insert(newChildPayload);
+          const { data: newChild, error } = await supabase
+            .from('financial_transactions')
+            .insert(newChildPayload)
+            .select()
+            .single();
           if (error) throw error;
+
+          // Salvar as tags físicas na junção para o novo filho físico virtualizado
+          if (selectedTags.length > 0 && newChild) {
+            const junctionRows = selectedTags.map(tagId => ({
+              transaction_id: newChild.id,
+              tag_id: tagId
+            }));
+            const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+            if (tagError) console.error('Erro ao salvar tags da transação virtual física:', tagError);
+          }
         } else {
           // Edição normal de registro existente físico ou atualização do pai
           const { error } = await editarTransacaoFinanceira(transaction!.id, payload, scope);
