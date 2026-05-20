@@ -22,7 +22,8 @@ export async function gerarInstanciasRecorrentes(
   periodicidade: string,
   intervalo: number,
   quantidade: number = 12,
-  accountConfig?: AccountInvoiceConfig | null
+  accountConfig?: AccountInvoiceConfig | null,
+  tags?: string[]
 ) {
   const occurrences = [];
   const startDate = parseLocalDate(parentData.date);
@@ -47,7 +48,21 @@ export async function gerarInstanciasRecorrentes(
   }
 
   if (occurrences.length > 0) {
-    const { error } = await supabase.from('financial_transactions').insert(occurrences);
+    const { data: createdOccurrences, error } = await supabase
+      .from('financial_transactions')
+      .insert(occurrences)
+      .select('id');
     if (error) throw error;
+
+    if (tags && tags.length > 0 && createdOccurrences) {
+      const junctionRows = createdOccurrences.flatMap(occurrence => 
+        tags.map(tagId => ({
+          transaction_id: occurrence.id,
+          tag_id: tagId
+        }))
+      );
+      const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+      if (tagError) console.error('Erro ao salvar tags das ocorrências recorrentes:', tagError);
+    }
   }
 }
