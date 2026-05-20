@@ -26,21 +26,15 @@ export const ModalOpcaoRecorrente: React.FC<ModalOpcaoRecorrenteProps> = ({
   const options = [
     {
       id: 'this',
-      title: type === 'edit' ? 'Apenas esta' : 'Excluir apenas esta',
+      title: type === 'edit' ? 'Somente este' : 'Excluir apenas este',
       description: 'As outras parcelas/ocorrências não serão afetadas.',
       icon: Hash,
     },
     {
       id: 'following',
-      title: type === 'edit' ? 'Esta e as seguintes' : 'Excluir esta e as seguintes',
-      description: 'Afeta esta e todas as futuras deste grupo.',
+      title: type === 'edit' ? 'Este e os futuros' : 'Excluir este e os futuros',
+      description: 'Afeta este e todos os futuros deste grupo.',
       icon: Calendar,
-    },
-    {
-      id: 'all',
-      title: type === 'edit' ? 'Todas' : 'Excluir todas',
-      description: 'Afeta todas as parcelas/ocorrências deste grupo.',
-      icon: Layers,
     }
   ];
 
