@@ -856,7 +856,7 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={`font-black text-xs ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <p className={`font-medium text-xs ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                       </p>
                     </div>
@@ -882,7 +882,7 @@ const FinancialTransactionsV2 = () => {
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-black text-xs text-amber-700">
+                      <p className="font-medium text-xs text-amber-700">
                         -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                       </p>
                     </div>
@@ -921,9 +921,7 @@ const FinancialTransactionsV2 = () => {
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-xs text-slate-800 truncate">{t.description || 'S/ Descrição'}</span>
                       {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-400/60 shrink-0" />}
-                      {t.installment_total && t.installment_total > 1 && (
-                        <span className="text-[8px] font-black text-indigo-600 shrink-0">{t.installment_current}/{t.installment_total}</span>
-                      )}
+
                     </div>
                     {(t.account || t.category || t.client || t.type === 'transfer') && (
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -952,11 +950,11 @@ const FinancialTransactionsV2 = () => {
                   </div>
                   {/* Valor + Saldo */}
                   <div className="text-right shrink-0">
-                    <p className={`font-black text-xs ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                    <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                       {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                     </p>
                     {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                      <p className="text-[9px] font-black text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
+                      <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
                       </p>
                     )}
@@ -1065,7 +1063,7 @@ const FinancialTransactionsV2 = () => {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className={`font-black text-base ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          <p className={`font-medium text-base ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                           </p>
                         </div>
@@ -1095,7 +1093,7 @@ const FinancialTransactionsV2 = () => {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-black text-base text-amber-700">
+                          <p className="font-medium text-base text-amber-700">
                             -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                           </p>
                           <p className={`text-[10px] font-bold ${t.runningBalance !== undefined && t.runningBalance >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
@@ -1186,19 +1184,15 @@ const FinancialTransactionsV2 = () => {
                             </div>
                           )}
 
-                          {t.installment_total && t.installment_total > 1 && (
-                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
-                              {t.installment_current}/{t.installment_total}
-                            </span>
-                          )}
+
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <p className={`font-black text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                      <p className={`font-medium text-base ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                           {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                         </p>
-                        <p className="text-[10px] font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
+                        <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
                            {(t as any).runningBalance && !isNaN((t as any).runningBalance) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
                         </p>
                       </div>

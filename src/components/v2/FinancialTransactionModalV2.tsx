@@ -663,8 +663,6 @@ const FinancialTransactionModalV2 = ({
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <form onSubmit={handleSubmit} className="p-4 md:p-6 pb-24 md:pb-32 flex flex-col">
-            {/* Coluna Esquerda: Informações Básicas e Modalidade */}
-            <div className="flex-1 space-y-4">
             {/* Linha 1: Seletor de Tipo (Despesa / Receita / Transferência) */}
             <div className="w-full space-y-2 mb-6">
               <div className="h-5 flex items-center px-1">
@@ -956,7 +954,7 @@ const FinancialTransactionModalV2 = ({
             </div>
 
             {/* Divisor vertical em telas grandes */}
-            <div className="hidden lg:block w-[1px] bg-slate-100 self-stretch shrink-0" />
+            <div className="hidden lg:block w-[1px] bg-slate-900 self-stretch shrink-0" />
 
             {/* Coluna Direita: Destinos, Categorias e Classificação */}
             <div className="flex-1 space-y-4">
@@ -1450,9 +1448,6 @@ const FinancialTransactionModalV2 = ({
                       <h3 className="text-xs font-bold text-slate-900 truncate">
                         {type === 'income' ? 'Recebido' : type === 'transfer' ? 'Efetuado' : 'Pago'}
                       </h3>
-                      <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
-                        Marcar como {status === 'paid' ? 'sim' : 'não'}
-                      </p>
                     </div>
                   </div>
 
@@ -1466,7 +1461,7 @@ const FinancialTransactionModalV2 = ({
                       {autoConfirm ? <CheckSquare size={16} /> : <Square size={16} />}
                     </button>
                     <div className="min-w-0">
-                      <h3 className="text-xs font-bold text-slate-900 truncate">Confirmar Auto</h3>
+                      <h3 className="text-xs font-bold text-slate-900 truncate">Confirmar automaticamente</h3>
                       <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
                         No dia do vencimento
                       </p>
