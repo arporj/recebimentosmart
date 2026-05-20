@@ -605,12 +605,18 @@ const FinancialTransactionModalV2 = ({
 
       toast.success(isEditing ? 'Lançamento atualizado!' : 'Lançamento criado!');
       onSuccess();
-      onClose();
+      handleClose();
     } catch (err: any) {
       toast.error('Erro ao salvar: ' + err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    setSelectedTags([]);
+    setTagSearch('');
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -619,14 +625,14 @@ const FinancialTransactionModalV2 = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        onClick={handleClose}
       />
       
       <div className="relative w-full max-w-5xl bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col">
         <header className="px-4 py-3 md:px-6 md:py-4 flex justify-between items-center border-b border-slate-100 bg-white/50 shrink-0">
           <div className="flex items-center gap-3">
             <button 
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             >
               <X size={20} className="text-slate-500" />
@@ -649,66 +655,49 @@ const FinancialTransactionModalV2 = ({
                 <div className="h-5 flex items-center px-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
                 </div>
-                <div className={`relative ${isTypeDropdownOpen ? 'z-40' : 'z-10'}`}>
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                    className={`w-full px-4 py-2.5 rounded-2xl border-none focus:ring-2 text-sm font-extrabold flex items-center justify-between transition-all ${
-                      type === 'income' 
-                        ? 'bg-teal-50 text-teal-700 focus:ring-teal-500/20 hover:bg-teal-100/75' 
-                        : type === 'expense' 
-                          ? 'bg-rose-50 text-rose-700 focus:ring-rose-500/20 hover:bg-rose-100/75' 
-                          : 'bg-indigo-50 text-indigo-700 focus:ring-indigo-500/20 hover:bg-indigo-100/75'
+                    onClick={() => {
+                      setType('expense');
+                      setTimeout(() => amountInputRef.current?.focus(), 50);
+                    }}
+                    className={`py-3 px-2 rounded-2xl border text-xs md:text-sm font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                      type === 'expense'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-500/20'
+                        : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'
                     }`}
                   >
-                    <span>
-                      {type === 'expense' && '🔴 Despesa'}
-                      {type === 'income' && '🟢 Receita'}
-                      {type === 'transfer' && '🔵 Transferência'}
-                    </span>
-                    <ChevronDown size={16} className={`transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
+                    🔴 Despesa
                   </button>
-
-                  {isTypeDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-20" onClick={() => setIsTypeDropdownOpen(false)} />
-                      <div className="absolute z-30 mt-1 w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setType('expense');
-                            setIsTypeDropdownOpen(false);
-                            setTimeout(() => amountInputRef.current?.focus(), 50);
-                          }}
-                          className={`flex items-center w-full px-4 py-3 text-left hover:bg-rose-50 text-sm font-bold text-rose-700 transition-colors ${type === 'expense' ? 'bg-rose-50/50' : ''}`}
-                        >
-                          🔴 Despesa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setType('income');
-                            setIsTypeDropdownOpen(false);
-                            setTimeout(() => amountInputRef.current?.focus(), 50);
-                          }}
-                          className={`flex items-center w-full px-4 py-3 text-left hover:bg-teal-50 text-sm font-bold text-teal-700 transition-colors ${type === 'income' ? 'bg-teal-50/50' : ''}`}
-                        >
-                          🟢 Receita
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setType('transfer');
-                            setIsTypeDropdownOpen(false);
-                            setTimeout(() => amountInputRef.current?.focus(), 50);
-                          }}
-                          className={`flex items-center w-full px-4 py-3 text-left hover:bg-indigo-50 text-sm font-bold text-indigo-700 transition-colors ${type === 'transfer' ? 'bg-indigo-50/50' : ''}`}
-                        >
-                          🔵 Transferência
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setType('income');
+                      setTimeout(() => amountInputRef.current?.focus(), 50);
+                    }}
+                    className={`py-3 px-2 rounded-2xl border text-xs md:text-sm font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                      type === 'income'
+                        ? 'bg-teal-50 text-teal-700 border-teal-200 ring-2 ring-teal-500/20'
+                        : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'
+                    }`}
+                  >
+                    🟢 Receita
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setType('transfer');
+                      setTimeout(() => amountInputRef.current?.focus(), 50);
+                    }}
+                    className={`py-3 px-2 rounded-2xl border text-xs md:text-sm font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                      type === 'transfer'
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-2 ring-indigo-500/20'
+                        : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'
+                    }`}
+                  >
+                    🔵 Transf.
+                  </button>
                 </div>
               </div>
 
