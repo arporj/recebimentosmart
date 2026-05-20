@@ -295,7 +295,11 @@ const FinancialTransactionsV2 = () => {
       }
     }
 
-    return instances.sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+    return instances.sort((a, b) => {
+      const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
+      if (dateCompare !== 0) return dateCompare;
+      return (a.id ?? '').localeCompare(b.id ?? '');
+    });
   }, [transactions, currentMonth]);
 
   const monthInstances = useMemo(() => {
@@ -645,7 +649,11 @@ const FinancialTransactionsV2 = () => {
     });
 
     // Combine and sort ALL transactions BEFORE calculating running balance
-    const combined = [...filtered, ...filteredInvoices].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+    const combined = [...filtered, ...filteredInvoices].sort((a, b) => {
+      const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
+      if (dateCompare !== 0) return dateCompare;
+      return (a.id ?? '').localeCompare(b.id ?? '');
+    });
 
     // Início do saldo acumulado para as contas selecionadas no início do mês (usando saldo previsto)
     const openingBalance = totals.previousProjected;
@@ -874,7 +882,7 @@ const FinancialTransactionsV2 = () => {
                       </p>
                     </div>
                     <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                      <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-400 hover:text-slate-600"><MoreVertical size={16} /></button>
+                      <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                       {openDropdown === dropdownKey && (
                         <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                           <button onClick={() => {
@@ -939,14 +947,14 @@ const FinancialTransactionsV2 = () => {
                       {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                     </p>
                     {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                      <p className="text-[9px] font-bold text-slate-300">
+                      <p className="text-[9px] font-black text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
                       </p>
                     )}
                   </div>
                   {/* Menu */}
                   <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                    <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-300"><MoreVertical size={16} /></button>
+                    <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                     {openDropdown === dropdownKey && (
                       <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
@@ -1088,7 +1096,7 @@ const FinancialTransactionsV2 = () => {
                           </p>
                         </div>
                         <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
+                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                           {openDropdown === dropdownKey && (
                             <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                               <button onClick={() => {
@@ -1177,13 +1185,13 @@ const FinancialTransactionsV2 = () => {
                         <p className={`font-black text-base ${t.type === 'expense' ? 'text-slate-800' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                           {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                         </p>
-                        <p className="text-[10px] font-bold text-slate-300">
+                        <p className="text-[10px] font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
                            {(t as any).runningBalance && !isNaN((t as any).runningBalance) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
                         </p>
                       </div>
 
                       <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                        <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><MoreVertical size={20} /></button>
+                        <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                         {openDropdown === dropdownKey && (
                           <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
