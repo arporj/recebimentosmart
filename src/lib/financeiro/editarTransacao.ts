@@ -103,12 +103,49 @@ export async function editarTransacao(
   }
 
   if (scope === 'following') {
-    return await supabase
+    const { data: futureTransactions, error: listError } = await supabase
       .from('financial_transactions')
-      .update(safeBulkUpdate)
+      .select('id, date')
       .or(`id.eq.${refId},parent_id.eq.${refId}`)
       .gte('date', currentDate)
       .neq('is_customized', true);
+
+    if (listError) return { data: null, error: listError };
+
+    if (update.date && futureTransactions) {
+      const newDateObj = new Date(update.date + 'T12:00:00');
+      const targetDay = newDateObj.getDate();
+
+      const dateUpdates = futureTransactions.map((t) => {
+        const originalDateObj = new Date(t.date + 'T12:00:00');
+        const year = originalDateObj.getFullYear();
+        const month = originalDateObj.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const safeDay = Math.min(targetDay, lastDay);
+        const safeNewDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+
+        return supabase
+          .from('financial_transactions')
+          .update({
+            ...safeBulkUpdate,
+            date: safeNewDateStr,
+          })
+          .eq('id', t.id);
+      });
+
+      const results = await Promise.all(dateUpdates);
+      const firstError = results.find(r => r.error)?.error;
+      if (firstError) return { data: null, error: firstError };
+      return { data: futureTransactions, error: null };
+    } else {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .update(safeBulkUpdate)
+        .or(`id.eq.${refId},parent_id.eq.${refId}`)
+        .gte('date', currentDate)
+        .neq('is_customized', true);
+      return { data, error };
+    }
   }
 
   return { data: null, error: new Error('Escopo inválido') };
