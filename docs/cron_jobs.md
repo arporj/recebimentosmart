@@ -13,7 +13,7 @@
 | # | Job ID | Nome | Agendamento | Horário (BRT) | Status |
 |---|--------|------|-------------|---------------|--------|
 | 1 | 12 | Renovação Diária de Assinaturas | `0 3 * * *` | Meia-noite (00h BRT) | ✅ Ativo |
-| 2 | 8 | process-email-broadcast-queue-job | `*/5 * * * *` | A cada 5 minutos | ⚠️ Ativo (candidato a sob demanda) |
+| 2 | 8 | process-email-broadcast-queue-job | `*/5 * * * *` | A cada 5 minutos | ❌ Desativado |
 | 3 | 13 | weekly-due-notification-sunday | `0 3 * * 0` | Domingos à meia-noite (00h BRT) | ✅ Ativo |
 | 4 | 11 | auto-confirm-daily | `0 3 * * *` | Meia-noite (00h BRT) | ✅ Ativo |
 
@@ -81,7 +81,9 @@ A cada 5 minutos, invoca a Edge Function `process-broadcast-queue` via HTTP POST
 
 **Tratamento de erros:** Captura `WHEN OTHERS` e loga o erro via `RAISE WARNING`. A Edge Function envia um e-mail de alerta para `andre@recebimentosmart.com.br` em caso de falha.
 
-> ⚠️ **Nota:** Este job é candidato a ser convertido para execução **sob demanda** (trigger no INSERT da tabela `email_broadcasts`) em vez de polling a cada 5 minutos. Usado apenas 2 vezes desde julho/2025.
+> ❌ **Desativado em 20/05/2026.** Não existe tela de envio em massa no sistema. Os 2 broadcasts foram inseridos via SQL direto no banco. Quando a tela de admin for construída, o envio será sob demanda (botão "Enviar" chama a Edge Function diretamente, sem cron).
+>
+> 📋 **TODO:** Criar tela de admin para envio de e-mails em massa (`/v2/admin/broadcasts`). A tela deve permitir compor o e-mail (assunto + corpo HTML), visualizar prévia, e ao clicar "Enviar", inserir na tabela `email_broadcasts` e chamar `supabase.functions.invoke('process-broadcast-queue')` diretamente.
 
 ---
 
@@ -181,3 +183,4 @@ SELECT * FROM cron.job_run_details WHERE jobid = <ID> ORDER BY start_time DESC L
 | 20/05/2026 | Criado job 11 (auto-confirm-daily) |
 | 20/05/2026 | Job 1 → Job 12: horário corrigido de 00:00 UTC para 03:00 UTC (00:00 BRT) |
 | 20/05/2026 | Job 9 → Job 13: corrigido erro de autenticação (JSON inválido) e horário para 03:00 UTC |
+| 20/05/2026 | Job 8 desativado: polling desnecessário, será substituído por envio sob demanda |

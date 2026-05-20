@@ -42,3 +42,19 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 ### 🌟 Implementação do Plano Premium
 * **Status:** Roadmap de Produto (Médio Prazo).
 * **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes.
+
+### 📧 Tela de Envio de E-mails em Massa (Admin)
+* **Status:** Pendente. Infraestrutura backend já existe.
+* **Rota sugerida:** `/v2/admin/broadcasts`
+* **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela — os 2 broadcasts enviados (Jul/2025) foram inseridos manualmente via SQL no banco.
+* **Infraestrutura existente:**
+  * Tabela `email_broadcasts` (campos: `subject`, `body`, `status`)
+  * Edge Function `process-broadcast-queue` (envio via Brevo em lotes de 50)
+  * Função SQL `invoke_process_broadcast_queue_function()` (wrapper HTTP)
+  * Cron Job 8 **desativado** — dispensável quando a tela for criada
+* **Fluxo proposto:**
+  1. Admin compõe o e-mail (assunto + corpo HTML) com prévia visual
+  2. Ao clicar "Enviar", insere na tabela `email_broadcasts` com `status = 'pending'`
+  3. Chama `supabase.functions.invoke('process-broadcast-queue')` diretamente (sem cron)
+  4. Exibe progresso/resultado na interface
+* **Referência:** Ver [docs/cron_jobs.md](cron_jobs.md) — Job 8 para detalhes técnicos completos
