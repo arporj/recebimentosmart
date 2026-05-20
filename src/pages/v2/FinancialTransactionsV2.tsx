@@ -29,6 +29,7 @@ import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactionModalV2';
 import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
+import { TransactionSummaryModal } from '../../components/v2/TransactionSummaryModal';
 
 interface FinancialTransaction {
   id: string;
@@ -96,6 +97,10 @@ const FinancialTransactionsV2 = () => {
   // Estados para exclusão em cadeia
   const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
+
+  // Estados para o modal de resumo
+  const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<any | null>(null);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
   const today = new Date();
 
@@ -902,7 +907,11 @@ const FinancialTransactionsV2 = () => {
 
               const status = getVisualStatus(t);
               return (
-                <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}>
+                <div 
+                  key={dropdownKey} 
+                  onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
+                  className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}
+                >
                   {/* Status dot */}
                   <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
                   {/* Data */}
@@ -953,10 +962,10 @@ const FinancialTransactionsV2 = () => {
                     )}
                   </div>
                   {/* Menu */}
-                  <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                    <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
+                  <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()}>
+                    <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                     {openDropdown === dropdownKey && (
-                      <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+                      <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
                           <button onClick={() => handleConfirmAction(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
                         )}
@@ -1117,7 +1126,11 @@ const FinancialTransactionsV2 = () => {
                   const status = getVisualStatus(t);
 
                   return (
-                    <div key={dropdownKey} className={`group flex items-center gap-4 px-8 py-4 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}>
+                    <div 
+                      key={dropdownKey} 
+                      onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
+                      className={`group flex items-center gap-4 px-8 py-4 transition-colors cursor-pointer ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}
+                    >
                       <div className={`p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
                         {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <ArrowDownCircle size={20} /> : <ArrowRightLeft size={20} />}
                       </div>
@@ -1190,10 +1203,10 @@ const FinancialTransactionsV2 = () => {
                         </p>
                       </div>
 
-                      <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                        <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
+                      <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()}>
+                        <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                         {openDropdown === dropdownKey && (
-                          <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+                          <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
                               <button onClick={() => handleConfirmAction(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
                             )}
@@ -1215,6 +1228,13 @@ const FinancialTransactionsV2 = () => {
       <FinancialTransactionModalV2 
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchTransactions}
         initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming}
+      />
+
+      <TransactionSummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        transaction={selectedSummaryTransaction}
+        onEdit={(t) => handleEdit(t)}
       />
 
       {itemToDelete && (
