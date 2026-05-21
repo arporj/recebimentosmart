@@ -338,7 +338,7 @@ export default function SharedWithMeV2() {
               <Users className="w-6 h-6" />
             </div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
-              Compartilhado Comigo
+              Lançamentos Compartilhados
             </h1>
           </div>
           <p className="text-slate-500 mt-2 text-sm max-w-xl">
