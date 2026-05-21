@@ -566,6 +566,26 @@ const FinancialTransactionModalV2 = ({
       toast.error('Informe um valor válido');
       return;
     }
+    if (!description || description.trim() === '') {
+      toast.error('Informe a descrição do lançamento');
+      return;
+    }
+    if (!accountId) {
+      toast.error('Informe a conta de origem do lançamento');
+      return;
+    }
+    if (type === 'transfer' && !destinationAccountId) {
+      toast.error('Informe a conta de destino para a transferência');
+      return;
+    }
+    if (!categoryId) {
+      toast.error('Informe a categoria do lançamento');
+      return;
+    }
+    if (!date) {
+      toast.error('Informe a data do lançamento');
+      return;
+    }
     try {
       setLoading(true);
 

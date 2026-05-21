@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Search, 
+  Search, X,
   ArrowDownCircle,
   ArrowRightLeft,
   RefreshCcw,
@@ -858,8 +858,16 @@ const FinancialTransactionsV2 = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
               />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <button onClick={fetchTransactions} disabled={loading} className={`p-2 bg-slate-50 border border-slate-200 rounded-xl ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={16} /></button>
           </div>
@@ -1009,11 +1017,11 @@ const FinancialTransactionsV2 = () => {
                     {openDropdown === dropdownKey && (
                       <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
-                          <button onClick={() => handleConfirmAction(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
+                          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
                         )}
-                        <button onClick={() => handleEdit(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Pencil size={12} /> Editar</button>
-                        <button onClick={() => handleClone(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Copy size={12} /> Clonar</button>
-                        <button onClick={() => handleDelete(t)} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-rose-50 text-rose-600 border-t mt-0.5 pt-1.5 flex items-center gap-2"><Trash2 size={12} /> Excluir</button>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Pencil size={12} /> Editar</button>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleClone(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Copy size={12} /> Clonar</button>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-rose-50 text-rose-600 border-t mt-0.5 pt-1.5 flex items-center gap-2"><Trash2 size={12} /> Excluir</button>
                       </div>
                     )}
                   </div>
@@ -1053,8 +1061,16 @@ const FinancialTransactionsV2 = () => {
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
                 type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
+                className="w-full pl-14 pr-12 py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
               />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X size={18} />
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={fetchTransactions} disabled={loading} className={`p-4 bg-white border border-slate-200 rounded-3xl shadow-sm ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={20} /></button>
@@ -1252,11 +1268,11 @@ const FinancialTransactionsV2 = () => {
                         {openDropdown === dropdownKey && (
                           <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
-                              <button onClick={() => handleConfirmAction(t)} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
                             )}
-                            <button onClick={() => handleEdit(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
-                            <button onClick={() => handleClone(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
-                            <button onClick={() => handleDelete(t)} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(t); }} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleClone(t); }} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(t); }} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-rose-50 text-rose-600 border-t mt-1 pt-2 flex items-center gap-3"><Trash2 size={14} /> Excluir</button>
                           </div>
                         )}
                       </div>
