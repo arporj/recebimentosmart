@@ -33,8 +33,6 @@ const sidebarSections: SidebarSection[] = [
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
-            { label: 'Lançamentos compartilhados', icon: Share2, href: '/v2/compartilhado' },
-            { label: 'Clientes - Antigo', icon: Users, href: '/v2/clientes' },
         ],
     },
     {
