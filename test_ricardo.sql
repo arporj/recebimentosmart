@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION test_ricardo() RETURNS json AS  DECLARE res json; BEGIN SELECT json_agg(t) INTO res FROM public.financial_transactions t WHERE user_id = \'4382a0d2-48d2-47b2-ab93-8f43f55856d8\'; RETURN res; END;  LANGUAGE plpgsql SECURITY DEFINER;

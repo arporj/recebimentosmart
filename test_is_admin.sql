@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION test_is_admin() RETURNS boolean AS  BEGIN RETURN public.fn_is_admin(); END;  LANGUAGE plpgsql SECURITY DEFINER;

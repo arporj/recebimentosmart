@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION get_policies(t_name text) RETURNS json AS  DECLARE res json; BEGIN SELECT json_agg(row_to_json(p)) INTO res FROM pg_policies p WHERE tablename = t_name; RETURN res; END;  LANGUAGE plpgsql SECURITY DEFINER;
