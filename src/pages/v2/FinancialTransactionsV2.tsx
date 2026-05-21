@@ -146,18 +146,29 @@ const FinancialTransactionsV2 = () => {
         .order('name');
       
       if (error) throw error;
-      setAccounts(data || []);
+      const fetchedAccounts = data || [];
+      setAccounts(fetchedAccounts);
 
       const saved = localStorage.getItem('recebimento_smart_selected_accounts');
+      let usedSaved = false;
       if (saved) {
         try {
           const ids = JSON.parse(saved);
-          setSelectedAccountIds(new Set(ids));
+          // Garante que os IDs salvos pertencem ao usuário atual (essencial para o Impersonate)
+          const validAccountIds = new Set(fetchedAccounts.map(a => a.id));
+          const validSavedIds = ids.filter((id: string) => validAccountIds.has(id));
+          
+          if (validSavedIds.length > 0) {
+            setSelectedAccountIds(new Set(validSavedIds));
+            usedSaved = true;
+          }
         } catch (e) {
           console.error('Erro ao carregar contas salvas:', e);
         }
-      } else if (data && data.length > 0) {
-        setSelectedAccountIds(new Set(data.map(a => a.id)));
+      } 
+      
+      if (!usedSaved && fetchedAccounts.length > 0) {
+        setSelectedAccountIds(new Set(fetchedAccounts.map(a => a.id)));
       }
     } catch (err) {
       console.error('Erro ao buscar contas:', err);

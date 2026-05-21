@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION test_ricardo_count() RETURNS integer AS  DECLARE c integer; BEGIN SELECT count(*) INTO c FROM public.financial_transactions WHERE user_id = \'4382a0d2-48d2-47b2-ab93-8f43f55856d8\'; RETURN c; END;  LANGUAGE plpgsql SECURITY DEFINER;

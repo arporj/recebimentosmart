@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION test_andre_admin() RETURNS boolean AS  DECLARE v_admin boolean; BEGIN SELECT is_admin INTO v_admin FROM public.profiles WHERE email = \'andre.r.p.oliveira@gmail.com\'; RETURN COALESCE(v_admin, false); END;  LANGUAGE plpgsql SECURITY DEFINER;
