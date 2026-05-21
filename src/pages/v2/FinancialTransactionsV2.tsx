@@ -745,7 +745,7 @@ const FinancialTransactionsV2 = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
-                <p className="text-[10px] font-bold text-slate-300">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
+                <p className="text-[10px] font-bold text-slate-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
               </div>
             </div>
           ))}
@@ -754,7 +754,7 @@ const FinancialTransactionsV2 = () => {
           <div className="flex flex-col"><span className="text-[10px] font-black opacity-40 uppercase">Total</span></div>
           <div className="text-right">
             <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
-            <p className="text-[10px] font-bold opacity-40">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
+            <p className="text-[10px] font-bold opacity-70">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
           </div>
         </div>
       </div>
@@ -846,7 +846,7 @@ const FinancialTransactionsV2 = () => {
 
               if (t.isOpeningBalance) {
                 return (
-                  <div key={dropdownKey} className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80">
+                  <div key={dropdownKey} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-slate-50/80">
                     <div className="w-2 h-2 rounded-full shrink-0 bg-slate-300" />
                     <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
                     <div className="flex-1 min-w-0">
@@ -867,7 +867,7 @@ const FinancialTransactionsV2 = () => {
 
               if (t.isInvoiceSummary) {
                 return (
-                  <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40`}>
+                  <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40`}>
                     <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
                     <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
                     <div className="flex-1 min-w-0">
@@ -1018,8 +1018,8 @@ const FinancialTransactionsV2 = () => {
           </div>
 
           {/* Listagem (Rolável) */}
-          <div className="flex-1 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-            <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/20 flex flex-row items-center justify-between gap-4 shrink-0">
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-slate-200 bg-transparent flex flex-row items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-4">
                 <h2 className="text-xl font-black">Transações</h2>
                 <button
@@ -1050,8 +1050,8 @@ const FinancialTransactionsV2 = () => {
 
                   if (t.isOpeningBalance) {
                     return (
-                      <div key={dropdownKey} className="group flex items-center gap-4 px-8 py-4 bg-slate-50/80 border-b border-slate-100">
-                        <div className="p-3 rounded-2xl shrink-0 bg-slate-200 text-slate-600">
+                      <div key={dropdownKey} className="group flex items-center gap-4 px-4 py-2 bg-slate-50/80 border-b border-slate-100">
+                        <div className="p-2 rounded-xl shrink-0 bg-slate-200 text-slate-600">
                           <Wallet size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1074,8 +1074,8 @@ const FinancialTransactionsV2 = () => {
 
                   if (t.isInvoiceSummary) {
                     return (
-                      <div key={dropdownKey} className="group flex items-center gap-4 px-8 py-4 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
-                        <div className="p-3 rounded-2xl shrink-0 bg-amber-100 text-amber-600">
+                      <div key={dropdownKey} className="group flex items-center gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
+                        <div className="p-2 rounded-xl shrink-0 bg-amber-100 text-amber-600">
                           <CreditCard size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1127,10 +1127,10 @@ const FinancialTransactionsV2 = () => {
                     <div 
                       key={dropdownKey} 
                       onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                      className={`group flex items-center gap-4 px-8 py-4 transition-colors cursor-pointer ${isEven ? 'bg-white' : 'bg-slate-50/40'} hover:bg-slate-100/50`}
+                      className={`flex items-center gap-2 px-3 py-1.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}
                     >
-                      <div className={`p-3 rounded-2xl shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                        {t.type === 'income' ? <Plus size={20} /> : t.type === 'expense' ? <ArrowDownCircle size={20} /> : <ArrowRightLeft size={20} />}
+                      <div className={`p-1.5 rounded-lg shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                        {t.type === 'income' ? <Plus size={16} /> : t.type === 'expense' ? <ArrowDownCircle size={16} /> : <ArrowRightLeft size={16} />}
                       </div>
 
                       <div className="flex-1 min-w-0">

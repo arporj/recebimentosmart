@@ -22,6 +22,7 @@ import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
 import toast from 'react-hot-toast';
 import { ClientFormV2 } from './ClientFormV2';
 import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { criarTransacao as criarTransacaoFinanceira } from '../../lib/financeiro/criarTransacao';
 import { editarTransacao as editarTransacaoFinanceira } from '../../lib/financeiro/editarTransacao';
 import { ModalOpcaoRecorrente } from '../financeiro/ModalOpcaoRecorrente';
@@ -236,6 +237,14 @@ const FinancialTransactionModalV2 = ({
     }
   }, [isOpen, transaction]);
 
+  useEscapeKey(() => {
+    // Só fecha o modal principal se nenhum sub-dropdown ou sub-modal estiver aberto
+    if (isCategoryDropdownOpen || isAccountDropdownOpen || isDestAccountDropdownOpen || isTagDropdownOpen || isClientModalOpen || isTagModalOpen || isQuickAddAccountOpen || isQuickAddCategoryOpen || isScopeModalOpen) {
+      return;
+    }
+    onClose();
+  }, isOpen);
+
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
     const cents = parseInt(cleanValue || "0");
@@ -340,6 +349,17 @@ const FinancialTransactionModalV2 = ({
       fetchCategories();
     }
   }, [isOpen, user]);
+
+  // Adjust toggles based on date
+  useEffect(() => {
+    if (!isOpen) return;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    if (date < todayStr) {
+      setAutoConfirm(false);
+    } else if (date > todayStr) {
+      setStatus('pending');
+    }
+  }, [date, isOpen]);
 
   const fetchClients = async () => {
     const { data } = await supabase
@@ -1434,39 +1454,51 @@ const FinancialTransactionModalV2 = ({
 
               {/* Toggles de Status e Confirmação */}
               {!isConfirming && !isCreditCard && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                   {/* Lançamento Pago/Recebido Toggle */}
-                  <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
-                    <button 
-                      type="button"
-                      onClick={() => setStatus(status === 'paid' ? 'pending' : 'paid')}
-                      className={`p-0.5 rounded-md transition-all ${status === 'paid' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/10' : 'bg-white text-slate-300 border border-slate-200'}`}
-                    >
-                      {status === 'paid' ? <CheckSquare size={16} /> : <Square size={16} />}
-                    </button>
-                    <div className="min-w-0">
-                      <h3 className="text-xs font-bold text-slate-900 truncate">
-                        {type === 'income' ? 'Recebido' : type === 'transfer' ? 'Efetuado' : 'Pago'}
-                      </h3>
+                  {(date <= format(new Date(), 'yyyy-MM-dd')) && (
+                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
+                      <button 
+                        type="button"
+                        onClick={() => setStatus(status === 'paid' ? 'pending' : 'paid')}
+                        className={`p-0.5 rounded-md transition-all shrink-0 ${status === 'paid' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/10' : 'bg-white text-slate-300 border border-slate-200'}`}
+                      >
+                        {status === 'paid' ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </button>
+                      <div className="min-w-0 flex-1 flex items-center gap-2">
+                        <h3 className="text-xs font-bold text-slate-900 truncate">
+                          {type === 'income' ? 'Recebido' : type === 'transfer' ? 'Efetuado' : 'Pago'}
+                        </h3>
+                        <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Marca a transação como liquidada no extrato e atualiza o saldo da conta imediatamente.">
+                          <span className="text-[10px] font-black">?</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Auto Confirm Toggle */}
-                  <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
-                    <button 
-                      type="button"
-                      onClick={() => setAutoConfirm(!autoConfirm)}
-                      className={`p-0.5 rounded-md transition-all ${autoConfirm ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'bg-white text-slate-300 border border-slate-200'}`}
-                    >
-                      {autoConfirm ? <CheckSquare size={16} /> : <Square size={16} />}
-                    </button>
-                    <div className="min-w-0">
-                      <h3 className="text-xs font-bold text-slate-900 truncate">Confirmar automaticamente</h3>
-                      <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
-                        No dia do vencimento
-                      </p>
+                  {(date >= format(new Date(), 'yyyy-MM-dd')) && (
+                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
+                      <button 
+                        type="button"
+                        onClick={() => setAutoConfirm(!autoConfirm)}
+                        className={`p-0.5 rounded-md transition-all shrink-0 ${autoConfirm ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'bg-white text-slate-300 border border-slate-200'}`}
+                      >
+                        {autoConfirm ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
+                          Auto-confirmar
+                          <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
+                            <span className="text-[10px] font-black">?</span>
+                          </div>
+                        </h3>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
+                          No dia do vencimento
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
