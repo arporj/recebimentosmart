@@ -3,6 +3,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
+import { setRememberMe } from '../lib/storage';
 
 export function LoginForm() {
   const { signIn } = useAuth();
@@ -17,11 +18,7 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
 
-    if (!remember) {
-      window.sessionStorage.setItem('use_session_storage', 'true');
-    } else {
-      window.sessionStorage.removeItem('use_session_storage');
-    }
+    setRememberMe(remember);
 
     try {
       await signIn(email, password);
