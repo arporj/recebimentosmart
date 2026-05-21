@@ -152,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      toast.success('Login realizado com sucesso!');
+      // The useEffect will catch the state change and set user
       navigate(redirectTo);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login';
