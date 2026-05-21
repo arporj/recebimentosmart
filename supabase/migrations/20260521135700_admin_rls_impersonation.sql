@@ -30,14 +30,7 @@ CREATE POLICY "Admins can view all financial tags"
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
     );
 
--- 5. financial_transaction_tags
-CREATE POLICY "Admins can view all transaction tags"
-    ON public.financial_transaction_tags FOR SELECT
-    USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-    );
-
--- 6. clients
+-- 5. clients
 CREATE POLICY "Admins can view all clients"
     ON public.clients FOR SELECT
     USING (

@@ -395,9 +395,17 @@ const FinancialTransactionModalV2 = ({
         .eq('user_id', user?.id || '')
         .eq('is_active', true)
         .order('name');
-      if (fallbackData) setAccounts(fallbackData as unknown as Account[]);
+      if (fallbackData) {
+        setAccounts(fallbackData as unknown as Account[]);
+        if (fallbackData.length === 1 && !transaction && !initialAccountId) {
+          setAccountId(fallbackData[0].id);
+        }
+      }
     } else if (data) {
       setAccounts(data as unknown as Account[]);
+      if (data.length === 1 && !transaction && !initialAccountId) {
+        setAccountId(data[0].id);
+      }
     }
   };
 
