@@ -827,7 +827,7 @@ const FinancialTransactionsV2 = () => {
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="lg:hidden flex flex-col min-h-screen">
         {/* Mobile Header: Resumo + Busca + Criar */}
-        <div className="sticky top-0 z-50 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+        <div className="sticky top-0 z-30 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Linha 1: Hamburger Resumo + Saldo + Botão Criar */}
           <div className="flex items-center justify-between">
             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2">
