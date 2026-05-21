@@ -823,11 +823,11 @@ const FinancialTransactionsV2 = () => {
   );
 
   return (
-    <div className="bg-slate-50 h-screen overflow-hidden flex flex-col">
+    <div className="bg-slate-50 min-h-screen flex flex-col">
       {/* ===== MOBILE LAYOUT ===== */}
-      <div className="lg:hidden flex flex-col h-full overflow-hidden">
+      <div className="lg:hidden flex flex-col min-h-screen">
         {/* Mobile Header: Resumo + Busca + Criar */}
-        <div className="shrink-0 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+        <div className="sticky top-0 z-50 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Linha 1: Hamburger Resumo + Saldo + Botão Criar */}
           <div className="flex items-center justify-between">
             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2">
@@ -874,7 +874,7 @@ const FinancialTransactionsV2 = () => {
         </div>
 
         {/* Mobile Transaction List - Layout tabular compacto */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        <div className="flex-1 bg-white pb-20">
           {displayInstances.length === 0 ? (
             <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
           ) : (
@@ -1039,14 +1039,14 @@ const FinancialTransactionsV2 = () => {
       )}
 
       {/* ===== DESKTOP LAYOUT ===== */}
-      <div className="hidden lg:flex flex-1 max-w-[1700px] mx-auto w-full p-6 overflow-hidden gap-6">
+      <div className="hidden lg:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
         {/* Sidebar - Fixa */}
-        <aside className="w-[360px] flex-shrink-0 h-full">
+        <aside className="w-[360px] flex-shrink-0 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto no-scrollbar">
           <SidebarContent />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 h-full flex flex-col space-y-6 min-w-0 overflow-hidden">
+        <main className="flex-1 flex flex-col space-y-6 min-w-0">
           {/* Header da Lista (Fixo) */}
           <div className="flex flex-col xl:flex-row gap-4 justify-between shrink-0">
             <div className="flex-1 relative group">
@@ -1061,8 +1061,8 @@ const FinancialTransactionsV2 = () => {
             </div>
           </div>
 
-          {/* Listagem (Rolável) */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Listagem */}
+          <div className="flex flex-col">
             <div className="px-4 py-3 border-b border-slate-200 bg-transparent flex flex-row items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-4">
                 <h2 className="text-xl font-black">Transações</h2>
@@ -1084,7 +1084,7 @@ const FinancialTransactionsV2 = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
+            <div className="divide-y divide-slate-50 pb-20">
               {displayInstances.length === 0 ? (
                 <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
               ) : (
