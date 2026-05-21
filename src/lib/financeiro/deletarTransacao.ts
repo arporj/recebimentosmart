@@ -85,35 +85,7 @@ export async function deletarTransacao(
 
   // ── SCOPE: ALL ───────────────────────────────────────────────────────
   if (effectiveScope === 'all') {
-    // Check if any record in the chain is already paid
-    const { data: chainRecords } = await supabase
-      .from('financial_transactions')
-      .select('id, status')
-      .or(`id.eq.${refId},parent_id.eq.${refId}`);
-
-    const hasPaidRecords = chainRecords?.some((r: any) => r.status === 'paid');
-
-    if (hasPaidRecords) {
-      // Protect paid history: keep paid, remove only pending/partial children
-      const pendingIds = chainRecords!
-        .filter((r: any) => r.status !== 'paid' && r.status !== 'cancelled')
-        .map((r: any) => r.id);
-
-      if (pendingIds.length > 0) {
-        await supabase
-          .from('financial_transactions')
-          .delete()
-          .in('id', pendingIds);
-      }
-
-      // Disable future recurrence on the parent
-      return supabase
-        .from('financial_transactions')
-        .update({ recurrence_enabled: false })
-        .eq('id', refId);
-    }
-
-    // No paid records → safe to hard-delete everything
+    // Delete the parent and all children
     return supabase
       .from('financial_transactions')
       .delete()
@@ -130,25 +102,12 @@ export async function deletarTransacao(
       .update({ recurrence_end_date: endDate })
       .eq('id', refId);
 
-    // Delete only pending/partial physical children on or after the effective date
-    const { data: futureChildren } = await supabase
+    // Delete all physical children on or after the effective date
+    await supabase
       .from('financial_transactions')
-      .select('id, status')
+      .delete()
       .eq('parent_id', refId)
       .gte('date', effectiveDate);
-
-    if (futureChildren && futureChildren.length > 0) {
-      const deletableIds = futureChildren
-        .filter((r: any) => r.status !== 'paid')
-        .map((r: any) => r.id);
-
-      if (deletableIds.length > 0) {
-        await supabase
-          .from('financial_transactions')
-          .delete()
-          .in('id', deletableIds);
-      }
-    }
 
     return { data: null, error: null };
   }
