@@ -64,6 +64,7 @@ interface FinancialTransaction {
 
 interface TransactionInstance extends FinancialTransaction {
   instanceDate: string;
+  originalInstanceDate?: string;
   isVirtual: boolean;
   isInvoiceSummary?: boolean;
   invoiceData?: {
@@ -243,6 +244,7 @@ const FinancialTransactionsV2 = () => {
     }
 
     const maxDate = endOfMonth(currentMonth);
+    const todayStr = format(today, 'yyyy-MM-dd');
 
     for (const t of transactions) {
       // Skip cancelled records entirely — they are blockers, not displayable items
@@ -252,7 +254,12 @@ const FinancialTransactionsV2 = () => {
 
       if (!t.recurrence_enabled) {
         if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
-          instances.push({ ...t, instanceDate: t.date, isVirtual: false });
+          let finalInstanceDate = t.date;
+          const isUnpaid = t.status !== 'paid';
+          if (isUnpaid && finalInstanceDate < todayStr) {
+            finalInstanceDate = todayStr;
+          }
+          instances.push({ ...t, instanceDate: finalInstanceDate, originalInstanceDate: t.date, isVirtual: false });
         }
         continue;
       }
@@ -291,11 +298,19 @@ const FinancialTransactionsV2 = () => {
              newInvoiceMonth = format(newDate, 'yyyy-MM');
           }
 
+          const status = dateStr !== t.date ? 'pending' : t.status;
+          let finalInstanceDate = dateStr;
+          const isUnpaid = status !== 'paid';
+          if (isUnpaid && finalInstanceDate < todayStr) {
+             finalInstanceDate = todayStr;
+          }
+
           instances.push({
             ...t,
-            instanceDate: dateStr,
+            instanceDate: finalInstanceDate,
+            originalInstanceDate: dateStr,
             isVirtual: dateStr !== t.date,
-            status: dateStr !== t.date ? 'pending' : t.status,
+            status,
             installment_current: currentInst,
             invoice_month: newInvoiceMonth,
           });
@@ -325,7 +340,7 @@ const FinancialTransactionsV2 = () => {
   const getVisualStatus = (t: TransactionInstance): 'paid' | 'pending' | 'overdue' | 'partial' => {
     if (t.status === 'paid') return 'paid';
     if (t.status === 'partial') return 'partial';
-    const dueDate = parseISO(t.instanceDate);
+    const dueDate = parseISO(t.originalInstanceDate || t.instanceDate);
     
     // Apenas atrasado se for antes de hoje (hoje é amarelo/pendente)
     if (isBefore(dueDate, startOfMonth(today)) || (isBefore(dueDate, today) && !isSameDay(dueDate, today))) {
@@ -335,8 +350,8 @@ const FinancialTransactionsV2 = () => {
   };
 
   const handleEdit = (t: TransactionInstance) => {
-    // Para edições de instâncias virtuais, a data exibida no modal deve ser a data da instância (instanceDate)
-    const transactionToEdit = { ...t, date: t.instanceDate || t.date };
+    // Para edições de instâncias virtuais, a data exibida no modal deve ser a data da instância original (antes de ser jogada pra hoje)
+    const transactionToEdit = { ...t, date: t.originalInstanceDate || t.instanceDate || t.date };
     setEditingTransaction(transactionToEdit);
     setModalType(t.type);
     setIsConfirming(false);
@@ -346,7 +361,7 @@ const FinancialTransactionsV2 = () => {
 
   const handleConfirmAction = (t: TransactionInstance) => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const originalDate = t.instanceDate || t.date;
+    const originalDate = t.originalInstanceDate || t.instanceDate || t.date;
     // Se a data original for maior que hoje (futuro), força data de hoje, senão mantém original
     const dateToSet = originalDate > todayStr ? todayStr : originalDate;
 
@@ -401,7 +416,7 @@ const FinancialTransactionsV2 = () => {
       const { error } = await deletarTransacao({
         transactionId: t.id,
         scope,
-        instanceDate: t.instanceDate || t.date,
+        instanceDate: t.originalInstanceDate || t.instanceDate || t.date,
       });
       if (error) throw error;
       toast.success('Excluído!');
@@ -859,7 +874,9 @@ const FinancialTransactionsV2 = () => {
                 return (
                   <div key={dropdownKey} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-slate-50/80">
                     <div className="w-2 h-2 rounded-full shrink-0 bg-slate-300" />
-                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
+                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
+                      {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <Wallet size={12} className="text-slate-500 shrink-0" />
@@ -880,7 +897,9 @@ const FinancialTransactionsV2 = () => {
                 return (
                   <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40`}>
                     <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
-                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
+                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
+                      {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <CreditCard size={12} className="text-amber-600 shrink-0" />
@@ -926,7 +945,9 @@ const FinancialTransactionsV2 = () => {
                   {/* Status dot */}
                   <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
                   {/* Data */}
-                  <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
+                    {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                  </span>
                   {/* Descrição + badges */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
@@ -1070,7 +1091,9 @@ const FinancialTransactionsV2 = () => {
                             <h4 className="font-black text-slate-700 text-sm">{t.description}</h4>
                           </div>
                           <div className="flex items-center gap-x-3 mt-1">
-                            <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
+                            <p className="text-[10px] font-bold text-slate-400">
+                              {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -1095,7 +1118,9 @@ const FinancialTransactionsV2 = () => {
                             <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
                           </div>
                           <div className="flex items-center gap-x-3 mt-1">
-                            <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
+                            <p className="text-[10px] font-bold text-slate-400">
+                              {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                            </p>
                             {t.invoiceData?.linkedAccountName && (
                               <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
                                 <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
@@ -1157,7 +1182,9 @@ const FinancialTransactionsV2 = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                          <p className="text-[10px] font-bold text-slate-400">{format(parseISO(t.instanceDate), 'dd/MM/yy')}</p>
+                          <p className="text-[10px] font-bold text-slate-400">
+                            {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                          </p>
 
                           {t.account && (
                             <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
