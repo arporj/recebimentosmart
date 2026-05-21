@@ -120,6 +120,7 @@ export async function criarTransacao(input: TransactionInput) {
           installment_total: installmentTotal,
           modalidade: 'parcelada',
           invoice_month: invoiceMonth,
+          status: i === startInstallment ? baseTransaction.status : 'pending',
         });
     }
     

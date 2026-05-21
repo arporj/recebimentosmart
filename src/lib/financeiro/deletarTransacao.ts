@@ -35,9 +35,21 @@ export async function deletarTransacao(
 
   // Helper: determine the reference (parent) id for the recurrence chain
   const refId = parent_id || current.id;
+  const effectiveDate = instanceDate || currentDate;
+
+  let effectiveScope = scope;
+  if (effectiveScope === 'following') {
+    const parentRecord = parent_id 
+      ? (await supabase.from('financial_transactions').select('date').eq('id', parent_id).single()).data
+      : current;
+      
+    if (parentRecord && effectiveDate <= parentRecord.date) {
+      effectiveScope = 'all';
+    }
+  }
 
   // ── SCOPE: THIS ──────────────────────────────────────────────────────
-  if (modalidade === 'unica' || scope === 'this') {
+  if (modalidade === 'unica' || effectiveScope === 'this') {
     // For single transactions, just delete normally
     if (modalidade === 'unica') {
       return supabase.from('financial_transactions').delete().eq('id', transactionId);
@@ -72,7 +84,7 @@ export async function deletarTransacao(
   }
 
   // ── SCOPE: ALL ───────────────────────────────────────────────────────
-  if (scope === 'all') {
+  if (effectiveScope === 'all') {
     // Check if any record in the chain is already paid
     const { data: chainRecords } = await supabase
       .from('financial_transactions')
@@ -109,8 +121,7 @@ export async function deletarTransacao(
   }
 
   // ── SCOPE: FOLLOWING ─────────────────────────────────────────────────
-  if (scope === 'following') {
-    const effectiveDate = instanceDate || currentDate;
+  if (effectiveScope === 'following') {
     const endDate = format(subDays(parseISO(effectiveDate), 1), 'yyyy-MM-dd');
 
     // Set recurrence_end_date on the parent to stop virtual generation

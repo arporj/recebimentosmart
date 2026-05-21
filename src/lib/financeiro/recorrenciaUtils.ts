@@ -44,6 +44,7 @@ export async function gerarInstanciasRecorrentes(
       recurrence_period: periodicidade,
       recurrence_interval: intervalo,
       invoice_month: invoiceMonth,
+      status: 'pending', // Future instances are always pending
     });
   }
 
