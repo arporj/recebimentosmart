@@ -150,7 +150,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-50 overflow-hidden">
+        <div className="min-h-screen flex bg-slate-50">
             <Toaster
                 position="top-right"
                 toastOptions={{
@@ -278,7 +278,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             </button>
                         </div>
                     )}
-                    <div className="p-4 md:p-8 flex-1 w-full max-w-full overflow-x-hidden">
+                    <div className="p-4 md:p-8 flex-1 w-full max-w-full">
                         <AdBanner format="horizontal" slotId="5916047981" className="mb-6" />
                         {children}
                     </div>
