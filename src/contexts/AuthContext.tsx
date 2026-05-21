@@ -267,13 +267,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Redireciona apenas após limpar o contexto local
-      navigate('/login');
+      navigate('/');
     } catch (error) {
       console.error("Erro no signOut:", error);
       // Em caso de erro drástico, garante a limpeza local final
       setUser(null);
       setOriginalUser(null);
-      navigate('/login');
+      navigate('/');
     } finally {
       setLoading(false);
     }
