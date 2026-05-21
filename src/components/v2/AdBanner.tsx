@@ -17,12 +17,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   slotId = 'default-slot', 
   className = '' 
 }) => {
-  const { plano } = useAuth();
+  const { hasFullAccess } = useAuth();
   const { pathname } = useLocation();
   const [isDev, setIsDev] = useState(false);
 
-  // Apenas usuários no plano Free visualizam anúncios
-  const shouldShowAd = plano === 'free';
+  // Apenas usuários sem acesso total (ou seja, no plano Free e não admins) visualizam anúncios
+  const shouldShowAd = !hasFullAccess;
 
   useEffect(() => {
     // Detecta se está rodando localmente (localhost ou 127.0.0.1)

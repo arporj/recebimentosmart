@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION public.get_view_def() RETURNS text AS  BEGIN RETURN pg_get_viewdef('public.v_financial_transactions', true); END;  LANGUAGE plpgsql SECURITY DEFINER;

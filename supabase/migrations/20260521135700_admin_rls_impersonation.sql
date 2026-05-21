@@ -3,6 +3,7 @@
 -- Solução: Adicionar policy SELECT para admins em todas as tabelas financeiras relevantes.
 
 -- 1. financial_transactions
+DROP POLICY IF EXISTS "Admins can view all financial transactions" ON public.financial_transactions;
 CREATE POLICY "Admins can view all financial transactions"
     ON public.financial_transactions FOR SELECT
     USING (
@@ -10,6 +11,7 @@ CREATE POLICY "Admins can view all financial transactions"
     );
 
 -- 2. financial_accounts
+DROP POLICY IF EXISTS "Admins can view all financial accounts" ON public.financial_accounts;
 CREATE POLICY "Admins can view all financial accounts"
     ON public.financial_accounts FOR SELECT
     USING (
@@ -17,6 +19,7 @@ CREATE POLICY "Admins can view all financial accounts"
     );
 
 -- 3. financial_categories
+DROP POLICY IF EXISTS "Admins can view all financial categories" ON public.financial_categories;
 CREATE POLICY "Admins can view all financial categories"
     ON public.financial_categories FOR SELECT
     USING (
@@ -24,6 +27,7 @@ CREATE POLICY "Admins can view all financial categories"
     );
 
 -- 4. financial_tags
+DROP POLICY IF EXISTS "Admins can view all financial tags" ON public.financial_tags;
 CREATE POLICY "Admins can view all financial tags"
     ON public.financial_tags FOR SELECT
     USING (
@@ -31,6 +35,7 @@ CREATE POLICY "Admins can view all financial tags"
     );
 
 -- 5. clients
+DROP POLICY IF EXISTS "Admins can view all clients" ON public.clients;
 CREATE POLICY "Admins can view all clients"
     ON public.clients FOR SELECT
     USING (
