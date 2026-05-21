@@ -683,6 +683,18 @@ const FinancialTransactionsV2 = () => {
     const combined = [...filtered, ...filteredInvoices].sort((a, b) => {
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
+
+      const aIsRolled = !!a.originalInstanceDate && a.originalInstanceDate < a.instanceDate;
+      const bIsRolled = !!b.originalInstanceDate && b.originalInstanceDate < b.instanceDate;
+
+      if (aIsRolled && !bIsRolled) return 1;
+      if (!aIsRolled && bIsRolled) return -1;
+      
+      if (aIsRolled && bIsRolled) {
+         const origCompare = a.originalInstanceDate!.localeCompare(b.originalInstanceDate!);
+         if (origCompare !== 0) return origCompare;
+      }
+
       return (a.id ?? '').localeCompare(b.id ?? '');
     });
 
