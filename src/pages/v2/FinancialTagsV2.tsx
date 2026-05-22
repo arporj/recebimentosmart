@@ -137,7 +137,7 @@ const FinancialTagsV2 = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-slate-900">{tag.name}</p>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 transition-opacity">
                   <button onClick={() => openEdit(tag)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                     <Pencil size={15} />
                   </button>
