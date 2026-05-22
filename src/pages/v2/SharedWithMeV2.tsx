@@ -155,7 +155,7 @@ function AccountDropdown({ value, onChange, accounts, placeholder = "Selecione c
           <div className="w-5 h-5 rounded-md flex items-center justify-center border bg-white overflow-hidden shrink-0">
             {selected?.bank_icon ? (
               <img 
-                src={`https://www.google.com/s2/favicons?domain=${selected.bank_icon}&sz=32`} 
+                src={`https://www.google.com/s2/favicons?domain=${selected.bank_icon}&sz=64`} 
                 alt="" 
                 className="w-full h-full object-contain"
               />
@@ -189,7 +189,7 @@ function AccountDropdown({ value, onChange, accounts, placeholder = "Selecione c
                 <div className="w-6 h-6 rounded-md flex items-center justify-center border bg-white overflow-hidden shrink-0">
                   {a.bank_icon ? (
                     <img 
-                      src={`https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=32`} 
+                      src={`https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=64`} 
                       alt="" 
                       className="w-full h-full object-contain"
                     />
