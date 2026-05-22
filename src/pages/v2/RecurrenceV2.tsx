@@ -488,7 +488,7 @@ export default function RecurrenceV2() {
       try {
         setIsSearchingRecipient(true);
         const { data, error } = await supabase.rpc('get_profile_by_email', {
-          email_search: email
+          email_input: email
         });
 
         if (error) throw error;
