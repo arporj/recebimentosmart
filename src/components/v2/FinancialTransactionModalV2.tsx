@@ -297,6 +297,13 @@ const FinancialTransactionModalV2 = ({
       if (transaction.card_holder_name) {
         setCardHolderName(transaction.card_holder_name);
       }
+      setIsTotalValue((transaction as any).is_total_value || false);
+      if ((transaction as any).installment_total) {
+        setInstallmentTotal(String((transaction as any).installment_total));
+      }
+      if ((transaction as any).start_installment) {
+        setStartInstallment((transaction as any).start_installment);
+      }
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
@@ -939,9 +946,9 @@ const FinancialTransactionModalV2 = ({
                             <button
                               type="button"
                               onClick={() => setIsTotalValue(!isTotalValue)}
-                              className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
+                              className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
                             >
-                              <div className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-4.5' : 'translate-x-0'}`} />
+                              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-5' : 'translate-x-0'}`} />
                             </button>
                             <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Total</span>
                           </div>
