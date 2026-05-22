@@ -175,6 +175,10 @@ const FinancialTransactionModalV2 = ({
   const [openTagUpward, setOpenTagUpward] = useState(false);
   const [openAccountUpward, setOpenAccountUpward] = useState(false);
   const [openDestAccountUpward, setOpenDestAccountUpward] = useState(false);
+  const [categoryMaxHeight, setCategoryMaxHeight] = useState(260);
+  const [accountMaxHeight, setAccountMaxHeight] = useState(280);
+  const [destAccountMaxHeight, setDestAccountMaxHeight] = useState(280);
+  const [tagMaxHeight, setTagMaxHeight] = useState(210);
   const [accountSearch, setAccountSearch] = useState('');
   const [destAccountSearch, setDestAccountSearch] = useState('');
 
@@ -193,7 +197,12 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenCategoryUpward(bottomSpace < 280);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 280 && topSpace > bottomSpace && topSpace > 180;
+      setOpenCategoryUpward(shouldOpenUpward);
+      setCategoryMaxHeight(Math.max(150, Math.min(260, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isCategoryDropdownOpen]);
 
@@ -204,7 +213,12 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenTagUpward(bottomSpace < 210);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 210 && topSpace > bottomSpace && topSpace > 150;
+      setOpenTagUpward(shouldOpenUpward);
+      setTagMaxHeight(Math.max(120, Math.min(210, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isTagDropdownOpen]);
 
@@ -215,7 +229,12 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenAccountUpward(bottomSpace < 280);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 280 && topSpace > bottomSpace && topSpace > 180;
+      setOpenAccountUpward(shouldOpenUpward);
+      setAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isAccountDropdownOpen]);
 
@@ -226,7 +245,12 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenDestAccountUpward(bottomSpace < 280);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 280 && topSpace > bottomSpace && topSpace > 180;
+      setOpenDestAccountUpward(shouldOpenUpward);
+      setDestAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isDestAccountDropdownOpen]);
 
@@ -1154,7 +1178,10 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => setIsAccountDropdownOpen(false)} 
                         />
-                        <div className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto`}>
+                        <div 
+                          className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                          style={{ maxHeight: `${accountMaxHeight}px` }}
+                        >
                           {accounts.filter(a => a.id !== destinationAccountId).map(a => (
                             <button
                               key={a.id}
@@ -1226,7 +1253,10 @@ const FinancialTransactionModalV2 = ({
                             className="fixed inset-0 z-20" 
                             onClick={() => setIsDestAccountDropdownOpen(false)} 
                           />
-                          <div className={`absolute z-30 ${openDestAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto`}>
+                          <div 
+                            className={`absolute z-30 ${openDestAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                            style={{ maxHeight: `${destAccountMaxHeight}px` }}
+                          >
                             {accounts.filter(a => a.id !== accountId).map(a => (
                               <button
                                 key={a.id}
@@ -1296,7 +1326,10 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
                         />
-                        <div className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[260px]`}>
+                        <div 
+                          className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col`}
+                          style={{ maxHeight: `${categoryMaxHeight}px` }}
+                        >
                           {/* Campo de busca de categoria */}
                           <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
                             <Search size={14} className="text-slate-400 shrink-0 ml-2" />
@@ -1515,7 +1548,10 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => { setIsTagDropdownOpen(false); setTagSearch(''); }} 
                         />
-                        <div className={`absolute z-30 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto`}>
+                        <div 
+                          className={`absolute z-30 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                          style={{ maxHeight: `${tagMaxHeight}px` }}
+                        >
                           {tags
                             .filter(t => !selectedTags.includes(t.id))
                             .filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
