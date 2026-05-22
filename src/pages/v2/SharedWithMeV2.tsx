@@ -298,20 +298,29 @@ export default function SharedWithMeV2() {
         .eq('sender_id', user?.id)
         .order('created_at', { ascending: false });
 
+      let activeSentShares: any[] = [];
       if (!sentSharesError && sentSharesData) {
-        setSentShares(sentSharesData);
-        if (!hasSetDefaultTab) {
-          const acceptedItems = items.filter(item => item.status === 'accepted');
-          if (acceptedItems.length === 0 && sentSharesData.length > 0) {
-            setActiveTab('sent');
-          }
-          setHasSetDefaultTab(true);
+        if (sentSharesData.length > 0) {
+          const sentClientIds = sentSharesData.map(s => s.client_id);
+          const { data: sentTxData, error: sentTxError } = await supabase
+            .from('financial_transactions')
+            .select('client_id')
+            .neq('status', 'cancelled')
+            .in('client_id', sentClientIds);
+
+          const clientsWithActiveTx = !sentTxError && sentTxData 
+            ? new Set(sentTxData.map(tx => tx.client_id))
+            : new Set();
+          
+          activeSentShares = sentSharesData.filter(s => clientsWithActiveTx.has(s.client_id));
         }
       } else if (sentSharesError) {
         console.error('Erro ao buscar compartilhamentos enviados:', sentSharesError);
       }
+      setSentShares(activeSentShares);
 
       // Buscar transações dos itens pendentes para mostrar o extrato antes de aceitar
+      let localPendingTxData: any[] = [];
       const pendingItems = items.filter(item => item.status === 'pending');
       if (pendingItems.length > 0) {
         const pendingClientIds = pendingItems.map(item => item.client_id);
@@ -323,7 +332,8 @@ export default function SharedWithMeV2() {
           .is('parent_id', null);
 
         if (!pendingTxError && pendingTxData) {
-          setPendingTransactions(pendingTxData);
+          localPendingTxData = pendingTxData;
+          setPendingTransactions(localPendingTxData);
         } else {
           setPendingTransactions([]);
         }
@@ -332,6 +342,7 @@ export default function SharedWithMeV2() {
       }
 
       // 2. Para itens aceitos, buscar transações físicas ativas para expansão local de recorrências
+      let localTxData: any[] = [];
       const acceptedItems = items.filter(item => item.status === 'accepted');
       
       if (acceptedItems.length > 0) {
@@ -344,14 +355,15 @@ export default function SharedWithMeV2() {
           .in('client_id', clientIds);
 
         if (txError) throw txError;
-        setRawTransactions(txData || []);
+        localTxData = txData || [];
+        setRawTransactions(localTxData);
 
         // Define o mês inicial baseado na transação compartilhada mais antiga
-        if (txData && txData.length > 0) {
-          const earliestDate = txData.reduce((minDate: Date, tx: any) => {
+        if (localTxData && localTxData.length > 0) {
+          const earliestDate = localTxData.reduce((minDate: Date, tx: any) => {
             const txDate = parseISO(tx.date);
             return isBefore(txDate, minDate) ? txDate : minDate;
-          }, parseISO(txData[0].date));
+          }, parseISO(localTxData[0].date));
           
           setCurrentMonth(startOfMonth(earliestDate));
         }
@@ -362,6 +374,7 @@ export default function SharedWithMeV2() {
       setShares(items);
 
       // 3. Buscar atualizações pendentes bilaterais de forma robusta e à prova de falhas de PostgREST joins
+      let localUpdatesData: any[] = [];
       if (user) {
         const { data: updatesData, error: updatesError } = await supabase
           .from('shared_transaction_updates')
@@ -374,6 +387,7 @@ export default function SharedWithMeV2() {
 
         let updatesWithSenders: any[] = [];
         if (updatesData && updatesData.length > 0) {
+          localUpdatesData = updatesData;
           const senderIds = Array.from(new Set(updatesData.map(u => u.sender_id)));
           const { data: profilesData } = await supabase
             .from('profiles')
@@ -412,6 +426,17 @@ export default function SharedWithMeV2() {
           });
         }
         setPendingUpdates(updatesWithSenders);
+      }
+
+      // Definir aba ativa padrão caso ainda não tenha sido definida
+      if (!hasSetDefaultTab) {
+        const activeAcceptedCount = items.filter(s => s.status === 'accepted' && localTxData.some(tx => tx.client_id === s.client_id)).length;
+        if (activeAcceptedCount === 0 && activeSentShares.length > 0) {
+          setActiveTab('sent');
+        } else if (activeAcceptedCount === 0 && activeSentShares.length === 0 && localUpdatesData.length > 0) {
+          setActiveTab('updates');
+        }
+        setHasSetDefaultTab(true);
       }
     } catch (err) {
       console.error('Erro ao buscar compartilhados:', err);
@@ -684,8 +709,14 @@ export default function SharedWithMeV2() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  const pendingShares = processedShares.filter(s => s.status === 'pending');
-  const acceptedShares = processedShares.filter(s => s.status === 'accepted');
+  const pendingShares = processedShares.filter(s => 
+    s.status === 'pending' && 
+    pendingTransactions.some(tx => tx.client_id === s.client_id)
+  );
+  const acceptedShares = processedShares.filter(s => 
+    s.status === 'accepted' && 
+    rawTransactions.some(tx => tx.client_id === s.client_id)
+  );
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   return (
