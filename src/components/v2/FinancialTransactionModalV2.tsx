@@ -200,7 +200,8 @@ const FinancialTransactionModalV2 = ({
       const topSpace = scrollContainer
         ? rect.top - scrollContainer.getBoundingClientRect().top
         : rect.top;
-      const shouldOpenUpward = bottomSpace < 280 && topSpace > bottomSpace && topSpace > 180;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenCategoryUpward(shouldOpenUpward);
       setCategoryMaxHeight(Math.max(150, Math.min(260, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
@@ -216,7 +217,8 @@ const FinancialTransactionModalV2 = ({
       const topSpace = scrollContainer
         ? rect.top - scrollContainer.getBoundingClientRect().top
         : rect.top;
-      const shouldOpenUpward = bottomSpace < 210 && topSpace > bottomSpace && topSpace > 150;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 100 && topSpace > 250;
       setOpenTagUpward(shouldOpenUpward);
       setTagMaxHeight(Math.max(120, Math.min(210, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
@@ -232,7 +234,8 @@ const FinancialTransactionModalV2 = ({
       const topSpace = scrollContainer
         ? rect.top - scrollContainer.getBoundingClientRect().top
         : rect.top;
-      const shouldOpenUpward = bottomSpace < 280 && topSpace > bottomSpace && topSpace > 180;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenAccountUpward(shouldOpenUpward);
       setAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
@@ -248,7 +251,8 @@ const FinancialTransactionModalV2 = ({
       const topSpace = scrollContainer
         ? rect.top - scrollContainer.getBoundingClientRect().top
         : rect.top;
-      const shouldOpenUpward = bottomSpace < 280 && topSpace > bottomSpace && topSpace > 180;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenDestAccountUpward(shouldOpenUpward);
       setDestAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
