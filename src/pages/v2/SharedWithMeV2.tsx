@@ -71,7 +71,7 @@ export default function SharedWithMeV2() {
 
   // Controle do modal de Aceite (Categorizar antes de aceitar)
   const [acceptingShare, setAcceptingShare] = useState<{ id: string; clientName: string } | null>(null);
-  const [categories, setCategories] = useState<{id: string; name: string; type: string}[]>([]);
+  const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
   const [accounts, setAccounts] = useState<{id: string; name: string}[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -92,7 +92,7 @@ export default function SharedWithMeV2() {
     if (!user) return;
     try {
       const [catRes, accRes] = await Promise.all([
-        supabase.from('financial_categories').select('id, name, type').eq('user_id', user.id).eq('is_active', true).order('name'),
+        supabase.from('financial_categories').select('id, name').eq('user_id', user.id).order('name'),
         supabase.from('financial_accounts').select('id, name').eq('user_id', user.id).eq('is_active', true).order('name')
       ]);
       if (catRes.data) setCategories(catRes.data);
@@ -843,7 +843,7 @@ export default function SharedWithMeV2() {
                 >
                   <option value="" disabled>Selecione a categoria...</option>
                   {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.type === 'income' ? 'Receita' : 'Despesa'})</option>
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>

@@ -76,7 +76,7 @@ export default function ClientStatementModalV2({
   const [currentMonth, setCurrentMonth] = useState(selectedMonth || new Date());
   
   // Categorias, Contas e Tags do usuário logado
-  const [categories, setCategories] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
   const [availableTags, setAvailableTags] = useState<{ id: string; name: string; color: string }[]>([]);
 
@@ -91,7 +91,7 @@ export default function ClientStatementModalV2({
     if (!user) return;
     try {
       const [catRes, accRes, tagRes] = await Promise.all([
-        supabase.from('financial_categories').select('id, name, type').eq('user_id', user.id).eq('is_active', true).order('name'),
+        supabase.from('financial_categories').select('id, name').eq('user_id', user.id).order('name'),
         supabase.from('financial_accounts').select('id, name').eq('user_id', user.id).eq('is_active', true).order('name'),
         supabase.from('financial_tags').select('id, name, color').eq('user_id', user.id)
       ]);
