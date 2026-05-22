@@ -84,7 +84,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const userName = displayUser?.user_metadata?.name || displayUser?.email || 'Usuário';
     const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['Cadastros']); // Cadastro aberto por padrão
     const [pendingCount, setPendingCount] = useState(0);
     const [displayedCount, setDisplayedCount] = useState(0);
@@ -220,9 +220,9 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         };
     }, [user]);
 
-    // Fechar o menu mobile sempre que a rota mudar
+    // Fechar a sidebar sempre que a rota mudar
     useEffect(() => {
-        setIsMobileMenuOpen(false);
+        setIsSidebarOpen(false);
     }, [location.pathname]);
 
     const handleSignOut = async () => {
@@ -304,30 +304,27 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 }}
             />
 
-            {/* Overlay para fechar o menu mobile ao clicar fora */}
-            {isMobileMenuOpen && (
+            {/* Overlay para fechar a sidebar ao clicar fora */}
+            {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* ─── Sidebar ─── */}
-            <aside className={`bg-[#0f172a] text-slate-300 flex flex-col fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none`}>
+            <aside className={`bg-[#0f172a] text-slate-300 flex flex-col fixed inset-y-0 left-0 z-50 w-64 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out shadow-2xl`}>
                 {/* Logo */}
                 <div className="p-6 flex items-center gap-3">
                     <div className="bg-white p-1.5 rounded-lg">
                         <img src="/images/logo.svg" alt="Recebimento $mart" className="h-6 w-6" />
                     </div>
-                    <span className="text-white font-bold text-xl tracking-tight hidden md:block">
+                    <span className="text-white font-bold text-xl tracking-tight">
                         Recebimento <span className="text-[#14b8a6]">$mart</span>
                     </span>
-                    <span className="text-white font-bold text-xl tracking-tight md:hidden">
-                        Menu
-                    </span>
                     <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="ml-auto md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                     >
                         <X size={20} />
                     </button>
@@ -383,10 +380,10 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             </aside>
 
             {/* ─── Main Content ─── */}
-            <div className="flex-1 flex flex-col min-h-screen ml-0 md:ml-64 w-full transition-all duration-300">
+            <div className="flex-1 flex flex-col min-h-screen ml-0 w-full transition-all duration-300">
 
-                {/* Header Mobile (Visível apenas em telas pequenas) */}
-                <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+                {/* Header Superior (Sempre visível para permitir abrir o menu lateral colapsado) */}
+                <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-2">
                         <div className="bg-[#0f172a] p-1.5 rounded-md">
                             <img src="/images/logo.svg" alt="Logo" className="w-5 h-5" />
@@ -395,9 +392,9 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             Recebimento <span className="text-[#14b8a6]">$mart</span>
                         </span>
                     </div>
-                    {/* Aqui está o menu sanduíche mantido no lado superior direito, conforme solicitado */}
+                    {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução */}
                     <button
-                        onClick={() => setIsMobileMenuOpen(true)}
+                        onClick={() => setIsSidebarOpen(true)}
                         className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none"
                     >
                         <Menu size={24} />
