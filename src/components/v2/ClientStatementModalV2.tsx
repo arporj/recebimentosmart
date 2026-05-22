@@ -6,7 +6,11 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight, 
-  FileText 
+  FileText,
+  ChevronDown,
+  Landmark,
+  PiggyBank,
+  CreditCard
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -76,9 +80,77 @@ export default function ClientStatementModalV2({
   const [currentMonth, setCurrentMonth] = useState(selectedMonth || new Date());
   
   // Categorias, Contas e Tags do usuário logado
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; icon: string | null }[]>([]);
+  const [accounts, setAccounts] = useState<{ 
+    id: string; 
+    name: string; 
+    type: string; 
+    bank_icon: string | null; 
+    bank_name: string | null; 
+  }[]>([]);
   const [availableTags, setAvailableTags] = useState<{ id: string; name: string; color: string }[]>([]);
+  
+  const [activeCategoryDropdownTxId, setActiveCategoryDropdownTxId] = useState<string | null>(null);
+  const [activeAccountDropdownTxId, setActiveAccountDropdownTxId] = useState<string | null>(null);
+
+  const getAccountTypeIcon = (type: string) => {
+    switch (type) {
+      case 'checking': return <Landmark size={14} className="text-teal-600 animate-in" />;
+      case 'savings': return <PiggyBank size={14} className="text-blue-600 animate-in" />;
+      case 'credit_card': return <CreditCard size={14} className="text-indigo-600 animate-in" />;
+      case 'investment': return <TrendingUp size={14} className="text-slate-600 animate-in" />;
+      default: return <Landmark size={14} className="text-slate-600 animate-in" />;
+    }
+  };
+
+  const getAccountTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'checking': return 'Corrente';
+      case 'savings': return 'Poupança';
+      case 'investment': return 'Investimento';
+      case 'credit_card': return 'Cartão de Crédito';
+      default: return 'Conta';
+    }
+  };
+
+  const AccountIcon = ({ account }: { account: any }) => {
+    if (!account) return <div className="text-slate-400 shrink-0">{getAccountTypeIcon('')}</div>;
+
+    const typeConfig: Record<string, string> = {
+      checking: 'bg-blue-50 text-blue-700 border-blue-200/50',
+      savings: 'bg-green-50 text-green-700 border-green-200/50',
+      credit_card: 'bg-purple-50 text-purple-700 border-purple-200/50',
+      investment: 'bg-amber-50 text-amber-700 border-amber-200/50'
+    };
+
+    const bgColorClass = typeConfig[account.type] || 'bg-slate-50 text-slate-400 border-slate-200';
+
+    return (
+      <div className={`w-5 h-5 rounded flex items-center justify-center border overflow-hidden shrink-0 ${bgColorClass}`}>
+        {account.bank_icon ? (
+          <div className="w-full h-full relative flex items-center justify-center">
+            <img 
+              src={`https://www.google.com/s2/favicons?domain=${account.bank_icon}&sz=64`} 
+              alt={account.bank_name || ''} 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.classList.add('hidden');
+                if (target.nextElementSibling) {
+                  target.nextElementSibling.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-[8px] text-slate-500 bg-slate-100">
+              {account.bank_name?.charAt(0) || 'B'}
+            </div>
+          </div>
+        ) : (
+          <div className="text-current scale-[0.7] flex items-center justify-center shrink-0">{getAccountTypeIcon(account.type)}</div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (isOpen && clientId && user) {
@@ -91,12 +163,12 @@ export default function ClientStatementModalV2({
     if (!user) return;
     try {
       const [catRes, accRes, tagRes] = await Promise.all([
-        supabase.from('financial_categories').select('id, name').eq('user_id', user.id).order('name'),
-        supabase.from('financial_accounts').select('id, name').eq('user_id', user.id).eq('is_active', true).order('name'),
+        supabase.from('financial_categories').select('id, name, icon').eq('user_id', user.id).order('name'),
+        supabase.from('financial_accounts').select('id, name, type, bank_icon, bank_name').eq('user_id', user.id).eq('is_active', true).order('name'),
         supabase.from('financial_tags').select('id, name, color').eq('user_id', user.id)
       ]);
-      if (catRes.data) setCategories(catRes.data);
-      if (accRes.data) setAccounts(accRes.data);
+      if (catRes.data) setCategories(catRes.data as any);
+      if (accRes.data) setAccounts(accRes.data as any);
       if (tagRes.data) setAvailableTags(tagRes.data);
     } catch (err) {
       console.error('Erro ao carregar categorias, contas ou tags:', err);
@@ -437,31 +509,147 @@ export default function ClientStatementModalV2({
                         </td>
 
                         {/* Categoria */}
-                        <td className="px-4 py-3">
-                          <select
-                            value={t.category_id || ''}
-                            onChange={(e) => handleUpdateField(t.id, 'category_id', e.target.value || null, t.category_id)}
-                            className="bg-transparent hover:bg-slate-100/70 focus:bg-white rounded px-2 py-1 w-full text-xs font-bold text-slate-600 transition-all border border-transparent focus:border-slate-200 outline-none cursor-pointer"
-                          >
-                            <option value="">Sem Categoria</option>
-                            {categories.map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                        <td className="px-4 py-3 relative">
+                          {(() => {
+                            const currentCat = categories.find(c => c.id === t.category_id);
+                            const isOpenDropdown = activeCategoryDropdownTxId === t.id;
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveCategoryDropdownTxId(isOpenDropdown ? null : t.id);
+                                    setActiveAccountDropdownTxId(null);
+                                  }}
+                                  className="w-full text-left px-2.5 py-2 hover:bg-slate-100/70 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition-all gap-1.5 border border-transparent hover:border-slate-200/50"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <span className="text-base shrink-0 select-none">{currentCat?.icon || '📁'}</span>
+                                    <span className="truncate">{currentCat?.name || 'Sem Categoria'}</span>
+                                  </span>
+                                  <ChevronDown size={12} className="text-slate-400 shrink-0" />
+                                </button>
+                                
+                                {isOpenDropdown && (
+                                  <>
+                                    <div className="fixed inset-0 z-20" onClick={() => setActiveCategoryDropdownTxId(null)} />
+                                    <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateField(t.id, 'category_id', null, t.category_id);
+                                          setActiveCategoryDropdownTxId(null);
+                                        }}
+                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                      >
+                                        <span className="text-sm shrink-0 select-none">📁</span>
+                                        <div className="flex flex-col">
+                                          <span className="leading-tight font-semibold text-slate-400">Sem Categoria</span>
+                                          <span className="text-[8px] text-slate-300 font-medium">Nenhuma categoria selecionada</span>
+                                        </div>
+                                      </button>
+                                      
+                                      {categories.map(c => (
+                                        <button
+                                          key={c.id}
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateField(t.id, 'category_id', c.id, t.category_id);
+                                            setActiveCategoryDropdownTxId(null);
+                                          }}
+                                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                            t.category_id === c.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                          }`}
+                                        >
+                                          <span className="text-base shrink-0 select-none">{c.icon || '📁'}</span>
+                                          <span className="truncate">{c.name}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
 
                         {/* Conta Bancária */}
-                        <td className="px-4 py-3">
-                          <select
-                            value={t.account_id || ''}
-                            onChange={(e) => handleUpdateField(t.id, 'account_id', e.target.value || null, t.account_id)}
-                            className="bg-transparent hover:bg-slate-100/70 focus:bg-white rounded px-2 py-1 w-full text-xs font-bold text-slate-600 transition-all border border-transparent focus:border-slate-200 outline-none cursor-pointer"
-                          >
-                            <option value="">Sem Conta</option>
-                            {accounts.map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
+                        <td className="px-4 py-3 relative">
+                          {(() => {
+                            const currentAcc = accounts.find(a => a.id === t.account_id);
+                            const isOpenDropdown = activeAccountDropdownTxId === t.id;
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveAccountDropdownTxId(isOpenDropdown ? null : t.id);
+                                    setActiveCategoryDropdownTxId(null);
+                                  }}
+                                  className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100/70 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition-all gap-1.5 border border-transparent hover:border-slate-200/50"
+                                >
+                                  <span className="flex items-center gap-2.5 truncate">
+                                    <AccountIcon account={currentAcc} />
+                                    <div className="flex flex-col min-w-0 text-left">
+                                      <span className="truncate text-slate-700 font-bold text-xs leading-tight">
+                                        {currentAcc?.name || 'Sem Conta'}
+                                      </span>
+                                      {currentAcc && (
+                                        <span className="text-[8px] text-slate-400 font-semibold leading-none mt-0.5">
+                                          {getAccountTypeLabel(currentAcc.type)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </span>
+                                  <ChevronDown size={12} className="text-slate-400 shrink-0" />
+                                </button>
+                                
+                                {isOpenDropdown && (
+                                  <>
+                                    <div className="fixed inset-0 z-20" onClick={() => setActiveAccountDropdownTxId(null)} />
+                                    <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateField(t.id, 'account_id', null, t.account_id);
+                                          setActiveAccountDropdownTxId(null);
+                                        }}
+                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                      >
+                                        <div className="w-5 h-5 rounded flex items-center justify-center border border-slate-200 bg-slate-50 text-slate-400 shrink-0">
+                                          <Landmark size={12} />
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <span className="leading-tight font-semibold">Sem Conta</span>
+                                          <span className="text-[8px] text-slate-300 font-medium">Nenhuma conta selecionada</span>
+                                        </div>
+                                      </button>
+                                      
+                                      {accounts.map(a => (
+                                        <button
+                                          key={a.id}
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateField(t.id, 'account_id', a.id, t.account_id);
+                                            setActiveAccountDropdownTxId(null);
+                                          }}
+                                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                            t.account_id === a.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                          }`}
+                                        >
+                                          <AccountIcon account={a} />
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="truncate font-semibold leading-tight">{a.name}</span>
+                                            <span className="text-[8px] text-slate-400 mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
 
                         {/* Tags */}
