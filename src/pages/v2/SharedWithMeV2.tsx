@@ -529,7 +529,7 @@ export default function SharedWithMeV2() {
                           }
 
                           return (
-                            <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                            <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
                               {clientTxs.map((tx) => {
                                 // Inverter o tipo para a perspectiva do receptor
                                 const isInvertedIncome = tx.type === 'expense'; // Despesa para o remetente = Receita (Entrada) para o receptor
@@ -541,11 +541,11 @@ export default function SharedWithMeV2() {
                                 return (
                                   <div 
                                     key={tx.id} 
-                                    className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors"
+                                    className="py-1.5 px-2.5 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors"
                                   >
                                     <div className="min-w-0">
-                                      <span className="text-slate-800 text-xs font-bold truncate block">{tx.description || 'Sem descrição'}</span>
-                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-slate-800 text-[11px] font-bold truncate block">{tx.description || 'Sem descrição'}</span>
+                                      <div className="flex items-center gap-1.5 mt-0">
                                         <span className="text-[10px] text-slate-400 font-semibold">{format(parseISO(tx.date), 'dd/MM/yyyy')}</span>
                                         <span className="text-[8px] text-slate-300">•</span>
                                         <span className="text-[10px] text-slate-400 font-medium">
@@ -554,10 +554,10 @@ export default function SharedWithMeV2() {
                                       </div>
                                     </div>
                                     <div className="text-right shrink-0">
-                                      <span className="text-xs font-black text-slate-800 block">
+                                      <span className="text-[11px] font-extrabold text-slate-800 block">
                                         {formatCurrency(Number(tx.amount))}
                                       </span>
-                                      <span className={`inline-flex px-1.5 py-0.2 rounded-full text-[8px] font-bold border mt-0.5 ${typeColor}`}>
+                                      <span className={`inline-flex px-1.5 py-0.2 rounded-full text-[8px] font-bold border mt-0 ${typeColor}`}>
                                         {typeLabel}
                                       </span>
                                     </div>
