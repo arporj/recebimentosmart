@@ -87,6 +87,8 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['Cadastros']); // Cadastro aberto por padrão
     const [pendingCount, setPendingCount] = useState(0);
+    const [displayedCount, setDisplayedCount] = useState(0);
+    const [animationKey, setAnimationKey] = useState(0);
 
     // Função para contar notificações pendentes
     const fetchPendingCount = async () => {
@@ -120,6 +122,33 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         }
     };
 
+    // Efeito para gerenciar a animação premium do badge ao mudar o contador
+    useEffect(() => {
+        if (pendingCount !== displayedCount) {
+            if (displayedCount === 0) {
+                // Se o badge estava oculto, exibe imediatamente com a animação de explosão
+                setDisplayedCount(pendingCount);
+                setAnimationKey(prev => prev + 1);
+            } else if (pendingCount === 0) {
+                // Se zerou, dispara animação para encolher (scale-0) e depois oculta
+                setAnimationKey(prev => prev + 1);
+                const timer = setTimeout(() => {
+                    setDisplayedCount(0);
+                }, 500);
+                return () => clearTimeout(timer);
+            } else {
+                // Se alterou de um valor maior que zero para outro maior que zero:
+                // Dispara a animação (fazendo encolher)
+                setAnimationKey(prev => prev + 1);
+                // No momento em que está no scale-0 (100ms), troca o número silenciosamente
+                const timer = setTimeout(() => {
+                    setDisplayedCount(pendingCount);
+                }, 100);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [pendingCount, displayedCount]);
+
     // Subscrição em tempo real para as tabelas relevantes
     useEffect(() => {
         if (!user) return;
@@ -135,12 +164,12 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             )
             .on(
                 'postgres_changes',
-                { event: '*', scheme: 'public', table: 'financial_transactions' },
+                { event: '*', schema: 'public', table: 'financial_transactions' },
                 () => fetchPendingCount()
             )
             .on(
                 'postgres_changes',
-                { event: '*', scheme: 'public', table: 'shared_transaction_updates' },
+                { event: '*', schema: 'public', table: 'shared_transaction_updates' },
                 () => fetchPendingCount()
             )
             .subscribe();
@@ -197,7 +226,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             );
         }
 
-        const hasBadge = item.href === '/v2/compartilhado' && pendingCount > 0;
+        const hasBadge = item.href === '/v2/compartilhado' && displayedCount > 0;
 
         return (
             <Link
@@ -212,10 +241,10 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 <span className={level === 1 ? 'flex-1' : 'text-sm flex-1'}>{item.label}</span>
                 {hasBadge && (
                     <span
-                        key={pendingCount}
+                        key={animationKey}
                         className="animate-pop-badge bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center justify-center min-w-[20px] h-[20px]"
                     >
-                        {pendingCount}
+                        {displayedCount}
                     </span>
                 )}
             </Link>
