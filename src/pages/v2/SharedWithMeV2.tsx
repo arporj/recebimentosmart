@@ -75,11 +75,10 @@ export default function SharedWithMeV2() {
   const [accounts, setAccounts] = useState<{id: string; name: string}[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
-  const [isAccepting, setIsAccepting] = useState(false);
-
-  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
+  const [isAccepting, setIsAccepting] = useState(false);  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
   const [activeTab, setActiveTab] = useState<'shares' | 'updates'>('shares');
   const [pendingUpdates, setPendingUpdates] = useState<any[]>([]);
+  const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
 
   useEffect(() => {
     if (user?.email) {
@@ -131,6 +130,25 @@ export default function SharedWithMeV2() {
 
       // Filtra compartilhamentos rejeitados (não exibir na interface de recebidos)
       items = items.filter(item => item.status !== 'rejected');
+
+      // Buscar transações dos itens pendentes para mostrar o extrato antes de aceitar
+      const pendingItems = items.filter(item => item.status === 'pending');
+      if (pendingItems.length > 0) {
+        const pendingClientIds = pendingItems.map(item => item.client_id);
+        const { data: pendingTxData, error: pendingTxError } = await supabase
+          .from('financial_transactions')
+          .select('id, client_id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current')
+          .neq('status', 'cancelled')
+          .in('client_id', pendingClientIds);
+
+        if (!pendingTxError && pendingTxData) {
+          setPendingTransactions(pendingTxData);
+        } else {
+          setPendingTransactions([]);
+        }
+      } else {
+        setPendingTransactions([]);
+      }
 
       // 2. Para itens aceitos, buscar transações físicas ativas para expansão local de recorrências
       const acceptedItems = items.filter(item => item.status === 'accepted');
@@ -497,14 +515,58 @@ export default function SharedWithMeV2() {
                       </div>
 
                       <div>
-                        <span className="text-slate-400 text-xs block mb-1">Visualização Solicitada</span>
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
-                          <div>
-                            <span className="text-xs text-slate-400 block">Cliente Original</span>
-                            <strong className="text-slate-800 text-sm">{share.client.name}</strong>
-                          </div>
-                          <HelpCircle className="w-5 h-5 text-slate-300" title="Ao aceitar, você verá o histórico de lançamentos deste cliente." />
-                        </div>
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-2">
+                          Lançamentos Compartilhados
+                        </span>
+                        {(() => {
+                          const clientTxs = pendingTransactions.filter(tx => tx.client_id === share.client_id);
+                          if (clientTxs.length === 0) {
+                            return (
+                              <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500 font-medium">
+                                Nenhum lançamento encontrado neste compartilhamento.
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                              {clientTxs.map((tx) => {
+                                // Inverter o tipo para a perspectiva do receptor
+                                const isInvertedIncome = tx.type === 'expense'; // Despesa para o remetente = Receita (Entrada) para o receptor
+                                const typeLabel = isInvertedIncome ? 'Entrada' : 'Saída';
+                                const typeColor = isInvertedIncome 
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                  : 'bg-rose-50 text-rose-700 border-rose-100';
+                                
+                                return (
+                                  <div 
+                                    key={tx.id} 
+                                    className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors"
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="text-slate-800 text-xs font-bold truncate block">{tx.description || 'Sem descrição'}</span>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-[10px] text-slate-400 font-semibold">{format(parseISO(tx.date), 'dd/MM/yyyy')}</span>
+                                        <span className="text-[8px] text-slate-300">•</span>
+                                        <span className="text-[10px] text-slate-400 font-medium">
+                                          {tx.recurrence_enabled ? (tx.recurrence_period === 'parcelada' ? 'Parcelado' : 'Recorrente') : 'Único'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className="text-xs font-black text-slate-800 block">
+                                        {formatCurrency(Number(tx.amount))}
+                                      </span>
+                                      <span className={`inline-flex px-1.5 py-0.2 rounded-full text-[8px] font-bold border mt-0.5 ${typeColor}`}>
+                                        {typeLabel}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       <div className="pt-2 flex items-center gap-3 border-t border-slate-50">
