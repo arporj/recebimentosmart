@@ -78,6 +78,7 @@ export default function SharedWithMeV2() {
   const [activeTab, setActiveTab] = useState<'shares' | 'sent' | 'updates'>('shares');
   const [pendingUpdates, setPendingUpdates] = useState<any[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
+  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
 
   useEffect(() => {
     if (user?.email) {
@@ -146,6 +147,13 @@ export default function SharedWithMeV2() {
 
       if (!sentSharesError && sentSharesData) {
         setSentShares(sentSharesData);
+        if (!hasSetDefaultTab) {
+          const acceptedItems = items.filter(item => item.status === 'accepted');
+          if (acceptedItems.length === 0 && sentSharesData.length > 0) {
+            setActiveTab('sent');
+          }
+          setHasSetDefaultTab(true);
+        }
       } else if (sentSharesError) {
         console.error('Erro ao buscar compartilhamentos enviados:', sentSharesError);
       }
