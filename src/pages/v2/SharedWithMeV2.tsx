@@ -59,6 +59,157 @@ interface SharedItem {
   };
 }
 
+interface CategoryDropdownProps {
+  value: string;
+  onChange: (val: string) => void;
+  categories: { id: string; name: string; icon?: string }[];
+  placeholder?: string;
+  isLote?: boolean;
+}
+
+function CategoryDropdown({ value, onChange, categories, placeholder = "Selecione categoria...", isLote = false }: CategoryDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selected = categories.find(c => c.id === value);
+
+  return (
+    <div className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full pl-3 pr-8 py-2.5 rounded-2xl text-left flex items-center justify-between text-xs transition-all relative ${
+          isLote 
+            ? "bg-white border border-teal-100/40 text-teal-800 font-extrabold shadow-sm" 
+            : "bg-slate-50 text-slate-700 font-bold border border-transparent hover:bg-slate-100/80"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span className="text-sm shrink-0 select-none">{selected?.icon || '📁'}</span>
+          <span className="truncate">{selected ? selected.name : placeholder}</span>
+        </div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+          <ChevronDown size={14} className={isLote ? "text-teal-600" : ""} />
+        </div>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-[70] top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto py-1 animate-in slide-in-from-top-1 duration-150 min-w-[200px]">
+            {categories.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  onChange(c.id);
+                  setIsOpen(false);
+                }}
+                className={`flex items-center gap-2 w-full px-3 py-2 text-left text-xs transition-colors hover:bg-slate-50 ${
+                  c.id === value ? "bg-teal-50/50 font-black text-teal-800" : "text-slate-600 font-medium"
+                }`}
+              >
+                <span className="text-sm shrink-0 select-none">{c.icon || '📁'}</span>
+                <span className="truncate">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+interface AccountDropdownProps {
+  value: string;
+  onChange: (val: string) => void;
+  accounts: { id: string; name: string; type?: string; bank_icon?: string }[];
+  placeholder?: string;
+  isLote?: boolean;
+}
+
+function AccountDropdown({ value, onChange, accounts, placeholder = "Selecione conta...", isLote = false }: AccountDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selected = accounts.find(a => a.id === value);
+
+  const getAccountTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'checking': return 'Corrente';
+      case 'savings': return 'Poupança';
+      case 'investment': return 'Investimento';
+      case 'credit_card': return 'Cartão de Crédito';
+      default: return 'Conta';
+    }
+  };
+
+  return (
+    <div className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full pl-3 pr-8 py-2.5 rounded-2xl text-left flex items-center justify-between text-xs transition-all relative ${
+          isLote 
+            ? "bg-white border border-teal-100/40 text-teal-800 font-extrabold shadow-sm py-2" 
+            : "bg-slate-50 text-slate-700 font-bold border border-transparent hover:bg-slate-100/80"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <div className="w-5 h-5 rounded-md flex items-center justify-center border bg-white overflow-hidden shrink-0">
+            {selected?.bank_icon ? (
+              <img 
+                src={`https://www.google.com/s2/favicons?domain=${selected.bank_icon}&sz=32`} 
+                alt="" 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <span className="text-[10px] select-none">🏦</span>
+            )}
+          </div>
+          <span className="truncate text-slate-700">{selected ? selected.name : placeholder}</span>
+        </div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+          <ChevronDown size={14} className={isLote ? "text-teal-600" : ""} />
+        </div>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-[70] top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto py-1 animate-in slide-in-from-top-1 duration-150 min-w-[200px]">
+            {accounts.map(a => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => {
+                  onChange(a.id);
+                  setIsOpen(false);
+                }}
+                className={`flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs transition-colors hover:bg-slate-50 ${
+                  a.id === value ? "bg-teal-50/50 font-black text-teal-800" : "text-slate-600 font-medium"
+                }`}
+              >
+                <div className="w-6 h-6 rounded-md flex items-center justify-center border bg-white overflow-hidden shrink-0">
+                  {a.bank_icon ? (
+                    <img 
+                      src={`https://www.google.com/s2/favicons?domain=${a.bank_icon}&sz=32`} 
+                      alt="" 
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] select-none">🏦</span>
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="truncate font-semibold leading-tight">{a.name}</span>
+                  <span className="text-[8px] text-slate-400 mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function SharedWithMeV2() {
   const { user } = useAuth();
   const [shares, setShares] = useState<SharedItem[]>([]);
@@ -70,8 +221,8 @@ export default function SharedWithMeV2() {
   const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);  // Controle do modal de Aceite (Categorizar antes de aceitar)
   const [acceptingShare, setAcceptingShare] = useState<{ id: string; clientName: string } | null>(null);
-  const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
-  const [accounts, setAccounts] = useState<{id: string; name: string}[]>([]);
+  const [categories, setCategories] = useState<{id: string; name: string; icon?: string}[]>([]);
+  const [accounts, setAccounts] = useState<{id: string; name: string; type?: string; bank_icon?: string}[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
   const [acceptTxsConfig, setAcceptTxsConfig] = useState<Record<string, { categoryId: string; accountId: string }>>({});
@@ -93,8 +244,8 @@ export default function SharedWithMeV2() {
     if (!user) return;
     try {
       const [catRes, accRes] = await Promise.all([
-        supabase.from('financial_categories').select('id, name').eq('user_id', user.id).order('name'),
-        supabase.from('financial_accounts').select('id, name').eq('user_id', user.id).eq('is_active', true).order('name')
+        supabase.from('financial_categories').select('id, name, icon').eq('user_id', user.id).order('name'),
+        supabase.from('financial_accounts').select('id, name, type, bank_icon').eq('user_id', user.id).eq('is_active', true).order('name')
       ]);
       if (catRes.data) setCategories(catRes.data);
       if (accRes.data) {
@@ -1147,40 +1298,22 @@ export default function SharedWithMeV2() {
                             <span className="text-slate-400 font-bold">-</span>
                           </td>
                           <td className="px-4 py-3.5">
-                            <div className="relative group">
-                              <select
-                                value={selectedCategory}
-                                onChange={(e) => handleGlobalCategoryChange(e.target.value)}
-                                className="w-full px-3 py-2 bg-white rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-teal-800 font-extrabold shadow-sm border border-teal-100/40 pr-8"
-                                style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                              >
-                                <option value="">Selecione categoria em lote...</option>
-                                {categories.map(c => (
-                                  <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                              </select>
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-600 pointer-events-none">
-                                <ChevronDown size={14} />
-                              </div>
-                            </div>
+                            <CategoryDropdown
+                              value={selectedCategory}
+                              onChange={handleGlobalCategoryChange}
+                              categories={categories}
+                              placeholder="Selecione categoria em lote..."
+                              isLote={true}
+                            />
                           </td>
                           <td className="px-4 py-3.5">
-                            <div className="relative group">
-                              <select
-                                value={selectedAccount}
-                                onChange={(e) => handleGlobalAccountChange(e.target.value)}
-                                className="w-full px-3 py-2 bg-white rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-teal-800 font-extrabold shadow-sm border border-teal-100/40 pr-8"
-                                style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                              >
-                                <option value="">Selecione conta em lote...</option>
-                                {accounts.map(a => (
-                                  <option key={a.id} value={a.id}>{a.name}</option>
-                                ))}
-                              </select>
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-600 pointer-events-none">
-                                <ChevronDown size={14} />
-                              </div>
-                            </div>
+                            <AccountDropdown
+                              value={selectedAccount}
+                              onChange={handleGlobalAccountChange}
+                              accounts={accounts}
+                              placeholder="Selecione conta em lote..."
+                              isLote={true}
+                            />
                           </td>
                         </tr>
 
@@ -1216,40 +1349,20 @@ export default function SharedWithMeV2() {
                                 </span>
                               </td>
                               <td className="px-4 py-3.5">
-                                <div className="relative group">
-                                  <select
-                                    value={config.categoryId}
-                                    onChange={(e) => handleRowCategoryChange(tx.id, e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold pr-8"
-                                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                                  >
-                                    <option value="" disabled>Selecione categoria...</option>
-                                    {categories.map(c => (
-                                      <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                  </select>
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                    <ChevronDown size={14} />
-                                  </div>
-                                </div>
+                                <CategoryDropdown
+                                  value={config.categoryId}
+                                  onChange={(val) => handleRowCategoryChange(tx.id, val)}
+                                  categories={categories}
+                                  placeholder="Selecione categoria..."
+                                />
                               </td>
                               <td className="px-4 py-3.5">
-                                <div className="relative group">
-                                  <select
-                                    value={config.accountId}
-                                    onChange={(e) => handleRowAccountChange(tx.id, e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold pr-8"
-                                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                                  >
-                                    <option value="" disabled>Selecione conta...</option>
-                                    {accounts.map(a => (
-                                      <option key={a.id} value={a.id}>{a.name}</option>
-                                    ))}
-                                  </select>
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                    <ChevronDown size={14} />
-                                  </div>
-                                </div>
+                                <AccountDropdown
+                                  value={config.accountId}
+                                  onChange={(val) => handleRowAccountChange(tx.id, val)}
+                                  accounts={accounts}
+                                  placeholder="Selecione conta..."
+                                />
                               </td>
                             </tr>
                           );
