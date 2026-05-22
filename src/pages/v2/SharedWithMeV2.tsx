@@ -67,16 +67,15 @@ export default function SharedWithMeV2() {
   
   // Controle do modal de extrato
   const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
-  const [isStatementOpen, setIsStatementOpen] = useState(false);
-
-  // Controle do modal de Aceite (Categorizar antes de aceitar)
+  const [isStatementOpen, setIsStatementOpen] = useState(false);  // Controle do modal de Aceite (Categorizar antes de aceitar)
   const [acceptingShare, setAcceptingShare] = useState<{ id: string; clientName: string } | null>(null);
   const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
   const [accounts, setAccounts] = useState<{id: string; name: string}[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
-  const [isAccepting, setIsAccepting] = useState(false);  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
-  const [activeTab, setActiveTab] = useState<'shares' | 'updates'>('shares');
+  const [isAccepting, setIsAccepting] = useState(false);  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
+  const [sentShares, setSentShares] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'shares' | 'sent' | 'updates'>('shares');
   const [pendingUpdates, setPendingUpdates] = useState<any[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
 
@@ -130,6 +129,26 @@ export default function SharedWithMeV2() {
 
       // Filtra compartilhamentos rejeitados (não exibir na interface de recebidos)
       items = items.filter(item => item.status !== 'rejected');
+
+      // 1.1 Buscar os compartilhamentos enviados (onde eu sou o sender)
+      const { data: sentSharesData, error: sentSharesError } = await supabase
+        .from('client_shares')
+        .select(`
+           id,
+           client_id,
+           status,
+           created_at,
+           receiver_email,
+           client:clients!inner(id, name)
+        `)
+        .eq('sender_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (!sentSharesError && sentSharesData) {
+        setSentShares(sentSharesData);
+      } else if (sentSharesError) {
+        console.error('Erro ao buscar compartilhamentos enviados:', sentSharesError);
+      }
 
       // Buscar transações dos itens pendentes para mostrar o extrato antes de aceitar
       const pendingItems = items.filter(item => item.status === 'pending');
@@ -417,6 +436,26 @@ export default function SharedWithMeV2() {
     }
   };
 
+  const handleRevokeShare = async (shareId: string, clientName: string, receiverEmail: string) => {
+    const confirmed = window.confirm(`Deseja realmente revogar o compartilhamento do cliente "${clientName}" com "${receiverEmail}"?`);
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('client_shares')
+        .delete()
+        .eq('id', shareId);
+
+      if (error) throw error;
+
+      toast.success('Compartilhamento revogado com sucesso.');
+      fetchShares();
+    } catch (err) {
+      console.error('Erro ao revogar compartilhamento:', err);
+      toast.error('Erro ao revogar compartilhamento.');
+    }
+  };
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
@@ -593,21 +632,32 @@ export default function SharedWithMeV2() {
           )}
 
           {/* NAVEGAÇÃO DE ABAS */}
-          <div className="flex border-b border-slate-200 mb-6 bg-white p-2 rounded-2xl shadow-sm border border-slate-100 max-w-md">
+          <div className="flex border-b border-slate-200 mb-6 bg-white p-2 rounded-2xl shadow-sm border border-slate-100 max-w-xl w-full">
             <button
               onClick={() => setActiveTab('shares')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs transition-all ${
                 activeTab === 'shares'
                   ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/20'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
             >
               <Users size={16} />
-              Resumos Compartilhados ({acceptedShares.length})
+              Recebidos ({acceptedShares.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('sent')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                activeTab === 'sent'
+                  ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/20'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Users size={16} />
+              Enviados ({sentShares.length})
             </button>
             <button
               onClick={() => setActiveTab('updates')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
                 activeTab === 'updates'
                   ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/20'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
@@ -623,11 +673,11 @@ export default function SharedWithMeV2() {
             </button>
           </div>
 
-          {activeTab === 'shares' ? (
+          {activeTab === 'shares' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
-                  Resumos Compartilhados ({acceptedShares.length})
+                  Resumos Compartilhados Recebidos ({acceptedShares.length})
                 </h2>
               </div>
 
@@ -726,7 +776,94 @@ export default function SharedWithMeV2() {
                 </div>
               )}
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'sent' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
+                  Compartilhamentos Enviados ({sentShares.length})
+                </h2>
+              </div>
+
+              {sentShares.length === 0 ? (
+                <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-lg mx-auto mt-8 shadow-sm">
+                  <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-black text-slate-800">Nenhum resumo compartilhado</h3>
+                  <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                    Você ainda não compartilhou nenhum cliente com outros usuários. Você pode fazer isso ao cadastrar ou editar um cliente no menu "Clientes".
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {sentShares.map((share) => {
+                    const isPending = share.status === 'pending';
+                    const isAccepted = share.status === 'accepted';
+                    const isRejected = share.status === 'rejected';
+
+                    let statusBadgeColor = 'bg-amber-50 text-amber-700 border-amber-100';
+                    let statusText = 'Aguardando Aceite';
+                    if (isAccepted) {
+                      statusBadgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                      statusText = 'Aceito';
+                    } else if (isRejected) {
+                      statusBadgeColor = 'bg-rose-50 text-rose-700 border-rose-100';
+                      statusText = 'Recusado';
+                    }
+
+                    return (
+                      <div 
+                        key={share.id} 
+                        className="bg-white rounded-[2rem] shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group animate-fade-in"
+                      >
+                        {/* Header do Card com Nome do Cliente original */}
+                        <div className="p-6 border-b border-slate-100">
+                          <div className="flex justify-between items-start mb-3">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusBadgeColor}`}>
+                              {statusText}
+                            </span>
+                            <span className="text-[10px] font-black tracking-wide text-slate-400 uppercase">
+                              {new Date(share.created_at).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                          
+                          <h3 className="text-xl font-extrabold text-slate-900 line-clamp-1 group-hover:text-teal-700 transition-colors tracking-tight">
+                            {share.client?.name}
+                          </h3>
+                        </div>
+
+                        {/* Corpo com email do Destinatário */}
+                        <div className="bg-slate-50/50 px-6 py-5 flex-grow space-y-3">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Destinatário</span>
+                            <div className="text-slate-700 font-extrabold text-sm flex items-center mt-1 font-manrope">
+                              <Mail className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                              {share.receiver_email}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ação de Revogar */}
+                        <div className="p-6 bg-white border-t border-slate-50 mt-auto">
+                          <button
+                            onClick={() => handleRevokeShare(share.id, share.client?.name, share.receiver_email)}
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-700 border border-slate-200 rounded-2xl font-extrabold text-sm transition-colors duration-150 active:scale-95"
+                          >
+                            <X className="w-4 h-4" />
+                            Revogar Compartilhamento
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'updates' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
