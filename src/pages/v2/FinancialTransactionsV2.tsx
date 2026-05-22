@@ -797,26 +797,39 @@ const FinancialTransactionsV2 = () => {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-5 rounded-[2.5rem] text-white space-y-6 relative overflow-hidden group">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-3xl text-white space-y-5 relative overflow-hidden group border border-slate-800 shadow-xl">
+        {/* Efeito de brilho de fundo sutil para parecer premium */}
+        <div className="absolute -right-10 -top-10 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-teal-500/15 transition-all duration-500" />
+        <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
         <div className="space-y-4 relative z-10">
-          <div className="flex items-center justify-between opacity-90 border-b border-white/10 pb-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.25em]">Resumo Mensal</span>
-            <Filter size={16} className="text-white/50" />
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Resumo Mensal</span>
+            <Filter size={14} className="text-slate-500" />
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <span className="text-[10px] uppercase font-black text-white/50">Ganhos</span>
-              <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
+          
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-2xl border border-slate-800/40 hover:border-slate-800 transition-colors">
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Ganhos</span>
+              <p className="text-sm font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-black text-white/50">Gastos</span>
-              <p className="text-lg font-black">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
+            <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-2xl border border-slate-800/40 hover:border-slate-800 transition-colors">
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Gastos</span>
+              <p className="text-sm font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
             </div>
           </div>
         </div>
-        <div className="pt-6 border-t border-white/20 relative z-10">
-          <span className="text-[10px] font-black uppercase text-white/50">Líquido</span>
-          <p className="text-4xl font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.result)}</p>
+
+        <div className="pt-4 border-t border-slate-800 flex flex-col gap-1.5 relative z-10">
+          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Resultado Líquido</span>
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <p className={`text-2xl font-black tracking-tight ${totals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.result)}
+            </p>
+            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${totals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+              {totals.result >= 0 ? 'Superávit' : 'Déficit'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
