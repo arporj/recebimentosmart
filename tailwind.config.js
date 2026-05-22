@@ -3,6 +3,18 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      keyframes: {
+        'pop-badge': {
+          '0%': { transform: 'scale(1)' },
+          '20%': { transform: 'scale(0)' },
+          '60%': { transform: 'scale(1.4)' },
+          '80%': { transform: 'scale(0.95)' },
+          '100%': { transform: 'scale(1)' },
+        }
+      },
+      animation: {
+        'pop-badge': 'pop-badge 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+      },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
