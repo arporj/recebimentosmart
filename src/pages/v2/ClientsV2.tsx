@@ -195,7 +195,7 @@ const ClientsV2 = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="flex items-center justify-end gap-1 transition-opacity duration-200">
                         <button 
                           onClick={() => openEdit(client)} 
                           className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all"
