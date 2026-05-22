@@ -136,9 +136,9 @@ const FinancialTransactionModalV2 = ({
   const [scopeType, setScopeType] = useState<'edit' | 'delete'>('edit');
   const [tempFormData, setTempFormData] = useState<any>(null);
   const [periodicidade, setPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
-  const [startInstallment, setStartInstallment] = useState(1);
+  const [startInstallment, setStartInstallment] = useState<string>('1');
   const [isTotalValue, setIsTotalValue] = useState(false);
-  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [recurrenceInterval, setRecurrenceInterval] = useState<string>('1');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -302,7 +302,10 @@ const FinancialTransactionModalV2 = ({
         setInstallmentTotal(String((transaction as any).installment_total));
       }
       if ((transaction as any).start_installment) {
-        setStartInstallment((transaction as any).start_installment);
+        setStartInstallment(String((transaction as any).start_installment));
+      }
+      if ((transaction as any).recurrence_interval) {
+        setRecurrenceInterval(String((transaction as any).recurrence_interval));
       }
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
@@ -341,9 +344,9 @@ const FinancialTransactionModalV2 = ({
       setModalidade('unica');
       setDueDay(new Date().getDate());
       setPeriodicidade('mensal');
-      setStartInstallment(1);
+      setStartInstallment('1');
       setIsTotalValue(false);
-      setRecurrenceInterval(1);
+      setRecurrenceInterval('1');
     }
   }, [isOpen, transaction, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate]);
 
@@ -609,12 +612,12 @@ const FinancialTransactionModalV2 = ({
         account_id: accountId || undefined,
         destination_account_id: type === 'transfer' ? (destinationAccountId || undefined) : undefined,
         modalidade,
-        installment_total: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
+        installment_total: modalidade === 'parcelada' ? (parseInt(installmentTotal) || 2) : undefined,
         recurrence_period: (modalidade === 'parcelada' || modalidade === 'recorrente') ? mappedRecurrencePeriod : undefined,
-        start_installment: modalidade === 'parcelada' ? startInstallment : undefined,
+        start_installment: modalidade === 'parcelada' ? (parseInt(startInstallment) || 1) : undefined,
         is_total_value: modalidade === 'parcelada' ? isTotalValue : undefined,
         due_day: modalidade === 'recorrente' ? dueDay : undefined,
-        recurrence_interval: modalidade === 'recorrente' ? recurrenceInterval : undefined,
+        recurrence_interval: modalidade === 'recorrente' ? (parseInt(recurrenceInterval) || 1) : undefined,
         auto_confirm: isCreditCard ? false : autoConfirm,
         invoice_month: isCreditCard ? invoiceMonth : undefined,
         card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
@@ -913,27 +916,97 @@ const FinancialTransactionModalV2 = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Parcelas</label>
-                          <input 
-                            type="number"
-                            min="2"
-                            value={installmentTotal}
-                            onChange={(e) => setInstallmentTotal(e.target.value)}
-                            placeholder="Ex: 12"
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-teal-500/20 focus:outline-none text-center"
-                          />
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Total Parcelas</label>
+                          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(installmentTotal) || 2;
+                                if (val > 2) {
+                                  setInstallmentTotal(String(val - 1));
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              -
+                            </button>
+                            <input 
+                              type="number"
+                              min="2"
+                              value={installmentTotal}
+                              onChange={(e) => setInstallmentTotal(e.target.value)}
+                              onBlur={() => {
+                                const val = parseInt(installmentTotal);
+                                if (isNaN(val) || val < 2) {
+                                  setInstallmentTotal('2');
+                                } else {
+                                  setInstallmentTotal(String(val));
+                                }
+                              }}
+                              placeholder="Ex: 12"
+                              className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(installmentTotal) || 2;
+                                setInstallmentTotal(String(val + 1));
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Parc. Inicial</label>
-                          <input 
-                            type="number"
-                            min="1"
-                            max={parseInt(installmentTotal) || 1}
-                            value={startInstallment}
-                            onChange={(e) => setStartInstallment(parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-teal-500/20 focus:outline-none text-center"
-                          />
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Parc. Inicial</label>
+                          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(startInstallment) || 1;
+                                if (val > 1) {
+                                  setStartInstallment(String(val - 1));
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              -
+                            </button>
+                            <input 
+                              type="number"
+                              min="1"
+                              max={parseInt(installmentTotal) || 1}
+                              value={startInstallment}
+                              onChange={(e) => setStartInstallment(e.target.value)}
+                              onBlur={() => {
+                                const val = parseInt(startInstallment);
+                                const maxVal = parseInt(installmentTotal) || 1;
+                                if (isNaN(val) || val < 1) {
+                                  setStartInstallment('1');
+                                } else if (val > maxVal) {
+                                  setStartInstallment(String(maxVal));
+                                } else {
+                                  setStartInstallment(String(val));
+                                }
+                              }}
+                              className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(startInstallment) || 1;
+                                const maxVal = parseInt(installmentTotal) || 1;
+                                if (val < maxVal) {
+                                  setStartInstallment(String(val + 1));
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -987,18 +1060,48 @@ const FinancialTransactionModalV2 = ({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block text-center">
                           Repetir a cada
                         </label>
-                        <div className="relative flex items-center">
+                        <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 relative">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = parseInt(recurrenceInterval) || 1;
+                              if (val > 1) {
+                                setRecurrenceInterval(String(val - 1));
+                              }
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                          >
+                            -
+                          </button>
                           <input 
                             type="number"
                             min="1"
                             value={recurrenceInterval}
-                            onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-teal-500/20 focus:outline-none text-center pr-12"
+                            onChange={(e) => setRecurrenceInterval(e.target.value)}
+                            onBlur={() => {
+                              const val = parseInt(recurrenceInterval);
+                              if (isNaN(val) || val < 1) {
+                                setRecurrenceInterval('1');
+                              } else {
+                                setRecurrenceInterval(String(val));
+                              }
+                            }}
+                            className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="absolute right-3 text-[10px] font-bold text-slate-400 pointer-events-none uppercase">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = parseInt(recurrenceInterval) || 1;
+                              setRecurrenceInterval(String(val + 1));
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none mr-12"
+                          >
+                            +
+                          </button>
+                          <span className="absolute right-3 text-[9px] font-bold text-slate-400 pointer-events-none uppercase">
                             {periodicidade === 'diaria' ? 'Dias' : periodicidade === 'semanal' ? 'Sem' : periodicidade === 'anual' ? 'Anos' : 'Meses'}
                           </span>
                         </div>
