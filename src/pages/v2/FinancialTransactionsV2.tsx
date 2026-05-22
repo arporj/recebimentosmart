@@ -842,7 +842,7 @@ const FinancialTransactionsV2 = () => {
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="xl:hidden flex flex-col min-h-screen">
         {/* Mobile Header: Resumo + Busca + Criar */}
-        <div className="sticky top-0 z-30 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+        <div className="sticky top-[57px] z-20 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Linha 1: Hamburger Resumo + Saldo + Botão Criar */}
           <div className="flex items-center justify-between">
             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2">
@@ -1064,7 +1064,7 @@ const FinancialTransactionsV2 = () => {
       {/* ===== DESKTOP LAYOUT ===== */}
       <div className="hidden xl:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
         {/* Sidebar - Fixa */}
-        <aside className="w-[360px] flex-shrink-0 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto no-scrollbar">
+        <aside className="w-[360px] flex-shrink-0 sticky top-[80px] max-h-[calc(100vh-120px)] overflow-y-auto no-scrollbar">
           <SidebarContent />
         </aside>
 
