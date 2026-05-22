@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { AdBanner } from '../AdBanner';
+import { supabase } from '../../../lib/supabase';
 import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
@@ -33,6 +34,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
+            { label: 'Lançamentos Compartilhados', icon: Share2, href: '/v2/compartilhado' },
         ],
     },
     {
@@ -84,6 +86,69 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['Cadastros']); // Cadastro aberto por padrão
+    const [pendingCount, setPendingCount] = useState(0);
+
+    // Função para contar notificações pendentes
+    const fetchPendingCount = async () => {
+        if (!user) return;
+        try {
+            // 1. Contar compartilhamentos de clientes pendentes (onde o e-mail do cliente é igual ao e-mail do usuário)
+            const { count: clientSharesCount } = await supabase
+                .from('client_shares')
+                .select('*', { count: 'exact', head: true })
+                .eq('receiver_email', user.email?.toLowerCase())
+                .eq('status', 'pending');
+
+            // 2. Contar lançamentos novos pendentes de categorização (onde user_id é o logado e shared_status é pending)
+            const { count: newTransCount } = await supabase
+                .from('financial_transactions')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .eq('shared_status', 'pending');
+
+            // 3. Contar atualizações de transações pendentes (onde receiver_id é o logado e status é pending)
+            const { count: updatesCount } = await supabase
+                .from('shared_transaction_updates')
+                .select('*', { count: 'exact', head: true })
+                .eq('receiver_id', user.id)
+                .eq('status', 'pending');
+
+            const total = (clientSharesCount || 0) + (newTransCount || 0) + (updatesCount || 0);
+            setPendingCount(total);
+        } catch (err) {
+            console.error('Erro ao buscar notificações pendentes:', err);
+        }
+    };
+
+    // Subscrição em tempo real para as tabelas relevantes
+    useEffect(() => {
+        if (!user) return;
+
+        fetchPendingCount();
+
+        const channel = supabase
+            .channel('shared_notifications')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'client_shares' },
+                () => fetchPendingCount()
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', scheme: 'public', table: 'financial_transactions' },
+                () => fetchPendingCount()
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', scheme: 'public', table: 'shared_transaction_updates' },
+                () => fetchPendingCount()
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user]);
 
     // Fechar o menu mobile sempre que a rota mudar
     useEffect(() => {
@@ -132,6 +197,8 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             );
         }
 
+        const hasBadge = item.href === '/v2/compartilhado' && pendingCount > 0;
+
         return (
             <Link
                 key={item.href + item.label}
@@ -142,7 +209,15 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     }`}
             >
                 <item.icon size={level === 1 ? 20 : 18} />
-                <span className={level === 1 ? '' : 'text-sm'}>{item.label}</span>
+                <span className={level === 1 ? 'flex-1' : 'text-sm flex-1'}>{item.label}</span>
+                {hasBadge && (
+                    <span
+                        key={pendingCount}
+                        className="animate-pop-badge bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center justify-center min-w-[20px] h-[20px]"
+                    >
+                        {pendingCount}
+                    </span>
+                )}
             </Link>
         );
     };
