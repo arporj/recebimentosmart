@@ -7,12 +7,13 @@ import {
   Clock, 
   TrendingUp, 
   TrendingDown, 
-  Mail,
-  Shield,
-  HelpCircle,
-  ChevronLeft,
-  ChevronRight,
-  Calendar
+  Mail, 
+  Shield, 
+  HelpCircle, 
+  ChevronLeft, 
+  ChevronRight, 
+  Calendar,
+  ChevronDown
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -73,6 +74,7 @@ export default function SharedWithMeV2() {
   const [accounts, setAccounts] = useState<{id: string; name: string}[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
+  const [acceptTxsConfig, setAcceptTxsConfig] = useState<Record<string, { categoryId: string; accountId: string }>>({});
   const [isAccepting, setIsAccepting] = useState(false);  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
   const [sentShares, setSentShares] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'shares' | 'sent' | 'updates'>('shares');
@@ -388,28 +390,90 @@ export default function SharedWithMeV2() {
   }, [shares, rawTransactions, currentMonth]);
 
   const handleOpenAcceptModal = (shareId: string, clientName: string) => {
-    setAcceptingShare({ id: shareId, clientName });
+    const share = shares.find(s => s.id === shareId);
+    const clientTxs = share ? pendingTransactions.filter(tx => tx.client_id === share.client_id) : [];
+
     setSelectedCategory('');
     if (accounts.length === 1) {
       setSelectedAccount(accounts[0].id);
     } else {
       setSelectedAccount('');
     }
+
+    const initialConfig: Record<string, { categoryId: string; accountId: string }> = {};
+    clientTxs.forEach(tx => {
+      initialConfig[tx.id] = {
+        categoryId: '',
+        accountId: accounts.length === 1 ? accounts[0].id : ''
+      };
+    });
+    setAcceptTxsConfig(initialConfig);
+    setAcceptingShare({ id: shareId, clientName });
+  };
+
+  const handleGlobalCategoryChange = (val: string) => {
+    setSelectedCategory(val);
+    setAcceptTxsConfig(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(txId => {
+        updated[txId] = { ...updated[txId], categoryId: val };
+      });
+      return updated;
+    });
+  };
+
+  const handleGlobalAccountChange = (val: string) => {
+    setSelectedAccount(val);
+    setAcceptTxsConfig(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(txId => {
+        updated[txId] = { ...updated[txId], accountId: val };
+      });
+      return updated;
+    });
+  };
+
+  const handleRowCategoryChange = (txId: string, val: string) => {
+    setAcceptTxsConfig(prev => ({
+      ...prev,
+      [txId]: { ...prev[txId], categoryId: val }
+    }));
+  };
+
+  const handleRowAccountChange = (txId: string, val: string) => {
+    setAcceptTxsConfig(prev => ({
+      ...prev,
+      [txId]: { ...prev[txId], accountId: val }
+    }));
   };
 
   const handleConfirmAcceptShare = async () => {
     if (!acceptingShare) return;
-    if (!selectedCategory || !selectedAccount) {
-      toast.error('Selecione uma categoria e uma conta para continuar.');
-      return;
+
+    const share = shares.find(s => s.id === acceptingShare.id);
+    if (!share) return;
+    const clientTxs = pendingTransactions.filter(tx => tx.client_id === share.client_id);
+
+    const configsArray: { original_transaction_id: string; category_id: string; account_id: string }[] = [];
+    
+    for (const tx of clientTxs) {
+      const config = acceptTxsConfig[tx.id];
+      if (!config || !config.categoryId || !config.accountId) {
+        toast.error(`Selecione uma categoria e uma conta para o lançamento "${tx.description || 'Sem descrição'}".`);
+        return;
+      }
+      configsArray.push({
+        original_transaction_id: tx.id,
+        category_id: config.categoryId,
+        account_id: config.accountId
+      });
     }
 
     setIsAccepting(true);
     try {
-      const { error } = await supabase.rpc('fn_accept_share', {
+      const { error } = await supabase.rpc('fn_accept_share_v2', {
         p_share_id: acceptingShare.id,
-        p_category_id: selectedCategory,
-        p_account_id: selectedAccount
+        p_configs: configsArray
       });
 
       if (error) throw error;
@@ -1028,73 +1092,199 @@ export default function SharedWithMeV2() {
         />
       )}
       {/* MODAL DE ACEITE (CATEGORIA E CONTA) */}
-      {acceptingShare && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-800">Aceitar Compartilhamento</h2>
-              <button onClick={() => setAcceptingShare(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              <p className="text-sm text-slate-500 mb-2">
-                Para aceitar o histórico de <strong>{acceptingShare.clientName}</strong>, selecione como essas transações devem ser categorizadas por padrão no seu sistema:
-              </p>
-              
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Categoria</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500/20 transition-all"
-                >
-                  <option value="" disabled>Selecione a categoria...</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+      {acceptingShare && (() => {
+        const share = shares.find(s => s.id === acceptingShare.id);
+        const clientTxs = share ? pendingTransactions.filter(tx => tx.client_id === share.client_id) : [];
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <Check className="w-5 h-5 text-emerald-600" />
+                    Aceitar Compartilhamento
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Cliente original: <strong className="text-slate-700">{acceptingShare.clientName}</strong>
+                  </p>
+                </div>
+                <button onClick={() => setAcceptingShare(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                  <X size={20} />
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Conta Bancária</label>
-                <select
-                  value={selectedAccount}
-                  onChange={(e) => setSelectedAccount(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500/20 transition-all"
+              {/* Corpo com scroll se necessário */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                  Para aceitar o histórico de lançamentos compartilhados, associe uma categoria e uma conta bancária para cada um. 
+                  Você pode usar a primeira linha (<strong className="text-teal-700">⚡ PREENCHER EM LOTE</strong>) para preencher automaticamente todas as linhas de uma vez só, ou personalizar cada uma individualmente.
+                </p>
+
+                <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[240px]">Lançamento</th>
+                          <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right min-w-[100px]">Valor</th>
+                          <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[200px]">Categoria</th>
+                          <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[200px]">Conta Bancária</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {/* LINHA DE LOTE / CABEÇALHO */}
+                        <tr className="bg-teal-50/40 border-b border-teal-100/50">
+                          <td className="px-4 py-3.5">
+                            <span className="text-xs font-black text-teal-800 tracking-wider flex items-center gap-1.5">
+                              ⚡ PREENCHER EM LOTE
+                            </span>
+                            <span className="text-[9px] text-teal-600/80 font-bold block mt-0.5">
+                              Aplica a todas as linhas abaixo
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <span className="text-slate-400 font-bold">-</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="relative group">
+                              <select
+                                value={selectedCategory}
+                                onChange={(e) => handleGlobalCategoryChange(e.target.value)}
+                                className="w-full px-3 py-2 bg-white rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-teal-800 font-extrabold shadow-sm border border-teal-100/40 pr-8"
+                                style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                              >
+                                <option value="">Selecione categoria em lote...</option>
+                                {categories.map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-600 pointer-events-none">
+                                <ChevronDown size={14} />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="relative group">
+                              <select
+                                value={selectedAccount}
+                                onChange={(e) => handleGlobalAccountChange(e.target.value)}
+                                className="w-full px-3 py-2 bg-white rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-teal-800 font-extrabold shadow-sm border border-teal-100/40 pr-8"
+                                style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                              >
+                                <option value="">Selecione conta em lote...</option>
+                                {accounts.map(a => (
+                                  <option key={a.id} value={a.id}>{a.name}</option>
+                                ))}
+                              </select>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-600 pointer-events-none">
+                                <ChevronDown size={14} />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* LINHAS DE LANÇAMENTOS REAIS */}
+                        {clientTxs.map((tx) => {
+                          const isInvertedIncome = tx.type === 'expense';
+                          const typeLabel = isInvertedIncome ? 'Entrada' : 'Saída';
+                          const typeColor = isInvertedIncome 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                            : 'bg-rose-50 text-rose-700 border-rose-100';
+
+                          const config = acceptTxsConfig[tx.id] || { categoryId: '', accountId: '' };
+
+                          return (
+                            <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-4 py-3.5">
+                                <span className="text-slate-800 text-xs font-bold block truncate max-w-[240px]">
+                                  {tx.description || 'Sem descrição'}
+                                </span>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span className="text-[10px] text-slate-400 font-semibold">
+                                    {format(parseISO(tx.date), 'dd/MM/yyyy')}
+                                  </span>
+                                  <span className="text-[8px] text-slate-300">•</span>
+                                  <span className={`inline-flex px-1.5 py-0.2 rounded-full text-[8px] font-bold border ${typeColor}`}>
+                                    {typeLabel}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <span className="text-xs font-black text-slate-900 block">
+                                  {formatCurrency(Number(tx.amount))}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="relative group">
+                                  <select
+                                    value={config.categoryId}
+                                    onChange={(e) => handleRowCategoryChange(tx.id, e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold pr-8"
+                                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                                  >
+                                    <option value="" disabled>Selecione categoria...</option>
+                                    {categories.map(c => (
+                                      <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                    <ChevronDown size={14} />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="relative group">
+                                  <select
+                                    value={config.accountId}
+                                    onChange={(e) => handleRowAccountChange(tx.id, e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold pr-8"
+                                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                                  >
+                                    <option value="" disabled>Selecione conta...</option>
+                                    {accounts.map(a => (
+                                      <option key={a.id} value={a.id}>{a.name}</option>
+                                    ))}
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                    <ChevronDown size={14} />
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                <button
+                  onClick={() => setAcceptingShare(null)}
+                  className="px-5 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-sm"
+                  disabled={isAccepting}
                 >
-                  <option value="" disabled>Selecione a conta...</option>
-                  {accounts.map(a => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmAcceptShare}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/30 transition-colors flex items-center gap-2 text-sm"
+                  disabled={isAccepting}
+                >
+                  {isAccepting ? 'Aceitando...' : (
+                    <>
+                      <Check size={18} />
+                      Confirmar Aceite
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-            
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
-              <button
-                onClick={() => setAcceptingShare(null)}
-                className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors"
-                disabled={isAccepting}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmAcceptShare}
-                className="flex-1 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg shadow-teal-500/30 transition-colors flex justify-center items-center gap-2"
-                disabled={isAccepting}
-              >
-                {isAccepting ? 'Aceitando...' : (
-                  <>
-                    <Check size={18} />
-                    Confirmar Aceite
-                  </>
-                )}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
