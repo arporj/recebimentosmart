@@ -159,7 +159,7 @@ const FinancialCategoriesV2 = () => {
                         <p className="text-[10px] text-slate-400 font-medium">{children.length} subcategoria(s)</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 transition-opacity">
                       <button onClick={() => openNew(parent.id)} className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Adicionar subcategoria">
                         <Plus size={15} />
                       </button>
@@ -180,7 +180,7 @@ const FinancialCategoriesV2 = () => {
                         {child.icon || <Tag size={14} className="text-slate-300" />}
                       </div>
                       <p className="flex-1 text-sm text-slate-700 font-medium">{child.name}</p>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 transition-opacity">
                         <button onClick={() => openEdit(child)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                           <Pencil size={14} />
                         </button>
