@@ -991,6 +991,7 @@ const FinancialTransactionModalV2 = ({
                                   setStartInstallment(String(val));
                                 }
                               }}
+                              placeholder="Ex: 1"
                               className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             <button
@@ -1089,6 +1090,7 @@ const FinancialTransactionModalV2 = ({
                                 setRecurrenceInterval(String(val));
                               }
                             }}
+                            placeholder="Ex: 1"
                             className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <button
