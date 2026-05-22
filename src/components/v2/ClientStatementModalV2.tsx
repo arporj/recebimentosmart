@@ -104,6 +104,7 @@ export default function ClientStatementModalV2({
   };
 
   const fetchStatement = async () => {
+    if (!user) return;
     try {
       setLoading(true);
       // Buscar todas as transações ativas do cliente com suas tags
@@ -114,6 +115,7 @@ export default function ClientStatementModalV2({
           tags:transaction_tags(tag:financial_tags(id, name, color))
         `)
         .eq('client_id', clientId)
+        .eq('user_id', user.id)
         .neq('status', 'cancelled');
 
       if (error) throw error;
