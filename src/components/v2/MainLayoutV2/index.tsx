@@ -403,18 +403,18 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
                 <main className="flex-1 flex flex-col">
                     {originalUser && (
-                        <div className="bg-amber-500 text-white px-4 md:px-6 py-3 flex items-center justify-between shadow-sm z-20 sticky top-0 md:top-0">
-                            <div className="flex items-center gap-3 text-sm font-medium">
-                                <Eye size={20} />
+                        <div className="bg-amber-500 text-white px-4 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-3 shadow-sm z-20 sticky top-[57px] md:top-[64px]">
+                            <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm font-medium">
+                                <Eye size={18} className="flex-shrink-0" />
                                 <span>
-                                    Você está visualizando a plataforma como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
+                                    Você está visualizando como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
                                 </span>
                             </div>
                             <button
                                 onClick={stopImpersonating}
-                                className="bg-amber-700 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm hidden md:block"
+                                className="bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 md:px-4 rounded-lg text-xs md:text-sm font-bold transition-colors shadow-sm whitespace-nowrap flex-shrink-0"
                             >
-                                Encerrar Visualização
+                                Sair
                             </button>
                         </div>
                     )}
