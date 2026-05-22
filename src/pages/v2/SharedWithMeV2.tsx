@@ -166,7 +166,8 @@ export default function SharedWithMeV2() {
           .from('financial_transactions')
           .select('id, client_id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current')
           .neq('status', 'cancelled')
-          .in('client_id', pendingClientIds);
+          .in('client_id', pendingClientIds)
+          .is('parent_id', null);
 
         if (!pendingTxError && pendingTxData) {
           setPendingTransactions(pendingTxData);
