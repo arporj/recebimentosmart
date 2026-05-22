@@ -48,10 +48,18 @@ export async function deletarTransacao(
     }
   }
 
+  const isShared = current.shared_status || current.shared_original_transaction_id || current.shared_by_user_id;
+
   // ── SCOPE: THIS ──────────────────────────────────────────────────────
   if (modalidade === 'unica' || effectiveScope === 'this') {
-    // For single transactions, just delete normally
+    // For single transactions, delete normally (physically if not shared, logically if shared)
     if (modalidade === 'unica') {
+      if (isShared) {
+        return supabase
+          .from('financial_transactions')
+          .update({ status: 'cancelled', shared_status: 'modified' })
+          .eq('id', transactionId);
+      }
       return supabase.from('financial_transactions').delete().eq('id', transactionId);
     }
 
@@ -73,18 +81,28 @@ export async function deletarTransacao(
         status: 'cancelled',
         parent_id: refId,
         recurrence_enabled: false,
+        ...(isShared ? { shared_status: 'modified' } : {}),
       });
     }
 
     // Physical instance: soft-delete → mark as cancelled
     return supabase
       .from('financial_transactions')
-      .update({ status: 'cancelled' })
+      .update({ 
+        status: 'cancelled',
+        ...(isShared ? { shared_status: 'modified' } : {})
+      })
       .eq('id', transactionId);
   }
 
   // ── SCOPE: ALL ───────────────────────────────────────────────────────
   if (effectiveScope === 'all') {
+    if (isShared) {
+      return supabase
+        .from('financial_transactions')
+        .update({ status: 'cancelled', shared_status: 'modified' })
+        .or(`id.eq.${refId},parent_id.eq.${refId}`);
+    }
     // Delete the parent and all children
     return supabase
       .from('financial_transactions')
@@ -102,12 +120,20 @@ export async function deletarTransacao(
       .update({ recurrence_end_date: endDate })
       .eq('id', refId);
 
-    // Delete all physical children on or after the effective date
-    await supabase
-      .from('financial_transactions')
-      .delete()
-      .eq('parent_id', refId)
-      .gte('date', effectiveDate);
+    // Delete all physical children on or after the effective date (logically if shared)
+    if (isShared) {
+      await supabase
+        .from('financial_transactions')
+        .update({ status: 'cancelled', shared_status: 'modified' })
+        .or(`id.eq.${refId},parent_id.eq.${refId}`)
+        .gte('date', effectiveDate);
+    } else {
+      await supabase
+        .from('financial_transactions')
+        .delete()
+        .eq('parent_id', refId)
+        .gte('date', effectiveDate);
+    }
 
     return { data: null, error: null };
   }
