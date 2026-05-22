@@ -141,7 +141,7 @@ const FinancialTransactionsV2 = () => {
       const { data, error } = await supabase
         .from('financial_accounts')
         .select('*')
-        .in('type', ['checking', 'investment'])
+        .in('type', ['checking', 'investment', 'savings'])
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('name');
@@ -781,7 +781,7 @@ const FinancialTransactionsV2 = () => {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold text-slate-700 truncate">{acc.name}</p>
-                <p className="text-[8px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : 'Inv.'}</p>
+                <p className="text-[8px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : acc.type === 'savings' ? 'Poupança' : 'Inv.'}</p>
               </div>
               <div className="text-right">
                 <p className="text-[11px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
