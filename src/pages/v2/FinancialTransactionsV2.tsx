@@ -150,7 +150,7 @@ const FinancialTransactionsV2 = () => {
       const fetchedAccounts = data || [];
       setAccounts(fetchedAccounts);
 
-      const saved = localStorage.getItem('recebimento_smart_selected_accounts');
+      const saved = localStorage.getItem(`recebimento_smart_selected_accounts_${user.id}`);
       let usedSaved = false;
       if (saved) {
         try {
@@ -209,16 +209,20 @@ const FinancialTransactionsV2 = () => {
   };
 
   useEffect(() => {
+    setSelectedAccountIds(new Set());
+    setAccounts([]);
+    setTransactions([]);
+    setCreditCardAccounts([]);
     fetchTransactions();
     fetchAccounts();
     fetchCreditCardAccounts();
   }, [user]);
 
   useEffect(() => {
-    if (selectedAccountIds.size > 0 || accounts.length > 0) {
-      localStorage.setItem('recebimento_smart_selected_accounts', JSON.stringify(Array.from(selectedAccountIds)));
+    if (user && (selectedAccountIds.size > 0 || accounts.length > 0)) {
+      localStorage.setItem(`recebimento_smart_selected_accounts_${user.id}`, JSON.stringify(Array.from(selectedAccountIds)));
     }
-  }, [selectedAccountIds, accounts.length]);
+  }, [selectedAccountIds, accounts.length, user]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
