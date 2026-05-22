@@ -195,7 +195,7 @@ export const LandingPagePremium: React.FC = () => {
                                 Login
                             </Link>
                             <Link className="hidden sm:flex cursor-pointer items-center justify-center rounded-lg bg-[#29a8a8] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#29a8a8]/30 hover:scale-105 active:scale-95 transition-all" to="/v2/cadastro">
-                                <span>Teste Grátis</span>
+                                <span>Usar Grátis</span>
                             </Link>
                         </div>
                     </div>
@@ -223,9 +223,6 @@ export const LandingPagePremium: React.FC = () => {
                                         <Link className="flex h-14 min-w-[200px] cursor-pointer items-center justify-center rounded-xl bg-[#29a8a8] px-8 text-lg font-bold text-white shadow-xl shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90 transition-all" to="/v2/cadastro">
                                             Começar agora
                                         </Link>
-                                        <a className="flex h-14 min-w-[200px] cursor-pointer items-center justify-center rounded-xl border-2 border-slate-200 bg-white px-8 text-lg font-bold text-slate-700 hover:bg-slate-50 transition-all" href="#features">
-                                            Ver demonstração
-                                        </a>
                                     </div>
 
                                 </div>
