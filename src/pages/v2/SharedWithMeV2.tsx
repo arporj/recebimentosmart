@@ -77,6 +77,10 @@ export default function SharedWithMeV2() {
   const [selectedAccount, setSelectedAccount] = useState('');
   const [isAccepting, setIsAccepting] = useState(false);
 
+  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
+  const [activeTab, setActiveTab] = useState<'shares' | 'updates'>('shares');
+  const [pendingUpdates, setPendingUpdates] = useState<any[]>([]);
+
   useEffect(() => {
     if (user?.email) {
       fetchShares();
@@ -157,11 +161,86 @@ export default function SharedWithMeV2() {
       }
 
       setShares(items);
+
+      // 3. Buscar atualizações pendentes bilaterais de forma robusta e à prova de falhas de PostgREST joins
+      if (user) {
+        const { data: updatesData, error: updatesError } = await supabase
+          .from('shared_transaction_updates')
+          .select('*')
+          .eq('receiver_id', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (updatesError) throw updatesError;
+
+        let updatesWithSenders: any[] = [];
+        if (updatesData && updatesData.length > 0) {
+          const senderIds = Array.from(new Set(updatesData.map(u => u.sender_id)));
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', senderIds);
+            
+          const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+          // Buscar detalhes das transações (descrição e nome do cliente) para exibição enriquecida
+          const txIds = Array.from(new Set([
+            ...updatesData.map(u => u.transaction_id),
+            ...updatesData.map(u => u.original_transaction_id)
+          ].filter(Boolean)));
+
+          const { data: txInfoData } = await supabase
+            .from('financial_transactions')
+            .select(`
+              id, 
+              description, 
+              date, 
+              amount, 
+              client:clients(name)
+            `)
+            .in('id', txIds);
+
+          const txInfoMap = new Map(txInfoData?.map((t: any) => [t.id, t]) || []);
+
+          updatesWithSenders = updatesData.map(u => {
+            const txInfo = txInfoMap.get(u.transaction_id) || txInfoMap.get(u.original_transaction_id);
+            return {
+              ...u,
+              sender: profilesMap.get(u.sender_id) || { id: u.sender_id, name: 'Usuário', email: '' },
+              transaction_description: txInfo?.description || 'Lançamento Compartilhado',
+              client_name: txInfo?.client?.name || 'Cliente Vinculado'
+            };
+          });
+        }
+        setPendingUpdates(updatesWithSenders);
+      }
     } catch (err) {
       console.error('Erro ao buscar compartilhados:', err);
       toast.error('Falha ao carregar contas compartilhadas.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResolveUpdate = async (updateId: string, action: 'accepted' | 'rejected', description: string, updateType: 'update' | 'delete') => {
+    const actionLabel = action === 'accepted' ? 'aceitar' : 'rejeitar';
+    const typeLabel = updateType === 'delete' ? 'exclusão' : 'alteração';
+    const confirmed = window.confirm(`Deseja realmente ${actionLabel} esta proposta de ${typeLabel} para o lançamento "${description}"?`);
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase.rpc('fn_resolve_shared_update', {
+        p_update_id: updateId,
+        p_action: action
+      });
+
+      if (error) throw error;
+
+      toast.success(`Notificação de ${typeLabel} processada: ${action === 'accepted' ? 'Aceita' : 'Rejeitada'}!`);
+      fetchShares();
+    } catch (err) {
+      console.error('Erro ao resolver atualização:', err);
+      toast.error('Erro ao processar sua resposta.');
     }
   };
 
@@ -451,109 +530,279 @@ export default function SharedWithMeV2() {
             </div>
           )}
 
-          {/* SEÇÃO 2: CONTAS COMPARTILHADAS ATIVAS */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
-                Resumos Compartilhados ({acceptedShares.length})
-              </h2>
-            </div>
+          {/* NAVEGAÇÃO DE ABAS */}
+          <div className="flex border-b border-slate-200 mb-6 bg-white p-2 rounded-2xl shadow-sm border border-slate-100 max-w-md">
+            <button
+              onClick={() => setActiveTab('shares')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                activeTab === 'shares'
+                  ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/20'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Users size={16} />
+              Resumos Compartilhados ({acceptedShares.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('updates')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
+                activeTab === 'updates'
+                  ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/20'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Clock size={16} />
+              Notificações
+              {pendingUpdates.length > 0 && (
+                <span className="absolute -top-1.5 -right-1 bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white">
+                  {pendingUpdates.length}
+                </span>
+              )}
+            </button>
+          </div>
 
-            {acceptedShares.length === 0 ? (
-              <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-lg mx-auto mt-8 shadow-sm">
-                <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-black text-slate-800">Nenhum resumo disponível</h3>
-                <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
-                  Você ainda não tem contas ativas compartilhadas com você ou aguardando visualização.
-                </p>
+          {activeTab === 'shares' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
+                  Resumos Compartilhados ({acceptedShares.length})
+                </h2>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {acceptedShares.map((share) => {
-                  const balance = share.financials?.netBalance ?? 0;
-                  const isNegative = balance < 0;
-                  
-                  return (
-                    <div 
-                      key={share.id} 
-                      className="bg-white rounded-[2rem] shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
-                    >
-                      {/* Header do Card com Nome do Remetente */}
-                      <div className="p-6 border-b border-slate-100">
-                        <div className="flex justify-between items-start mb-3">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-100">
-                            Ativo
-                          </span>
-                          <span className="text-[10px] font-black tracking-wide text-slate-400 uppercase">
-                            Desde {new Date(share.created_at).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                        
-                        <h3 className="text-xl font-extrabold text-slate-900 line-clamp-1 group-hover:text-teal-700 transition-colors tracking-tight">
-                          {share.sender.name}
-                        </h3>
-                        <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1 font-bold uppercase tracking-wider">
-                          <Mail className="w-3 h-3 text-slate-300" />
-                          {share.sender.email}
-                        </p>
-                      </div>
 
-                      {/* Seção de Valores Rápidos (Inversão aplicada no totalIncome e totalExpense) */}
-                      <div className="bg-slate-50/50 px-6 py-5 grid grid-cols-2 gap-4 border-b border-slate-100 flex-grow">
-                        <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">A Receber</span>
-                          <div className="text-emerald-600 font-black text-base flex items-center mt-1">
-                            <TrendingUp className="w-4 h-4 mr-1 text-emerald-500" />
-                            {formatCurrency(share.financials?.totalIncome ?? 0)}
+              {acceptedShares.length === 0 ? (
+                <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-lg mx-auto mt-8 shadow-sm">
+                  <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-black text-slate-800">Nenhum resumo disponível</h3>
+                  <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                    Você ainda não tem contas ativas compartilhadas com você ou aguardando visualização.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {acceptedShares.map((share) => {
+                    const balance = share.financials?.netBalance ?? 0;
+                    const isNegative = balance < 0;
+                    
+                    return (
+                      <div 
+                        key={share.id} 
+                        className="bg-white rounded-[2rem] shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
+                      >
+                        {/* Header do Card com Nome do Remetente */}
+                        <div className="p-6 border-b border-slate-100">
+                          <div className="flex justify-between items-start mb-3">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-100">
+                              Ativo
+                            </span>
+                            <span className="text-[10px] font-black tracking-wide text-slate-400 uppercase">
+                              Desde {new Date(share.created_at).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                          
+                          <h3 className="text-xl font-extrabold text-slate-900 line-clamp-1 group-hover:text-teal-700 transition-colors tracking-tight">
+                            {share.sender.name}
+                          </h3>
+                          <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1 font-bold uppercase tracking-wider">
+                            <Mail className="w-3 h-3 text-slate-300" />
+                            {share.sender.email}
+                          </p>
+                        </div>
+
+                        {/* Seção de Valores Rápidos (Inversão aplicada no totalIncome e totalExpense) */}
+                        <div className="bg-slate-50/50 px-6 py-5 grid grid-cols-2 gap-4 border-b border-slate-100 flex-grow">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">A Receber</span>
+                            <div className="text-emerald-600 font-black text-base flex items-center mt-1">
+                              <TrendingUp className="w-4 h-4 mr-1 text-emerald-500" />
+                              {formatCurrency(share.financials?.totalIncome ?? 0)}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">A Pagar</span>
+                            <div className="text-rose-600 font-black text-base flex items-center mt-1">
+                              <TrendingDown className="w-4 h-4 mr-1 text-rose-500" />
+                              {formatCurrency(share.financials?.totalExpense ?? 0)}
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">A Pagar</span>
-                          <div className="text-rose-600 font-black text-base flex items-center mt-1">
-                            <TrendingDown className="w-4 h-4 mr-1 text-rose-500" />
-                            {formatCurrency(share.financials?.totalExpense ?? 0)}
+
+                        {/* Saldo Netting e Ação */}
+                        <div className="p-6 bg-white mt-auto">
+                          <div className="flex items-center justify-between mb-5 px-1">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Netting do Mês</span>
+                            <span className={`text-lg font-black tracking-tight ${isNegative ? 'text-rose-600' : balance > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                              {formatCurrency(balance)}
+                            </span>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedClient({ id: share.client_id, name: share.sender.name });
+                                setIsStatementOpen(true);
+                              }}
+                              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-sm shadow-sm transition-colors duration-150 active:scale-95"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Visualizar Extrato
+                            </button>
+                            
+                            <button
+                              onClick={() => handleRejectShare(share.id)}
+                              title="Remover acesso"
+                              className="p-3 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 rounded-2xl transition-colors active:scale-95"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
                           </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">
+                  Notificações de Alteração/Exclusão ({pendingUpdates.length})
+                </h2>
+              </div>
 
-                      {/* Saldo Netting e Ação */}
-                      <div className="p-6 bg-white mt-auto">
-                        <div className="flex items-center justify-between mb-5 px-1">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Netting do Mês</span>
-                          <span className={`text-lg font-black tracking-tight ${isNegative ? 'text-rose-600' : balance > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
-                            {formatCurrency(balance)}
+              {pendingUpdates.length === 0 ? (
+                <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-lg mx-auto mt-8 shadow-sm">
+                  <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-black text-slate-800">Sem notificações pendentes</h3>
+                  <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                    Você não possui atualizações ou exclusões de lançamentos aguardando sua resposta neste momento.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                  {pendingUpdates.map((update) => {
+                    const isDelete = update.update_type === 'delete';
+                    
+                    return (
+                      <div 
+                        key={update.id} 
+                        className={`bg-white rounded-[2rem] shadow-sm border-2 overflow-hidden flex flex-col transition-all duration-200 ${
+                          isDelete ? 'border-rose-100 hover:border-rose-200' : 'border-teal-100 hover:border-teal-200'
+                        }`}
+                      >
+                        {/* Header da Notificação */}
+                        <div className={`p-4 border-b flex justify-between items-center ${
+                          isDelete ? 'bg-rose-50/60 border-rose-100 text-rose-800' : 'bg-teal-50/60 border-teal-100 text-teal-800'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <Clock size={16} />
+                            <span className="text-xs font-black uppercase tracking-wider">
+                              {isDelete ? 'Exclusão Pendente' : 'Alteração Pendente'}
+                            </span>
+                          </div>
+                          
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border bg-white/80">
+                            {update.scope === 'all_future' ? 'Lote (Futuros)' : 'Apenas Este'}
                           </span>
                         </div>
 
-                        <div className="flex gap-2">
+                        {/* Corpo da Notificação */}
+                        <div className="p-6 flex-grow space-y-4">
+                          {/* Remetente */}
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-sm font-black">
+                              {update.sender.name?.substring(0, 2).toUpperCase() || 'RS'}
+                            </div>
+                            <div>
+                              <div className="text-xs text-slate-400 uppercase tracking-widest font-black">Autor da Ação</div>
+                              <div className="text-sm font-black text-slate-800 leading-tight">
+                                {update.sender.name}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Lançamento Envolvido */}
+                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Lançamento</span>
+                              <strong className="text-slate-800 text-sm block font-extrabold truncate">
+                                {update.transaction_description}
+                              </strong>
+                              <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+                                Cliente: {update.client_name}
+                              </span>
+                            </div>
+
+                            {/* Detalhes De / Para para Update */}
+                            {!isDelete && (
+                              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200/60">
+                                {update.old_amount !== update.new_amount && (
+                                  <div>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Valor</span>
+                                    <div className="text-xs text-slate-500 line-through">
+                                      {formatCurrency(Number(update.old_amount))}
+                                    </div>
+                                    <div className="text-xs font-black text-emerald-600">
+                                      {formatCurrency(Number(update.new_amount))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {update.old_date !== update.new_date && (
+                                  <div>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Data</span>
+                                    <div className="text-xs text-slate-500 line-through">
+                                      {update.old_date ? format(parseISO(update.old_date), 'dd/MM/yyyy') : '-'}
+                                    </div>
+                                    <div className="text-xs font-black text-teal-600">
+                                      {update.new_date ? format(parseISO(update.new_date), 'dd/MM/yyyy') : '-'}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {isDelete && (
+                              <div className="pt-2 border-t border-slate-200/60">
+                                <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                                  {update.scope === 'all_future' 
+                                    ? 'A exclusão em lote foi realizada na origem. Ao aceitar, este e todos os lançamentos futuros vinculados a este lote também serão excluídos.' 
+                                    : 'A exclusão deste lançamento foi realizada na origem. Ao aceitar, o lançamento local correspondente será removido.'}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Ações */}
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
                           <button
-                            onClick={() => {
-                              setSelectedClient({ id: share.client_id, name: share.sender.name });
-                              setIsStatementOpen(true);
-                            }}
-                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-sm shadow-sm transition-colors duration-150 active:scale-95"
+                            onClick={() => handleResolveUpdate(update.id, 'accepted', update.transaction_description, update.update_type)}
+                            className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm gap-2 transition-colors duration-150"
                           >
-                            <FileText className="w-4 h-4" />
-                            Visualizar Extrato
+                            <Check className="w-4 h-4" />
+                            Aceitar
                           </button>
                           
                           <button
-                            onClick={() => handleRejectShare(share.id)}
-                            title="Remover acesso"
-                            className="p-3 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 rounded-2xl transition-colors active:scale-95"
+                            onClick={() => handleResolveUpdate(update.id, 'rejected', update.transaction_description, update.update_type)}
+                            className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-600 font-extrabold text-xs rounded-xl border border-slate-200 gap-2 transition-colors duration-150"
                           >
-                            <X className="w-5 h-5" />
+                            <X className="w-4 h-4" />
+                            Recusar
                           </button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
