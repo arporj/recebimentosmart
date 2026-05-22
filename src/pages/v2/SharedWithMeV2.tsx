@@ -274,7 +274,7 @@ export default function SharedWithMeV2() {
            client:clients(id, name, phone),
            sender:profiles!client_shares_sender_id_fkey(id, name, email)
         `)
-        .eq('receiver_email', user?.email)
+        .ilike('receiver_email', user?.email || '')
         .order('created_at', { ascending: false });
 
       if (sharesError) throw sharesError;
@@ -565,9 +565,32 @@ export default function SharedWithMeV2() {
     });
   }, [shares, rawTransactions, currentMonth]);
 
-  const handleOpenAcceptModal = (shareId: string, clientName: string) => {
+  const handleOpenAcceptModal = async (shareId: string, clientName: string) => {
     const share = shares.find(s => s.id === shareId);
-    const clientTxs = share ? pendingTransactions.filter(tx => tx.client_id === share.client_id) : [];
+    if (!share) return;
+
+    const clientTxs = pendingTransactions.filter(tx => tx.client_id === share.client_id);
+
+    if (clientTxs.length === 0) {
+      setIsAccepting(true);
+      try {
+        const { error } = await supabase.rpc('fn_accept_share_v2', {
+          p_share_id: shareId,
+          p_configs: []
+        });
+
+        if (error) throw error;
+
+        toast.success(`Você aceitou o compartilhamento de "${clientName}"!`);
+        fetchShares();
+      } catch (err) {
+        console.error('Erro ao aceitar compartilhamento:', err);
+        toast.error('Erro ao aceitar convite.');
+      } finally {
+        setIsAccepting(false);
+      }
+      return;
+    }
 
     setSelectedCategory('');
     if (accounts.length === 1) {
@@ -709,10 +732,7 @@ export default function SharedWithMeV2() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  const pendingShares = processedShares.filter(s => 
-    s.status === 'pending' && 
-    pendingTransactions.some(tx => tx.client_id === s.client_id)
-  );
+  const pendingShares = processedShares.filter(s => s.status === 'pending');
   const acceptedShares = processedShares.filter(s => 
     s.status === 'accepted' && 
     rawTransactions.some(tx => tx.client_id === s.client_id)
