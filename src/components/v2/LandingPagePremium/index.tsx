@@ -217,7 +217,7 @@ export const LandingPagePremium: React.FC = () => {
                                         Controle seus recebimentos com <span className="text-[#29a8a8]">inteligência</span> e simplicidade
                                     </h1>
                                     <p className="max-w-[540px] text-lg font-medium leading-relaxed text-slate-600 md:text-xl">
-                                        Otimize sua gestão financeira com um sistema completo e fácil de usar, desenhado especificamente para pequenas empresas decolarem.
+                                        Otimize sua gestão financeira com um sistema completo e fácil de usar, desenhado para organizar suas finanças pessoais ou impulsionar o seu negócio.
                                     </p>
                                     <div className="flex flex-wrap gap-4">
                                         <Link className="flex h-14 min-w-[200px] cursor-pointer items-center justify-center rounded-xl bg-[#29a8a8] px-8 text-lg font-bold text-white shadow-xl shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90 transition-all" to="/v2/cadastro">
