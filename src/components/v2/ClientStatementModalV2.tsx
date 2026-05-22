@@ -271,16 +271,14 @@ export default function ClientStatementModalV2({
     });
   }, [rawTransactions, currentMonth]);
 
-  // Cálculos rápidos com inversão de perspectiva para o usuário logado:
-  // - Despesa original do Remetente ('expense') -> Receita para o Receptor ('income', A Receber)
-  // - Receita original do Remetente ('income') -> Despesa para o Receptor ('expense', A Pagar)
+  // Cálculos de totais baseados nos tipos corretos de transações (income = receita, expense = despesa)
   const totals = useMemo(() => {
     const income = monthInstances
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'income')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
 
     const expense = monthInstances
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'expense')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
 
     return {
@@ -407,7 +405,7 @@ export default function ClientStatementModalV2({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {monthInstances.map((t) => {
-                    const isIncome = t.type === 'expense'; 
+                    const isIncome = t.type === 'income'; 
                     const formattedDate = format(parseISO(t.instanceDate), 'dd/MM/yyyy');
 
                     return (
