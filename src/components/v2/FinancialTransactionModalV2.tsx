@@ -366,6 +366,7 @@ const FinancialTransactionModalV2 = ({
       .from('clients')
       .select('id, name')
       .eq('user_id', user?.id || '')
+      .is('deleted_at', null)
       .order('name');
     if (data) setClients(data);
   };
