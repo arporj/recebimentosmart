@@ -383,7 +383,14 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             <div className="flex-1 flex flex-col min-h-screen ml-0 w-full transition-all duration-300">
 
                 {/* Header Superior (Sempre visível para permitir abrir o menu lateral colapsado) */}
-                <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+                <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3 shadow-sm justify-start">
+                    {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0"
+                    >
+                        <Menu size={24} />
+                    </button>
                     <div className="flex items-center gap-2">
                         <div className="bg-[#0f172a] p-1.5 rounded-md">
                             <img src="/images/logo.svg" alt="Logo" className="w-5 h-5" />
@@ -392,13 +399,6 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             Recebimento <span className="text-[#14b8a6]">$mart</span>
                         </span>
                     </div>
-                    {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução */}
-                    <button
-                        onClick={() => setIsSidebarOpen(true)}
-                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none"
-                    >
-                        <Menu size={24} />
-                    </button>
                 </header>
 
                 <main className="flex-1 flex flex-col">
