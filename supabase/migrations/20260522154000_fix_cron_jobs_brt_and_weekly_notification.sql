@@ -1,12 +1,21 @@
--- Migração: Corrigir horários dos cron jobs para meia-noite BRT (03:00 UTC)
--- e corrigir o job 9 (weekly-due-notification-sunday) que está falhando
+-- Migração: Corrigir horários dos cron jobs para meia-noite BRT (03:00 UTC) com blocos seguros
+-- e corrigir o job weekly-due-notification-sunday que está falhando
 
 -- ============================================================================
--- 1. Job 1: Renovação Diária de Assinaturas
---    De: 0 0 * * * (meia-noite UTC = 21h BRT)
+-- 1. Job: Renovação Diária de Assinaturas
 --    Para: 0 3 * * * (03:00 UTC = meia-noite BRT)
 -- ============================================================================
-SELECT cron.unschedule(1);
+DO $$
+DECLARE
+    v_job_id BIGINT;
+BEGIN
+    SELECT jobid INTO v_job_id FROM cron.job WHERE jobname = 'Renovação Diária de Assinaturas' LIMIT 1;
+    IF v_job_id IS NOT NULL THEN
+        PERFORM cron.unschedule(v_job_id);
+    END IF;
+END;
+$$;
+
 SELECT cron.schedule(
   'Renovação Diária de Assinaturas',
   '0 3 * * *',
@@ -14,15 +23,8 @@ SELECT cron.schedule(
 );
 
 -- ============================================================================
--- 2. Job 9: Notificação Semanal de Vencimentos
---    PROBLEMA: Usava current_setting('request.header.apikey') que retorna NULL
---    em contexto de cron (não há request HTTP), gerando JSON inválido.
---    CORREÇÃO: Criar função wrapper igual ao padrão do Job 8, usando
---    service_role_key diretamente.
---    HORÁRIO: De 0 0 * * 0 (meia-noite UTC) para 0 3 * * 0 (meia-noite BRT)
+-- 2. Notificação Semanal de Vencimentos (weekly-due-notification-sunday)
 -- ============================================================================
-
--- 2a. Criar a função wrapper para notificações semanais
 CREATE OR REPLACE FUNCTION public.invoke_weekly_notifications_function()
 RETURNS void
 LANGUAGE plpgsql
@@ -35,7 +37,6 @@ DECLARE
     response_status_code INT;
     response_body TEXT;
 BEGIN
-    -- 1. Inicia a requisição HTTP POST
     SELECT net.http_post(
         url := edge_function_url,
         headers := jsonb_build_object(
@@ -45,10 +46,8 @@ BEGIN
         body := '{}'::jsonb
     ) INTO request_id;
 
-    -- 2. Aguarda a Edge Function processar
     PERFORM pg_sleep(15);
 
-    -- 3. Consulta o resultado
     SELECT T.status_code, T.content
     INTO response_status_code, response_body
     FROM net._http_response AS T
@@ -69,8 +68,17 @@ EXCEPTION
 END;
 $$;
 
--- 2b. Remover o job antigo com problema e recriar com a função wrapper
-SELECT cron.unschedule(9);
+DO $$
+DECLARE
+    v_job_id BIGINT;
+BEGIN
+    SELECT jobid INTO v_job_id FROM cron.job WHERE jobname = 'weekly-due-notification-sunday' LIMIT 1;
+    IF v_job_id IS NOT NULL THEN
+        PERFORM cron.unschedule(v_job_id);
+    END IF;
+END;
+$$;
+
 SELECT cron.schedule(
   'weekly-due-notification-sunday',
   '0 3 * * 0',

@@ -44,12 +44,13 @@ CREATE POLICY "Permitir atualização de status pelo receptor" ON public.shared_
     WITH CHECK (auth.uid() = receiver_id);
 
 -- 4. Habilitar Realtime para as tabelas relevantes
-ALTER PUBLICATION supabase_realtime ADD TABLE public.shared_transaction_updates;
+DO $$
+BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.shared_transaction_updates;
 EXCEPTION WHEN OTHERS THEN
     -- Ignorar erro caso a tabela já esteja na publicação
     NULL;
-END;
-$$;
+END $$;
 
 -- 5. Função para aceitar/resolver a atualização de compartilhamento
 CREATE OR REPLACE FUNCTION public.fn_resolve_shared_update(
