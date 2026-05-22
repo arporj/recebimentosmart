@@ -745,28 +745,30 @@ const FinancialTransactionsV2 = () => {
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   const SidebarContent = () => (
-    <div className="space-y-4 h-full pb-6">
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
-        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all active:scale-90">
-          <ChevronLeft size={22} className="text-slate-600" />
+    <div className="space-y-2 h-full pb-2">
+      {/* Mês de Referência */}
+      <div className="bg-white py-1.5 px-3 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-slate-100 rounded-lg transition-all active:scale-90">
+          <ChevronLeft size={16} className="text-slate-600" />
         </button>
         <div className="text-center">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Mês de Referência</span>
-          <h2 className="text-xl font-black text-slate-800 capitalize font-manrope">{monthLabel}</h2>
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-0.5">Mês de Referência</span>
+          <h2 className="text-base font-black text-slate-800 capitalize font-manrope">{monthLabel}</h2>
         </div>
-        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all active:scale-90">
-          <ChevronRight size={22} className="text-slate-600" />
+        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-slate-100 rounded-lg transition-all active:scale-90">
+          <ChevronRight size={16} className="text-slate-600" />
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-xs font-extrabold uppercase tracking-widest text-slate-400">
+      {/* Seção de Contas */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="py-1.5 px-3 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
           <span>Contas</span>
           <span>Saldo</span>
         </div>
-        <div className="divide-y divide-slate-50 max-h-[300px] overflow-y-auto">
+        <div className="divide-y divide-slate-50 max-h-[160px] overflow-y-auto no-scrollbar">
           {accountsData.map((acc) => (
-            <div key={acc.id} className="p-3 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+            <div key={acc.id} className="py-1 px-3 flex items-center gap-2 hover:bg-slate-50 transition-colors">
               <input 
                 type="checkbox"
                 checked={selectedAccountIds.has(acc.id)}
@@ -775,58 +777,58 @@ const FinancialTransactionsV2 = () => {
                   if (next.has(acc.id)) next.delete(acc.id); else next.add(acc.id);
                   setSelectedAccountIds(next);
                 }}
-                className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 cursor-pointer"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-700 truncate">{acc.name}</p>
-                <p className="text-[10px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : 'Inv.'}</p>
+                <p className="text-[11px] font-bold text-slate-700 truncate">{acc.name}</p>
+                <p className="text-[8px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : 'Inv.'}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
-                <p className="text-[10px] font-bold text-slate-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
+                <p className="text-[11px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
+                <p className="text-[8px] font-bold text-slate-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
               </div>
             </div>
           ))}
         </div>
-        <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-          <div className="flex flex-col"><span className="text-[10px] font-black opacity-40 uppercase">Total</span></div>
+        <div className="py-1.5 px-3 bg-slate-900 text-white flex justify-between items-center">
+          <div className="flex flex-col"><span className="text-[8px] font-black opacity-40 uppercase">Total</span></div>
           <div className="text-right">
-            <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
-            <p className="text-[10px] font-bold opacity-70">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
+            <p className="text-sm font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
+            <p className="text-[8px] font-bold opacity-70">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-3xl text-white space-y-5 relative overflow-hidden group border border-slate-800 shadow-xl">
-        {/* Efeito de brilho de fundo sutil para parecer premium */}
-        <div className="absolute -right-10 -top-10 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-teal-500/15 transition-all duration-500" />
-        <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Resumo Mensal */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-3 rounded-xl text-white space-y-3 relative overflow-hidden group border border-slate-800 shadow-xl">
+        <div className="absolute -right-10 -top-10 w-24 h-24 bg-teal-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/15 transition-all duration-500" />
+        <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="space-y-4 relative z-10">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Resumo Mensal</span>
-            <Filter size={14} className="text-slate-500" />
+        <div className="space-y-2 relative z-10">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-slate-300">Resumo Mensal</span>
+            <Filter size={10} className="text-slate-500" />
           </div>
           
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-2xl border border-slate-800/40 hover:border-slate-800 transition-colors">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Ganhos</span>
-              <p className="text-sm font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
+              <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Ganhos</span>
+              <p className="text-[11px] font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
             </div>
-            <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-2xl border border-slate-800/40 hover:border-slate-800 transition-colors">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Gastos</span>
-              <p className="text-sm font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
+            <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
+              <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Gastos</span>
+              <p className="text-[11px] font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
             </div>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-800 flex flex-col gap-1.5 relative z-10">
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Resultado Líquido</span>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-            <p className={`text-2xl font-black tracking-tight ${totals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+        <div className="pt-2 border-t border-slate-800 flex flex-col gap-0.5 relative z-10">
+          <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Resultado Líquido</span>
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <p className={`text-lg font-black tracking-tight ${totals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.result)}
             </p>
-            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${totals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md ${totals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
               {totals.result >= 0 ? 'Superávit' : 'Déficit'}
             </span>
           </div>
@@ -1049,10 +1051,10 @@ const FinancialTransactionsV2 = () => {
       {isSidebarOpen && (
         <div className="fixed inset-0 z-[200] xl:hidden">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[300px] bg-slate-50 p-6 overflow-y-auto animate-in slide-in-from-left">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black">Resumo</h2>
-              <button onClick={() => setIsSidebarOpen(false)} className="p-2"><ChevronLeft size={24} /></button>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px] bg-slate-50 p-4 overflow-y-auto no-scrollbar animate-in slide-in-from-left">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-black text-slate-800">Resumo</h2>
+              <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 text-slate-500 hover:text-slate-700 transition-colors"><ChevronLeft size={20} /></button>
             </div>
             <SidebarContent />
           </div>
