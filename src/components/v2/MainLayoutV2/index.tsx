@@ -90,6 +90,42 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const [displayedCount, setDisplayedCount] = useState(0);
     const [animationKey, setAnimationKey] = useState(0);
 
+    // Função para sintetizar um som de notificação sutil e harmônico via Web Audio API
+    const playNotificationChime = () => {
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContextClass) return;
+            
+            const ctx = new AudioContextClass();
+            
+            // Acorde consonante sutil: Sol5 (783.99 Hz) e Dó6 (1046.50 Hz)
+            const frequencies = [783.99, 1046.50];
+            const duration = 0.35; // 350ms
+            
+            frequencies.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                
+                const now = ctx.currentTime;
+                // Envelope suave e rápido
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(idx === 0 ? 0.12 : 0.08, now + 0.015);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                
+                osc.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + duration);
+            });
+        } catch (e) {
+            console.warn('Web Audio API não inicializada ou bloqueada pelo navegador:', e);
+        }
+    };
+
     // Função para contar notificações pendentes
     const fetchPendingCount = async () => {
         if (!user) return;
@@ -125,6 +161,11 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     // Efeito para gerenciar a animação premium do badge ao mudar o contador
     useEffect(() => {
         if (pendingCount !== displayedCount) {
+            // Tocar som de chime de notificação se o número de pendentes aumentou
+            if (pendingCount > displayedCount) {
+                playNotificationChime();
+            }
+
             if (displayedCount === 0) {
                 // Se o badge estava oculto, exibe imediatamente com a animação de explosão
                 setDisplayedCount(pendingCount);
