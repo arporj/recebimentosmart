@@ -352,6 +352,7 @@ export default function SharedWithMeV2() {
           .from('financial_transactions')
           .select('id, client_id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current')
           .neq('status', 'cancelled')
+          .eq('user_id', user?.id)
           .in('client_id', clientIds);
 
         if (txError) throw txError;
