@@ -49,6 +49,14 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [originalShare, setOriginalShare] = useState<{ id: string, receiver_email: string } | null>(null);
+  const nameInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   useEffect(() => {
     const fetchCustomFields = async () => {
@@ -319,7 +327,8 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         setIsConfirmed(false);
         setOriginalShare(null);
         setIsOpen(false);
-      } else if (onClose) {
+      }
+      if (onClose) {
         onClose();
       }
     } catch (error) {
@@ -334,6 +343,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         <label className="block text-sm font-medium text-neutral-700" htmlFor="name">Nome Completo</label>
         <input
           id="name"
+          ref={nameInputRef}
           type="text"
           required
           value={formData.name}
@@ -440,7 +450,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         )}
 
         <p className="mt-2 text-xs text-neutral-500">
-          Ao associar um usuário pelo e-mail cadastrado, os lançamentos vinculados a este cliente ficarão disponíveis no menu "Compartilhado comigo" dele.
+          Ao associar um usuário pelo e-mail cadastrado, os lançamentos vinculados a este cliente ficarão disponíveis no menu "Lançamentos compartilhados" dele.
         </p>
       </div>
 
