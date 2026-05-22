@@ -825,7 +825,7 @@ const FinancialTransactionsV2 = () => {
   return (
     <div className="bg-slate-50 min-h-screen flex flex-col">
       {/* ===== MOBILE LAYOUT ===== */}
-      <div className="lg:hidden flex flex-col min-h-screen">
+      <div className="xl:hidden flex flex-col min-h-screen">
         {/* Mobile Header: Resumo + Busca + Criar */}
         <div className="sticky top-0 z-30 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Linha 1: Hamburger Resumo + Saldo + Botão Criar */}
@@ -1034,7 +1034,7 @@ const FinancialTransactionsV2 = () => {
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-[200] lg:hidden">
+        <div className="fixed inset-0 z-[200] xl:hidden">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-[300px] bg-slate-50 p-6 overflow-y-auto animate-in slide-in-from-left">
             <div className="flex justify-between items-center mb-6">
@@ -1047,7 +1047,7 @@ const FinancialTransactionsV2 = () => {
       )}
 
       {/* ===== DESKTOP LAYOUT ===== */}
-      <div className="hidden lg:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
+      <div className="hidden xl:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
         {/* Sidebar - Fixa */}
         <aside className="w-[360px] flex-shrink-0 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto no-scrollbar">
           <SidebarContent />
