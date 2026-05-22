@@ -463,7 +463,7 @@ export default function ClientStatementModalV2({
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-x-auto shadow-sm">
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-x-auto shadow-sm transition-all duration-300 pb-2">
               <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
@@ -701,6 +701,13 @@ export default function ClientStatementModalV2({
                       </tr>
                     );
                   })}
+                  
+                  {/* Linha espaçadora transparente para expandir a altura do tbody quando o dropdown estiver aberto */}
+                  {(activeCategoryDropdownTxId || activeAccountDropdownTxId) && (
+                    <tr className="h-56 select-none pointer-events-none border-none">
+                      <td colSpan={6} className="border-none bg-transparent h-56"></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
