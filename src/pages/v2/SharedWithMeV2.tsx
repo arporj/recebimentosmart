@@ -117,7 +117,7 @@ export default function SharedWithMeV2() {
            client_id,
            status,
            created_at,
-           client:clients!inner(id, name, phone),
+           client:clients(id, name, phone),
            sender:profiles!client_shares_sender_id_fkey(id, name, email)
         `)
         .eq('receiver_email', user?.email)
@@ -139,7 +139,7 @@ export default function SharedWithMeV2() {
            status,
            created_at,
            receiver_email,
-           client:clients!inner(id, name)
+           client:clients(id, name)
         `)
         .eq('sender_id', user?.id)
         .order('created_at', { ascending: false });
