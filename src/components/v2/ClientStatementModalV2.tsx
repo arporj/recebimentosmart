@@ -9,6 +9,8 @@ import {
   FileText 
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 import { 
   format, 
   parseISO, 
@@ -51,6 +53,9 @@ interface FinancialTransaction {
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_total?: number;
   installment_current?: number;
+  category_id?: string | null;
+  account_id?: string | null;
+  tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
 interface TransactionInstance extends FinancialTransaction {
@@ -65,32 +70,126 @@ export default function ClientStatementModalV2({
   clientName, 
   selectedMonth 
 }: ClientStatementModalProps) {
+  const { user } = useAuth();
   const [rawTransactions, setRawTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(selectedMonth || new Date());
+  
+  // Categorias, Contas e Tags do usuário logado
+  const [categories, setCategories] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [availableTags, setAvailableTags] = useState<{ id: string; name: string; color: string }[]>([]);
 
   useEffect(() => {
-    if (isOpen && clientId) {
+    if (isOpen && clientId && user) {
       fetchStatement();
+      fetchCategoriesAccountsAndTags();
     }
-  }, [isOpen, clientId]);
+  }, [isOpen, clientId, user]);
+
+  const fetchCategoriesAccountsAndTags = async () => {
+    if (!user) return;
+    try {
+      const [catRes, accRes, tagRes] = await Promise.all([
+        supabase.from('financial_categories').select('id, name, type').eq('user_id', user.id).eq('is_active', true).order('name'),
+        supabase.from('financial_accounts').select('id, name').eq('user_id', user.id).eq('is_active', true).order('name'),
+        supabase.from('financial_tags').select('id, name, color').eq('user_id', user.id)
+      ]);
+      if (catRes.data) setCategories(catRes.data);
+      if (accRes.data) setAccounts(accRes.data);
+      if (tagRes.data) setAvailableTags(tagRes.data);
+    } catch (err) {
+      console.error('Erro ao carregar categorias, contas ou tags:', err);
+    }
+  };
 
   const fetchStatement = async () => {
     try {
       setLoading(true);
-      // Buscar todas as transações ativas do cliente (não canceladas) para permitir a expansão de recorrências localmente
+      // Buscar todas as transações ativas do cliente com suas tags
       const { data, error } = await supabase
         .from('financial_transactions')
-        .select('id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current, paid_amount, paid_date')
+        .select(`
+          id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current, paid_amount, paid_date, category_id, account_id,
+          tags:transaction_tags(tag:financial_tags(id, name, color))
+        `)
         .eq('client_id', clientId)
         .neq('status', 'cancelled');
 
       if (error) throw error;
-      setRawTransactions(data || []);
+      setRawTransactions((data || []) as any);
     } catch (err) {
       console.error('Erro ao buscar extrato do cliente:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Atualização inline de campos da transação
+  const handleUpdateField = async (transactionId: string, field: string, value: any, oldValue: any) => {
+    if (value === oldValue) return;
+    try {
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({ [field]: value })
+        .eq('id', transactionId);
+
+      if (error) throw error;
+
+      // Propagar para filhos se for uma transação mãe recorrente
+      const tx = rawTransactions.find(t => t.id === transactionId);
+      const isMother = tx && tx.recurrence_enabled && !tx.parent_id;
+
+      if (isMother && (field === 'category_id' || field === 'account_id')) {
+        const { error: childErr } = await supabase
+          .from('financial_transactions')
+          .update({ [field]: value })
+          .eq('parent_id', transactionId);
+
+        if (childErr) console.error('Erro ao propagar alteração para parcelas filhas:', childErr);
+      }
+
+      toast.success('Lançamento atualizado com sucesso!');
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao atualizar campo:', err);
+      toast.error('Erro ao salvar alterações.');
+    }
+  };
+
+  // Gerenciamento de Tags na transação
+  const handleAddTag = async (transactionId: string, tagId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transaction_tags')
+        .insert({
+          transaction_id: transactionId,
+          tag_id: tagId
+        });
+
+      if (error) throw error;
+      toast.success('Tag associada!');
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao adicionar tag:', err);
+      toast.error('Falha ao associar tag.');
+    }
+  };
+
+  const handleRemoveTag = async (transactionId: string, tagId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transaction_tags')
+        .delete()
+        .eq('transaction_id', transactionId)
+        .eq('tag_id', tagId);
+
+      if (error) throw error;
+      toast.success('Tag removida.');
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao remover tag:', err);
+      toast.error('Falha ao desassociar tag.');
     }
   };
 
@@ -174,7 +273,6 @@ export default function ClientStatementModalV2({
   // - Despesa original do Remetente ('expense') -> Receita para o Receptor ('income', A Receber)
   // - Receita original do Remetente ('income') -> Despesa para o Receptor ('expense', A Pagar)
   const totals = useMemo(() => {
-    // Calculados sobre as instâncias correspondentes ao mês
     const income = monthInstances
       .filter(t => t.type === 'expense')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
@@ -203,8 +301,8 @@ export default function ClientStatementModalV2({
       {/* Backdrop */}
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Content Card (Fullscreen no mobile e largo no desktop) */}
-      <div className="relative bg-slate-50 w-full h-full md:max-w-5xl md:h-[85vh] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
+      {/* Content Card */}
+      <div className="relative bg-slate-50 w-full h-full md:max-w-6xl md:h-[85vh] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
         
         {/* Modal Header */}
         <div className="bg-white border-b border-slate-100 px-6 py-5 shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -213,7 +311,7 @@ export default function ClientStatementModalV2({
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight leading-tight">Extrato Financeiro</h3>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight leading-tight">Extrato Compartilhado</h3>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-0.5">{clientName}</p>
             </div>
           </div>
@@ -247,10 +345,10 @@ export default function ClientStatementModalV2({
           </div>
         </div>
 
-        {/* Cards Rápidos de Totais no Mês */}
+        {/* Cards de Totais */}
         <div className="bg-white border-b border-slate-100 px-6 py-5 grid grid-cols-3 gap-4 shrink-0">
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Entradas (Mês)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">A Receber (Mês)</span>
             <span className="text-base sm:text-lg font-black text-emerald-600 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1 text-emerald-500" />
               {formatCurrency(totals.income)}
@@ -258,7 +356,7 @@ export default function ClientStatementModalV2({
           </div>
 
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Saídas (Mês)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">A Pagar (Mês)</span>
             <span className="text-base sm:text-lg font-black text-rose-600 flex items-center">
               <TrendingDown className="w-4 h-4 mr-1 text-rose-500" />
               {formatCurrency(totals.expense)}
@@ -275,7 +373,7 @@ export default function ClientStatementModalV2({
           </div>
         </div>
 
-        {/* Modal Body - Tabela Minimalista */}
+        {/* Corpo - Tabela de Lançamentos Granulares Notion-Style */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3">
@@ -293,37 +391,120 @@ export default function ClientStatementModalV2({
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full text-left border-collapse">
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-x-auto shadow-sm">
+              <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-24">Data</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Descrição</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right w-36">Valor</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-24">Data</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-52">Descrição</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-44">Categoria</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-44">Conta Bancária</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-48">Tags</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right w-32">Valor</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {monthInstances.map((t) => {
-                    const isIncome = t.type === 'expense'; // Inversão aplicada: despesa original do remetente = receita para o receptor
+                    const isIncome = t.type === 'expense'; 
                     const formattedDate = format(parseISO(t.instanceDate), 'dd/MM/yyyy');
 
                     return (
                       <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-6 py-4 text-xs font-bold text-slate-400 whitespace-nowrap">
+                        {/* Data */}
+                        <td className="px-4 py-3 text-xs font-bold text-slate-400 whitespace-nowrap">
                           {formattedDate}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs sm:text-sm font-bold text-slate-700 truncate max-w-md group-hover:text-slate-900 transition-colors">
-                            {t.description}
-                          </div>
+
+                        {/* Descrição */}
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            defaultValue={t.description}
+                            onBlur={(e) => handleUpdateField(t.id, 'description', e.target.value, t.description)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="bg-transparent hover:bg-slate-100/70 focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-2 py-1 w-full text-xs font-bold text-slate-700 transition-all border border-transparent focus:border-slate-200 outline-none"
+                            placeholder="Descrição do lançamento..."
+                          />
                           {t.status === 'pending' && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wide mt-1 scale-95 origin-left">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wide mt-1 ml-2">
                               Pendente
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <span className={`text-sm sm:text-base font-black font-manrope ${
+
+                        {/* Categoria */}
+                        <td className="px-4 py-3">
+                          <select
+                            value={t.category_id || ''}
+                            onChange={(e) => handleUpdateField(t.id, 'category_id', e.target.value || null, t.category_id)}
+                            className="bg-transparent hover:bg-slate-100/70 focus:bg-white rounded px-2 py-1 w-full text-xs font-bold text-slate-600 transition-all border border-transparent focus:border-slate-200 outline-none cursor-pointer"
+                          >
+                            <option value="">Sem Categoria</option>
+                            {categories.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Conta Bancária */}
+                        <td className="px-4 py-3">
+                          <select
+                            value={t.account_id || ''}
+                            onChange={(e) => handleUpdateField(t.id, 'account_id', e.target.value || null, t.account_id)}
+                            className="bg-transparent hover:bg-slate-100/70 focus:bg-white rounded px-2 py-1 w-full text-xs font-bold text-slate-600 transition-all border border-transparent focus:border-slate-200 outline-none cursor-pointer"
+                          >
+                            <option value="">Sem Conta</option>
+                            {accounts.map(a => (
+                              <option key={a.id} value={a.id}>{a.name}</option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Tags */}
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {t.tags?.map(tt => (
+                              <span
+                                key={tt.tag.id}
+                                className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border text-white shadow-sm flex items-center gap-0.5"
+                                style={{ backgroundColor: tt.tag.color || '#20B2AA', borderColor: tt.tag.color || '#20B2AA' }}
+                              >
+                                {tt.tag.name}
+                                <button
+                                  onClick={() => handleRemoveTag(t.id, tt.tag.id)}
+                                  className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                                >
+                                  <X size={8} />
+                                </button>
+                              </span>
+                            ))}
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddTag(t.id, e.target.value);
+                                }
+                              }}
+                              className="bg-slate-100 hover:bg-slate-200 rounded px-1 py-0.5 text-[9px] font-black text-slate-500 border border-transparent cursor-pointer w-[42px] h-[20px] outline-none"
+                            >
+                              <option value="" disabled>+</option>
+                              {availableTags
+                                .filter(tag => !t.tags?.some(tt => tt.tag.id === tag.id))
+                                .map(tag => (
+                                  <option key={tag.id} value={tag.id}>{tag.name}</option>
+                                ))
+                              }
+                            </select>
+                          </div>
+                        </td>
+
+                        {/* Valor */}
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <span className={`text-sm font-black font-manrope ${
                             isIncome ? 'text-emerald-600' : 'text-rose-600'
                           }`}>
                             {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
