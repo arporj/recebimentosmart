@@ -1257,7 +1257,7 @@ export default function RecurrenceV2() {
                         </div>
                         <button
                           onClick={() => handleRevokeShare(share.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-95 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-95 rounded-lg transition-all"
                           title="Revogar acesso"
                         >
                           <X size={14} />
