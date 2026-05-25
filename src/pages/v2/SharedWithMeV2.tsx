@@ -1085,10 +1085,10 @@ export default function SharedWithMeV2() {
                           </div>
                         </div>
 
-                        {/* Saldo Netting e Ação */}
+                        {/* Saldo do Mês e Ação */}
                         <div className="p-6 bg-white mt-auto">
                           <div className="flex items-center justify-between mb-5 px-1">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Netting do Mês</span>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Saldo do Mês</span>
                             <span className={`text-lg font-black tracking-tight ${isNegative ? 'text-rose-600' : balance > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
                               {formatCurrency(balance)}
                             </span>
