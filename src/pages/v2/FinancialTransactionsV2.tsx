@@ -1051,27 +1051,46 @@ const FinancialTransactionsV2 = () => {
 
               if (t.isInvoiceSummary) {
                 return (
-                  <div key={dropdownKey} className={`flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40`}>
+                  <div key={dropdownKey} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40">
                     <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
                     <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
                       {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
+
+                    {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
+                    {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                      <div className={`shrink-0 w-[90px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
+                        <p className="font-extrabold text-xs text-amber-700">
+                          {formatTransactionAmount(t.amount, 'expense')}
+                        </p>
+                        {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                          <p className="text-[8px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                         <CreditCard size={12} className="text-amber-600 shrink-0" />
                         <span className="font-black text-xs text-slate-800 truncate">{t.description}</span>
                       </div>
                       {t.invoiceData?.linkedAccountName && (
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className={`flex items-center gap-1.5 mt-0.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                           <span className="text-[8px] font-black text-slate-400 uppercase">{t.invoiceData.linkedAccountName}</span>
                         </div>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-medium text-xs text-amber-700">
-                        -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
-                      </p>
-                    </div>
+
+                    {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
+                    {layoutPreference === 'default' && (
+                      <div className={`shrink-0 w-[90px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
+                        <p className="font-medium text-xs text-amber-700">
+                          {formatTransactionAmount(t.amount, 'expense')}
+                        </p>
+                      </div>
+                    )}
                     <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
                       <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                       {openDropdown === dropdownKey && (
@@ -1315,12 +1334,27 @@ const FinancialTransactionsV2 = () => {
                         <div className="p-2 rounded-xl shrink-0 bg-amber-100 text-amber-600">
                           <CreditCard size={20} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3">
+
+                        {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
+                        {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                          <div className={`shrink-0 w-[130px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
+                            <p className="font-black text-sm text-amber-700">
+                              {formatTransactionAmount(t.amount, 'expense')}
+                            </p>
+                            {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                              <p className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
+                          <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                             <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
                             <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
                           </div>
-                          <div className="flex items-center gap-x-3 mt-1">
+                          <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                             <p className="text-[10px] font-bold text-slate-400">
                               {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                             </p>
@@ -1331,16 +1365,20 @@ const FinancialTransactionsV2 = () => {
                             )}
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-medium text-base text-amber-700">
-                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
-                          </p>
-                          <p className={`text-[10px] font-bold ${t.runningBalance !== undefined && t.runningBalance >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
-                             {t.runningBalance !== undefined && !isNaN(t.runningBalance) 
-                                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance) 
-                                : 'Fatura consolidada'}
-                          </p>
-                        </div>
+
+                        {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
+                        {layoutPreference === 'default' && (
+                          <div className={`shrink-0 w-[130px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
+                            <p className="font-black text-sm text-amber-700">
+                              {formatTransactionAmount(t.amount, 'expense')}
+                            </p>
+                            {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                              <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
                           <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                           {openDropdown === dropdownKey && (
