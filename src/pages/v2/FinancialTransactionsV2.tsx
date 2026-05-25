@@ -98,6 +98,21 @@ const FinancialTransactionsV2 = () => {
   const navigate = useNavigate();
 
   const [layoutPreference, setLayoutPreference] = useState<'default' | 'value_first' | 'value_right_desc'>('default');
+  const [showCurrencySymbol, setShowCurrencySymbol] = useState(true);
+  const [showNegativeSign, setShowNegativeSign] = useState(true);
+  const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
+
+  const formatTransactionAmount = (amount: number, type: 'income' | 'expense' | 'transfer') => {
+    let result = '';
+    if (type === 'expense' && showNegativeSign) {
+      result += '-';
+    }
+    if (showCurrencySymbol) {
+      result += 'R$ ';
+    }
+    result += amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return result;
+  };
 
   // Estados para exclusão em cadeia
   const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
@@ -240,6 +255,14 @@ const FinancialTransactionsV2 = () => {
     } else {
       setLayoutPreference('default');
     }
+
+    const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
+    const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
+    const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
+    
+    setShowCurrencySymbol(savedShowCurrency !== 'false');
+    setShowNegativeSign(savedShowNegative !== 'false');
+    setValueAlignment(savedValAlign || 'right');
   }, [user]);
 
   useEffect(() => {
@@ -1084,9 +1107,9 @@ const FinancialTransactionsV2 = () => {
 
                   {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                   {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
-                    <div className="shrink-0 min-w-[70px] text-left pr-1">
+                    <div className={`shrink-0 w-[90px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
                       <p className={`font-extrabold text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                        {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                        {formatTransactionAmount(t.amount, t.type)}
                       </p>
                       {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
                         <p className="text-[8px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
@@ -1144,9 +1167,9 @@ const FinancialTransactionsV2 = () => {
                   </div>
                   {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                   {layoutPreference === 'default' && (
-                    <div className="text-right shrink-0">
+                    <div className={`shrink-0 w-[90px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
                       <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                        {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                        {formatTransactionAmount(t.amount, t.type)}
                       </p>
                       {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
                         <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
@@ -1352,9 +1375,9 @@ const FinancialTransactionsV2 = () => {
 
                       {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                       {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
-                        <div className="shrink-0 min-w-[100px] text-left pr-2">
+                        <div className={`shrink-0 w-[130px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
                           <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                            {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                            {formatTransactionAmount(t.amount, t.type)}
                           </p>
                           {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
                             <p className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
@@ -1431,9 +1454,9 @@ const FinancialTransactionsV2 = () => {
 
                       {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                       {layoutPreference === 'default' && (
-                        <div className="text-right shrink-0 pr-2">
+                        <div className={`shrink-0 w-[130px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
                           <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                            {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                            {formatTransactionAmount(t.amount, t.type)}
                           </p>
                           {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
                             <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">

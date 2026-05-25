@@ -15,6 +15,9 @@ export default function UserProfileSettingsV2() {
     // Tab and layout preferences
     const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences'>('profile');
     const [layoutPreference, setLayoutPreference] = useState<'default' | 'value_first' | 'value_right_desc'>('default');
+    const [showCurrencySymbol, setShowCurrencySymbol] = useState(true);
+    const [showNegativeSign, setShowNegativeSign] = useState(true);
+    const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
 
     // Loading status form
     const [saving, setSaving] = useState(false);
@@ -46,11 +49,17 @@ export default function UserProfileSettingsV2() {
             fetchCpfCnpj();
         }
         
-        // Recuperar preferencia de layout
+        // Recuperar preferencia de layout e opcoes customizadas
         const savedPref = localStorage.getItem('transaction_layout_preference') as 'default' | 'value_first' | 'value_right_desc';
         if (savedPref) {
             setLayoutPreference(savedPref);
         }
+        const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
+        const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
+        const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
+        setShowCurrencySymbol(savedShowCurrency !== 'false');
+        setShowNegativeSign(savedShowNegative !== 'false');
+        setValueAlignment(savedValAlign || 'right');
     }, [user]);
 
     const formatCpfCnpj = (value: string) => {
@@ -101,9 +110,12 @@ export default function UserProfileSettingsV2() {
             toast.error('CPF/CNPJ inválido.');
         }
 
-        // Layout Preference
+        // Layout Preference and Custom Options
         if (success) {
             localStorage.setItem('transaction_layout_preference', layoutPreference);
+            localStorage.setItem('transaction_show_currency_symbol', String(showCurrencySymbol));
+            localStorage.setItem('transaction_show_negative_sign', String(showNegativeSign));
+            localStorage.setItem('transaction_value_alignment', valueAlignment);
         }
 
         if (success) {
@@ -323,6 +335,72 @@ export default function UserProfileSettingsV2() {
                             </div>
 
                             <div className="p-6 space-y-6">
+                                {/* Painel de Opções Adicionais de Exibição */}
+                                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+                                    {/* Opção R$ */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Exibir Símbolo (R$)</label>
+                                        <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCurrencySymbol(true)}
+                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${showCurrencySymbol ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Sim
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCurrencySymbol(false)}
+                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${!showCurrencySymbol ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Não
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Opção Sinal Negativo */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Sinal de Negativo (-)</label>
+                                        <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNegativeSign(true)}
+                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${showNegativeSign ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Sim
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNegativeSign(false)}
+                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${!showNegativeSign ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Não
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Opção Alinhamento do Valor */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Alinhamento do Valor</label>
+                                        <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setValueAlignment('left')}
+                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${valueAlignment === 'left' ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Esquerda
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setValueAlignment('right')}
+                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${valueAlignment === 'right' ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Direita
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     {/* CARD 1: Padrão */}
                                     <div 
@@ -345,8 +423,8 @@ export default function UserProfileSettingsV2() {
                                         
                                         {/* Mockup visual premium */}
                                         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="flex items-center gap-1.5 min-w-0">
+                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                                     <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
                                                     <div className="flex gap-0.5 shrink-0">
@@ -354,14 +432,18 @@ export default function UserProfileSettingsV2() {
                                                         <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
                                                     </div>
                                                 </div>
-                                                <span className="font-extrabold text-[10px] text-emerald-600 text-right">R$ 150,00</span>
+                                                <span className={`font-extrabold text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    {formatMockValue(150, false)}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="flex items-center gap-1.5 min-w-0">
+                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                                                     <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
                                                 </div>
-                                                <span className="font-extrabold text-[10px] text-rose-600 text-right">-R$ 320,40</span>
+                                                <span className={`font-extrabold text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    {formatMockValue(320.40, true)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -389,7 +471,9 @@ export default function UserProfileSettingsV2() {
                                         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
                                             <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                <span className="font-black text-[10px] text-emerald-600 shrink-0 min-w-[50px]">R$ 150,00</span>
+                                                <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    {formatMockValue(150, false)}
+                                                </span>
                                                 <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
                                                 <div className="flex gap-0.5 shrink-0 ml-auto">
                                                     <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
@@ -398,7 +482,9 @@ export default function UserProfileSettingsV2() {
                                             </div>
                                             <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                <span className="font-black text-[10px] text-rose-600 shrink-0 min-w-[50px]">-R$ 320,40</span>
+                                                <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    {formatMockValue(320.40, true)}
+                                                </span>
                                                 <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
                                             </div>
                                         </div>
@@ -425,12 +511,14 @@ export default function UserProfileSettingsV2() {
                                         
                                         {/* Mockup visual premium */}
                                         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                <div className="flex items-center gap-1.5 shrink-0">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                    <span className="font-black text-[10px] text-emerald-600 min-w-[50px]">R$ 150,00</span>
+                                                    <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        {formatMockValue(150, false)}
+                                                    </span>
                                                 </div>
-                                                <div className="flex items-center gap-1 min-w-0">
+                                                <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
                                                     <div className="flex gap-0.5 shrink-0">
                                                         <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
                                                         <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
@@ -438,12 +526,14 @@ export default function UserProfileSettingsV2() {
                                                     <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                <div className="flex items-center gap-1.5 shrink-0">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                    <span className="font-black text-[10px] text-rose-600 min-w-[50px]">-R$ 320,40</span>
+                                                    <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        {formatMockValue(320.40, true)}
+                                                    </span>
                                                 </div>
-                                                <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
+                                                <span className="font-extrabold text-[10px] text-slate-700 truncate text-right flex-1 min-w-0">Supermercado</span>
                                             </div>
                                         </div>
                                     </div>
@@ -464,6 +554,12 @@ export default function UserProfileSettingsV2() {
                                     } else {
                                         const savedPref = localStorage.getItem('transaction_layout_preference') as 'default' | 'value_first' | 'value_right_desc';
                                         setLayoutPreference(savedPref || 'default');
+                                        const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
+                                        const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
+                                        const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
+                                        setShowCurrencySymbol(savedShowCurrency !== 'false');
+                                        setShowNegativeSign(savedShowNegative !== 'false');
+                                        setValueAlignment(savedValAlign || 'right');
                                     }
                                 }}
                                 disabled={saving}
