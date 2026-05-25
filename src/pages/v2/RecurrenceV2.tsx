@@ -827,7 +827,7 @@ export default function RecurrenceV2() {
                     <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Origem</th>
                     <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Receita Prevista</th>
                     <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Despesa Prevista</th>
-                    <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Saldo Líquido (Netting)</th>
+                    <th className="py-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Saldo Líquido</th>
                     <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Ações</th>
                   </tr>
                 </thead>
@@ -1044,10 +1044,10 @@ export default function RecurrenceV2() {
                     </div>
                   </div>
 
-                  {/* Linha 3: Netting & Alertas de Atrasado */}
+                  {/* Linha 3: Saldo Líquido & Alertas de Atrasado */}
                   <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 flex flex-col justify-center">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Saldo Líquido (Netting)</span>
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Saldo Líquido</span>
                       <span className="text-[9px] font-extrabold bg-white border border-slate-200 px-1 rounded text-slate-500">
                         {cliente.pending_transactions_count} doc(s)
                       </span>
