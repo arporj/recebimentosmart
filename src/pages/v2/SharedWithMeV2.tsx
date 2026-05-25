@@ -239,6 +239,22 @@ export default function SharedWithMeV2() {
   const [isSentStatementOpen, setIsSentStatementOpen] = useState(false);
   const [subTab, setSubTab] = useState<'pending' | 'completed'>('pending');
 
+  // Estado para o modal de confirmação premium genérico (Notion-style)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   useEffect(() => {
     if (user?.email) {
       fetchShares();
@@ -453,11 +469,29 @@ export default function SharedWithMeV2() {
     }
   };
 
-  const handleResolveUpdate = async (updateId: string, action: 'accepted' | 'rejected', description: string, updateType: 'update' | 'delete') => {
+  const handleResolveUpdate = async (updateId: string, action: 'accepted' | 'rejected', description: string, updateType: 'update' | 'delete', confirmOverride = false) => {
     const actionLabel = action === 'accepted' ? 'aceitar' : 'rejeitar';
     const typeLabel = updateType === 'delete' ? 'exclusão' : 'alteração';
-    const confirmed = window.confirm(`Deseja realmente ${actionLabel} esta proposta de ${typeLabel} para o lançamento "${description}"?`);
-    if (!confirmed) return;
+
+    if (!confirmOverride) {
+      let message = `Deseja realmente ${actionLabel} esta proposta de ${typeLabel} para o lançamento "${description}"?`;
+      if (updateType === 'delete' && action === 'accepted') {
+        message = `Ao aceitar a exclusão, o lançamento "${description}" será excluído da sua própria lista de lançamentos.`;
+      }
+      
+      setConfirmModal({
+        isOpen: true,
+        title: action === 'accepted' 
+          ? (updateType === 'delete' ? 'Aceitar Exclusão Compartilhada' : 'Aceitar Alteração') 
+          : (updateType === 'delete' ? 'Recusar Exclusão' : 'Recusar Alteração'),
+        message,
+        confirmText: action === 'accepted' ? 'Sim, Aceitar' : 'Sim, Recusar',
+        cancelText: 'Cancelar',
+        isDanger: updateType === 'delete' && action === 'accepted',
+        onConfirm: () => handleResolveUpdate(updateId, action, description, updateType, true)
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase.rpc('fn_resolve_shared_update', {
@@ -468,6 +502,7 @@ export default function SharedWithMeV2() {
       if (error) throw error;
 
       toast.success(`Notificação de ${typeLabel} processada: ${action === 'accepted' ? 'Aceita' : 'Rejeitada'}!`);
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       fetchShares();
     } catch (err) {
       console.error('Erro ao resolver atualização:', err);
@@ -766,9 +801,19 @@ export default function SharedWithMeV2() {
     }
   };
 
-  const handleRejectShare = async (shareId: string) => {
-    const confirmed = window.confirm("Deseja realmente rejeitar e remover este compartilhamento de sua lista?");
-    if (!confirmed) return;
+  const handleRejectShare = async (shareId: string, confirmOverride = false) => {
+    if (!confirmOverride) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Rejeitar Compartilhamento',
+        message: 'Deseja realmente rejeitar e remover este compartilhamento de sua lista?',
+        confirmText: 'Rejeitar',
+        cancelText: 'Cancelar',
+        isDanger: true,
+        onConfirm: () => handleRejectShare(shareId, true)
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -779,6 +824,7 @@ export default function SharedWithMeV2() {
       if (error) throw error;
 
       toast.success('Compartilhamento rejeitado com sucesso.');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       fetchShares();
     } catch (err) {
       console.error('Erro ao rejeitar compartilhamento:', err);
@@ -786,9 +832,19 @@ export default function SharedWithMeV2() {
     }
   };
 
-  const handleRevokeShare = async (shareId: string, clientName: string, receiverEmail: string) => {
-    const confirmed = window.confirm(`Deseja realmente revogar o compartilhamento do cliente "${clientName}" com "${receiverEmail}"?`);
-    if (!confirmed) return;
+  const handleRevokeShare = async (shareId: string, clientName: string, receiverEmail: string, confirmOverride = false) => {
+    if (!confirmOverride) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Revogar Compartilhamento',
+        message: `Deseja realmente revogar o compartilhamento do cliente "${clientName}" com "${receiverEmail}"?`,
+        confirmText: 'Revogar',
+        cancelText: 'Cancelar',
+        isDanger: true,
+        onConfirm: () => handleRevokeShare(shareId, clientName, receiverEmail, true)
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -799,6 +855,7 @@ export default function SharedWithMeV2() {
       if (error) throw error;
 
       toast.success('Compartilhamento revogado com sucesso.');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       fetchShares();
     } catch (err) {
       console.error('Erro ao revogar compartilhamento:', err);
@@ -1730,6 +1787,43 @@ export default function SharedWithMeV2() {
           </div>
         );
       })()}
+
+      {/* MODAL DE CONFIRMAÇÃO PREMIUM GENÉRICO (NOTION-STYLE) */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <div className={`flex items-center gap-3 mb-4 ${confirmModal.isDanger ? 'text-rose-600' : 'text-teal-600'}`}>
+              <div className={`p-3 rounded-2xl ${confirmModal.isDanger ? 'bg-rose-50' : 'bg-teal-50'}`}>
+                {confirmModal.isDanger ? <X size={24} /> : <Check size={24} />}
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">{confirmModal.title}</h3>
+            </div>
+            
+            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+              {confirmModal.message}
+            </p>
+
+            <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-xs"
+              >
+                {confirmModal.cancelText || 'Cancelar'}
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className={`px-5 py-2.5 text-white rounded-2xl font-bold shadow-lg transition-colors text-xs ${
+                  confirmModal.isDanger 
+                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/30' 
+                    : 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/30'
+                }`}
+              >
+                {confirmModal.confirmText || 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
