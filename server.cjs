@@ -184,27 +184,32 @@ app.post('/api/pix/create-payment', async (req, res) => {
       const mockTxid = 'SIMULADO_' + uuidv4().replace(/-/g, '').substring(0, 24);
       const mockPixCopiaECola = `00020101021226870014br.gov.bcb.pix2565379051810001055204000053039865404${finalAmount.toFixed(2)}5802BR5925RECEBIMENTO SMART6009SAO PAULO62300526${mockTxid}6304`;
 
-      const { error: dbError } = await supabaseAdmin
-        .from('pix_transactions')
-        .insert({
-          user_id: userId,
-          transaction_id: mockTxid,
-          amount: finalAmount,
-          status: 'PENDING',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      try {
+        const { error: dbError } = await supabaseAdmin
+          .from('pix_transactions')
+          .insert({
+            user_id: userId,
+            transaction_id: mockTxid,
+            amount: finalAmount,
+            status: 'PENDING',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
 
-      if (!dbError) {
-        return res.status(201).json({
-          success: true,
-          txid: mockTxid,
-          pixCopiaECola: mockPixCopiaECola,
-          simulated: true
-        });
-      } else {
-        console.error('[DB] Erro ao gravar transação simulada no banco de dados:', dbError.message);
+        if (dbError) {
+          console.error('[DB] Aviso: Erro ao gravar transação simulada no banco de dados (mas prosseguindo no Sandbox):', dbError.message);
+        }
+      } catch (dbCatchError) {
+        console.error('[DB] Erro de exceção ao gravar transação simulada:', dbCatchError.message);
       }
+
+      // Retorna sucesso com o Pix simulado para que o frontend exiba o QR Code e não trave na tela branca
+      return res.status(201).json({
+        success: true,
+        txid: mockTxid,
+        pixCopiaECola: mockPixCopiaECola,
+        simulated: true
+      });
     }
 
     res.status(500).json({
