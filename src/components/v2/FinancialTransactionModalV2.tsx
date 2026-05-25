@@ -139,6 +139,7 @@ const FinancialTransactionModalV2 = ({
   const [startInstallment, setStartInstallment] = useState<string>('1');
   const [isTotalValue, setIsTotalValue] = useState(false);
   const [recurrenceInterval, setRecurrenceInterval] = useState<string>('1');
+  const [isRecurrenceWarningOpen, setIsRecurrenceWarningOpen] = useState(false);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -831,15 +832,32 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Data Efetiva</label>
                   </div>
-                  <div className="relative group">
+                  <div 
+                    className="relative group cursor-pointer"
+                    onClick={() => {
+                      if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                        setIsRecurrenceWarningOpen(true);
+                      }
+                    }}
+                  >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
                       <CalendarIcon size={16} />
                     </div>
                     <input 
                       type="date"
                       value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
+                      onChange={(e) => {
+                        if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                          return;
+                        }
+                        setDate(e.target.value);
+                      }}
+                      readOnly={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                      className={`w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm ${
+                        isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                          ? 'opacity-70 cursor-not-allowed select-none'
+                          : ''
+                      }`}
                     />
                   </div>
                 </div>
@@ -852,8 +870,18 @@ const FinancialTransactionModalV2 = ({
                   <div className={`relative ${isModalidadeDropdownOpen ? 'z-40' : 'z-10'}`}>
                     <button
                       type="button"
-                      onClick={() => setIsModalidadeDropdownOpen(!isModalidadeDropdownOpen)}
-                      className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-slate-500/20 text-sm font-extrabold flex items-center justify-between text-slate-700 transition-all hover:bg-slate-100/75"
+                      onClick={() => {
+                        if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                          setIsRecurrenceWarningOpen(true);
+                          return;
+                        }
+                        setIsModalidadeDropdownOpen(!isModalidadeDropdownOpen);
+                      }}
+                      className={`w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-slate-500/20 text-sm font-extrabold flex items-center justify-between text-slate-700 transition-all ${
+                        isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                          ? 'opacity-70 cursor-not-allowed'
+                          : 'hover:bg-slate-100/75'
+                      }`}
                     >
                       <span>
                         {modalidade === 'unica' && '📅 Única'}
@@ -924,13 +952,25 @@ const FinancialTransactionModalV2 = ({
                   {modalidade === 'parcelada' && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1.5">
+                        <div 
+                          className="space-y-1.5 cursor-pointer"
+                          onClick={() => {
+                            if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              setIsRecurrenceWarningOpen(true);
+                            }
+                          }}
+                        >
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Periodicidade</label>
                           <div className="relative">
                             <select
                               value={periodicidade}
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               onChange={(e) => setPeriodicidade(e.target.value as 'diaria' | 'semanal' | 'mensal' | 'anual')}
-                              className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold cursor-pointer appearance-none pr-8 text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-none"
+                              className={`w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold appearance-none pr-8 text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-none ${
+                                isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                  ? 'cursor-not-allowed opacity-70'
+                                  : 'cursor-pointer'
+                              }`}
                             >
                               <option value="diaria">Diária</option>
                               <option value="semanal">Semanal</option>
@@ -943,12 +983,28 @@ const FinancialTransactionModalV2 = ({
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div 
+                          className="space-y-1.5 cursor-pointer"
+                          onClick={() => {
+                            if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              setIsRecurrenceWarningOpen(true);
+                            }
+                          }}
+                        >
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Total Parcelas</label>
-                          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1">
+                          <div className={`flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 ${
+                            isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                              ? 'opacity-70'
+                              : ''
+                          }`}>
                             <button
                               type="button"
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               onClick={() => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  setIsRecurrenceWarningOpen(true);
+                                  return;
+                                }
                                 const val = parseInt(installmentTotal) || 2;
                                 if (val > 2) {
                                   setInstallmentTotal(String(val - 1));
@@ -961,9 +1017,18 @@ const FinancialTransactionModalV2 = ({
                             <input 
                               type="number"
                               min="2"
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               value={installmentTotal}
-                              onChange={(e) => setInstallmentTotal(e.target.value)}
+                              onChange={(e) => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  return;
+                                }
+                                setInstallmentTotal(e.target.value);
+                              }}
                               onBlur={() => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  return;
+                                }
                                 const val = parseInt(installmentTotal);
                                 if (isNaN(val) || val < 2) {
                                   setInstallmentTotal('2');
@@ -972,11 +1037,20 @@ const FinancialTransactionModalV2 = ({
                                 }
                               }}
                               placeholder="Ex: 12"
-                              className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              className={`w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                  ? 'cursor-not-allowed'
+                                  : ''
+                              }`}
                             />
                             <button
                               type="button"
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               onClick={() => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  setIsRecurrenceWarningOpen(true);
+                                  return;
+                                }
                                 const val = parseInt(installmentTotal) || 2;
                                 setInstallmentTotal(String(val + 1));
                               }}
@@ -987,12 +1061,28 @@ const FinancialTransactionModalV2 = ({
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div 
+                          className="space-y-1.5 cursor-pointer"
+                          onClick={() => {
+                            if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              setIsRecurrenceWarningOpen(true);
+                            }
+                          }}
+                        >
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Parc. Inicial</label>
-                          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1">
+                          <div className={`flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 ${
+                            isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                              ? 'opacity-70'
+                              : ''
+                          }`}>
                             <button
                               type="button"
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               onClick={() => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  setIsRecurrenceWarningOpen(true);
+                                  return;
+                                }
                                 const val = parseInt(startInstallment) || 1;
                                 if (val > 1) {
                                   setStartInstallment(String(val - 1));
@@ -1005,10 +1095,19 @@ const FinancialTransactionModalV2 = ({
                             <input 
                               type="number"
                               min="1"
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               max={parseInt(installmentTotal) || 1}
                               value={startInstallment}
-                              onChange={(e) => setStartInstallment(e.target.value)}
+                              onChange={(e) => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  return;
+                                }
+                                setStartInstallment(e.target.value);
+                              }}
                               onBlur={() => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  return;
+                                }
                                 const val = parseInt(startInstallment);
                                 const maxVal = parseInt(installmentTotal) || 1;
                                 if (isNaN(val) || val < 1) {
@@ -1020,11 +1119,20 @@ const FinancialTransactionModalV2 = ({
                                 }
                               }}
                               placeholder="Ex: 1"
-                              className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              className={`w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                  ? 'cursor-not-allowed'
+                                  : ''
+                              }`}
                             />
                             <button
                               type="button"
+                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                               onClick={() => {
+                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                  setIsRecurrenceWarningOpen(true);
+                                  return;
+                                }
                                 const val = parseInt(startInstallment) || 1;
                                 const maxVal = parseInt(installmentTotal) || 1;
                                 if (val < maxVal) {
@@ -1069,13 +1177,25 @@ const FinancialTransactionModalV2 = ({
 
                   {modalidade === 'recorrente' && (
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
+                      <div 
+                        className="space-y-1.5 cursor-pointer"
+                        onClick={() => {
+                          if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                            setIsRecurrenceWarningOpen(true);
+                          }
+                        }}
+                      >
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Periodicidade</label>
                         <div className="relative">
                           <select
                             value={periodicidade}
+                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                             onChange={(e) => setPeriodicidade(e.target.value as 'diaria' | 'semanal' | 'mensal' | 'anual')}
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold cursor-pointer appearance-none pr-8 text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-none"
+                            className={`w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold appearance-none pr-8 text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-none ${
+                              isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                ? 'cursor-not-allowed opacity-70'
+                                : 'cursor-pointer'
+                            }`}
                           >
                             <option value="diaria">Diária</option>
                             <option value="semanal">Semanal</option>
@@ -1088,14 +1208,30 @@ const FinancialTransactionModalV2 = ({
                         </div>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div 
+                        className="space-y-1.5 cursor-pointer"
+                        onClick={() => {
+                          if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                            setIsRecurrenceWarningOpen(true);
+                          }
+                        }}
+                      >
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block text-center">
                           Repetir a cada
                         </label>
-                        <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 relative">
+                        <div className={`flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 relative ${
+                          isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                            ? 'opacity-70'
+                            : ''
+                        }`}>
                           <button
                             type="button"
+                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                             onClick={() => {
+                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                setIsRecurrenceWarningOpen(true);
+                                return;
+                              }
                               const val = parseInt(recurrenceInterval) || 1;
                               if (val > 1) {
                                 setRecurrenceInterval(String(val - 1));
@@ -1108,9 +1244,18 @@ const FinancialTransactionModalV2 = ({
                           <input 
                             type="number"
                             min="1"
+                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                             value={recurrenceInterval}
-                            onChange={(e) => setRecurrenceInterval(e.target.value)}
+                            onChange={(e) => {
+                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                return;
+                              }
+                              setRecurrenceInterval(e.target.value);
+                            }}
                             onBlur={() => {
+                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                return;
+                              }
                               const val = parseInt(recurrenceInterval);
                               if (isNaN(val) || val < 1) {
                                 setRecurrenceInterval('1');
@@ -1119,11 +1264,20 @@ const FinancialTransactionModalV2 = ({
                               }
                             }}
                             placeholder="Ex: 1"
-                            className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className={`w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                              isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                ? 'cursor-not-allowed'
+                                : ''
+                            }`}
                           />
                           <button
                             type="button"
+                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
                             onClick={() => {
+                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                setIsRecurrenceWarningOpen(true);
+                                return;
+                              }
                               const val = parseInt(recurrenceInterval) || 1;
                               setRecurrenceInterval(String(val + 1));
                             }}
@@ -2191,6 +2345,40 @@ const FinancialTransactionModalV2 = ({
         }}
         categories={categories}
       />
+
+      {isRecurrenceWarningOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-200"
+            onClick={() => setIsRecurrenceWarningOpen(false)}
+          />
+          
+          <div className="relative w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-6 md:p-8 border border-slate-100/80 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col items-center text-center">
+            {/* Ícone moderno de Alerta com cor Laranja (harmônica, sem usar roxo) */}
+            <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500 mb-5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            
+            <h3 className="text-lg font-extrabold text-slate-900 font-manrope mb-3 leading-tight">
+              Alteração de Recorrência Não Permitida
+            </h3>
+            
+            <p className="text-sm text-slate-500 font-medium leading-relaxed mb-6 px-1">
+              Por questões de segurança e integridade dos seus saldos futuros, não é possível alterar a modalidade, periodicidade, intervalo ou data de vencimento base de uma série recorrente já ativa. Para modificar estas informações, exclua a série atual e crie um novo lançamento com a frequência correta.
+            </p>
+            
+            <button
+              type="button"
+              onClick={() => setIsRecurrenceWarningOpen(false)}
+              className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs uppercase tracking-widest text-center shadow-lg shadow-slate-900/10 active:scale-[0.98] transition-all"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
