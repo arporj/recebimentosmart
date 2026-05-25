@@ -229,6 +229,17 @@ export default function ClientStatementModalV2({
     }
   }, [isOpen, accounts, rawTransactions]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   const fetchCategoriesAccountsAndTags = async () => {
     if (!user) return;
     try {
@@ -678,7 +689,7 @@ export default function ClientStatementModalV2({
                                 <>
                                   <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
                                   <div 
-                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
                                     style={{ 
                                       top: `${dropdownCoords.top}px`, 
                                       left: `${dropdownCoords.left}px` 
@@ -758,7 +769,7 @@ export default function ClientStatementModalV2({
                                 <>
                                   <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
                                   <div 
-                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
                                     style={{ 
                                       top: `${dropdownCoords.top}px`, 
                                       left: `${dropdownCoords.left}px` 
@@ -872,7 +883,7 @@ export default function ClientStatementModalV2({
                                   <>
                                     <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
                                     <div 
-                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
                                       style={{ 
                                         top: `${dropdownCoords.top}px`, 
                                         left: `${dropdownCoords.left}px` 
@@ -955,7 +966,7 @@ export default function ClientStatementModalV2({
                                   <>
                                     <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
                                     <div 
-                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
                                       style={{ 
                                         top: `${dropdownCoords.top}px`, 
                                         left: `${dropdownCoords.left}px` 
