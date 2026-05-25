@@ -336,6 +336,10 @@ const FinancialTransactionModalV2 = ({
       if ((transaction as any).recurrence_interval) {
         setRecurrenceInterval(String((transaction as any).recurrence_interval));
       }
+      if ((transaction as any).recurrence_period) {
+        const period = (transaction as any).recurrence_period;
+        setPeriodicidade(period === 'daily' ? 'diaria' : period === 'weekly' ? 'semanal' : period === 'yearly' ? 'anual' : 'mensal');
+      }
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
