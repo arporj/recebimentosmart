@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { Tag, AlertCircle } from 'lucide-react';
+import { Tag, AlertCircle, AlertTriangle } from 'lucide-react';
 import { formatCurrency, handleCurrencyInputChange, parseCurrency } from '../../lib/utils';
 
 const PriceManagement = () => {
@@ -9,6 +9,7 @@ const PriceManagement = () => {
   const [newPrice, setNewPrice] = useState('');
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     const fetchPrice = async () => {
@@ -38,7 +39,7 @@ const PriceManagement = () => {
     fetchPrice();
   }, []);
 
-  const handleUpdatePrice = async () => {
+  const handleUpdatePrice = () => {
     const newPriceNumber = parseCurrency(newPrice);
 
     if (newPriceNumber === price) {
@@ -46,13 +47,13 @@ const PriceManagement = () => {
       return;
     }
 
-    const isConfirmed = window.confirm(
-      `Você tem certeza que deseja alterar o preço para ${formatCurrency(newPriceNumber)}? Todos os usuários ativos serão notificados por e-mail.`
-    );
+    setShowConfirmModal(true);
+  };
 
-    if (!isConfirmed) return;
-
+  const executeUpdatePrice = async () => {
+    const newPriceNumber = parseCurrency(newPrice);
     setUpdating(true);
+    setShowConfirmModal(false);
     try {
       const { data, error } = await supabase.rpc('update_price_and_notify', { new_price: newPriceNumber });
 
@@ -125,6 +126,46 @@ const PriceManagement = () => {
       >
         {updating ? 'Atualizando e Notificando...' : 'Salvar Novo Preço e Notificar Usuários'}
       </button>
+      {/* Modal de Confirmação Premium */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-100 max-w-md w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-4">
+              <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl text-amber-500 shrink-0">
+                <AlertTriangle size={24} className="animate-bounce" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <h3 className="text-lg font-black text-slate-800">Confirmar Alteração de Preço</h3>
+                <p className="text-xs text-slate-500 leading-normal font-semibold">
+                  Você tem certeza que deseja alterar o preço para <span className="font-extrabold text-indigo-600">{formatCurrency(parseCurrency(newPrice))}</span>?
+                </p>
+                <p className="text-xs text-slate-400 font-medium">
+                  Todos os usuários ativos serão notificados automaticamente por e-mail e a mudança será aplicada na próxima renovação de cada usuário.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                disabled={updating}
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeUpdatePrice}
+                disabled={updating}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-700/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                Confirmar e Notificar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
