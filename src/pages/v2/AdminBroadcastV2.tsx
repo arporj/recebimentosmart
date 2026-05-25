@@ -4,6 +4,7 @@ import { Mail, Send, Sparkles, RefreshCw, AlertTriangle, CheckCircle, Clock, Ale
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Broadcast {
     id: string;
@@ -13,11 +14,15 @@ interface Broadcast {
     created_at: string;
     processed_at: string | null;
     error_message: string | null;
+    target_level?: string;
+    created_by?: string | null;
 }
 
 export default function AdminBroadcastV2() {
+    const { user } = useAuth();
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
+    const [targetLevel, setTargetLevel] = useState('all');
     const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
     const [loading, setLoading] = useState(false);
     const [optimizing, setOptimizing] = useState(false);
@@ -116,8 +121,16 @@ export default function AdminBroadcastV2() {
             return;
         }
 
+        const targetLabel = {
+            all: 'TODOS os usuários ativos',
+            basico: 'usuários dos planos BÁSICO, PRÓ e PREMIUM ativos',
+            pro: 'usuários dos planos PRÓ e PREMIUM ativos',
+            premium: 'usuários do plano PREMIUM ativos',
+            me: 'apenas VOCÊ (teste)'
+        }[targetLevel] || 'usuários selecionados';
+
         const confirm = window.confirm(
-            `ATENÇÃO: Você está prestes a disparar esta mensagem para TODOS os usuários ativos do sistema. Deseja prosseguir com o disparo?`
+            `ATENÇÃO: Você está prestes a disparar esta mensagem para ${targetLabel}. Deseja prosseguir com o disparo?`
         );
 
         if (!confirm) return;
@@ -131,7 +144,9 @@ export default function AdminBroadcastV2() {
                 .insert({
                     subject: subject.trim(),
                     body: body.trim(),
-                    status: 'pending'
+                    status: 'pending',
+                    target_level: targetLevel,
+                    created_by: user?.id || null
                 })
                 .select()
                 .single();
@@ -152,6 +167,7 @@ export default function AdminBroadcastV2() {
                 toast.success('Disparo em lote concluído com sucesso!');
                 setSubject('');
                 setBody('');
+                setTargetLevel('all');
             }
 
             fetchBroadcastHistory();
@@ -189,6 +205,34 @@ export default function AdminBroadcastV2() {
                             <Send size={18} className="text-teal-600" />
                             Nova Transmissão
                         </h2>
+
+                        <div className="space-y-2">
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Público-Alvo (Segmentação por Assinatura)</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                                {[
+                                    { value: 'all', label: 'Todos', desc: 'Toda a base ativa' },
+                                    { value: 'basico', label: 'Básico', desc: 'Básico e sup.' },
+                                    { value: 'pro', label: 'Pró', desc: 'Pró e Premium' },
+                                    { value: 'premium', label: 'Premium', desc: 'Apenas Premium' },
+                                    { value: 'me', label: 'Somente Eu', desc: 'Envio de teste' }
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setTargetLevel(opt.value)}
+                                        disabled={loading}
+                                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 text-center transition-all ${
+                                            targetLevel === opt.value
+                                                ? 'border-teal-600 bg-teal-50 text-teal-800 shadow-sm'
+                                                : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50 text-slate-600 hover:border-slate-200'
+                                        }`}
+                                    >
+                                        <span className="text-xs font-extrabold tracking-tight">{opt.label}</span>
+                                        <span className={`text-[8px] mt-0.5 font-bold ${targetLevel === opt.value ? 'text-teal-600' : 'text-slate-400'}`}>{opt.desc}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
                         <div className="space-y-1.5">
                             <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Assunto do E-mail</label>
@@ -229,7 +273,13 @@ export default function AdminBroadcastV2() {
                         <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                             <div className="flex items-center gap-2 text-slate-400">
                                 <AlertTriangle size={16} className="text-amber-500" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Dispara para toda a base ativa</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider">
+                                    {targetLevel === 'all' && 'Dispara para toda a base ativa'}
+                                    {targetLevel === 'basico' && 'Dispara para assinantes Básico, Pró e Premium'}
+                                    {targetLevel === 'pro' && 'Dispara para assinantes Pró e Premium'}
+                                    {targetLevel === 'premium' && 'Dispara apenas para assinantes Premium'}
+                                    {targetLevel === 'me' && 'Dispara apenas para você (e-mail de teste)'}
+                                </span>
                             </div>
                             <button
                                 type="submit"
@@ -269,16 +319,39 @@ export default function AdminBroadcastV2() {
                                 broadcasts.map((b) => (
                                     <div key={b.id} className="pt-3 first:pt-0 space-y-1.5">
                                         <div className="flex justify-between items-start gap-3">
-                                            <h4 className="font-extrabold text-sm text-slate-800 line-clamp-1 flex-1">{b.subject}</h4>
+                                            <div className="space-y-1 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <h4 className="font-extrabold text-sm text-slate-800 line-clamp-1">{b.subject}</h4>
+                                                    {b.target_level && (
+                                                        <span className={`shrink-0 text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                                            b.target_level === 'all' 
+                                                                ? 'bg-teal-50 text-teal-600 border-teal-100'
+                                                                : b.target_level === 'basico'
+                                                                ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                                                : b.target_level === 'pro'
+                                                                ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
+                                                                : b.target_level === 'premium'
+                                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                                        }`}>
+                                                            {b.target_level === 'all' && 'Todos'}
+                                                            {b.target_level === 'basico' && 'Básico+'}
+                                                            {b.target_level === 'pro' && 'Pró+'}
+                                                            {b.target_level === 'premium' && 'Premium'}
+                                                            {b.target_level === 'me' && 'Somente Eu'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                             
                                             {/* Status Badge */}
-                                            {b.status === 'sent' ? (
+                                            {b.status === 'sent' || b.status === 'completed' ? (
                                                 <span className="shrink-0 text-[8px] font-black uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center gap-0.5">
                                                     <CheckCircle size={8} /> Enviado
                                                 </span>
-                                            ) : b.status === 'pending' ? (
+                                            ) : b.status === 'pending' || b.status === 'processing' ? (
                                                 <span className="shrink-0 text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 flex items-center gap-0.5">
-                                                    <Clock size={8} /> Pendente
+                                                    <Clock size={8} /> Processando
                                                 </span>
                                             ) : (
                                                 <span className="shrink-0 text-[8px] font-black uppercase px-2 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-100 flex items-center gap-0.5">
