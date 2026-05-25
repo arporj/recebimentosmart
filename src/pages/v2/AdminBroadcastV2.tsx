@@ -32,6 +32,46 @@ export default function AdminBroadcastV2() {
     const [showVariablesHelp, setShowVariablesHelp] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
+    const [showSubjectEmojis, setShowSubjectEmojis] = useState(false);
+    const [showBodyEmojis, setShowBodyEmojis] = useState(false);
+
+    const EMAIL_EMOJIS = [
+        '🚀', '📢', '🎉', '💰', '📅', '✉️', 
+        '🔥', '✅', '✨', '💡', '👥', '📈', 
+        '🌟', '🔔', '🛠️', '🎯', '🔒', '🎁'
+    ];
+
+    const insertEmoji = (emoji: string, isSubject: boolean) => {
+        const inputId = isSubject ? 'broadcast-subject' : 'broadcast-body';
+        const element = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement;
+        
+        if (!element) {
+            if (isSubject) {
+                setSubject(prev => prev + emoji);
+            } else {
+                setBody(prev => prev + emoji);
+            }
+            return;
+        }
+
+        const start = element.selectionStart || 0;
+        const end = element.selectionEnd || 0;
+        const text = element.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        if (isSubject) {
+            setSubject(before + emoji + after);
+        } else {
+            setBody(before + emoji + after);
+        }
+
+        setTimeout(() => {
+            element.focus();
+            const newCursorPos = start + emoji.length;
+            element.setSelectionRange(newCursorPos, newCursorPos);
+        }, 50);
+    };
 
     useEffect(() => {
         fetchBroadcastHistory();
@@ -113,7 +153,8 @@ export default function AdminBroadcastV2() {
             
             const prompt = `Você é um copywriter profissional especialista em e-mails de marketing e comunicados.
 Melhore o assunto e o corpo do e-mail a seguir para torná-lo extremamente persuasivo, amigável e profissional.
-Mantenha os links e qualquer tag HTML se houver no corpo.
+Insira emojis contextuais e amigáveis de forma estratégica e moderada (ex: 🚀, 🎉, 📢, 💰, ✨, 📅) tanto no assunto quanto no corpo para aumentar a taxa de engajamento e a atratividade visual.
+Mantenha todos os links, placeholders de variáveis (ex: {{name}}, {{email}}) e qualquer tag HTML se houver no corpo.
 
 E-mail original:
 Assunto: ${subject}
@@ -327,14 +368,43 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
 
                         <div className="space-y-1.5">
                             <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Assunto do E-mail</label>
-                            <input
-                                type="text"
-                                value={subject}
-                                onChange={(e) => setSubject(e.target.value)}
-                                placeholder="ex: [Novidade] Nova tela de fluxo de caixa liberada!"
-                                disabled={loading}
-                                className="w-full rounded-xl border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 transition-all px-4 py-3 text-slate-900 text-sm font-semibold"
-                            />
+                            <div className="relative">
+                                <input
+                                    id="broadcast-subject"
+                                    type="text"
+                                    value={subject}
+                                    onChange={(e) => setSubject(e.target.value)}
+                                    placeholder="ex: [Novidade] Nova tela de fluxo de caixa liberada!"
+                                    disabled={loading}
+                                    className="w-full rounded-xl border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 transition-all pl-4 pr-12 py-3 text-slate-900 text-sm font-semibold"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSubjectEmojis(!showSubjectEmojis)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 active:scale-90 transition-all p-1 text-sm"
+                                    title="Inserir Emoji no Assunto"
+                                >
+                                    😊
+                                </button>
+                                
+                                {showSubjectEmojis && (
+                                    <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1.5 z-40 w-52 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {EMAIL_EMOJIS.map(emoji => (
+                                            <button
+                                                key={emoji}
+                                                type="button"
+                                                onClick={() => {
+                                                    insertEmoji(emoji, true);
+                                                    setShowSubjectEmojis(false);
+                                                }}
+                                                className="text-base p-1.5 hover:bg-slate-50 rounded-lg active:scale-90 transition-all text-center"
+                                            >
+                                                {emoji}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="space-y-1.5">
@@ -350,16 +420,45 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
                                         <HelpCircle size={14} />
                                     </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleImproveText}
-                                    disabled={optimizing || loading || !body.trim()}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-md hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${optimizing ? 'animate-pulse' : ''}`}
-                                    title="O Gemini reescreverá o assunto e conteúdo de forma profissional"
-                                >
-                                    <Sparkles size={13} className={optimizing ? 'animate-spin' : ''} />
-                                    {optimizing ? 'Aprimorando...' : 'Melhorar com Gemini Pro'}
-                                </button>
+                                <div className="flex items-center gap-2 relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBodyEmojis(!showBodyEmojis)}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black text-slate-600 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all"
+                                        title="Inserir Emoji no Conteúdo"
+                                    >
+                                        😊 <span className="hidden sm:inline">Emojis</span>
+                                    </button>
+                                    
+                                    {showBodyEmojis && (
+                                        <div className="absolute right-0 sm:right-full sm:mr-2 top-full sm:top-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1.5 z-40 w-52 animate-in fade-in slide-in-from-top-2 sm:slide-in-from-right-2 duration-200">
+                                            {EMAIL_EMOJIS.map(emoji => (
+                                                <button
+                                                    key={emoji}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        insertEmoji(emoji, false);
+                                                        setShowBodyEmojis(false);
+                                                    }}
+                                                    className="text-base p-1.5 hover:bg-slate-50 rounded-lg active:scale-90 transition-all text-center"
+                                                >
+                                                    {emoji}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={handleImproveText}
+                                        disabled={optimizing || loading || !body.trim()}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-md hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${optimizing ? 'animate-pulse' : ''}`}
+                                        title="O Gemini reescreverá o assunto e conteúdo de forma profissional"
+                                    >
+                                        <Sparkles size={13} className={optimizing ? 'animate-spin' : ''} />
+                                        {optimizing ? 'Aprimorando...' : 'Melhorar com Gemini Pro'}
+                                    </button>
+                                </div>
                             </div>
 
                             {showVariablesHelp && (
@@ -416,6 +515,7 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
 
                             {editorTab === 'write' ? (
                                 <textarea
+                                    id="broadcast-body"
                                     value={body}
                                     onChange={(e) => setBody(e.target.value)}
                                     placeholder="Olá {{name}},\n\nEstamos muito felizes em anunciar uma nova funcionalidade..."
