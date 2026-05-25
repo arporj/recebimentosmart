@@ -24,6 +24,8 @@ import PrivacyPolicyPage from './components/v2/PrivacyPolicyPage';
 import TermsOfUsePage from './components/v2/TermsOfUsePage';
 import CookiePolicyPage from './components/v2/CookiePolicyPage';
 import ContactPage from './components/v2/ContactPage';
+import FAQPage from './components/v2/FAQPage';
+
 // AdminChatPage removido para backlog de ideias
 import MonthlyPaymentsV2 from './pages/v2/MonthlyPaymentsV2';
 import ReportsV2 from './pages/v2/ReportsV2';
@@ -91,6 +93,7 @@ function AppRoutes() {
           <Route path="/termos" element={<TermsOfUsePage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
           <Route path="/contato" element={<ContactPage />} />
+          <Route path="/faq" element={<FAQPage />} />
 
           {/* Fallback manda sempre para a raiz */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -159,6 +162,7 @@ function AppRoutes() {
           <Route path="/termos" element={<TermsOfUsePage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
           <Route path="/contato" element={<ContactPage />} />
+          <Route path="/faq" element={<FAQPage />} />
           <Route path="*" element={<Navigate to="/v2/financeiro/lancamentos" replace />} />
         </>
       )}
