@@ -54,7 +54,14 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const win = window as any;
-            (win.adsbygoogle = win.adsbygoogle || []).push({});
+            
+            // Verifica no DOM se existem elementos ins.adsbygoogle que ainda não foram processados
+            const unprocessedAds = document.querySelectorAll('ins.adsbygoogle:not([data-adsbygoogle-status="done"])');
+            
+            // Só chama o push se houver algum elemento correspondente pendente de processamento
+            if (unprocessedAds.length > 0) {
+              (win.adsbygoogle = win.adsbygoogle || []).push({});
+            }
           } catch (err) {
             console.warn('AdSense falhou ou bloqueador de anúncios ativo:', err);
           }
