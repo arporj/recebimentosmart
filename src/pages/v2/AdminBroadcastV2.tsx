@@ -103,6 +103,78 @@ export default function AdminBroadcastV2() {
         }, 50);
     };
 
+    const handleReuseBroadcast = (broadcast: Broadcast) => {
+        setSubject(broadcast.subject);
+        setBody(broadcast.body);
+        setTargetLevel(broadcast.target_level || 'all');
+        
+        // Efeito suave de rolagem de volta para o editor
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast.success('Envio anterior carregado no editor com sucesso!');
+    };
+
+    const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        let imageFile: File | null = null;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                imageFile = items[i].getAsFile();
+                break;
+            }
+        }
+
+        if (!imageFile) return;
+
+        // Previne o comportamento padrão de colagem de texto se for uma imagem
+        e.preventDefault();
+
+        const toastId = toast.loading('Fazendo upload da imagem colada...');
+        try {
+            const fileExt = imageFile.name.split('.').pop() || 'png';
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+            const filePath = `broadcasts/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('media')
+                .upload(filePath, imageFile, {
+                    cacheControl: '31536000',
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('media')
+                .getPublicUrl(filePath);
+
+            const imgTag = `<img src="${publicUrl}" style="max-width: 100%; border-radius: 12px; margin: 12px 0; display: block;" alt="Imagem" />`;
+
+            // Insere a tag de imagem na posição do cursor do textarea
+            const element = e.currentTarget;
+            const start = element.selectionStart || 0;
+            const end = element.selectionEnd || 0;
+            const text = element.value;
+            const before = text.substring(0, start);
+            const after = text.substring(end, text.length);
+
+            setBody(before + imgTag + after);
+
+            // Devolve o foco ao elemento e posiciona o cursor após a tag de imagem inserida
+            setTimeout(() => {
+                element.focus();
+                const newCursorPos = start + imgTag.length;
+                element.setSelectionRange(newCursorPos, newCursorPos);
+            }, 50);
+
+            toast.success('Imagem enviada e inserida com sucesso!', { id: toastId });
+        } catch (err: any) {
+            console.error('Erro ao fazer upload da imagem colada:', err);
+            toast.error('Falha ao enviar imagem: ' + err.message, { id: toastId });
+        }
+    };
+
     useEffect(() => {
         fetchBroadcastHistory();
         checkForNewGeminiVersion();
@@ -593,6 +665,7 @@ CORPO: [Escreva aqui o corpo aprimorado, utilizando a formatação HTML conforme
                                     id="broadcast-body"
                                     value={body}
                                     onChange={(e) => setBody(e.target.value)}
+                                    onPaste={handlePaste}
                                     placeholder="Olá {{name}},\n\nEstamos muito felizes em anunciar uma nova funcionalidade..."
                                     rows={10}
                                     disabled={loading || optimizing}
@@ -709,10 +782,20 @@ CORPO: [Escreva aqui o corpo aprimorado, utilizando a formatação HTML conforme
                                             )}
                                         </div>
 
-                                        <p className="text-[10px] text-slate-400 font-semibold">
-                                            Criado em {format(parseISO(b.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                            {b.processed_at && ` · Processado em ${format(parseISO(b.processed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`}
-                                        </p>
+                                        <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold mt-1">
+                                            <span>
+                                                Criado em {format(parseISO(b.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                {b.processed_at && ` · Processado em ${format(parseISO(b.processed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleReuseBroadcast(b)}
+                                                className="flex items-center gap-1 text-[#0d9488] hover:text-teal-700 font-black uppercase text-[9px] px-2 py-1 bg-teal-50 hover:bg-teal-100 rounded-lg active:scale-95 transition-all"
+                                                title="Carregar este e-mail de volta ao editor para enviar novamente"
+                                            >
+                                                <RefreshCw size={9} /> Reutilizar
+                                            </button>
+                                        </div>
 
                                         {b.error_message && (
                                             <div className="p-2 rounded bg-rose-50 border border-rose-100 text-[10px] font-bold text-rose-600 leading-normal flex items-start gap-1">
