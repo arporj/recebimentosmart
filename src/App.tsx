@@ -40,6 +40,7 @@ import CreditCardV2 from './pages/v2/CreditCardV2';
 import RecurrenceV2 from './pages/v2/RecurrenceV2';
 import SharedWithMeV2 from './pages/v2/SharedWithMeV2';
 import ClientsV2 from './pages/v2/ClientsV2';
+import AdminBroadcastV2 from './pages/v2/AdminBroadcastV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -125,6 +126,7 @@ function AppRoutes() {
 
           {/* Rotas de Admin V2 */}
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
+          <Route path="/v2/admin/broadcast" element={<AdminRoute><MainLayoutV2><AdminBroadcastV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/v2/admin/feedbacks" element={<AdminRoute><MainLayoutV2><AdminFeedbackPageV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/v2/admin/configuracoes" element={<AdminRoute><MainLayoutV2><AdminSettingsV2 /></MainLayoutV2></AdminRoute>} />
 
