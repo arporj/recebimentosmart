@@ -97,6 +97,8 @@ const FinancialTransactionsV2 = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  const [layoutPreference, setLayoutPreference] = useState<'default' | 'value_first' | 'value_right_desc'>('default');
+
   // Estados para exclusão em cadeia
   const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
@@ -230,6 +232,14 @@ const FinancialTransactionsV2 = () => {
     fetchTransactions();
     fetchAccounts();
     fetchCreditCardAccounts();
+    
+    // Recuperar preferência de layout do usuário
+    const savedPref = localStorage.getItem('transaction_layout_preference') as 'default' | 'value_first' | 'value_right_desc';
+    if (savedPref) {
+      setLayoutPreference(savedPref);
+    } else {
+      setLayoutPreference('default');
+    }
   }, [user]);
 
   useEffect(() => {
@@ -1071,18 +1081,44 @@ const FinancialTransactionsV2 = () => {
                   <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
                     {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                   </span>
+
+                  {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
+                  {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                    <div className="shrink-0 min-w-[70px] text-left pr-1">
+                      <p className={`font-extrabold text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                        {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                      </p>
+                      {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                        <p className="text-[8px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Descrição + badges */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
+                  <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
+                    <div className={`flex items-center gap-1 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                      {layoutPreference === 'value_right_desc' && (
+                        <div className="flex items-center gap-1 shrink-0 mr-1">
+                          {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
+                          {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-600 stroke-[2.5]" />}
+                          {t.auto_confirm && <Zap size={10} className="text-amber-500 fill-amber-500" />}
+                        </div>
+                      )}
+
                       <span className="font-bold text-xs text-slate-800 truncate">{t.description || 'S/ Descrição'}</span>
-                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                        {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
-                        {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-600 stroke-[2.5]" />}
-                        {t.auto_confirm && <Zap size={10} className="text-amber-500 fill-amber-500" />}
-                      </div>
+                      
+                      {layoutPreference !== 'value_right_desc' && (
+                        <div className="flex items-center gap-1 shrink-0 ml-1">
+                          {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
+                          {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-600 stroke-[2.5]" />}
+                          {t.auto_confirm && <Zap size={10} className="text-amber-500 fill-amber-500" />}
+                        </div>
+                      )}
                     </div>
                     {(t.account || t.category || t.client || t.type === 'transfer') && (
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <div className={`flex items-center gap-1.5 mt-0.5 flex-wrap ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                         {t.account && <span className="text-[8px] font-black text-slate-400 uppercase">{t.account.name}</span>}
                         {t.type === 'transfer' && (
                           <>
@@ -1106,17 +1142,19 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     )}
                   </div>
-                  {/* Valor + Saldo */}
-                  <div className="text-right shrink-0">
-                    <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                      {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
-                    </p>
-                    {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                      <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                  {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
+                  {layoutPreference === 'default' && (
+                    <div className="text-right shrink-0">
+                      <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                        {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
                       </p>
-                    )}
-                  </div>
+                      {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                        <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {/* Menu */}
                   <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                     <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
@@ -1305,25 +1343,55 @@ const FinancialTransactionsV2 = () => {
                     <div 
                       key={dropdownKey} 
                       onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                      className={`flex items-center gap-2 px-3 py-1.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}
+                      className={`flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}
                     >
+                      {/* Ícone de Tipo */}
                       <div className={`p-1.5 rounded-lg shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
                         {t.type === 'income' ? <Plus size={16} /> : t.type === 'expense' ? <ArrowDownCircle size={16} /> : <ArrowRightLeft size={16} />}
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3">
+                      {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
+                      {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                        <div className="shrink-0 min-w-[100px] text-left pr-2">
+                          <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                          </p>
+                          {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                            <p className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Descrição e Metadados (Flex-1) */}
+                      <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
+                        <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                           <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : status === 'overdue' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
+                          
+                          {/* Emblemas ANTES do nome no layout 3 */}
+                          {layoutPreference === 'value_right_desc' && (
+                            <div className="flex items-center gap-1.5 px-1 shrink-0 mr-1.5">
+                              {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                              {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
+                              {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
+                            </div>
+                          )}
+
                           <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
 
-                          <div className="flex items-center gap-1.5 px-2">
-                            {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
-                            {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
-                            {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
-                          </div>
+                          {/* Emblemas DEPOIS do nome nos layouts 1 e 2 */}
+                          {layoutPreference !== 'value_right_desc' && (
+                            <div className="flex items-center gap-1.5 px-2 shrink-0">
+                              {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                              {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
+                              {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
+                            </div>
+                          )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                        {/* Metadados adicionais */}
+                        <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                           <p className="text-[10px] font-bold text-slate-400">
                             {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                           </p>
@@ -1351,31 +1419,29 @@ const FinancialTransactionsV2 = () => {
                             </>
                           )}
 
-                          {t.category && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
-                              <span className="text-[9px] font-bold text-slate-400">{t.category.name}</span>
-                            </div>
-                          )}
-
+                          {t.category && <span className="text-[10px] font-bold text-slate-300">· {t.category.name}</span>}
                           {t.client && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 border border-sky-100/50 rounded-md text-sky-600">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 text-sky-600 border border-sky-100 rounded-md">
                               <User size={10} />
-                              <span className="text-[9px] font-bold">{t.client.name}</span>
+                              <span className="text-[9px] font-bold uppercase">{t.client.name}</span>
                             </div>
                           )}
-
-
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
-                      <p className={`font-medium text-base ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                          {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
-                        </p>
-                        <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
-                           {(t as any).runningBalance && !isNaN((t as any).runningBalance) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance) : ''}
-                        </p>
-                      </div>
+                      {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
+                      {layoutPreference === 'default' && (
+                        <div className="text-right shrink-0 pr-2">
+                          <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {t.type === 'expense' ? '-' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
+                          </p>
+                          {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                            <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                         <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
