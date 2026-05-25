@@ -4,21 +4,24 @@ import { useAuth } from '../../contexts/AuthContext';
 import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../../lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
-import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, QrCode, Sparkles } from 'lucide-react';
+import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertCircle, HelpCircle } from 'lucide-react';
 
-type PlanName = 'basico' | 'pro' | 'premium';
+type PlanName = 'free' | 'basico' | 'pro';
 
 const PLAN_MAPPING: Record<string, PlanName> = {
+  'free': 'free',
   'básico': 'basico',
+  'basico': 'basico',
   'pró': 'pro',
+  'pro': 'pro',
 };
 
 const PIX_KEY = 'contato@recebimentosmart.com.br';
 
-// Componente de alta fidelidade para simular um QR Code de PIX com o logotipo do PIX integrado no centro
-const PixQrCodeMock = () => (
+// Ícone vetorial estilizado que simula perfeitamente um QR Code de PIX com o logo do PIX no centro
+const PixQrCodeSvg = () => (
   <svg viewBox="0 0 100 100" className="w-full h-full text-slate-800" fill="currentColor">
-    {/* Guias dos cantos do QR Code (Padrões de posição) */}
+    {/* Cantos guias de alinhamento */}
     <rect x="0" y="0" width="22" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="4.5" />
     <rect x="5.5" y="5.5" width="11" height="11" rx="1.5" fill="currentColor" />
     
@@ -28,12 +31,11 @@ const PixQrCodeMock = () => (
     <rect x="0" y="78" width="22" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="4.5" />
     <rect x="5.5" y="83.5" width="11" height="11" rx="1.5" fill="currentColor" />
     
-    {/* Guias de calibração menores */}
+    {/* Calibração menor e pontos aleatórios simulando dados do QR Code */}
     <rect x="78" y="78" width="8" height="8" rx="1.5" fill="currentColor" />
     <rect x="52" y="78" width="6" height="6" rx="1" fill="currentColor" />
     <rect x="78" y="52" width="6" height="6" rx="1" fill="currentColor" />
 
-    {/* Pontos/Módulos simulados do QR Code */}
     <path d="M 28 3 H 34 V 6 H 28 Z M 40 2 H 44 V 8 H 40 Z M 50 4 H 56 V 6 H 50 Z M 62 1 H 68 V 4 H 62 Z M 72 3 H 74 V 8 H 72 Z
              M 28 12 H 36 V 14 H 28 Z M 42 10 H 46 V 16 H 42 Z M 52 12 H 58 V 14 H 52 Z M 64 10 H 70 V 16 H 64 Z
              M 28 20 H 32 V 22 H 28 Z M 38 18 H 48 V 20 H 38 Z M 54 18 H 60 V 22 H 54 Z M 66 20 H 74 V 22 H 66 Z
@@ -45,62 +47,69 @@ const PixQrCodeMock = () => (
              M 28 78 H 32 V 84 H 28 Z M 38 78 H 44 V 84 H 38 Z M 44 86 H 48 V 92 H 44 Z M 32 90 H 38 V 96 H 32 Z
              M 28 88 H 30 V 96 H 28 Z M 40 88 H 42 V 96 H 40 Z M 64 78 H 70 V 84 H 64 Z M 64 88 H 70 V 96 H 64 Z M 88 78 H 94 V 84 H 88 Z M 88 88 H 94 V 96 H 88 Z" />
 
-    {/* Logotipo Central do PIX com design premium e arredondado */}
+    {/* Logotipo Central do PIX integrado */}
     <rect x="33" y="33" width="34" height="34" rx="7" fill="#14b8a6" stroke="white" strokeWidth="2.5" />
     <path d="M 50 38.5 L 59.5 48 L 50 57.5 L 40.5 48 Z" fill="white" />
     <circle cx="50" cy="48" r="2.5" fill="#14b8a6" />
   </svg>
 );
 
+interface PlanFeatureList {
+  free: string[];
+  basico: string[];
+  pro: string[];
+}
+
+const STATIC_PLAN_FEATURES: PlanFeatureList = {
+  free: [
+    'Até 15 clientes cadastrados',
+    'Até 30 transações mensais',
+    'Máximo 2 contas bancárias',
+    'Até 10 tags para organização',
+    'Exibição de anúncios',
+  ],
+  basico: [
+    'Controle de até 50 clientes',
+    'Transações e lançamentos ilimitados',
+    'Bancos e contas ilimitadas',
+    'Campos personalizados nos cadastros',
+    'Sem exibição de anúncios',
+  ],
+  pro: [
+    'Clientes e contatos ilimitados',
+    'Transações e contas ilimitadas',
+    'Painel de relatórios detalhados',
+    'Campos personalizados completos',
+    'Suporte prioritário via WhatsApp',
+  ]
+};
+
 export default function SubscriptionPageV2() {
   const { loading, pageData, fetchData } = useSubscription();
   const { user } = useAuth();
 
-  const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanName>('basico');
   const [copied, setCopied] = useState(false);
   const [qrCodeLoaded, setQrCodeLoaded] = useState(false);
 
-  // Recarrega dados ao montar a tela para garantir informações atualizadas do usuário
+  // Força a atualização de dados da assinatura ao abrir a tela
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Define o plano padrão quando os dados carregam
+  // Sincroniza e define o plano selecionado por padrão baseado no plano atual do usuário
   useEffect(() => {
-    if (pageData && !selectedPlan) {
-      const userPlan = pageData.user?.plan?.toLowerCase();
+    if (pageData) {
+      const userPlanRaw = pageData.user?.plan?.toLowerCase() || '';
+      const mappedUserPlan = PLAN_MAPPING[userPlanRaw];
       
-      // 1. Tenta selecionar o plano atual do usuário, se ele constar nos planos carregados
-      if (userPlan && userPlan !== 'trial' && userPlan !== 'admin') {
-        const mappedUserPlan = PLAN_MAPPING[userPlan] ?? (userPlan as PlanName);
-        if (pageData.plans.some(p => (PLAN_MAPPING[p.name.toLowerCase()] ?? p.name.toLowerCase()) === mappedUserPlan)) {
-          setSelectedPlan(mappedUserPlan);
-          return;
-        }
-      }
-
-      // 2. Fallback: seleciona o Básico, se existir
-      const basicPlan = pageData.plans.find(p => p.name.toLowerCase() === 'básico' || p.name.toLowerCase() === 'basico');
-      if (basicPlan) {
-        setSelectedPlan('basico');
-        return;
-      }
-
-      // 3. Fallback final: seleciona o primeiro plano da lista
-      if (pageData.plans.length > 0) {
-        const firstKey = PLAN_MAPPING[pageData.plans[0].name.toLowerCase()] ?? (pageData.plans[0].name.toLowerCase() as PlanName);
-        setSelectedPlan(firstKey);
+      if (mappedUserPlan && mappedUserPlan !== 'premium') {
+        setSelectedPlan(mappedUserPlan);
+      } else {
+        setSelectedPlan('basico'); // Fallback padrão
       }
     }
-  }, [pageData, selectedPlan]);
-
-  const getSelectedPlanData = useCallback(() => {
-    if (!selectedPlan || !pageData) return null;
-    return pageData.plans.find(plan => {
-      const planKey = PLAN_MAPPING[plan.name.toLowerCase()] ?? plan.name.toLowerCase() as PlanName;
-      return planKey === selectedPlan;
-    });
-  }, [selectedPlan, pageData]);
+  }, [pageData]);
 
   const handleCopyKey = () => {
     navigator.clipboard.writeText(PIX_KEY);
@@ -109,19 +118,46 @@ export default function SubscriptionPageV2() {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const selectedPlanObj = getSelectedPlanData();
-  const planPrice = selectedPlanObj?.price_monthly ?? 0;
+  // Resgata o objeto do plano vindo do Supabase correspondente à seleção
+  const getSelectedPlanObj = useCallback(() => {
+    if (!pageData?.plans) return null;
+    return pageData.plans.find(p => {
+      const planKey = PLAN_MAPPING[p.name.toLowerCase()] ?? p.name.toLowerCase() as PlanName;
+      return planKey === selectedPlan;
+    });
+  }, [selectedPlan, pageData]);
+
+  const currentPlanObj = getSelectedPlanObj();
+  const planPrice = currentPlanObj?.price_monthly ?? (selectedPlan === 'free' ? 0 : selectedPlan === 'basico' ? 9.90 : 24.90);
   const userCredits = pageData?.user?.credits ?? 0;
   const finalAmount = Math.max(0, planPrice - userCredits);
-  const planDisplayName = selectedPlanObj?.name ?? (selectedPlan ? selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1) : '');
+  const planDisplayName = currentPlanObj?.name ?? (selectedPlan === 'free' ? 'Free' : selectedPlan === 'basico' ? 'Básico' : 'Pró');
 
-  // Gera o link dinâmico para envio do comprovante pelo WhatsApp
+  // Gera o link do WhatsApp para envio do comprovante
   const getWhatsAppLink = () => {
     const formattedAmount = formatCurrency(finalAmount);
     const email = user?.email ?? 'N/A';
-    const text = `Olá! Realizei o pagamento via PIX para assinatura do Recebimento $mart.%0A%0A• *Plano selecionado:* ${planDisplayName}%0A• *Valor pago:* ${formattedAmount}%0A• *Minha Conta (E-mail):* ${email}%0A%0ASegue em anexo o comprovante de pagamento para liberação da minha conta!`;
+    const text = `Olá! Realizei o pagamento via PIX para o Recebimento $mart.%0A%0A• *Plano selecionado:* ${planDisplayName}%0A• *Valor pago:* ${formattedAmount}%0A• *Minha Conta (E-mail):* ${email}%0A%0ASegue em anexo o comprovante de pagamento para ativação imediata!`;
     return `https://wa.me/5521967621494?text=${text}`;
   };
+
+  // Filtra e ordena explicitamente os planos cadastrados no banco para evitar quebras ou desordens
+  const getOrderedPlans = () => {
+    if (!pageData?.plans) return [];
+    
+    // Mapeia e organiza em uma ordem estrita e lógica: Free (1º), Básico (2º) e Pró (3º)
+    const order = ['free', 'basico', 'pro'];
+    
+    return [...pageData.plans]
+      .filter(p => p.name.toLowerCase() !== 'premium')
+      .sort((a, b) => {
+        const keyA = PLAN_MAPPING[a.name.toLowerCase()] || 'free';
+        const keyB = PLAN_MAPPING[b.name.toLowerCase()] || 'free';
+        return order.indexOf(keyA) - order.indexOf(keyB);
+      });
+  };
+
+  const orderedPlans = getOrderedPlans();
 
   if (loading) {
     return (
@@ -131,295 +167,299 @@ export default function SubscriptionPageV2() {
     );
   }
 
-  const renderActiveBadge = () => {
-    const userPlan = pageData?.user?.plan;
-    const validUntil = pageData?.user?.valid_until;
-
-    if (!userPlan) return null;
-
-    if (userPlan === 'admin') {
-      return (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[#29a8a8] font-bold text-xs shadow-sm">
-          <Shield className="w-3.5 h-3.5" />
-          <span>Acesso Administrador Vitalício</span>
-        </div>
-      );
-    }
-
-    if (userPlan === 'trial' && validUntil && isFuture(parseISO(validUntil))) {
-      return (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs shadow-sm">
-          <Info className="w-3.5 h-3.5" />
-          <span>Período de Experiência (Vence {format(parseISO(validUntil), 'dd/MM/yyyy')})</span>
-        </div>
-      );
-    }
-
-    if (userPlan !== 'trial' && validUntil && isFuture(parseISO(validUntil))) {
-      return (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs shadow-sm">
-          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Assinatura Ativa (Vence {format(parseISO(validUntil), 'dd/MM/yyyy')})</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 font-bold text-xs shadow-sm">
-        <XCirclePlaceholder className="w-3.5 h-3.5 text-rose-500" />
-        <span>Assinatura Suspensa ou Expirada</span>
-      </div>
-    );
-  };
+  const userPlanRaw = pageData?.user?.plan?.toLowerCase() || '';
+  const userPlanActive = PLAN_MAPPING[userPlanRaw] || 'free';
+  const userValidUntil = pageData?.user?.valid_until;
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300 pb-16 px-4 md:px-6">
+    <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 px-4 md:px-6 font-['Inter',sans-serif]">
       
-      {/* Cabeçalho Premium Compacto */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6 mt-4">
+      {/* ─── CADEÇALHO & STATUS DO PLANO ─── */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-slate-900 text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2">
-            Sua Assinatura
+          <h1 className="text-slate-900 text-2xl font-black tracking-tight flex items-center gap-2">
+            Configuração de Assinatura
             <Sparkles className="w-5 h-5 text-[#29a8a8] animate-pulse" />
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1">Gerencie os planos e libere os limites da sua conta.</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Selecione seu plano de uso e realize o pagamento com liberação manual.</p>
         </div>
-        <div className="self-start md:self-auto shrink-0">
-          {renderActiveBadge()}
+
+        {/* Informações da conta atual do usuário */}
+        <div className="shrink-0 flex items-center">
+          {userPlanRaw === 'admin' ? (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-[#29a8a8] font-bold text-xs shadow-sm">
+              <Shield className="w-4 h-4" />
+              <span>Acesso Administrador Habilitado</span>
+            </div>
+          ) : userPlanRaw === 'trial' && userValidUntil && isFuture(parseISO(userValidUntil)) ? (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs shadow-sm">
+              <Info className="w-4 h-4 text-amber-600" />
+              <span>Período de Experiência (Expira em {format(parseISO(userValidUntil), 'dd/MM/yyyy')})</span>
+            </div>
+          ) : userPlanRaw !== 'trial' && userValidUntil && isFuture(parseISO(userValidUntil)) ? (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs shadow-sm">
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              <span>Assinatura Ativa (Vence em {format(parseISO(userValidUntil), 'dd/MM/yyyy')})</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-bold text-xs shadow-sm">
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+              <span>Sua conta está no plano gratuito (Free)</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Grid Principal Ultra Arrumado */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* ─── PAINEL DE PREÇOS (HORIZONTAL E EM ORDEM PERFEITA) ─── */}
+      <div className="space-y-4">
+        <h2 className="text-slate-800 font-black text-lg tracking-tight pl-1">Planos Disponíveis</h2>
         
-        {/* Coluna da Esquerda (Opções & Detalhes) */}
-        <div className="lg:col-span-7 space-y-8">
-          
-          {/* SEÇÃO 1: SELEÇÃO DE PLANOS */}
-          <div className="bg-white rounded-2xl border border-slate-150 p-6 md:p-8 shadow-sm">
-            <h2 className="text-slate-900 text-lg font-bold mb-6 flex items-center gap-3 border-b border-slate-50 pb-4">
-              <span className="bg-[#29a8a8] text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">1</span>
-              Escolha o Plano Ideal
-            </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {orderedPlans.map(plan => {
+            const planKey = PLAN_MAPPING[plan.name.toLowerCase()] || 'free';
+            const isSelected = selectedPlan === planKey;
+            const isUserCurrent = userPlanActive === planKey && userPlanRaw !== 'admin';
+            const price = plan.price_monthly;
 
-            {pageData?.plans?.length ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {pageData.plans.filter(p => p.name.toLowerCase() !== 'premium').map(plan => {
-                  const planKey = PLAN_MAPPING[plan.name.toLowerCase()] ?? plan.name.toLowerCase() as PlanName;
-                  const isActive = selectedPlan === planKey;
+            return (
+              <div
+                key={plan.id}
+                onClick={() => setSelectedPlan(planKey)}
+                className={`relative flex flex-col gap-6 rounded-2xl border-2 p-6 md:p-8 transition-all cursor-pointer bg-white shadow-sm select-none hover:shadow-md ${
+                  isSelected
+                    ? 'border-[#29a8a8] ring-4 ring-[#29a8a8]/5'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {/* Badges de destaque */}
+                {planKey === 'pro' && (
+                  <div className="absolute -top-3 right-6 bg-[#29a8a8] text-white text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest shadow-md shadow-[#29a8a8]/20">
+                    Recomendado
+                  </div>
+                )}
+                {isUserCurrent && (
+                  <div className="absolute -top-3 left-6 bg-slate-900 text-white text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest border border-slate-800 shadow-sm">
+                    Seu Plano Atual
+                  </div>
+                )}
 
-                  return (
-                    <div
-                      key={planKey}
-                      onClick={() => setSelectedPlan(planKey)}
-                      className={`relative flex flex-col gap-4 rounded-xl border-2 p-5 transition-all cursor-pointer select-none ${isActive
-                        ? 'border-[#29a8a8] bg-[#29a8a8]/5'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      {planKey === 'pro' && (
-                        <div className="absolute -top-3 right-4 bg-[#29a8a8] text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                          Recomendado
-                        </div>
-                      )}
+                <div className="space-y-2">
+                  <h3 className="text-slate-900 font-black text-lg capitalize">{plan.name}</h3>
+                  <p className="text-slate-400 text-xs font-semibold leading-relaxed">
+                    {planKey === 'free' ? 'Ideal para testar a ferramenta e controle simples.' : planKey === 'basico' ? 'O empurrão financeiro que seu negócio precisa.' : 'Controle total e sem limites para quem quer crescer.'}
+                  </p>
+                  <div className="flex items-baseline gap-0.5 pt-3">
+                    <span className="text-slate-900 text-3xl font-black tracking-tight">{formatCurrency(price)}</span>
+                    <span className="text-slate-400 text-xs font-bold">/mês</span>
+                  </div>
+                </div>
 
-                      <div>
-                        <h3 className="text-slate-900 text-sm font-extrabold capitalize">{plan.name}</h3>
-                        <div className="flex items-baseline gap-0.5 mt-1.5">
-                          <span className="text-slate-900 text-2xl font-black tracking-tight">{formatCurrency(plan.price_monthly)}</span>
-                          <span className="text-slate-500 text-[10px] font-medium">/mês</span>
-                        </div>
-                      </div>
+                {/* Recursos do Plano */}
+                <ul className="space-y-3 flex-1 border-t border-slate-100 pt-5 text-xs">
+                  {(STATIC_PLAN_FEATURES[planKey] || []).map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-slate-600">
+                      <Check className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                      <ul className="space-y-2 flex-1 border-t border-slate-100/70 pt-3 text-[11px] sm:text-xs">
-                        {(plan.features || ['Controle completo de lançamentos', 'Gestão integrada de clientes', 'Suporte prioritário']).map((feature, i) => (
-                          <li key={i} className="flex items-start gap-2 text-slate-600">
-                            <Check className="w-3.5 h-3.5 text-[#29a8a8] flex-shrink-0 mt-0.5" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      <div className={`w-full py-2.5 rounded-lg font-bold text-xs text-center border transition-all ${isActive
-                        ? 'bg-[#29a8a8] text-white border-[#29a8a8]'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 group-hover:bg-slate-100'
-                      }`}>
-                        {isActive ? 'Selecionado' : 'Selecionar'}
-                      </div>
-                    </div>
-                  );
-                })}
+                <button className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
+                  isSelected
+                    ? 'bg-[#29a8a8] text-white shadow-lg shadow-[#29a8a8]/25'
+                    : 'bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-950'
+                }`}>
+                  {isUserCurrent ? 'Plano Ativo' : isSelected ? 'Plano Selecionado' : 'Selecionar'}
+                </button>
               </div>
-            ) : (
-              <p className="text-slate-400 text-sm py-4 text-center">Nenhum plano disponível.</p>
-            )}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─── PAINEL CENTRAL DE PAGAMENTO (FOCADO, ARRUMADO E LIMPO) ─── */}
+      {selectedPlan !== 'free' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          
+          {/* Título de Pagamento */}
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <span className="bg-[#29a8a8] text-white w-7 h-7 rounded-full flex items-center justify-center font-black text-sm shadow-sm">PIX</span>
+            <div>
+              <h2 className="text-slate-900 text-lg font-black tracking-tight">Pagamento da Assinatura ({planDisplayName})</h2>
+              <p className="text-slate-400 text-[11px] font-semibold mt-0.5">Realize a transferência e nos envie o comprovante para ativação da conta.</p>
+            </div>
           </div>
 
-          {/* SEÇÃO 2: DETALHES E INSTRUÇÕES */}
-          <div className="bg-white rounded-2xl border border-slate-150 p-6 md:p-8 shadow-sm">
-            <h2 className="text-slate-900 text-lg font-bold mb-6 flex items-center gap-3 border-b border-slate-50 pb-4">
-              <span className="bg-[#29a8a8] text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">2</span>
-              Instruções de Pagamento
-            </h2>
-
-            {finalAmount > 0 ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Assinatura ({planDisplayName})</span>
-                    <span className="text-lg font-bold text-slate-800 mt-0.5">{formatCurrency(planPrice)}</span>
+          {/* Grid de Checkout e Instruções */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* Coluna da Esquerda: Resumo, Valores e Copia e Cola (60%) */}
+            <div className="lg:col-span-7 space-y-6">
+              
+              {/* Box de detalhamento de preço */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-100 rounded-xl p-5">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor do Plano</span>
+                  <span className="text-xl font-black text-slate-800 mt-1">{formatCurrency(planPrice)}</span>
+                </div>
+                
+                {userCredits > 0 ? (
+                  <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-5">
+                    <span className="text-[10px] text-[#29a8a8] font-bold uppercase tracking-wider">🎁 Desconto (Créditos)</span>
+                    <span className="text-xl font-black text-[#29a8a8] mt-1">- {formatCurrency(userCredits)}</span>
                   </div>
-                  {userCredits > 0 ? (
-                    <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4">
-                      <span className="text-[10px] text-[#29a8a8] font-bold uppercase tracking-wider flex items-center gap-1">
-                        🎁 Créditos de Indicação
-                      </span>
-                      <span className="text-lg font-bold text-[#29a8a8] mt-0.5">- {formatCurrency(userCredits)}</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4 justify-center">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bônus Aplicado</span>
-                      <span className="text-sm font-semibold text-slate-500 mt-0.5">Nenhum crédito ativo</span>
+                ) : (
+                  <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-5 justify-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Créditos de Indicação</span>
+                    <span className="text-xs text-slate-500 font-semibold mt-1">Nenhum bônus acumulado</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total final em destaque */}
+              <div className="border border-slate-100 rounded-xl p-5 flex items-center justify-between bg-teal-50/15">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor total a transferir</span>
+                  <span className="text-2xl font-black text-slate-900 mt-1">{formatCurrency(finalAmount)}</span>
+                </div>
+                <div className="bg-[#29a8a8]/10 text-[#29a8a8] p-2 rounded-lg shrink-0">
+                  <Sparkles size={20} className="animate-pulse" />
+                </div>
+              </div>
+
+              {/* Instruções de Pagamento */}
+              <div className="space-y-3.5">
+                <h4 className="text-slate-800 font-extrabold text-sm">Instruções para liberação:</h4>
+                <div className="grid grid-cols-1 gap-2.5 text-xs text-slate-600 pl-1 leading-relaxed">
+                  <div className="flex gap-2.5 items-start">
+                    <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
+                    <span>Abra o app do seu banco, escolha a opção **PIX** e aponte a câmera para o **QR Code ao lado**.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
+                    <span>Se preferir, copie a **Chave PIX (E-mail)** disponível logo abaixo para efetuar a transferência.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
+                    <span>Após o pagamento, clique no botão **Confirmar e Enviar Comprovante** para nos mandar o comprovante pelo WhatsApp do suporte.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chave PIX copia/cola */}
+              <div className="space-y-2 border-t border-slate-100 pt-5">
+                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">Chave PIX do Recebimento $mart</span>
+                
+                <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl p-2 pl-3.5 overflow-hidden">
+                  <span className="text-slate-700 font-extrabold text-xs truncate flex-1">{PIX_KEY}</span>
+                  <button
+                    onClick={handleCopyKey}
+                    className="flex items-center gap-1.5 justify-center py-2 px-4 rounded-lg bg-white border border-slate-200 hover:border-[#29a8a8] hover:text-[#29a8a8] text-slate-600 text-xs font-bold transition-all shrink-0 active:scale-95 shadow-sm"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-600">Copiada</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna da Direita: QR Code e WhatsApp (40%) */}
+            <div className="lg:col-span-5 flex flex-col items-center border-t lg:border-t-0 lg:border-l border-slate-100 pt-6 lg:pt-0 lg:pl-8 space-y-6">
+              
+              {/* QR Code Container (Busca imagem real ou gera o mock dinâmico com logotipo) */}
+              <div className="flex flex-col items-center">
+                <div className="relative bg-white border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-center w-48 h-48 select-none">
+                  {/* Se a imagem real existir localmente, ela é renderizada */}
+                  <img 
+                    src="/images/pix-qr-code.png" 
+                    alt="QR Code PIX" 
+                    className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${qrCodeLoaded ? 'opacity-100 absolute' : 'opacity-0 absolute pointer-events-none'}`}
+                    onLoad={() => setQrCodeLoaded(true)}
+                    onError={() => setQrCodeLoaded(false)}
+                  />
+                  
+                  {/* Mock vetorial em SVG com logo integrado no centro caso a imagem não exista */}
+                  {!qrCodeLoaded && (
+                    <div className="w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
+                      <PixQrCodeSvg />
                     </div>
                   )}
                 </div>
+                
+                <span className="text-[10px] text-slate-400 font-semibold mt-3.5 text-center leading-relaxed">
+                  {!qrCodeLoaded ? 'QR Code Vetorial com Logo PIX Ativo' : 'QR Code por Imagem'}
+                </span>
+              </div>
 
-                <div className="space-y-3.5 text-slate-600 text-xs leading-relaxed">
-                  <p>Siga os três passos rápidos para efetuar e liberar a sua assinatura:</p>
-                  <div className="grid grid-cols-1 gap-2.5">
-                    <div className="flex gap-2.5 items-start">
-                      <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0 mt-0.5">1</span>
-                      <span>Leia o **QR Code ao lado** com o aplicativo do seu banco ou copie a chave PIX abaixo.</span>
-                    </div>
-                    <div className="flex gap-2.5 items-start">
-                      <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0 mt-0.5">2</span>
-                      <span>Realize a transferência do valor final de <strong className="text-slate-800 font-extrabold">{formatCurrency(finalAmount)}</strong>.</span>
-                    </div>
-                    <div className="flex gap-2.5 items-start">
-                      <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0 mt-0.5">3</span>
-                      <span>Clique no botão **Confirmar e Enviar Comprovante** para nos encaminhar o comprovante pelo WhatsApp do suporte.</span>
-                    </div>
+              {/* Ação principal: Botão de confirmação do WhatsApp */}
+              {finalAmount > 0 ? (
+                <div className="w-full space-y-3">
+                  <a
+                    href={getWhatsAppLink()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 hover:scale-[1.01] active:scale-95 transition-all text-center cursor-pointer"
+                  >
+                    <MessageSquare className="w-4.5 h-4.5 shrink-0" />
+                    Confirmar e Enviar Comprovante
+                  </a>
+
+                  <div className="flex gap-2 items-start bg-slate-50 border border-slate-100 rounded-xl p-3.5 text-slate-500">
+                    <Shield className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
+                    <p className="text-[10px] leading-relaxed">
+                      Seu plano é ativado em até 10 minutos após o recebimento da sua mensagem pelo suporte oficial.
+                    </p>
                   </div>
                 </div>
-
-                {/* Chave PIX */}
-                <div className="space-y-1.5 border-t border-slate-100 pt-5">
-                  <label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">Chave PIX (E-mail)</label>
-                  <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl p-2 pl-3.5 overflow-hidden">
-                    <span className="text-slate-700 font-bold text-xs truncate flex-1">{PIX_KEY}</span>
-                    <button
-                      onClick={handleCopyKey}
-                      className="flex items-center gap-1 justify-center py-2 px-3.5 rounded-lg bg-white border border-slate-200 hover:border-[#29a8a8] hover:text-[#29a8a8] text-slate-600 text-xs font-bold transition-all shrink-0 active:scale-95 shadow-sm"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span className="text-emerald-600">Copiada</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copiar</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center p-6 bg-emerald-50/50 rounded-2xl border border-dashed border-emerald-200 flex flex-col items-center">
-                <div className="bg-emerald-100 text-emerald-600 p-3 rounded-full mb-3 shadow-inner">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-800">Isenção Total Pronta</h3>
-                <p className="text-slate-600 mt-2 text-xs leading-relaxed max-w-sm">
-                  Graças às suas indicações, você acumulou créditos suficientes para cobrir 100% da mensalidade deste plano!
-                </p>
-                <a
-                  href={`https://wa.me/5521967621494?text=Olá, tenho saldo de indicações suficiente no e-mail ${user?.email} e desejo ativar o plano ${planDisplayName} com isenção total.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex mt-5 items-center justify-center gap-2 py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-md shadow-emerald-600/20 text-xs"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Ativar Isenção no WhatsApp
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Coluna da Direita (QR Code & Confirmação) */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Card Premium do QR Code */}
-          <div className="bg-white rounded-2xl border border-slate-150 p-6 shadow-sm flex flex-col items-center">
-            
-            {/* Visualização de Preço Final em Destaque */}
-            <div className="text-center w-full pb-5 border-b border-slate-100 flex flex-col items-center">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total a Transferir</span>
-              <span className="text-3xl font-black text-slate-900 mt-1">{formatCurrency(finalAmount)}</span>
-            </div>
-
-            {/* Container do QR Code (Garante carregamento 100% de alta fidelidade) */}
-            <div className="relative bg-white border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-center w-48 h-48 group mt-6 select-none">
-              {/* Tenta carregar a imagem do QR Code do usuário se ela existir */}
-              <img 
-                src="/images/pix-qr-code.png" 
-                alt="QR Code PIX" 
-                className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${qrCodeLoaded ? 'opacity-100 absolute' : 'opacity-0 absolute pointer-events-none'}`}
-                onLoad={() => setQrCodeLoaded(true)}
-                onError={() => setQrCodeLoaded(false)}
-              />
-              
-              {/* Se a imagem falhar em carregar (não existir localmente), exibe o nosso mock em SVG premium que imita perfeitamente um QR Code */}
-              {!qrCodeLoaded && (
-                <div className="w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
-                  <PixQrCodeMock />
+              ) : (
+                <div className="w-full bg-emerald-50/50 rounded-xl p-4 border border-dashed border-emerald-200 text-center flex flex-col items-center">
+                  <span className="text-xs font-bold text-slate-800">Isenção de Pagamento Pronta</span>
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed max-w-[200px]">Você possui créditos de indicação suficientes para isentar este plano!</p>
+                  <a
+                    href={`https://wa.me/5521967621494?text=Olá, tenho saldo de indicações suficiente no e-mail ${user?.email} e desejo ativar o plano ${planDisplayName} com isenção total.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex mt-4 items-center justify-center gap-2 py-2.5 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-[11px] shadow-sm shadow-emerald-600/20"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Ativar Isenção via WhatsApp
+                  </a>
                 </div>
               )}
             </div>
-            
-            <span className="text-[10px] text-slate-400 font-semibold mt-3 text-center leading-relaxed">
-              {!qrCodeLoaded ? 'QR Code Vetorial de Alta Fidelidade Ativo' : 'QR Code por Imagem Carregado'}
-            </span>
 
-            {/* Botão de Envio de Comprovante integrado ao WhatsApp */}
-            {finalAmount > 0 && (
-              <div className="w-full mt-6 space-y-3">
-                <a
-                  href={getWhatsAppLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 hover:scale-[1.01] active:scale-95 transition-all text-center"
-                >
-                  <MessageSquare className="w-4.5 h-4.5 shrink-0" />
-                  Confirmar e Enviar Comprovante
-                </a>
-
-                <div className="flex gap-2 items-start bg-slate-50 border border-slate-100 rounded-xl p-3.5">
-                  <Shield className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
-                  <p className="text-[10px] leading-relaxed text-slate-500">
-                    O suporte do Recebimento $mart receberá sua mensagem e ativará sua assinatura manualmente em até 10 minutos comerciais.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
+      )}
 
+      {/* FAQs Integradas para dar suporte editorial na página de Assinaturas */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-4">
+        <h3 className="text-slate-800 font-extrabold text-sm flex items-center gap-2 border-b border-slate-50 pb-3">
+          <HelpCircle className="w-4 h-4 text-[#29a8a8]" />
+          Dúvidas sobre a Assinatura?
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 leading-relaxed">
+          <div>
+            <h4 className="font-bold text-slate-800 mb-1">Como funciona o pagamento via PIX manual?</h4>
+            <p>O PIX manual permite manter custos de transação mínimos, nos permitindo oferecer planos extremamente acessíveis. Você transfere o valor e nos envia o comprovante de forma prática pelo botão do WhatsApp.</p>
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-800 mb-1">O que acontece ao atingir o vencimento da assinatura?</h4>
+            <p>Sua conta é suspensa temporariamente, mantendo seus dados cadastrados protegidos por até 30 dias. Você poderá regularizar o acesso a qualquer momento através do pagamento de um novo plano.</p>
+          </div>
+        </div>
       </div>
 
       <Toaster position="bottom-center" />
     </div>
-  );
-}
-
-// Componente simples para tratar ícone de fechamento/erro inexistente
-function XCirclePlaceholder({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
   );
 }
