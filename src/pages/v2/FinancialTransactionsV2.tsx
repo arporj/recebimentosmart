@@ -103,6 +103,15 @@ const FinancialTransactionsV2 = () => {
   const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<any | null>(null);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
+  // Estado para confirmação de exclusão de lançamentos únicos
+  const [deleteConfirmModalConfig, setDeleteConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    transaction: TransactionInstance | null;
+  }>({
+    isOpen: false,
+    transaction: null,
+  });
+
   const today = new Date();
 
   const fetchTransactions = async () => {
@@ -406,12 +415,21 @@ const FinancialTransactionsV2 = () => {
     setOpenDropdown(null);
   };
 
-  const handleDelete = async (t: TransactionInstance, scope: 'this' | 'following' | 'all' = 'this') => {
+  const handleDelete = async (t: TransactionInstance, scope: 'this' | 'following' | 'all' = 'this', confirmOverride = false) => {
     const isRecurring = t.modalidade === 'recorrente' || t.modalidade === 'parcelada' || !!t.parent_id || t.recurrence_enabled;
     
     if (isRecurring && !isDeleteScopeModalOpen && scope === 'this') {
       setItemToDelete(t);
       setIsDeleteScopeModalOpen(true);
+      setOpenDropdown(null);
+      return;
+    }
+
+    if (!isRecurring && !confirmOverride) {
+      setDeleteConfirmModalConfig({
+        isOpen: true,
+        transaction: t
+      });
       setOpenDropdown(null);
       return;
     }
@@ -431,6 +449,7 @@ const FinancialTransactionsV2 = () => {
       setIsDeleteScopeModalOpen(false);
       setItemToDelete(null);
       setOpenDropdown(null);
+      setDeleteConfirmModalConfig({ isOpen: false, transaction: null });
     }
   };
 
@@ -685,6 +704,16 @@ const FinancialTransactionsV2 = () => {
 
     // Combine and sort ALL transactions BEFORE calculating running balance
     const combined = [...filtered, ...filteredInvoices].sort((a, b) => {
+      // Ordenação prioritária: lançamentos atrasados (overdue) sempre no topo
+      const aStatus = getVisualStatus(a);
+      const bStatus = getVisualStatus(b);
+      const aIsOverdue = aStatus === 'overdue';
+      const bIsOverdue = bStatus === 'overdue';
+
+      if (aIsOverdue && !bIsOverdue) return -1;
+      if (!aIsOverdue && bIsOverdue) return 1;
+
+      // Se ambos forem atrasados ou nenhum for atrasado, segue a ordenação normal
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
 
@@ -1324,6 +1353,39 @@ const FinancialTransactionsV2 = () => {
           type="delete"
           modalidade={(itemToDelete as any).modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
         />
+      )}
+
+      {/* Modal de confirmação premium de exclusão de lançamentos únicos */}
+      {deleteConfirmModalConfig.isOpen && deleteConfirmModalConfig.transaction && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-600 mb-4">
+              <div className="p-3 bg-rose-50 rounded-2xl">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">Excluir Lançamento</h3>
+            </div>
+            
+            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+              Tem certeza que deseja excluir o lançamento <strong className="text-slate-800 font-extrabold">"{deleteConfirmModalConfig.transaction.description}"</strong> de valor <strong className="text-rose-600 font-extrabold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(deleteConfirmModalConfig.transaction.amount)}</strong>? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
+              <button
+                onClick={() => setDeleteConfirmModalConfig({ isOpen: false, transaction: null })}
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmModalConfig.transaction!, 'this', true)}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold shadow-lg shadow-rose-500/30 transition-colors text-xs"
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
