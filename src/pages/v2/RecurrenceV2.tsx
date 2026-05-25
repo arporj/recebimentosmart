@@ -97,6 +97,22 @@ export default function RecurrenceV2() {
   const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
 
+  // Estado do Modal de Confirmação Genérico
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'info' | 'warning';
+  }>({
+    show: false,
+    title: '',
+    description: '',
+    confirmText: '',
+    onConfirm: () => {},
+  });
+
   // Estado de carregamento atômico por card de importação
   const [importingClientId, setImportingClientId] = useState<string | null>(null);
 
@@ -167,53 +183,56 @@ export default function RecurrenceV2() {
     }
   };
 
-  const handleImportHistory = async (clientId: string, clientName: string) => {
+  const handleImportHistory = (clientId: string, clientName: string) => {
     if (importingClientId) return;
     
-    const confirm = window.confirm(
-      `Deseja importar o histórico e gerar as pendências dos últimos 3 meses para "${clientName}" na V2? Essa ação criará a recorrência principal automaticamente.`
-    );
+    setConfirmModal({
+      show: true,
+      title: 'Importar Histórico Financeiro?',
+      description: `Deseja importar o histórico e gerar as pendências dos últimos 3 meses para "${clientName}" na V2? Essa ação criará a recorrência principal automaticamente.`,
+      confirmText: 'Importar Histórico',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setImportingClientId(clientId);
+          
+          // Toast de carregamento assíncrono
+          const importPromise = supabase.rpc('import_client_history_v1_to_v2', {
+            p_client_id: clientId
+          }).then(({ data, error }) => {
+            if (error) throw error;
+            const result = data as any;
+            if (!result.success) {
+              throw new Error(result.message);
+            }
+            return result;
+          });
 
-    if (!confirm) return;
-
-    try {
-      setImportingClientId(clientId);
-      
-      // Toast de carregamento assíncrono
-      const importPromise = supabase.rpc('import_client_history_v1_to_v2', {
-        p_client_id: clientId
-      }).then(({ data, error }) => {
-        if (error) throw error;
-        const result = data as any;
-        if (!result.success) {
-          throw new Error(result.message);
+          await toast.promise(
+            importPromise,
+            {
+              loading: `Importando dados de ${clientName}...`,
+              success: (result) => {
+                fetchSummaries(); // Atualiza a listagem de netting na tela
+                return `${result.message} (${result.paid_imported} pagos, ${result.pending_generated} atrasados gerados).`;
+              },
+              error: (err) => `${err.message || 'Erro ao processar importação'}`
+            },
+            {
+              style: {
+                minWidth: '250px',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }
+            }
+          );
+        } catch (err) {
+          console.error('Falha na chamada da importação:', err);
+        } finally {
+          setImportingClientId(null);
         }
-        return result;
-      });
-
-      await toast.promise(
-        importPromise,
-        {
-          loading: `Importando dados de ${clientName}...`,
-          success: (result) => {
-            fetchSummaries(); // Atualiza a listagem de netting na tela
-            return `${result.message} (${result.paid_imported} pagos, ${result.pending_generated} atrasados gerados).`;
-          },
-          error: (err) => `${err.message || 'Erro ao processar importação'}`
-        },
-        {
-          style: {
-            minWidth: '250px',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }
-        }
-      );
-    } catch (err) {
-      console.error('Falha na chamada da importação:', err);
-    } finally {
-      setImportingClientId(null);
-    }
+      }
+    });
   };
 
   // --- MOTOR DE VIRTUALIZAÇÃO TEMPORAL DE RECORRÊNCIAS E AGREGADOR DE NETTING ---
@@ -586,24 +605,31 @@ export default function RecurrenceV2() {
     }
   };
 
-  const handleRevokeShare = async (shareId: string) => {
+  const handleRevokeShare = (shareId: string) => {
     if (!sharingClient) return;
-    const confirm = window.confirm('Tem certeza que deseja remover o acesso deste usuário?');
-    if (!confirm) return;
 
-    try {
-      const { error } = await supabase
-        .from('client_shares')
-        .delete()
-        .eq('id', shareId);
+    setConfirmModal({
+      show: true,
+      title: 'Revogar Acesso Compartilhado?',
+      description: `Tem certeza que deseja remover o acesso deste usuário ao cliente "${sharingClient.name}"? Ele perderá imediatamente o acesso ao histórico financeiro correspondente.`,
+      confirmText: 'Revogar Acesso',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase
+            .from('client_shares')
+            .delete()
+            .eq('id', shareId);
 
-      if (error) throw error;
-      toast.success('Compartilhamento revogado.');
-      fetchActiveShares(sharingClient.id);
-    } catch (err) {
-      console.error('Erro ao revogar compartilhamento:', err);
-      toast.error('Não foi possível remover o compartilhamento.');
-    }
+          if (error) throw error;
+          toast.success('Compartilhamento revogado.');
+          fetchActiveShares(sharingClient.id);
+        } catch (err) {
+          console.error('Erro ao revogar compartilhamento:', err);
+          toast.error('Não foi possível remover o compartilhamento.');
+        }
+      }
+    });
   };
 
   return (
@@ -1274,6 +1300,56 @@ export default function RecurrenceV2() {
             <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 text-[10px] font-bold text-slate-400 leading-normal flex items-center gap-2">
               <AlertTriangle size={12} className="text-amber-500 shrink-0" />
               <span>O receptor do link poderá visualizar todo o histórico financeiro desse cliente em tempo real.</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Confirmação Genérica Premium */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-100 max-w-md w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-4">
+              <div className={`p-3 rounded-2xl shrink-0 ${
+                confirmModal.type === 'danger'
+                  ? 'bg-rose-50 border border-rose-100 text-rose-500'
+                  : confirmModal.type === 'info'
+                  ? 'bg-blue-50 border border-blue-100 text-blue-500'
+                  : 'bg-amber-50 border border-amber-100 text-amber-500'
+              }`}>
+                <AlertTriangle size={24} className="animate-bounce" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <h3 className="text-lg font-black text-slate-800">{confirmModal.title}</h3>
+                <p className="text-xs text-slate-500 leading-normal font-semibold">
+                  {confirmModal.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, show: false }));
+                }}
+                className={`px-6 py-2.5 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all ${
+                  confirmModal.type === 'danger'
+                    ? 'bg-rose-600 shadow-rose-600/20 hover:bg-rose-700 hover:shadow-rose-700/20'
+                    : confirmModal.type === 'info'
+                    ? 'bg-blue-600 shadow-blue-600/20 hover:bg-blue-700 hover:shadow-blue-700/20'
+                    : 'bg-amber-600 shadow-amber-600/20 hover:bg-amber-700 hover:shadow-amber-700/20'
+                }`}
+              >
+                {confirmModal.confirmText}
+              </button>
             </div>
           </div>
         </div>
