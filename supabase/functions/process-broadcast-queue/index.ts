@@ -195,6 +195,7 @@ serve(async (req) => {
         const messageVersions = batch.map(user => {
             // Substituições dinâmicas no corpo
             const personalizedBody = broadcast.body
+                .replace(/\n/g, '<br>')
                 .replace(/Olá!/g, `Olá, ${user.name || 'Cliente'}!`)
                 .replace(/{{name}}/g, user.name || 'Cliente')
                 .replace(/{{nome}}/g, user.name || 'Cliente')

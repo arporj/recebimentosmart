@@ -169,6 +169,9 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
                     finalBody = improvedText.replace(/ASSUNTO:\s*(.*)/i, '').replace(/CORPO:\s*/i, '').trim();
                 }
 
+                // Substituir tags <br> ou <br/> por quebras de linha normais (\n) para exibição correta no textarea
+                finalBody = finalBody.replace(/<br\s*\/?>/gi, '\n');
+
                 setSubject(finalSubject);
                 setBody(finalBody);
                 toast.success('Assunto e conteúdo aprimorados com inteligência artificial!');
@@ -426,7 +429,7 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
                                 >
                                     {body.trim() ? (
                                         <div 
-                                            className="max-w-none break-words select-text"
+                                            className="max-w-none break-words select-text whitespace-pre-wrap"
                                             dangerouslySetInnerHTML={{ 
                                                 __html: body
                                                     .replace(/{{name}}/g, 'João da Silva')
