@@ -10,7 +10,8 @@ import {
   ChevronDown,
   Landmark,
   PiggyBank,
-  CreditCard
+  CreditCard,
+  Check
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -221,6 +222,38 @@ export default function ClientStatementModalV2({
     }
   };
 
+  const handleAcceptTransaction = async (txId: string) => {
+    try {
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({ status: 'paid' })
+        .eq('id', txId);
+
+      if (error) throw error;
+      toast.success("Lançamento aceito com sucesso!");
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao aceitar lançamento:', err);
+      toast.error('Erro ao aceitar lançamento.');
+    }
+  };
+
+  const handleAcceptAllPendingInMonth = async (pendingIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({ status: 'paid' })
+        .in('id', pendingIds);
+
+      if (error) throw error;
+      toast.success("Todos os lançamentos pendentes foram aceitos!");
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao aceitar todos os lançamentos:', err);
+      toast.error('Erro ao aceitar lançamentos.');
+    }
+  };
+
   // Atualização inline de campos da transação
   const handleUpdateField = async (transactionId: string, field: string, value: any, oldValue: any) => {
     if (value === oldValue) return;
@@ -382,6 +415,10 @@ export default function ClientStatementModalV2({
     };
   }, [monthInstances]);
 
+  const pendingTxsInMonth = useMemo(() => {
+    return monthInstances.filter(t => t.status === 'pending');
+  }, [monthInstances]);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
@@ -430,6 +467,16 @@ export default function ClientStatementModalV2({
               </button>
             </div>
 
+            {pendingTxsInMonth.length > 0 && (
+              <button
+                onClick={() => handleAcceptAllPendingInMonth(pendingTxsInMonth.map(t => t.id))}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition-all duration-150 active:scale-95 whitespace-nowrap"
+              >
+                <Check size={14} />
+                Aceitar Todos do Mês
+              </button>
+            )}
+
             <button
               onClick={onClose}
               className="p-2 hover:bg-slate-100 active:scale-95 rounded-xl transition-all border border-slate-200/60 bg-white"
@@ -458,7 +505,7 @@ export default function ClientStatementModalV2({
           </div>
 
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Netting do Mês</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Saldo do Mês</span>
             <span className={`text-base sm:text-lg font-black tracking-tight ${
               totals.net < 0 ? 'text-rose-600' : totals.net > 0 ? 'text-emerald-600' : 'text-slate-500'
             }`}>
@@ -524,9 +571,18 @@ export default function ClientStatementModalV2({
                             placeholder="Descrição do lançamento..."
                           />
                           {t.status === 'pending' && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wide mt-1 ml-2">
-                              Pendente
-                            </span>
+                            <div className="inline-flex items-center gap-1.5 mt-1 ml-2">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wide">
+                                Pendente
+                              </span>
+                              <button
+                                onClick={() => handleAcceptTransaction(t.id)}
+                                className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[8px] font-bold shadow-sm transition-all duration-150 active:scale-95 uppercase tracking-wide"
+                              >
+                                <Check size={8} />
+                                Aceitar
+                              </button>
+                            </div>
                           )}
                         </td>
 
