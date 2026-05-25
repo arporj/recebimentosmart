@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { X, Calendar, Shield, Eye, CheckCircle, DollarSign } from 'lucide-react';
+import { X, Calendar, Shield, Eye, CheckCircle, DollarSign, AlertTriangle } from 'lucide-react';
 import { UserProfile } from './UserTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { CurrencyInput } from '../ui/CurrencyInput';
@@ -44,6 +44,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
 
   // Global loading state
   const [updating, setUpdating] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -144,12 +145,13 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
     }
   };
 
-  const handleDeleteUser = async () => {
-    if (!window.confirm('TEM CERTEZA? Essa ação apagará permanentemente o usuário e todos os dados relacionados (pagamentos, clientes, etc). Não pode ser desfeito.')) {
-      return;
-    }
+  const handleDeleteUser = () => {
+    setShowDeleteConfirm(true);
+  };
 
+  const executeDeleteUser = async () => {
     setUpdating(true);
+    setShowDeleteConfirm(false);
     try {
       const { error } = await supabase.rpc('admin_delete_user', { p_user_id: user.id });
       if (error) throw error;
@@ -444,6 +446,46 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
           )}
         </div>
       </div>
+      {/* Modal de Confirmação Premium de Exclusão */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-100 max-w-md w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-4">
+              <div className="bg-rose-50 border border-rose-100 p-3 rounded-2xl text-rose-500 shrink-0">
+                <AlertTriangle size={24} className="animate-bounce" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <h3 className="text-lg font-black text-slate-800">Excluir Conta Permanentemente?</h3>
+                <p className="text-xs text-slate-500 leading-normal font-semibold">
+                  Esta ação apagará permanentemente a conta de <span className="font-extrabold text-rose-600">{user.name || user.email}</span> e todos os dados associados (lançamentos, faturas, configurações).
+                </p>
+                <p className="text-xs text-rose-600 font-extrabold uppercase tracking-wider bg-rose-50 p-2.5 rounded-xl border border-rose-100/50">
+                  ⚠️ Esta ação é irreversível e não poderá ser desfeita!
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={updating}
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeDeleteUser}
+                disabled={updating}
+                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-rose-600/20 hover:bg-rose-700 hover:shadow-rose-700/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                Excluir Definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
