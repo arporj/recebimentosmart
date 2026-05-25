@@ -114,6 +114,9 @@ export default function AdminBroadcastV2() {
     };
 
     const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        // Captura o elemento do textarea de forma síncrona no início para evitar o React Event Pooling
+        const element = e.currentTarget;
+
         const items = e.clipboardData?.items;
         if (!items) return;
 
@@ -151,8 +154,7 @@ export default function AdminBroadcastV2() {
 
             const imgTag = `<img src="${publicUrl}" style="max-width: 100%; border-radius: 12px; margin: 12px 0; display: block;" alt="Imagem" />`;
 
-            // Insere a tag de imagem na posição do cursor do textarea
-            const element = e.currentTarget;
+            // Insere a tag de imagem na posição do cursor usando a referência síncrona do elemento
             const start = element.selectionStart || 0;
             const end = element.selectionEnd || 0;
             const text = element.value;
