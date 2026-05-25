@@ -30,6 +30,7 @@ export default function AdminBroadcastV2() {
     const [latestGeminiModel, setLatestGeminiModel] = useState<string | null>(null);
     const [hasNewGeminiVersion, setHasNewGeminiVersion] = useState(false);
     const [showVariablesHelp, setShowVariablesHelp] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
 
     useEffect(() => {
         fetchBroadcastHistory();
@@ -181,7 +182,7 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
         }
     };
 
-    const handleSendBroadcast = async (e: React.FormEvent) => {
+    const handleSendBroadcast = (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!subject.trim()) {
@@ -193,22 +194,13 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
             return;
         }
 
-        const targetLabel = {
-            all: 'TODOS os usuários ativos',
-            basico: 'usuários dos planos BÁSICO, PRÓ e PREMIUM ativos',
-            pro: 'usuários dos planos PRÓ e PREMIUM ativos',
-            premium: 'usuários do plano PREMIUM ativos',
-            me: 'apenas VOCÊ (teste)'
-        }[targetLevel] || 'usuários selecionados';
+        setShowConfirmModal(true);
+    };
 
-        const confirm = window.confirm(
-            `ATENÇÃO: Você está prestes a disparar esta mensagem para ${targetLabel}. Deseja prosseguir com o disparo?`
-        );
-
-        if (!confirm) return;
-
+    const executeSendBroadcast = async () => {
         try {
             setLoading(true);
+            setShowConfirmModal(false);
 
             // 1. Inserir o registro de disparo na tabela como pendente
             const { data: newBroadcast, error: insertError } = await supabase
@@ -508,6 +500,56 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
                     </div>
                 </div>
             </div>
+
+            {/* Modal de Confirmação Premium */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl border border-slate-100 max-w-md w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-start gap-4">
+                            <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl text-amber-500 shrink-0">
+                                <AlertTriangle size={24} className="animate-bounce" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <h3 className="text-lg font-black text-slate-800">Confirmar Transmissão</h3>
+                                <p className="text-xs text-slate-500 leading-normal font-semibold">
+                                    Você está prestes a disparar este e-mail para <span className="font-extrabold text-teal-600">{
+                                        {
+                                            all: 'TODOS os usuários ativos do sistema',
+                                            basico: 'usuários ativos dos planos Básico, Pró e Premium',
+                                            pro: 'usuários ativos dos planos Pró e Premium',
+                                            premium: 'apenas assinantes ativos do plano Premium',
+                                            me: 'apenas VOCÊ (teste)'
+                                        }[targetLevel] || 'usuários selecionados'
+                                    }</span>.
+                                </p>
+                                <p className="text-xs text-slate-400 font-medium">
+                                    Esta ação não poderá ser desfeita após o envio dos lotes. Deseja realmente prosseguir?
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmModal(false)}
+                                disabled={loading}
+                                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={executeSendBroadcast}
+                                disabled={loading}
+                                className="px-6 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 hover:shadow-teal-700/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                                <Send size={12} />
+                                {loading ? 'Enviando...' : 'Confirmar e Enviar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
