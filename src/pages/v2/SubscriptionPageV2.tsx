@@ -107,6 +107,7 @@ export default function SubscriptionPageV2() {
 
   const [selectedPlan, setSelectedPlan] = useState<PlanName>('basico');
   const [copied, setCopied] = useState(false);
+  const [qrCodeLoaded, setQrCodeLoaded] = useState(false);
 
   // Força a atualização de dados da assinatura ao abrir a tela
   useEffect(() => {
