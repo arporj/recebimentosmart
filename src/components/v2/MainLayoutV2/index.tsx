@@ -9,7 +9,7 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    UserCheck, Share2
+    UserCheck, Share2, Mail
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
