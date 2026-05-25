@@ -188,7 +188,7 @@ export const LandingPagePremium: React.FC = () => {
                         <nav className="hidden md:flex items-center gap-10">
                             <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#features">Funcionalidades</a>
                             <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#pricing">Planos</a>
-                            <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#">Sobre</a>
+                            <Link className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" to="/faq">Perguntas Frequentes (FAQ)</Link>
                         </nav>
                         <div className="flex items-center gap-2 sm:gap-4">
                             <Link className="rounded-lg bg-slate-200/50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 hover:text-[#29a8a8] transition-colors" to="/v2/login">
@@ -397,6 +397,7 @@ export const LandingPagePremium: React.FC = () => {
                             <div>
                                 <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Suporte</h6>
                                 <ul className="flex flex-col gap-4 text-sm text-slate-600">
+                                    <li><Link className="hover:text-[#29a8a8] transition-colors" to="/faq">FAQ / Ajuda</Link></li>
                                     <li><Link className="hover:text-[#29a8a8] transition-colors" to="/contato">Contato</Link></li>
                                     <li><a className="hover:text-[#29a8a8] transition-colors" href="mailto:contato@recebimentosmart.com.br">E-mail</a></li>
                                     <li><a className="hover:text-[#29a8a8] transition-colors" href="https://wa.me/5521967621494" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
