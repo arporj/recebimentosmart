@@ -31,6 +31,7 @@ export default function AdminBroadcastV2() {
     const [hasNewGeminiVersion, setHasNewGeminiVersion] = useState(false);
     const [showVariablesHelp, setShowVariablesHelp] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
 
     useEffect(() => {
         fetchBroadcastHistory();
@@ -382,14 +383,62 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
                                     </div>
                                 </div>
                             )}
-                            <textarea
-                                value={body}
-                                onChange={(e) => setBody(e.target.value)}
-                                placeholder="Olá {{name}},\n\nEstamos muito felizes em anunciar uma nova funcionalidade..."
-                                rows={10}
-                                disabled={loading || optimizing}
-                                className="w-full rounded-xl border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 transition-all px-4 py-3 text-slate-900 text-sm font-medium font-mono"
-                            />
+                            {/* Abas do Editor */}
+                            <div className="flex border-b border-slate-100 mb-2">
+                                <button
+                                    key="tab-write"
+                                    type="button"
+                                    onClick={() => setEditorTab('write')}
+                                    className={`py-2 px-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+                                        editorTab === 'write'
+                                            ? 'border-teal-600 text-teal-600'
+                                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    Escrever
+                                </button>
+                                <button
+                                    key="tab-preview"
+                                    type="button"
+                                    onClick={() => setEditorTab('preview')}
+                                    className={`py-2 px-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+                                        editorTab === 'preview'
+                                            ? 'border-teal-600 text-teal-600'
+                                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    Prévia
+                                </button>
+                            </div>
+
+                            {editorTab === 'write' ? (
+                                <textarea
+                                    value={body}
+                                    onChange={(e) => setBody(e.target.value)}
+                                    placeholder="Olá {{name}},\n\nEstamos muito felizes em anunciar uma nova funcionalidade..."
+                                    rows={10}
+                                    disabled={loading || optimizing}
+                                    className="w-full rounded-xl border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 transition-all px-4 py-3 text-slate-900 text-sm font-medium font-mono"
+                                />
+                            ) : (
+                                <div 
+                                    className="w-full min-h-[250px] max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-6 text-slate-800 text-sm font-medium leading-relaxed font-sans scrollbar-thin select-text"
+                                >
+                                    {body.trim() ? (
+                                        <div 
+                                            className="max-w-none break-words select-text"
+                                            dangerouslySetInnerHTML={{ 
+                                                __html: body
+                                                    .replace(/{{name}}/g, 'João da Silva')
+                                                    .replace(/{{nome}}/g, 'João da Silva')
+                                                    .replace(/{{email}}/g, 'joao@exemplo.com')
+                                            }} 
+                                        />
+                                    ) : (
+                                        <p className="text-slate-400 text-center py-10 font-bold">Nenhum conteúdo para visualizar.</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
