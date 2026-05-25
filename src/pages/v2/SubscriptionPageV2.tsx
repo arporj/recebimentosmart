@@ -197,7 +197,7 @@ export default function SubscriptionPageV2() {
 
   // Escuta ativa em Tempo Real no Supabase para aprovação automática do webhook do Banco Inter
   useEffect(() => {
-    if (!pixData?.txid || !user?.id) return;
+    if (!pixData?.txid || !user?.id || paymentSuccess) return;
 
     console.log(`[Realtime] Registrando escuta de canal Supabase para transação: ${pixData.txid}`);
 
@@ -259,7 +259,7 @@ export default function SubscriptionPageV2() {
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
-  }, [pixData?.txid, user?.id, fetchData]);
+  }, [pixData?.txid, user?.id, paymentSuccess, fetchData]);
 
   // Função exclusiva de Sandbox para simulação de recebimento de webhook do Inter
   const handleSimulatePayment = async () => {
