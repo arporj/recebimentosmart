@@ -246,21 +246,21 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
         if (hasSubItems) {
             return (
-                <div key={item.label} className="space-y-1">
+                <div key={item.label} className="space-y-0.5">
                     <button
                         onClick={() => toggleExpand(item.label)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+                        className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-colors ${
                             isChildActive 
                                 ? 'text-white bg-slate-800/50' 
                                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
-                        <item.icon size={20} />
+                        <item.icon size={16} />
                         <span className="flex-1 text-left">{item.label}</span>
-                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
                     {isExpanded && (
-                        <div className="ml-4 pl-4 border-l border-slate-800 space-y-1">
+                        <div className="ml-3 pl-3 border-l border-slate-800 space-y-0.5">
                             {item.subItems!.map(sub => renderItem(sub, level + 1))}
                         </div>
                     )}
@@ -274,17 +274,17 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             <Link
                 key={item.href + item.label}
                 to={item.href!}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${isActive
+                className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${isActive
                     ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                     }`}
             >
-                <item.icon size={level === 1 ? 20 : 18} />
-                <span className={level === 1 ? 'flex-1' : 'text-sm flex-1'}>{item.label}</span>
+                <item.icon size={level === 1 ? 16 : 14} />
+                <span className={level === 1 ? 'flex-1' : 'text-[11px] flex-1 font-medium'}>{item.label}</span>
                 {hasBadge && (
                     <span
                         key={animationKey}
-                        className="animate-pop-badge bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center justify-center min-w-[20px] h-[20px]"
+                        className="animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px]"
                     >
                         {displayedCount}
                     </span>
@@ -332,13 +332,13 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-4 py-2 space-y-6 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 px-4 py-2 space-y-4 overflow-y-auto custom-scrollbar">
                     {sidebarSections.map((section) => (
                         <div key={section.title}>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-2">
                                 {section.title}
                             </p>
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 {section.items.map(item => renderItem(item))}
                             </div>
                         </div>
@@ -347,10 +347,10 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     {/* Admin section */}
                     {isAdmin && (
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-2">
                                 {adminSection.title}
                             </p>
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 {adminSection.items.map(item => renderItem(item))}
                             </div>
                         </div>
