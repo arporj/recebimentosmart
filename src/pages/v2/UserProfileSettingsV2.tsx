@@ -19,6 +19,18 @@ export default function UserProfileSettingsV2() {
     const [showNegativeSign, setShowNegativeSign] = useState(true);
     const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
 
+    const formatMockValue = (amount: number, isNegative: boolean) => {
+        let result = '';
+        if (isNegative && showNegativeSign) {
+            result += '-';
+        }
+        if (showCurrencySymbol) {
+            result += 'R$ ';
+        }
+        result += amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return result;
+    };
+
     // Loading status form
     const [saving, setSaving] = useState(false);
     const navigate = useNavigate();
