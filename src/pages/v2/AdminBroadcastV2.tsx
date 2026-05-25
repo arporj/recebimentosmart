@@ -73,6 +73,36 @@ export default function AdminBroadcastV2() {
         }, 50);
     };
 
+    const insertHtmlTag = (tag: string, placeholder = '') => {
+        const element = document.getElementById('broadcast-body') as HTMLTextAreaElement;
+        if (!element) return;
+
+        const start = element.selectionStart || 0;
+        const end = element.selectionEnd || 0;
+        const text = element.value;
+        const selectedText = text.substring(start, end);
+        
+        let tagOpen = `<${tag}>`;
+        let tagClose = `</${tag}>`;
+        
+        if (tag === 'a') {
+            tagOpen = '<a href="https://" target="_blank" style="color: #0d9488; text-decoration: underline; font-weight: bold;">';
+            tagClose = '</a>';
+        }
+
+        const replacement = tagOpen + (selectedText || placeholder) + tagClose;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        setBody(before + replacement + after);
+
+        setTimeout(() => {
+            element.focus();
+            const newCursorPos = start + tagOpen.length + (selectedText || placeholder).length + tagClose.length;
+            element.setSelectionRange(newCursorPos, newCursorPos);
+        }, 50);
+    };
+
     useEffect(() => {
         fetchBroadcastHistory();
         checkForNewGeminiVersion();
@@ -154,7 +184,16 @@ export default function AdminBroadcastV2() {
             const prompt = `Você é um copywriter profissional especialista em e-mails de marketing e comunicados.
 Melhore o assunto e o corpo do e-mail a seguir para torná-lo extremamente persuasivo, amigável e profissional.
 Insira emojis contextuais e amigáveis de forma estratégica e moderada (ex: 🚀, 🎉, 📢, 💰, ✨, 📅) tanto no assunto quanto no corpo para aumentar a taxa de engajamento e a atratividade visual.
-Mantenha todos os links, placeholders de variáveis (ex: {{name}}, {{email}}) e qualquer tag HTML se houver no corpo.
+
+ATENÇÃO CRÍTICA PARA FORMATAÇÃO DO CORPO:
+1. NÃO utilize sintaxe Markdown (como **negrito** ou *italico* ou # títulos) sob nenhuma circunstância.
+2. Utilize formatação HTML nativa e rica para destacar termos importantes. Por exemplo:
+   - Use <strong> para destacar termos ou frases fundamentais em negrito.
+   - Use <em> para termos em itálico.
+   - Use <u> para termos sublinhados.
+   - Use tags de lista como <ul> e <li> para organizar listas de benefícios ou instruções passo a passo.
+   - Use parágrafos normais com espaçamento natural.
+3. Mantenha todos os links originais, placeholders de variáveis (ex: {{name}}, {{email}}) e qualquer outra marcação existente.
 
 E-mail original:
 Assunto: ${subject}
@@ -162,7 +201,7 @@ Corpo: ${body}
 
 Responda APENAS com o formato estruturado a seguir, sem nenhuma introdução, explicação adicional ou aspas extras:
 ASSUNTO: [Escreva aqui o assunto aprimorado]
-CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicável]`;
+CORPO: [Escreva aqui o corpo aprimorado, utilizando a formatação HTML conforme as regras acima]`;
 
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
@@ -421,6 +460,42 @@ CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicáve
                                     </button>
                                 </div>
                                 <div className="flex items-center gap-2 relative">
+                                    {/* Botões de Formatação HTML Rápida */}
+                                    <div className="flex items-center gap-1 border-r border-slate-200 pr-2 mr-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => insertHtmlTag('strong', 'negrito')}
+                                            className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 active:scale-90 transition-all"
+                                            title="Negrito (strong)"
+                                        >
+                                            B
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => insertHtmlTag('em', 'itálico')}
+                                            className="w-8 h-8 rounded-xl flex items-center justify-center text-xs italic font-black text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 active:scale-90 transition-all"
+                                            title="Itálico (em)"
+                                        >
+                                            I
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => insertHtmlTag('u', 'sublinhado')}
+                                            className="w-8 h-8 rounded-xl flex items-center justify-center text-xs underline font-black text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 active:scale-90 transition-all"
+                                            title="Sublinhado (u)"
+                                        >
+                                            U
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => insertHtmlTag('a', 'link')}
+                                            className="px-2.5 h-8 rounded-xl flex items-center justify-center text-[10px] font-black uppercase text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-100 active:scale-90 transition-all"
+                                            title="Inserir Link (a)"
+                                        >
+                                            Link
+                                        </button>
+                                    </div>
+
                                     <button
                                         type="button"
                                         onClick={() => setShowBodyEmojis(!showBodyEmojis)}
