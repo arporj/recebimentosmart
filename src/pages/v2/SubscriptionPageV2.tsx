@@ -417,7 +417,7 @@ export default function SubscriptionPageV2() {
 
             return (
               <div
-                key={plan.id}
+                key={plan.id || planKey}
                 onClick={() => setSelectedPlan(planKey)}
                 className={`relative flex flex-col gap-6 rounded-2xl border-2 p-6 md:p-8 transition-all cursor-pointer bg-white shadow-sm select-none hover:shadow-md ${
                   isSelected
@@ -449,7 +449,7 @@ export default function SubscriptionPageV2() {
 
                 <ul className="space-y-3 flex-1 border-t border-slate-100 pt-5 text-xs">
                   {(STATIC_PLAN_FEATURES[planKey] || []).map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-slate-600">
+                    <li key={`${planKey}-feature-${i}`} className="flex items-start gap-2.5 text-slate-600">
                       <Check className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
@@ -612,7 +612,7 @@ export default function SubscriptionPageV2() {
               {finalAmount > 0 ? (
                 <div className="w-full space-y-3.5">
                   {/* Botão de Simulação de Pagamento - Exclusivo para UAT/Sandbox */}
-                  {pixData?.txid && (pixData.simulated || interEnv === 'sandbox') && (
+                  {pixData?.txid && (pixData.simulated || import.meta.env.DEV) && (
                     <button
                       onClick={handleSimulatePayment}
                       disabled={simulating}
