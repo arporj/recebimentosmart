@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /$
+Allow: /privacidade$
+Allow: /termos$
+Allow: /cookies$
+Allow: /contato$
+Allow: /faq$
+Disallow: /v2/
+
+Sitemap: https://recebimentosmart.com.br/sitemap.xml
