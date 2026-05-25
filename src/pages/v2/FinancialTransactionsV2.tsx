@@ -775,6 +775,55 @@ const FinancialTransactionsV2 = () => {
     return sortedList;
   }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances]);
 
+  const dynamicTotals = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    let transfersIn = 0;
+    let transfersOut = 0;
+
+    const creditCardIds = new Set(creditCardAccounts.map(c => c.id));
+
+    for (const t of displayInstances) {
+      if (t.isOpeningBalance) continue;
+
+      if (t.isInvoiceSummary) {
+        expense += t.amount;
+        continue;
+      }
+
+      if (t.type === 'income') {
+        income += t.amount;
+      } else if (t.type === 'expense') {
+        expense += t.amount;
+      } else if (t.type === 'transfer') {
+        const isOut = t.account_id && selectedAccountIds.has(t.account_id);
+        const isIn = t.destination_account_id && selectedAccountIds.has(t.destination_account_id);
+        const isToCreditCard = t.destination_account_id && creditCardIds.has(t.destination_account_id);
+
+        if (isIn && !isOut) {
+          transfersIn += t.amount;
+        } else if (isOut && !isIn) {
+          if (!isToCreditCard) {
+            transfersOut += t.amount;
+          }
+        }
+      }
+    }
+
+    const result = income - expense + (transfersIn - transfersOut);
+
+    return {
+      confirmed: totals.confirmed,
+      projected: totals.projected,
+      previousProjected: totals.previousProjected,
+      income,
+      expense,
+      transfersIn,
+      transfersOut,
+      result
+    };
+  }, [displayInstances, selectedAccountIds, creditCardAccounts, totals.confirmed, totals.projected, totals.previousProjected]);
+
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   const SidebarContent = () => (
@@ -846,11 +895,11 @@ const FinancialTransactionsV2 = () => {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
               <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Ganhos</span>
-              <p className="text-[11px] font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
+              <p className="text-[11px] font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.income + dynamicTotals.transfersIn)}</p>
             </div>
             <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
               <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Gastos</span>
-              <p className="text-[11px] font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
+              <p className="text-[11px] font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.expense + dynamicTotals.transfersOut)}</p>
             </div>
           </div>
         </div>
@@ -858,11 +907,11 @@ const FinancialTransactionsV2 = () => {
         <div className="pt-2 border-t border-slate-800 flex flex-col gap-0.5 relative z-10">
           <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Resultado Líquido</span>
           <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
-            <p className={`text-lg font-black tracking-tight ${totals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.result)}
+            <p className={`text-lg font-black tracking-tight ${dynamicTotals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.result)}
             </p>
-            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md ${totals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-              {totals.result >= 0 ? 'Superávit' : 'Déficit'}
+            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md ${dynamicTotals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+              {dynamicTotals.result >= 0 ? 'Superávit' : 'Déficit'}
             </span>
           </div>
         </div>
