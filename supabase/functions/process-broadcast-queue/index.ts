@@ -93,7 +93,7 @@ serve(async (req) => {
     // 3. Busca usuários e seus e-mails
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select('id, name, is_admin, valid_until'); // CORRIGIDO: full_name -> name
+      .select('id, name, is_admin, valid_until, plano'); // CORRIGIDO: full_name -> name
 
     if (profilesError) {
       console.error('Erro ao buscar perfis:', profilesError);
@@ -121,23 +121,57 @@ serve(async (req) => {
 
     console.log(`Total de ${users.length} perfis de usuário encontrados com e-mail.`);
 
-    // 4. Filtra usuários ativos
+    // 4. Filtra usuários ativos com base no target_level selecionado
+    const targetLevel = broadcast.target_level || 'all';
+    const createdBy = broadcast.created_by;
+    console.log(`Filtro de envio selecionado: "${targetLevel}"`);
+
     const twoMonthsAgo = subDays(new Date(), 60);
     const activeUsers = users.filter((profile) => {
-      if (profile.is_admin) {
-        return true; // Admins sempre recebem
+      // Regra: se o disparo for "Somente eu", apenas o administrador que disparou recebe
+      if (targetLevel === 'me') {
+        return profile.id === createdBy;
       }
-      if (profile.valid_until) {
+
+      let isUserActive = false;
+      if (profile.is_admin) {
+        isUserActive = true; // Admins sempre recebem
+      } else if (profile.valid_until) {
         try {
           const validUntilDate = parseISO(profile.valid_until);
           // Usuários com assinatura válida (data no futuro) OU expirada há no máximo 2 meses
-          return isFuture(validUntilDate) || validUntilDate >= twoMonthsAgo;
+          isUserActive = isFuture(validUntilDate) || validUntilDate >= twoMonthsAgo;
         } catch {
           console.warn(`Data 'valid_until' inválida para o perfil ${profile.id}: ${profile.valid_until}`);
-          return false;
+          isUserActive = false;
         }
       }
-      return false; // Outros casos não são considerados ativos
+
+      if (!isUserActive) return false;
+
+      // Filtragem baseada no plano/nível de assinatura selecionado
+      const userPlan = (profile.plano || '').toLowerCase();
+
+      if (targetLevel === 'all') {
+        return true; // Todos os ativos recebem
+      }
+
+      if (targetLevel === 'basico') {
+        // Se disparar para Basico: Basico, Pro e Premium recebem.
+        return ['basico', 'pro', 'premium'].includes(userPlan);
+      }
+
+      if (targetLevel === 'pro') {
+        // Se disparar para Pro: Pro e Premium recebem.
+        return ['pro', 'premium'].includes(userPlan);
+      }
+
+      if (targetLevel === 'premium') {
+        // Se disparar para Premium: apenas Premium recebe.
+        return userPlan === 'premium';
+      }
+
+      return false;
     });
     console.log(`Encontrados ${activeUsers.length} usuários ativos para o broadcast.`);
 
