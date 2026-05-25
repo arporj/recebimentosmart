@@ -16,43 +16,60 @@ const PLAN_MAPPING: Record<string, PlanName> = {
   'pro': 'pro',
 };
 
-const PIX_KEY = 'contato@recebimentosmart.com.br';
+// Chave CNPJ oficial do usuário formatada para exibição
+const PIX_DISPLAY_KEY = '37.905.181/0001-05';
+// Chave CNPJ limpa para montagem do BR Code
+const PIX_CLEAN_KEY = '37905181000105';
 
-// Ícone vetorial estilizado que simula perfeitamente um QR Code de PIX com o logo do PIX no centro
-const PixQrCodeSvg = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full text-slate-800" fill="currentColor">
-    {/* Cantos guias de alinhamento */}
-    <rect x="0" y="0" width="22" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="4.5" />
-    <rect x="5.5" y="5.5" width="11" height="11" rx="1.5" fill="currentColor" />
-    
-    <rect x="78" y="0" width="22" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="4.5" />
-    <rect x="83.5" y="5.5" width="11" height="11" rx="1.5" fill="currentColor" />
-    
-    <rect x="0" y="78" width="22" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="4.5" />
-    <rect x="5.5" y="83.5" width="11" height="11" rx="1.5" fill="currentColor" />
-    
-    {/* Calibração menor e pontos aleatórios simulando dados do QR Code */}
-    <rect x="78" y="78" width="8" height="8" rx="1.5" fill="currentColor" />
-    <rect x="52" y="78" width="6" height="6" rx="1" fill="currentColor" />
-    <rect x="78" y="52" width="6" height="6" rx="1" fill="currentColor" />
+// Função de cálculo de CRC16 CCITT (Polinômio 0x1021, valor inicial 0xFFFF) exigido no padrão BR Code do Banco Central
+function calculateCRC16(str: string): string {
+  let crc = 0xFFFF;
+  const polynomial = 0x1021;
 
-    <path d="M 28 3 H 34 V 6 H 28 Z M 40 2 H 44 V 8 H 40 Z M 50 4 H 56 V 6 H 50 Z M 62 1 H 68 V 4 H 62 Z M 72 3 H 74 V 8 H 72 Z
-             M 28 12 H 36 V 14 H 28 Z M 42 10 H 46 V 16 H 42 Z M 52 12 H 58 V 14 H 52 Z M 64 10 H 70 V 16 H 64 Z
-             M 28 20 H 32 V 22 H 28 Z M 38 18 H 48 V 20 H 38 Z M 54 18 H 60 V 22 H 54 Z M 66 20 H 74 V 22 H 66 Z
-             M 2 28 H 6 V 34 H 2 Z M 12 30 H 22 V 32 H 12 Z M 26 28 H 34 V 34 H 26 Z M 38 30 H 42 V 32 H 38 Z M 46 28 H 54 V 34 H 46 Z M 58 30 H 68 V 32 H 58 Z M 72 28 H 78 V 34 H 72 Z M 84 28 H 98 V 30 H 84 Z
-             M 2 38 H 8 V 40 H 2 Z M 14 36 H 18 V 42 H 14 Z M 24 38 H 28 V 42 H 24 Z M 72 36 H 82 V 38 H 72 Z M 88 38 H 96 V 40 H 88 Z
-             M 2 48 H 10 V 50 H 2 Z M 16 46 H 20 V 52 H 16 Z M 24 48 H 32 V 52 H 24 Z M 72 48 H 80 V 50 H 72 Z M 86 46 H 98 V 48 H 86 Z
-             M 2 58 H 6 V 64 H 2 Z M 12 56 H 22 V 58 H 12 Z M 26 58 H 34 V 64 H 26 Z M 72 58 H 76 V 64 H 72 Z M 82 56 H 90 V 58 H 82 Z M 94 58 H 98 V 64 H 94 Z
-             M 2 68 H 8 V 70 H 2 Z M 14 66 H 18 V 72 H 14 Z M 24 68 H 28 V 72 H 24 Z M 72 68 H 84 V 70 H 72 Z M 90 66 H 96 V 72 H 90 Z
-             M 28 78 H 32 V 84 H 28 Z M 38 78 H 44 V 84 H 38 Z M 44 86 H 48 V 92 H 44 Z M 32 90 H 38 V 96 H 32 Z
-             M 28 88 H 30 V 96 H 28 Z M 40 88 H 42 V 96 H 40 Z M 64 78 H 70 V 84 H 64 Z M 64 88 H 70 V 96 H 64 Z M 88 78 H 94 V 84 H 88 Z M 88 88 H 94 V 96 H 88 Z" />
+  for (let i = 0; i < str.length; i++) {
+    const b = str.charCodeAt(i);
+    for (let j = 0; j < 8; j++) {
+      const bit = ((b >> (7 - j)) & 1) === 1;
+      const c15 = ((crc >> 15) & 1) === 1;
+      crc <<= 1;
+      if (bit !== c15) {
+        crc ^= polynomial;
+      }
+    }
+  }
 
-    {/* Logotipo Central do PIX integrado */}
-    <rect x="33" y="33" width="34" height="34" rx="7" fill="#14b8a6" stroke="white" strokeWidth="2.5" />
-    <path d="M 50 38.5 L 59.5 48 L 50 57.5 L 40.5 48 Z" fill="white" />
-    <circle cx="50" cy="48" r="2.5" fill="#14b8a6" />
-  </svg>
-);
+  crc &= 0xFFFF;
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+// Gera o código do PIX "Copia e Cola" (BR Code) dinamicamente baseado no valor da assinatura
+const generatePixPayload = (amount: number): string => {
+  const name = "Recebimento Smart";
+  const city = "Rio de Janeiro";
+  
+  // ID 26: Merchant Account Information - Contém a chave PIX do usuário
+  // GUI (00): br.gov.bcb.pix
+  // Chave PIX (01): CNPJ
+  const merchantAccountInfo = `0014br.gov.bcb.pix0114${PIX_CLEAN_KEY}`;
+  
+  // ID 54: Transaction Amount - Formata o valor exato com 2 casas decimais e separador ponto (ex: 24.90)
+  const amountStr = amount.toFixed(2);
+  const amountTag = `54${amountStr.length.toString().padStart(2, '0')}${amountStr}`;
+  
+  let payload = "000201" + 
+                `26${merchantAccountInfo.length.toString().padStart(2, '0')}${merchantAccountInfo}` + 
+                "52040000" + 
+                "5303986" + 
+                amountTag + 
+                "5802BR" + 
+                `59${name.length.toString().padStart(2, '0')}${name}` + 
+                `60${city.length.toString().padStart(2, '0')}${city}` + 
+                "62070503***" + 
+                "6304";
+                
+  const crc = calculateCRC16(payload);
+  return payload + crc;
+};
 
 interface PlanFeatureList {
   free: string[];
@@ -90,7 +107,6 @@ export default function SubscriptionPageV2() {
 
   const [selectedPlan, setSelectedPlan] = useState<PlanName>('basico');
   const [copied, setCopied] = useState(false);
-  const [qrCodeLoaded, setQrCodeLoaded] = useState(false);
 
   // Força a atualização de dados da assinatura ao abrir a tela
   useEffect(() => {
@@ -111,14 +127,6 @@ export default function SubscriptionPageV2() {
     }
   }, [pageData]);
 
-  const handleCopyKey = () => {
-    navigator.clipboard.writeText(PIX_KEY);
-    setCopied(true);
-    toast.success('Chave PIX copiada!');
-    setTimeout(() => setCopied(false), 3000);
-  };
-
-  // Resgata o objeto do plano vindo do Supabase correspondente à seleção
   const getSelectedPlanObj = useCallback(() => {
     if (!pageData?.plans) return null;
     return pageData.plans.find(p => {
@@ -133,6 +141,19 @@ export default function SubscriptionPageV2() {
   const finalAmount = Math.max(0, planPrice - userCredits);
   const planDisplayName = currentPlanObj?.name ?? (selectedPlan === 'free' ? 'Free' : selectedPlan === 'basico' ? 'Básico' : 'Pró');
 
+  // Gera o código do PIX "Copia e Cola" dinamicamente baseado no valor da mensalidade e créditos deduzidos
+  const pixCopyPasteCode = generatePixPayload(finalAmount);
+
+  // Gera a URL da imagem do QR Code a partir de uma API pública gratuita e instantânea
+  const pixQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(pixCopyPasteCode)}`;
+
+  const handleCopyKey = () => {
+    navigator.clipboard.writeText(pixCopyPasteCode);
+    setCopied(true);
+    toast.success('PIX Copia e Cola copiado com sucesso!');
+    setTimeout(() => setCopied(false), 3000);
+  };
+
   // Gera o link do WhatsApp para envio do comprovante
   const getWhatsAppLink = () => {
     const formattedAmount = formatCurrency(finalAmount);
@@ -141,13 +162,10 @@ export default function SubscriptionPageV2() {
     return `https://wa.me/5521967621494?text=${text}`;
   };
 
-  // Filtra e ordena explicitamente os planos cadastrados no banco para evitar quebras ou desordens
+  // Filtra e ordena os planos na ordem exata exigida: Free (1º), Básico (2º) e Pró (3º)
   const getOrderedPlans = () => {
     if (!pageData?.plans) return [];
-    
-    // Mapeia e organiza em uma ordem estrita e lógica: Free (1º), Básico (2º) e Pró (3º)
     const order = ['free', 'basico', 'pro'];
-    
     return [...pageData.plans]
       .filter(p => p.name.toLowerCase() !== 'premium')
       .sort((a, b) => {
@@ -174,7 +192,7 @@ export default function SubscriptionPageV2() {
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 px-4 md:px-6 font-['Inter',sans-serif]">
       
-      {/* ─── CADEÇALHO & STATUS DO PLANO ─── */}
+      {/* ─── CABEÇALHO & STATUS DO PLANO ─── */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-slate-900 text-2xl font-black tracking-tight flex items-center gap-2">
@@ -210,7 +228,7 @@ export default function SubscriptionPageV2() {
         </div>
       </div>
 
-      {/* ─── PAINEL DE PREÇOS (HORIZONTAL E EM ORDEM PERFEITA) ─── */}
+      {/* ─── PAINEL DE PREÇOS (HORIZONTAL E EM ORDEM ESTREITA: Free, Básico, Pró) ─── */}
       <div className="space-y-4">
         <h2 className="text-slate-800 font-black text-lg tracking-tight pl-1">Planos Disponíveis</h2>
         
@@ -286,7 +304,7 @@ export default function SubscriptionPageV2() {
             <span className="bg-[#29a8a8] text-white w-7 h-7 rounded-full flex items-center justify-center font-black text-sm shadow-sm">PIX</span>
             <div>
               <h2 className="text-slate-900 text-lg font-black tracking-tight">Pagamento da Assinatura ({planDisplayName})</h2>
-              <p className="text-slate-400 text-[11px] font-semibold mt-0.5">Realize a transferência e nos envie o comprovante para ativação da conta.</p>
+              <p className="text-slate-400 text-[11px] font-semibold mt-0.5">Realize o pagamento escaneando o QR Code dinâmico ou copiando a chave.</p>
             </div>
           </div>
 
@@ -333,25 +351,28 @@ export default function SubscriptionPageV2() {
                 <div className="grid grid-cols-1 gap-2.5 text-xs text-slate-600 pl-1 leading-relaxed">
                   <div className="flex gap-2.5 items-start">
                     <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
-                    <span>Abra o app do seu banco, escolha a opção **PIX** e aponte a câmera para o **QR Code ao lado**.</span>
+                    <span>Abra o app do seu banco, escolha a opção **PIX** e aponte a câmera para o **QR Code dinâmico ao lado**.</span>
                   </div>
                   <div className="flex gap-2.5 items-start">
                     <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
-                    <span>Se preferir, copie a **Chave PIX (E-mail)** disponível logo abaixo para efetuar a transferência.</span>
+                    <span>Se preferir, clique em **Copiar Código PIX** logo abaixo para efetuar a transferência na modalidade *PIX Copia e Cola*.</span>
                   </div>
                   <div className="flex gap-2.5 items-start">
                     <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
-                    <span>Após o pagamento, clique no botão **Confirmar e Enviar Comprovante** para nos mandar o comprovante pelo WhatsApp do suporte.</span>
+                    <span>Após efetuar o PIX, clique no botão **Confirmar e Enviar Comprovante** para nos encaminhar o comprovante pelo WhatsApp do suporte.</span>
                   </div>
                 </div>
               </div>
 
               {/* Chave PIX copia/cola */}
               <div className="space-y-2 border-t border-slate-100 pt-5">
-                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">Chave PIX do Recebimento $mart</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">Código PIX (Copia e Cola)</span>
+                  <span className="text-[10px] text-slate-500 font-bold block">Chave CNPJ: {PIX_DISPLAY_KEY}</span>
+                </div>
                 
                 <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl p-2 pl-3.5 overflow-hidden">
-                  <span className="text-slate-700 font-extrabold text-xs truncate flex-1">{PIX_KEY}</span>
+                  <span className="text-slate-500 font-bold text-xs truncate flex-1 leading-relaxed">{pixCopyPasteCode}</span>
                   <button
                     onClick={handleCopyKey}
                     className="flex items-center gap-1.5 justify-center py-2 px-4 rounded-lg bg-white border border-slate-200 hover:border-[#29a8a8] hover:text-[#29a8a8] text-slate-600 text-xs font-bold transition-all shrink-0 active:scale-95 shadow-sm"
@@ -359,12 +380,12 @@ export default function SubscriptionPageV2() {
                     {copied ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-emerald-600">Copiada</span>
+                        <span className="text-emerald-600">Copiado</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar</span>
+                        <span>Copiar Código</span>
                       </>
                     )}
                   </button>
@@ -372,31 +393,30 @@ export default function SubscriptionPageV2() {
               </div>
             </div>
 
-            {/* Coluna da Direita: QR Code e WhatsApp (40%) */}
+            {/* Coluna da Direita: QR Code Real/Dinâmico e WhatsApp (40%) */}
             <div className="lg:col-span-5 flex flex-col items-center border-t lg:border-t-0 lg:border-l border-slate-100 pt-6 lg:pt-0 lg:pl-8 space-y-6">
               
-              {/* QR Code Container (Busca imagem real ou gera o mock dinâmico com logotipo) */}
+              {/* QR Code Container (Gera imagem do PIX dinâmica com API pública instantânea) */}
               <div className="flex flex-col items-center">
-                <div className="relative bg-white border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-center w-48 h-48 select-none">
-                  {/* Se a imagem real existir localmente, ela é renderizada */}
+                <div className="relative bg-white border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-center w-48 h-48 select-none overflow-hidden">
+                  {/* API pública gera a imagem do QR Code real na hora a partir do payload PIX completo */}
                   <img 
-                    src="/images/pix-qr-code.png" 
-                    alt="QR Code PIX" 
-                    className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${qrCodeLoaded ? 'opacity-100 absolute' : 'opacity-0 absolute pointer-events-none'}`}
+                    src={pixQrCodeUrl} 
+                    alt="QR Code PIX Real" 
+                    className="w-full h-full object-contain rounded-lg transition-opacity duration-300"
                     onLoad={() => setQrCodeLoaded(true)}
-                    onError={() => setQrCodeLoaded(false)}
                   />
                   
-                  {/* Mock vetorial em SVG com logo integrado no centro caso a imagem não exista */}
                   {!qrCodeLoaded && (
-                    <div className="w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
-                      <PixQrCodeSvg />
+                    <div className="absolute inset-0 bg-slate-50 flex items-center justify-center text-slate-400">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#29a8a8]"></div>
                     </div>
                   )}
                 </div>
                 
-                <span className="text-[10px] text-slate-400 font-semibold mt-3.5 text-center leading-relaxed">
-                  {!qrCodeLoaded ? 'QR Code Vetorial com Logo PIX Ativo' : 'QR Code por Imagem'}
+                <span className="text-[10px] text-[#29a8a8] font-bold mt-3.5 text-center leading-relaxed flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  QR Code PIX Dinâmico Ativo (Valor Exato)
                 </span>
               </div>
 
@@ -407,7 +427,7 @@ export default function SubscriptionPageV2() {
                     href={getWhatsAppLink()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 hover:scale-[1.01] active:scale-95 transition-all text-center cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 hover:scale-[1.01] active:scale-95 transition-all text-center cursor-pointer animate-pulse"
                   >
                     <MessageSquare className="w-4.5 h-4.5 shrink-0" />
                     Confirmar e Enviar Comprovante
@@ -416,7 +436,7 @@ export default function SubscriptionPageV2() {
                   <div className="flex gap-2 items-start bg-slate-50 border border-slate-100 rounded-xl p-3.5 text-slate-500">
                     <Shield className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
                     <p className="text-[10px] leading-relaxed">
-                      Seu plano é ativado em até 10 minutos após o recebimento da sua mensagem pelo suporte oficial.
+                      Seu plano é ativado em até 10 minutos após o recebimento do seu comprovante pelo suporte oficial.
                     </p>
                   </div>
                 </div>
