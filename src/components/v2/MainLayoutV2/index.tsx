@@ -137,12 +137,13 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 .eq('receiver_email', user.email?.toLowerCase())
                 .eq('status', 'pending');
 
-            // 2. Contar lançamentos novos pendentes de categorização (onde user_id é o logado e shared_status é pending)
+            // 2. Contar lançamentos compartilhados pendentes de aceitação (onde user_id é o logado, shared_by_user_id não é nulo e status é pending)
             const { count: newTransCount } = await supabase
                 .from('financial_transactions')
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', user.id)
-                .eq('shared_status', 'pending');
+                .not('shared_by_user_id', 'is', null)
+                .eq('status', 'pending');
 
             // 3. Contar atualizações de transações pendentes (onde receiver_id é o logado e status é pending)
             const { count: updatesCount } = await supabase

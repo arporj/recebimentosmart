@@ -287,17 +287,35 @@ export default function ClientStatementModalV2({
     }
 
     try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update({ 
-          status: 'paid',
-          category_id: tx.category_id,
-          account_id: tx.account_id
-        })
-        .eq('id', tx.id);
+      // Se for uma transação mãe recorrente, vamos atualizar ela e todas as filhas associadas (onde parent_id = tx.id)
+      const isMother = tx.recurrence_enabled && !tx.parent_id;
 
-      if (error) throw error;
-      toast.success("Lançamento aceito com sucesso!");
+      if (isMother) {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({ 
+            status: 'paid',
+            category_id: tx.category_id,
+            account_id: tx.account_id
+          })
+          .or(`id.eq.${tx.id},parent_id.eq.${tx.id}`);
+
+        if (error) throw error;
+        toast.success("Lançamento recorrente e todas as suas recorrências foram aceitas com sucesso!");
+      } else {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({ 
+            status: 'paid',
+            category_id: tx.category_id,
+            account_id: tx.account_id
+          })
+          .eq('id', tx.id);
+
+        if (error) throw error;
+        toast.success("Lançamento aceito com sucesso!");
+      }
+
       fetchStatement();
     } catch (err) {
       console.error('Erro ao aceitar lançamento:', err);
@@ -317,16 +335,28 @@ export default function ClientStatementModalV2({
     }
 
     try {
-      const promises = pendingTxs.map(t => 
-        supabase
-          .from('financial_transactions')
-          .update({ 
-            status: 'paid',
-            category_id: t.category_id,
-            account_id: t.account_id
-          })
-          .eq('id', t.id)
-      );
+      const promises = pendingTxs.map(t => {
+        const isMother = t.recurrence_enabled && !t.parent_id;
+        if (isMother) {
+          return supabase
+            .from('financial_transactions')
+            .update({ 
+              status: 'paid',
+              category_id: t.category_id,
+              account_id: t.account_id
+            })
+            .or(`id.eq.${t.id},parent_id.eq.${t.id}`);
+        } else {
+          return supabase
+            .from('financial_transactions')
+            .update({ 
+              status: 'paid',
+              category_id: t.category_id,
+              account_id: t.account_id
+            })
+            .eq('id', t.id);
+        }
+      });
 
       await Promise.all(promises);
       toast.success("Todos os lançamentos pendentes foram aceitos!");
