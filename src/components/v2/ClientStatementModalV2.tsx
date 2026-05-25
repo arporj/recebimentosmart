@@ -97,6 +97,49 @@ export default function ClientStatementModalV2({
   const [loteAccount, setLoteAccount] = useState<string>('');
   const [isLoteCategoryDropdownOpen, setIsLoteCategoryDropdownOpen] = useState(false);
   const [isLoteAccountDropdownOpen, setIsLoteAccountDropdownOpen] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const handleOpenDropdown = (
+    e: React.MouseEvent<HTMLButtonElement>, 
+    type: 'category' | 'account' | 'loteCategory' | 'loteAccount', 
+    txId?: string
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownCoords({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX
+    });
+
+    if (type === 'category' && txId) {
+      setActiveCategoryDropdownTxId(txId);
+      setActiveAccountDropdownTxId(null);
+      setIsLoteCategoryDropdownOpen(false);
+      setIsLoteAccountDropdownOpen(false);
+    } else if (type === 'account' && txId) {
+      setActiveAccountDropdownTxId(txId);
+      setActiveCategoryDropdownTxId(null);
+      setIsLoteCategoryDropdownOpen(false);
+      setIsLoteAccountDropdownOpen(false);
+    } else if (type === 'loteCategory') {
+      setIsLoteCategoryDropdownOpen(true);
+      setIsLoteAccountDropdownOpen(false);
+      setActiveCategoryDropdownTxId(null);
+      setActiveAccountDropdownTxId(null);
+    } else if (type === 'loteAccount') {
+      setIsLoteAccountDropdownOpen(true);
+      setIsLoteCategoryDropdownOpen(false);
+      setActiveCategoryDropdownTxId(null);
+      setActiveAccountDropdownTxId(null);
+    }
+  };
+
+  const handleCloseAllDropdowns = () => {
+    setActiveCategoryDropdownTxId(null);
+    setActiveAccountDropdownTxId(null);
+    setIsLoteCategoryDropdownOpen(false);
+    setIsLoteAccountDropdownOpen(false);
+    setDropdownCoords(null);
+  };
 
   const getAccountTypeIcon = (type: string) => {
     switch (type) {
@@ -555,7 +598,7 @@ export default function ClientStatementModalV2({
         </div>
 
         {/* Corpo - Tabela de Lançamentos Granulares Notion-Style */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6" onScroll={handleCloseAllDropdowns}>
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <div className="w-10 h-10 border-4 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
@@ -610,13 +653,17 @@ export default function ClientStatementModalV2({
                       <td className="px-4 py-3 relative">
                         {(() => {
                           const currentGlobalCat = categories.find(c => c.id === loteCategory);
+                          const isOpenLoteCat = isLoteCategoryDropdownOpen;
                           return (
                             <>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setIsLoteCategoryDropdownOpen(!isLoteCategoryDropdownOpen);
-                                  setIsLoteAccountDropdownOpen(false);
+                                onClick={(e) => {
+                                  if (isOpenLoteCat) {
+                                    handleCloseAllDropdowns();
+                                  } else {
+                                    handleOpenDropdown(e, 'loteCategory');
+                                  }
                                 }}
                                 className="w-full text-left px-2.5 py-2 bg-white/80 hover:bg-white rounded-xl flex items-center justify-between text-xs font-extrabold text-teal-700 border border-teal-100/60 shadow-sm transition-all gap-1.5"
                               >
@@ -627,15 +674,21 @@ export default function ClientStatementModalV2({
                                 <ChevronDown size={12} className="text-teal-500 shrink-0" />
                               </button>
                               
-                              {isLoteCategoryDropdownOpen && (
+                              {isOpenLoteCat && dropdownCoords && (
                                 <>
-                                  <div className="fixed inset-0 z-20" onClick={() => setIsLoteCategoryDropdownOpen(false)} />
-                                  <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                  <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                  <div 
+                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                    style={{ 
+                                      top: `${dropdownCoords.top}px`, 
+                                      left: `${dropdownCoords.left}px` 
+                                    }}
+                                  >
                                     <button
                                       type="button"
                                       onClick={() => {
                                         handleGlobalCategoryChange(null);
-                                        setIsLoteCategoryDropdownOpen(false);
+                                        handleCloseAllDropdowns();
                                       }}
                                       className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
                                     >
@@ -649,7 +702,7 @@ export default function ClientStatementModalV2({
                                         type="button"
                                         onClick={() => {
                                           handleGlobalCategoryChange(c.id);
-                                          setIsLoteCategoryDropdownOpen(false);
+                                          handleCloseAllDropdowns();
                                         }}
                                         className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
                                           loteCategory === c.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
@@ -671,13 +724,17 @@ export default function ClientStatementModalV2({
                       <td className="px-4 py-3 relative">
                         {(() => {
                           const currentGlobalAcc = accounts.find(a => a.id === loteAccount);
+                          const isOpenLoteAcc = isLoteAccountDropdownOpen;
                           return (
                             <>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setIsLoteAccountDropdownOpen(!isLoteAccountDropdownOpen);
-                                  setIsLoteCategoryDropdownOpen(false);
+                                onClick={(e) => {
+                                  if (isOpenLoteAcc) {
+                                    handleCloseAllDropdowns();
+                                  } else {
+                                    handleOpenDropdown(e, 'loteAccount');
+                                  }
                                 }}
                                 className="w-full text-left px-2.5 py-1.5 bg-white/80 hover:bg-white rounded-xl flex items-center justify-between text-xs font-extrabold text-teal-700 border border-teal-100/60 shadow-sm transition-all gap-1.5"
                               >
@@ -697,15 +754,21 @@ export default function ClientStatementModalV2({
                                 <ChevronDown size={12} className="text-teal-500 shrink-0" />
                               </button>
                               
-                              {isLoteAccountDropdownOpen && (
+                              {isOpenLoteAcc && dropdownCoords && (
                                 <>
-                                  <div className="fixed inset-0 z-20" onClick={() => setIsLoteAccountDropdownOpen(false)} />
-                                  <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                  <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                  <div 
+                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                    style={{ 
+                                      top: `${dropdownCoords.top}px`, 
+                                      left: `${dropdownCoords.left}px` 
+                                    }}
+                                  >
                                     <button
                                       type="button"
                                       onClick={() => {
                                         handleGlobalAccountChange(null);
-                                        setIsLoteAccountDropdownOpen(false);
+                                        handleCloseAllDropdowns();
                                       }}
                                       className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
                                     >
@@ -721,7 +784,7 @@ export default function ClientStatementModalV2({
                                         type="button"
                                         onClick={() => {
                                           handleGlobalAccountChange(a.id);
-                                          setIsLoteAccountDropdownOpen(false);
+                                          handleCloseAllDropdowns();
                                         }}
                                         className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
                                           loteAccount === a.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
@@ -789,9 +852,12 @@ export default function ClientStatementModalV2({
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setActiveCategoryDropdownTxId(isOpenDropdown ? null : t.id);
-                                    setActiveAccountDropdownTxId(null);
+                                  onClick={(e) => {
+                                    if (isOpenDropdown) {
+                                      handleCloseAllDropdowns();
+                                    } else {
+                                      handleOpenDropdown(e, 'category', t.id);
+                                    }
                                   }}
                                   className="w-full text-left px-2.5 py-2 hover:bg-slate-100/70 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition-all gap-1.5 border border-transparent hover:border-slate-200/50"
                                 >
@@ -802,15 +868,21 @@ export default function ClientStatementModalV2({
                                   <ChevronDown size={12} className="text-slate-400 shrink-0" />
                                 </button>
                                 
-                                {isOpenDropdown && (
+                                {isOpenDropdown && dropdownCoords && (
                                   <>
-                                    <div className="fixed inset-0 z-20" onClick={() => setActiveCategoryDropdownTxId(null)} />
-                                    <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                    <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                    <div 
+                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                      style={{ 
+                                        top: `${dropdownCoords.top}px`, 
+                                        left: `${dropdownCoords.left}px` 
+                                      }}
+                                    >
                                       <button
                                         type="button"
                                         onClick={() => {
                                           handleUpdateField(t.id, 'category_id', null, t.category_id);
-                                          setActiveCategoryDropdownTxId(null);
+                                          handleCloseAllDropdowns();
                                         }}
                                         className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
                                       >
@@ -827,7 +899,7 @@ export default function ClientStatementModalV2({
                                           type="button"
                                           onClick={() => {
                                             handleUpdateField(t.id, 'category_id', c.id, t.category_id);
-                                            setActiveCategoryDropdownTxId(null);
+                                            handleCloseAllDropdowns();
                                           }}
                                           className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
                                             t.category_id === c.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
@@ -854,9 +926,12 @@ export default function ClientStatementModalV2({
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setActiveAccountDropdownTxId(isOpenDropdown ? null : t.id);
-                                    setActiveCategoryDropdownTxId(null);
+                                  onClick={(e) => {
+                                    if (isOpenDropdown) {
+                                      handleCloseAllDropdowns();
+                                    } else {
+                                      handleOpenDropdown(e, 'account', t.id);
+                                    }
                                   }}
                                   className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100/70 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition-all gap-1.5 border border-transparent hover:border-slate-200/50"
                                 >
@@ -876,15 +951,21 @@ export default function ClientStatementModalV2({
                                   <ChevronDown size={12} className="text-slate-400 shrink-0" />
                                 </button>
                                 
-                                {isOpenDropdown && (
+                                {isOpenDropdown && dropdownCoords && (
                                   <>
-                                    <div className="fixed inset-0 z-20" onClick={() => setActiveAccountDropdownTxId(null)} />
-                                    <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                    <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                    <div 
+                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                                      style={{ 
+                                        top: `${dropdownCoords.top}px`, 
+                                        left: `${dropdownCoords.left}px` 
+                                      }}
+                                    >
                                       <button
                                         type="button"
                                         onClick={() => {
                                           handleUpdateField(t.id, 'account_id', null, t.account_id);
-                                          setActiveAccountDropdownTxId(null);
+                                          handleCloseAllDropdowns();
                                         }}
                                         className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
                                       >
@@ -903,7 +984,7 @@ export default function ClientStatementModalV2({
                                           type="button"
                                           onClick={() => {
                                             handleUpdateField(t.id, 'account_id', a.id, t.account_id);
-                                            setActiveAccountDropdownTxId(null);
+                                            handleCloseAllDropdowns();
                                           }}
                                           className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
                                             t.account_id === a.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
