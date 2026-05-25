@@ -225,9 +225,39 @@ export default function SubscriptionPageV2() {
       )
       .subscribe();
 
+    // Fallback de Polling: Caso o WebSocket seja bloqueado ou falhe, consultamos a cada 4 segundos
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log(`[Polling] Verificando confirmação do pagamento no banco para txid: ${pixData.txid}`);
+        const { data, error } = await supabase
+          .from('pix_transactions')
+          .select('status')
+          .eq('transaction_id', pixData.txid)
+          .maybeSingle();
+
+        if (error) {
+          console.warn('[Polling] Erro na verificação do Pix:', error.message);
+          return;
+        }
+
+        if (data && data.status === 'COMPLETED') {
+          console.log('[Polling] Sucesso! Pagamento confirmado via polling.');
+          setPaymentSuccess(true);
+          toast.success('Pagamento confirmado automaticamente! Sua assinatura está liberada.', {
+            duration: 6000,
+            icon: '🎉'
+          });
+          fetchData();
+        }
+      } catch (err) {
+        console.error('[Polling] Falha crítica de verificação:', err);
+      }
+    }, 4000);
+
     return () => {
-      console.log(`[Realtime] Removendo canal de escuta: ${pixData.txid}`);
+      console.log(`[Realtime] Removendo canal de escuta e limpando polling: ${pixData.txid}`);
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [pixData?.txid, user?.id, fetchData]);
 
