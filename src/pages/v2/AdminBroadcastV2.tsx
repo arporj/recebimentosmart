@@ -68,7 +68,7 @@ export default function AdminBroadcastV2() {
             const prompt = `Melhore o texto do e-mail de anúncio para os usuários a seguir de forma extremamente persuasiva, amigável e profissional. Mantenha os links e qualquer tag HTML se houver. Escreva APENAS a versão melhorada da mensagem, sem nenhuma introdução, explicação adicional ou aspas extras:\n\n${body}`;
 
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
                 {
                     method: 'POST',
                     headers: {
