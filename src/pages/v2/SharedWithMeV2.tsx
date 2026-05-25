@@ -689,6 +689,75 @@ export default function SharedWithMeV2() {
     }
   };
 
+  const handleAcceptIndividualTx = async (txId: string) => {
+    if (!acceptingShare) return;
+    const config = acceptTxsConfig[txId];
+    if (!config || !config.categoryId || !config.accountId) {
+      toast.error("Selecione uma categoria e uma conta para este lançamento.");
+      return;
+    }
+
+    setIsAccepting(true);
+    try {
+      const { error } = await supabase.rpc('fn_accept_share_v2', {
+        p_share_id: acceptingShare.id,
+        p_configs: [{
+          original_transaction_id: txId,
+          category_id: config.categoryId,
+          account_id: config.accountId
+        }]
+      });
+
+      if (error) throw error;
+
+      toast.success("Lançamento aceito individualmente com sucesso!");
+      setAcceptingShare(null);
+      fetchShares();
+    } catch (err) {
+      console.error('Erro ao aceitar lançamento individual:', err);
+      toast.error('Erro ao aceitar lançamento.');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleAcceptAllAtOnce = async () => {
+    if (!acceptingShare) return;
+    if (!selectedCategory || !selectedAccount) {
+      toast.error("Selecione uma categoria e uma conta globais para aceitar em lote.");
+      return;
+    }
+
+    const share = shares.find(s => s.id === acceptingShare.id);
+    if (!share) return;
+    const clientTxs = pendingTransactions.filter(tx => tx.client_id === share.client_id);
+
+    const configsArray = clientTxs.map(tx => ({
+      original_transaction_id: tx.id,
+      category_id: selectedCategory,
+      account_id: selectedAccount
+    }));
+
+    setIsAccepting(true);
+    try {
+      const { error } = await supabase.rpc('fn_accept_share_v2', {
+        p_share_id: acceptingShare.id,
+        p_configs: configsArray
+      });
+
+      if (error) throw error;
+
+      toast.success(`Todos os lançamentos de "${acceptingShare.clientName}" foram aceitos com sucesso!`);
+      setAcceptingShare(null);
+      fetchShares();
+    } catch (err) {
+      console.error('Erro ao aceitar todos de uma vez:', err);
+      toast.error('Erro ao aceitar todos os lançamentos.');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
   const handleRejectShare = async (shareId: string) => {
     const confirmed = window.confirm("Deseja realmente rejeitar e remover este compartilhamento de sua lista?");
     if (!confirmed) return;
@@ -1333,6 +1402,7 @@ export default function SharedWithMeV2() {
                           <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right min-w-[100px]">Valor</th>
                           <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[200px]">Categoria</th>
                           <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[200px]">Conta Bancária</th>
+                          <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center min-w-[120px]">Ação</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1366,6 +1436,16 @@ export default function SharedWithMeV2() {
                               placeholder="Selecione conta em lote..."
                               isLote={true}
                             />
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <button
+                              type="button"
+                              onClick={handleAcceptAllAtOnce}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black shadow-sm transition-all duration-150 active:scale-95 whitespace-nowrap"
+                            >
+                              <Check size={12} />
+                              Aceitar Todos
+                            </button>
                           </td>
                         </tr>
 
@@ -1415,6 +1495,16 @@ export default function SharedWithMeV2() {
                                   accounts={accounts}
                                   placeholder="Selecione conta..."
                                 />
+                              </td>
+                              <td className="px-4 py-3.5 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAcceptIndividualTx(tx.id)}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-150 active:scale-95 whitespace-nowrap"
+                                >
+                                  <Check size={12} />
+                                  Aceitar
+                                </button>
                               </td>
                             </tr>
                           );
