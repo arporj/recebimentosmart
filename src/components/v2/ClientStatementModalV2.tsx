@@ -159,6 +159,28 @@ export default function ClientStatementModalV2({
     }
   }, [isOpen, clientId, user]);
 
+  useEffect(() => {
+    if (isOpen && accounts.length === 1 && rawTransactions.length > 0) {
+      const singleAccountId = accounts[0].id;
+      const transactionsWithoutAccount = rawTransactions.filter(t => !t.account_id);
+      
+      if (transactionsWithoutAccount.length > 0) {
+        const updatePromises = transactionsWithoutAccount.map(t => 
+          supabase
+            .from('financial_transactions')
+            .update({ account_id: singleAccountId })
+            .eq('id', t.id)
+        );
+        
+        Promise.all(updatePromises).then(() => {
+          fetchStatement();
+        }).catch(err => {
+          console.error('Erro ao selecionar conta única automaticamente nas transações:', err);
+        });
+      }
+    }
+  }, [isOpen, accounts, rawTransactions]);
+
   const fetchCategoriesAccountsAndTags = async () => {
     if (!user) return;
     try {
