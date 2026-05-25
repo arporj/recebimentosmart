@@ -1115,7 +1115,7 @@ const FinancialTransactionsV2 = () => {
                 <div 
                   key={dropdownKey} 
                   onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                  className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}
+                  className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                 >
                   {/* Status dot */}
                   <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
@@ -1404,7 +1404,7 @@ const FinancialTransactionsV2 = () => {
                     <div 
                       key={dropdownKey} 
                       onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                      className={`flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-50/30'}`}
+                      className={`flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                     >
                       {/* Ícone de Tipo */}
                       <div className={`p-1.5 rounded-lg shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>

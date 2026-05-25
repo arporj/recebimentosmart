@@ -790,7 +790,7 @@ CORPO: [Escreva aqui o corpo aprimorado, utilizando a formatação HTML conforme
                                             <button
                                                 type="button"
                                                 onClick={() => handleReuseBroadcast(b)}
-                                                className="flex items-center gap-1 text-[#0d9488] hover:text-teal-700 font-black uppercase text-[9px] px-2 py-1 bg-teal-50 hover:bg-teal-100 rounded-lg active:scale-95 transition-all"
+                                                className="flex items-center gap-1 text-[#0d9488] hover:text-teal-800 font-black uppercase text-[9px] hover:underline active:scale-95 transition-all p-1"
                                                 title="Carregar este e-mail de volta ao editor para enviar novamente"
                                             >
                                                 <RefreshCw size={9} /> Reutilizar
