@@ -491,7 +491,7 @@ const CreditCardV2 = () => {
         <div className="relative" ref={openDropdown === t.id + t.instanceDate ? dropdownRef : null}>
           <button
             onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === t.id + t.instanceDate ? null : t.id + t.instanceDate); }}
-            className="p-1 text-slate-300 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100"
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <MoreVertical size={14} />
           </button>

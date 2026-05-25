@@ -6,9 +6,16 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight, 
-  FileText 
+  FileText,
+  ChevronDown,
+  Landmark,
+  PiggyBank,
+  CreditCard,
+  Check
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 import { 
   format, 
   parseISO, 
@@ -51,6 +58,9 @@ interface FinancialTransaction {
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_total?: number;
   installment_current?: number;
+  category_id?: string | null;
+  account_id?: string | null;
+  tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
 interface TransactionInstance extends FinancialTransaction {
@@ -65,32 +75,385 @@ export default function ClientStatementModalV2({
   clientName, 
   selectedMonth 
 }: ClientStatementModalProps) {
+  const { user } = useAuth();
   const [rawTransactions, setRawTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(selectedMonth || new Date());
+  
+  // Categorias, Contas e Tags do usuário logado
+  const [categories, setCategories] = useState<{ id: string; name: string; icon: string | null }[]>([]);
+  const [accounts, setAccounts] = useState<{ 
+    id: string; 
+    name: string; 
+    type: string; 
+    bank_icon: string | null; 
+    bank_name: string | null; 
+  }[]>([]);
+  const [availableTags, setAvailableTags] = useState<{ id: string; name: string; color: string }[]>([]);
+  
+  const [activeCategoryDropdownTxId, setActiveCategoryDropdownTxId] = useState<string | null>(null);
+  const [activeAccountDropdownTxId, setActiveAccountDropdownTxId] = useState<string | null>(null);
+  const [loteCategory, setLoteCategory] = useState<string>('');
+  const [loteAccount, setLoteAccount] = useState<string>('');
+  const [isLoteCategoryDropdownOpen, setIsLoteCategoryDropdownOpen] = useState(false);
+  const [isLoteAccountDropdownOpen, setIsLoteAccountDropdownOpen] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const handleOpenDropdown = (
+    e: React.MouseEvent<HTMLButtonElement>, 
+    type: 'category' | 'account' | 'loteCategory' | 'loteAccount', 
+    txId?: string
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownCoords({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX
+    });
+
+    if (type === 'category' && txId) {
+      setActiveCategoryDropdownTxId(txId);
+      setActiveAccountDropdownTxId(null);
+      setIsLoteCategoryDropdownOpen(false);
+      setIsLoteAccountDropdownOpen(false);
+    } else if (type === 'account' && txId) {
+      setActiveAccountDropdownTxId(txId);
+      setActiveCategoryDropdownTxId(null);
+      setIsLoteCategoryDropdownOpen(false);
+      setIsLoteAccountDropdownOpen(false);
+    } else if (type === 'loteCategory') {
+      setIsLoteCategoryDropdownOpen(true);
+      setIsLoteAccountDropdownOpen(false);
+      setActiveCategoryDropdownTxId(null);
+      setActiveAccountDropdownTxId(null);
+    } else if (type === 'loteAccount') {
+      setIsLoteAccountDropdownOpen(true);
+      setIsLoteCategoryDropdownOpen(false);
+      setActiveCategoryDropdownTxId(null);
+      setActiveAccountDropdownTxId(null);
+    }
+  };
+
+  const handleCloseAllDropdowns = () => {
+    setActiveCategoryDropdownTxId(null);
+    setActiveAccountDropdownTxId(null);
+    setIsLoteCategoryDropdownOpen(false);
+    setIsLoteAccountDropdownOpen(false);
+    setDropdownCoords(null);
+  };
+
+  const getAccountTypeIcon = (type: string) => {
+    switch (type) {
+      case 'checking': return <Landmark size={14} className="text-teal-600 animate-in" />;
+      case 'savings': return <PiggyBank size={14} className="text-blue-600 animate-in" />;
+      case 'credit_card': return <CreditCard size={14} className="text-indigo-600 animate-in" />;
+      case 'investment': return <TrendingUp size={14} className="text-slate-600 animate-in" />;
+      default: return <Landmark size={14} className="text-slate-600 animate-in" />;
+    }
+  };
+
+  const getAccountTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'checking': return 'Corrente';
+      case 'savings': return 'Poupança';
+      case 'investment': return 'Investimento';
+      case 'credit_card': return 'Cartão de Crédito';
+      default: return 'Conta';
+    }
+  };
+
+  const AccountIcon = ({ account }: { account: any }) => {
+    if (!account) return <div className="text-slate-400 shrink-0">{getAccountTypeIcon('')}</div>;
+
+    const typeConfig: Record<string, string> = {
+      checking: 'bg-blue-50 text-blue-700 border-blue-200/50',
+      savings: 'bg-green-50 text-green-700 border-green-200/50',
+      credit_card: 'bg-purple-50 text-purple-700 border-purple-200/50',
+      investment: 'bg-amber-50 text-amber-700 border-amber-200/50'
+    };
+
+    const bgColorClass = typeConfig[account.type] || 'bg-slate-50 text-slate-400 border-slate-200';
+
+    return (
+      <div className={`w-5 h-5 rounded flex items-center justify-center border overflow-hidden shrink-0 ${bgColorClass}`}>
+        {account.bank_icon ? (
+          <div className="w-full h-full relative flex items-center justify-center">
+            <img 
+              src={`https://www.google.com/s2/favicons?domain=${account.bank_icon}&sz=64`} 
+              alt={account.bank_name || ''} 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.classList.add('hidden');
+                if (target.nextElementSibling) {
+                  target.nextElementSibling.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-[8px] text-slate-500 bg-slate-100">
+              {account.bank_name?.charAt(0) || 'B'}
+            </div>
+          </div>
+        ) : (
+          <div className="text-current scale-[0.7] flex items-center justify-center shrink-0">{getAccountTypeIcon(account.type)}</div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
-    if (isOpen && clientId) {
+    if (isOpen && clientId && user) {
       fetchStatement();
+      fetchCategoriesAccountsAndTags();
     }
-  }, [isOpen, clientId]);
+  }, [isOpen, clientId, user]);
+
+  useEffect(() => {
+    if (isOpen && accounts.length === 1 && rawTransactions.length > 0) {
+      const singleAccountId = accounts[0].id;
+      const transactionsWithoutAccount = rawTransactions.filter(t => !t.account_id);
+      
+      if (transactionsWithoutAccount.length > 0) {
+        const updatePromises = transactionsWithoutAccount.map(t => 
+          supabase
+            .from('financial_transactions')
+            .update({ account_id: singleAccountId })
+            .eq('id', t.id)
+        );
+        
+        Promise.all(updatePromises).then(() => {
+          fetchStatement();
+        }).catch(err => {
+          console.error('Erro ao selecionar conta única automaticamente nas transações:', err);
+        });
+      }
+    }
+  }, [isOpen, accounts, rawTransactions]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  const fetchCategoriesAccountsAndTags = async () => {
+    if (!user) return;
+    try {
+      const [catRes, accRes, tagRes] = await Promise.all([
+        supabase.from('financial_categories').select('id, name, icon').eq('user_id', user.id).order('name'),
+        supabase.from('financial_accounts').select('id, name, type, bank_icon, bank_name').eq('user_id', user.id).eq('is_active', true).order('name'),
+        supabase.from('financial_tags').select('id, name, color').eq('user_id', user.id)
+      ]);
+      if (catRes.data) setCategories(catRes.data as any);
+      if (accRes.data) setAccounts(accRes.data as any);
+      if (tagRes.data) setAvailableTags(tagRes.data);
+    } catch (err) {
+      console.error('Erro ao carregar categorias, contas ou tags:', err);
+    }
+  };
 
   const fetchStatement = async () => {
+    if (!user) return;
     try {
       setLoading(true);
-      // Buscar todas as transações ativas do cliente (não canceladas) para permitir a expansão de recorrências localmente
+      // Buscar todas as transações ativas do cliente com suas tags
       const { data, error } = await supabase
         .from('financial_transactions')
-        .select('id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current, paid_amount, paid_date')
+        .select(`
+          id, type, amount, date, description, status, recurrence_enabled, recurrence_period, recurrence_interval, recurrence_end_date, parent_id, modalidade, installment_total, installment_current, paid_amount, paid_date, category_id, account_id,
+          tags:transaction_tags(tag:financial_tags(id, name, color))
+        `)
         .eq('client_id', clientId)
+        .eq('user_id', user.id)
         .neq('status', 'cancelled');
 
       if (error) throw error;
-      setRawTransactions(data || []);
+      setRawTransactions((data || []) as any);
     } catch (err) {
       console.error('Erro ao buscar extrato do cliente:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcceptTransaction = async (tx: FinancialTransaction) => {
+    if (!tx.category_id || !tx.account_id) {
+      toast.error("Associe uma categoria e uma conta antes de aceitar este lançamento.");
+      return;
+    }
+
+    try {
+      // Se for uma transação mãe recorrente, vamos atualizar ela e todas as filhas associadas (onde parent_id = tx.id)
+      const isMother = tx.recurrence_enabled && !tx.parent_id;
+
+      if (isMother) {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({ 
+            status: 'paid',
+            category_id: tx.category_id,
+            account_id: tx.account_id
+          })
+          .or(`id.eq.${tx.id},parent_id.eq.${tx.id}`);
+
+        if (error) throw error;
+        toast.success("Lançamento recorrente e todas as suas recorrências foram aceitas com sucesso!");
+      } else {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({ 
+            status: 'paid',
+            category_id: tx.category_id,
+            account_id: tx.account_id
+          })
+          .eq('id', tx.id);
+
+        if (error) throw error;
+        toast.success("Lançamento aceito com sucesso!");
+      }
+
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao aceitar lançamento:', err);
+      toast.error('Erro ao aceitar lançamento.');
+    }
+  };
+
+  const handleAcceptAllPendingInMonth = async () => {
+    const pendingTxs = monthInstances.filter(t => t.status === 'pending');
+    
+    // Validar se todas as transações pendentes têm categoria e conta
+    for (const tx of pendingTxs) {
+      if (!tx.category_id || !tx.account_id) {
+        toast.error(`Associe uma categoria e uma conta para o lançamento "${tx.description || 'Sem descrição'}".`);
+        return;
+      }
+    }
+
+    try {
+      const promises = pendingTxs.map(t => {
+        const isMother = t.recurrence_enabled && !t.parent_id;
+        if (isMother) {
+          return supabase
+            .from('financial_transactions')
+            .update({ 
+              status: 'paid',
+              category_id: t.category_id,
+              account_id: t.account_id
+            })
+            .or(`id.eq.${t.id},parent_id.eq.${t.id}`);
+        } else {
+          return supabase
+            .from('financial_transactions')
+            .update({ 
+              status: 'paid',
+              category_id: t.category_id,
+              account_id: t.account_id
+            })
+            .eq('id', t.id);
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success("Todos os lançamentos pendentes foram aceitos!");
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao aceitar todos os lançamentos:', err);
+      toast.error('Erro ao aceitar lançamentos.');
+    }
+  };
+
+  const handleGlobalCategoryChange = (catId: string | null) => {
+    setLoteCategory(catId || '');
+    setRawTransactions(prev => prev.map(t => {
+      const inst = monthInstances.find(i => i.id === t.id);
+      if (inst && inst.status === 'pending') {
+        return { ...t, category_id: catId };
+      }
+      return t;
+    }));
+  };
+
+  const handleGlobalAccountChange = (accId: string | null) => {
+    setLoteAccount(accId || '');
+    setRawTransactions(prev => prev.map(t => {
+      const inst = monthInstances.find(i => i.id === t.id);
+      if (inst && inst.status === 'pending') {
+        return { ...t, account_id: accId };
+      }
+      return t;
+    }));
+  };
+
+  // Atualização inline de campos da transação
+  const handleUpdateField = async (transactionId: string, field: string, value: any, oldValue: any) => {
+    if (value === oldValue) return;
+    try {
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({ [field]: value })
+        .eq('id', transactionId);
+
+      if (error) throw error;
+
+      // Propagar para filhos se for uma transação mãe recorrente
+      const tx = rawTransactions.find(t => t.id === transactionId);
+      const isMother = tx && tx.recurrence_enabled && !tx.parent_id;
+
+      if (isMother && (field === 'category_id' || field === 'account_id')) {
+        const { error: childErr } = await supabase
+          .from('financial_transactions')
+          .update({ [field]: value })
+          .eq('parent_id', transactionId);
+
+        if (childErr) console.error('Erro ao propagar alteração para parcelas filhas:', childErr);
+      }
+
+      toast.success('Lançamento atualizado com sucesso!');
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao atualizar campo:', err);
+      toast.error('Erro ao salvar alterações.');
+    }
+  };
+
+  // Gerenciamento de Tags na transação
+  const handleAddTag = async (transactionId: string, tagId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transaction_tags')
+        .insert({
+          transaction_id: transactionId,
+          tag_id: tagId
+        });
+
+      if (error) throw error;
+      toast.success('Tag associada!');
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao adicionar tag:', err);
+      toast.error('Falha ao associar tag.');
+    }
+  };
+
+  const handleRemoveTag = async (transactionId: string, tagId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transaction_tags')
+        .delete()
+        .eq('transaction_id', transactionId)
+        .eq('tag_id', tagId);
+
+      if (error) throw error;
+      toast.success('Tag removida.');
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao remover tag:', err);
+      toast.error('Falha ao desassociar tag.');
     }
   };
 
@@ -170,17 +533,14 @@ export default function ClientStatementModalV2({
     });
   }, [rawTransactions, currentMonth]);
 
-  // Cálculos rápidos com inversão de perspectiva para o usuário logado:
-  // - Despesa original do Remetente ('expense') -> Receita para o Receptor ('income', A Receber)
-  // - Receita original do Remetente ('income') -> Despesa para o Receptor ('expense', A Pagar)
+  // Cálculos de totais baseados nos tipos corretos de transações (income = receita, expense = despesa)
   const totals = useMemo(() => {
-    // Calculados sobre as instâncias correspondentes ao mês
     const income = monthInstances
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'income')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
 
     const expense = monthInstances
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'expense')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
 
     return {
@@ -188,6 +548,10 @@ export default function ClientStatementModalV2({
       expense,
       net: income - expense
     };
+  }, [monthInstances]);
+
+  const pendingTxsInMonth = useMemo(() => {
+    return monthInstances.filter(t => t.status === 'pending');
   }, [monthInstances]);
 
   const formatCurrency = (value: number) => {
@@ -203,8 +567,8 @@ export default function ClientStatementModalV2({
       {/* Backdrop */}
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Content Card (Fullscreen no mobile e largo no desktop) */}
-      <div className="relative bg-slate-50 w-full h-full md:max-w-5xl md:h-[85vh] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
+      {/* Content Card */}
+      <div className="relative bg-slate-50 w-full h-full md:max-w-6xl md:h-[85vh] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
         
         {/* Modal Header */}
         <div className="bg-white border-b border-slate-100 px-6 py-5 shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -213,7 +577,7 @@ export default function ClientStatementModalV2({
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight leading-tight">Extrato Financeiro</h3>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight leading-tight">Extrato Compartilhado</h3>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-0.5">{clientName}</p>
             </div>
           </div>
@@ -237,7 +601,6 @@ export default function ClientStatementModalV2({
                 <ChevronRight size={16} className="text-slate-600" />
               </button>
             </div>
-
             <button
               onClick={onClose}
               className="p-2 hover:bg-slate-100 active:scale-95 rounded-xl transition-all border border-slate-200/60 bg-white"
@@ -247,10 +610,10 @@ export default function ClientStatementModalV2({
           </div>
         </div>
 
-        {/* Cards Rápidos de Totais no Mês */}
+        {/* Cards de Totais */}
         <div className="bg-white border-b border-slate-100 px-6 py-5 grid grid-cols-3 gap-4 shrink-0">
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Entradas (Mês)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">A Receber (Mês)</span>
             <span className="text-base sm:text-lg font-black text-emerald-600 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1 text-emerald-500" />
               {formatCurrency(totals.income)}
@@ -258,7 +621,7 @@ export default function ClientStatementModalV2({
           </div>
 
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Saídas (Mês)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">A Pagar (Mês)</span>
             <span className="text-base sm:text-lg font-black text-rose-600 flex items-center">
               <TrendingDown className="w-4 h-4 mr-1 text-rose-500" />
               {formatCurrency(totals.expense)}
@@ -266,7 +629,7 @@ export default function ClientStatementModalV2({
           </div>
 
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Netting do Mês</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Saldo do Mês</span>
             <span className={`text-base sm:text-lg font-black tracking-tight ${
               totals.net < 0 ? 'text-rose-600' : totals.net > 0 ? 'text-emerald-600' : 'text-slate-500'
             }`}>
@@ -275,8 +638,8 @@ export default function ClientStatementModalV2({
           </div>
         </div>
 
-        {/* Modal Body - Tabela Minimalista */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Corpo - Tabela de Lançamentos Granulares Notion-Style */}
+        <div className="flex-1 overflow-y-auto p-6" onScroll={handleCloseAllDropdowns}>
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <div className="w-10 h-10 border-4 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
@@ -293,50 +656,491 @@ export default function ClientStatementModalV2({
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full text-left border-collapse">
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-x-auto shadow-sm transition-all duration-300 pb-2">
+              <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-24">Data</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Descrição</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right w-36">Valor</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-24">Data</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-52">Descrição</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-44">Categoria</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-44">Conta Bancária</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-48">Tags</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right w-32">Valor</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-center w-28">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
+                  {/* Linha Superior de Preenchimento em Lote */}
+                  {pendingTxsInMonth.length > 0 && (
+                    <tr className="bg-teal-50/20 border-b border-teal-100/50">
+                      {/* Data */}
+                      <td className="px-4 py-3 text-xs font-black text-teal-600 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="animate-pulse">⚡</span> Lote
+                        </span>
+                      </td>
+
+                      {/* Descrição */}
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-black text-teal-800">
+                          Preencher em lote todos os pendentes
+                        </div>
+                        <div className="text-[9px] font-bold text-slate-400">
+                          Aplica categoria e conta para todos os pendentes do mês
+                        </div>
+                      </td>
+
+                      {/* Categoria Global */}
+                      <td className="px-4 py-3 relative">
+                        {(() => {
+                          const currentGlobalCat = categories.find(c => c.id === loteCategory);
+                          const isOpenLoteCat = isLoteCategoryDropdownOpen;
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  if (isOpenLoteCat) {
+                                    handleCloseAllDropdowns();
+                                  } else {
+                                    handleOpenDropdown(e, 'loteCategory');
+                                  }
+                                }}
+                                className="w-full text-left px-2.5 py-2 bg-white/80 hover:bg-white rounded-xl flex items-center justify-between text-xs font-extrabold text-teal-700 border border-teal-100/60 shadow-sm transition-all gap-1.5"
+                              >
+                                <span className="flex items-center gap-2 truncate">
+                                  <span className="text-base shrink-0 select-none">{currentGlobalCat?.icon || '📁'}</span>
+                                  <span className="truncate">{currentGlobalCat?.name || 'Definir Categoria'}</span>
+                                </span>
+                                <ChevronDown size={12} className="text-teal-500 shrink-0" />
+                              </button>
+                              
+                              {isOpenLoteCat && dropdownCoords && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                  <div 
+                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
+                                    style={{ 
+                                      top: `${dropdownCoords.top}px`, 
+                                      left: `${dropdownCoords.left}px` 
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleGlobalCategoryChange(null);
+                                        handleCloseAllDropdowns();
+                                      }}
+                                      className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                    >
+                                      <span className="text-sm shrink-0 select-none">📁</span>
+                                      <span className="leading-tight font-semibold text-slate-400">Limpar Categoria</span>
+                                    </button>
+                                    
+                                    {categories.map(c => (
+                                      <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                          handleGlobalCategoryChange(c.id);
+                                          handleCloseAllDropdowns();
+                                        }}
+                                        className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                          loteCategory === c.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                        }`}
+                                      >
+                                        <span className="text-base shrink-0 select-none">{c.icon || '📁'}</span>
+                                        <span className="truncate">{c.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Conta Global */}
+                      <td className="px-4 py-3 relative">
+                        {(() => {
+                          const currentGlobalAcc = accounts.find(a => a.id === loteAccount);
+                          const isOpenLoteAcc = isLoteAccountDropdownOpen;
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  if (isOpenLoteAcc) {
+                                    handleCloseAllDropdowns();
+                                  } else {
+                                    handleOpenDropdown(e, 'loteAccount');
+                                  }
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 bg-white/80 hover:bg-white rounded-xl flex items-center justify-between text-xs font-extrabold text-teal-700 border border-teal-100/60 shadow-sm transition-all gap-1.5"
+                              >
+                                <span className="flex items-center gap-2.5 truncate">
+                                  <AccountIcon account={currentGlobalAcc} />
+                                  <div className="flex flex-col min-w-0 text-left">
+                                    <span className="truncate font-extrabold text-xs leading-tight">
+                                      {currentGlobalAcc?.name || 'Definir Conta'}
+                                    </span>
+                                    {currentGlobalAcc && (
+                                      <span className="text-[8px] text-teal-500 font-semibold leading-none mt-0.5">
+                                        {getAccountTypeLabel(currentGlobalAcc.type)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </span>
+                                <ChevronDown size={12} className="text-teal-500 shrink-0" />
+                              </button>
+                              
+                              {isOpenLoteAcc && dropdownCoords && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                  <div 
+                                    className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
+                                    style={{ 
+                                      top: `${dropdownCoords.top}px`, 
+                                      left: `${dropdownCoords.left}px` 
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleGlobalAccountChange(null);
+                                        handleCloseAllDropdowns();
+                                      }}
+                                      className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                    >
+                                      <div className="w-5 h-5 rounded flex items-center justify-center border border-slate-200 bg-slate-50 text-slate-400 shrink-0">
+                                        <Landmark size={12} />
+                                      </div>
+                                      <span className="leading-tight font-semibold text-slate-400">Limpar Conta</span>
+                                    </button>
+                                    
+                                    {accounts.map(a => (
+                                      <button
+                                        key={a.id}
+                                        type="button"
+                                        onClick={() => {
+                                          handleGlobalAccountChange(a.id);
+                                          handleCloseAllDropdowns();
+                                        }}
+                                        className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                          loteAccount === a.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                        }`}
+                                      >
+                                        <AccountIcon account={a} />
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="truncate font-semibold leading-tight">{a.name}</span>
+                                          <span className="text-[8px] text-slate-400 mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Tags */}
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold text-xs">-</td>
+
+                      {/* Valor */}
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold text-xs">-</td>
+
+                      {/* Ação */}
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold text-xs">-</td>
+                    </tr>
+                  )}
+
                   {monthInstances.map((t) => {
-                    const isIncome = t.type === 'expense'; // Inversão aplicada: despesa original do remetente = receita para o receptor
+                    const isIncome = t.type === 'income'; 
                     const formattedDate = format(parseISO(t.instanceDate), 'dd/MM/yyyy');
 
                     return (
                       <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-6 py-4 text-xs font-bold text-slate-400 whitespace-nowrap">
+                        {/* Data */}
+                        <td className="px-4 py-3 text-xs font-bold text-slate-400 whitespace-nowrap">
                           {formattedDate}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs sm:text-sm font-bold text-slate-700 truncate max-w-md group-hover:text-slate-900 transition-colors">
-                            {t.description}
-                          </div>
-                          {t.status === 'pending' && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wide mt-1 scale-95 origin-left">
-                              Pendente
-                            </span>
-                          )}
+
+                        {/* Descrição */}
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            defaultValue={t.description}
+                            onBlur={(e) => handleUpdateField(t.id, 'description', e.target.value, t.description)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="bg-transparent hover:bg-slate-100/70 focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-2 py-1 w-full text-xs font-bold text-slate-700 transition-all border border-transparent focus:border-slate-200 outline-none"
+                            placeholder="Descrição do lançamento..."
+                          />
                         </td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <span className={`text-sm sm:text-base font-black font-manrope ${
+
+                        {/* Categoria */}
+                        <td className="px-4 py-3 relative">
+                          {(() => {
+                            const currentCat = categories.find(c => c.id === t.category_id);
+                            const isOpenDropdown = activeCategoryDropdownTxId === t.id;
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    if (isOpenDropdown) {
+                                      handleCloseAllDropdowns();
+                                    } else {
+                                      handleOpenDropdown(e, 'category', t.id);
+                                    }
+                                  }}
+                                  className="w-full text-left px-2.5 py-2 hover:bg-slate-100/70 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition-all gap-1.5 border border-transparent hover:border-slate-200/50"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <span className="text-base shrink-0 select-none">{currentCat?.icon || '📁'}</span>
+                                    <span className="truncate">{currentCat?.name || 'Sem Categoria'}</span>
+                                  </span>
+                                  <ChevronDown size={12} className="text-slate-400 shrink-0" />
+                                </button>
+                                
+                                {isOpenDropdown && dropdownCoords && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                    <div 
+                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
+                                      style={{ 
+                                        top: `${dropdownCoords.top}px`, 
+                                        left: `${dropdownCoords.left}px` 
+                                      }}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateField(t.id, 'category_id', null, t.category_id);
+                                          handleCloseAllDropdowns();
+                                        }}
+                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                      >
+                                        <span className="text-sm shrink-0 select-none">📁</span>
+                                        <div className="flex flex-col">
+                                          <span className="leading-tight font-semibold text-slate-400">Sem Categoria</span>
+                                          <span className="text-[8px] text-slate-300 font-medium">Nenhuma categoria selecionada</span>
+                                        </div>
+                                      </button>
+                                      
+                                      {categories.map(c => (
+                                        <button
+                                          key={c.id}
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateField(t.id, 'category_id', c.id, t.category_id);
+                                            handleCloseAllDropdowns();
+                                          }}
+                                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                            t.category_id === c.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                          }`}
+                                        >
+                                          <span className="text-base shrink-0 select-none">{c.icon || '📁'}</span>
+                                          <span className="truncate">{c.name}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </td>
+
+                        {/* Conta Bancária */}
+                        <td className="px-4 py-3 relative">
+                          {(() => {
+                            const currentAcc = accounts.find(a => a.id === t.account_id);
+                            const isOpenDropdown = activeAccountDropdownTxId === t.id;
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    if (isOpenDropdown) {
+                                      handleCloseAllDropdowns();
+                                    } else {
+                                      handleOpenDropdown(e, 'account', t.id);
+                                    }
+                                  }}
+                                  className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100/70 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition-all gap-1.5 border border-transparent hover:border-slate-200/50"
+                                >
+                                  <span className="flex items-center gap-2.5 truncate">
+                                    <AccountIcon account={currentAcc} />
+                                    <div className="flex flex-col min-w-0 text-left">
+                                      <span className="truncate text-slate-700 font-bold text-xs leading-tight">
+                                        {currentAcc?.name || 'Sem Conta'}
+                                      </span>
+                                      {currentAcc && (
+                                        <span className="text-[8px] text-slate-400 font-semibold leading-none mt-0.5">
+                                          {getAccountTypeLabel(currentAcc.type)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </span>
+                                  <ChevronDown size={12} className="text-slate-400 shrink-0" />
+                                </button>
+                                
+                                {isOpenDropdown && dropdownCoords && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={handleCloseAllDropdowns} />
+                                    <div 
+                                      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto overscroll-contain animate-in fade-in slide-in-from-top-1 duration-150"
+                                      style={{ 
+                                        top: `${dropdownCoords.top}px`, 
+                                        left: `${dropdownCoords.left}px` 
+                                      }}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateField(t.id, 'account_id', null, t.account_id);
+                                          handleCloseAllDropdowns();
+                                        }}
+                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                      >
+                                        <div className="w-5 h-5 rounded flex items-center justify-center border border-slate-200 bg-slate-50 text-slate-400 shrink-0">
+                                          <Landmark size={12} />
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <span className="leading-tight font-semibold">Sem Conta</span>
+                                          <span className="text-[8px] text-slate-300 font-medium">Nenhuma conta selecionada</span>
+                                        </div>
+                                      </button>
+                                      
+                                      {accounts.map(a => (
+                                        <button
+                                          key={a.id}
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateField(t.id, 'account_id', a.id, t.account_id);
+                                            handleCloseAllDropdowns();
+                                          }}
+                                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                            t.account_id === a.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                          }`}
+                                        >
+                                          <AccountIcon account={a} />
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="truncate font-semibold leading-tight">{a.name}</span>
+                                            <span className="text-[8px] text-slate-400 mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </td>
+
+                        {/* Tags */}
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {t.tags?.map(tt => (
+                              <span
+                                key={tt.tag.id}
+                                className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border text-white shadow-sm flex items-center gap-0.5"
+                                style={{ backgroundColor: tt.tag.color || '#20B2AA', borderColor: tt.tag.color || '#20B2AA' }}
+                              >
+                                {tt.tag.name}
+                                <button
+                                  onClick={() => handleRemoveTag(t.id, tt.tag.id)}
+                                  className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                                >
+                                  <X size={8} />
+                                </button>
+                              </span>
+                            ))}
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddTag(t.id, e.target.value);
+                                }
+                              }}
+                              className="bg-slate-100 hover:bg-slate-200 rounded px-1 py-0.5 text-[9px] font-black text-slate-500 border border-transparent cursor-pointer w-[42px] h-[20px] outline-none"
+                            >
+                              <option value="" disabled>+</option>
+                              {availableTags
+                                .filter(tag => !t.tags?.some(tt => tt.tag.id === tag.id))
+                                .map(tag => (
+                                  <option key={tag.id} value={tag.id}>{tag.name}</option>
+                                ))
+                              }
+                            </select>
+                          </div>
+                        </td>
+
+                        {/* Valor */}
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <span className={`text-sm font-black font-manrope ${
                             isIncome ? 'text-emerald-600' : 'text-rose-600'
                           }`}>
                             {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
                           </span>
                         </td>
+
+                        {/* Ação */}
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          {t.status === 'pending' ? (
+                            <button
+                              onClick={() => handleAcceptTransaction(t)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 transition-all duration-150 active:scale-95 uppercase tracking-wider"
+                            >
+                              <Check size={10} className="stroke-[3]" />
+                              Aceitar
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase tracking-wide">
+                              <Check size={10} className="stroke-[3]" />
+                              Aceito
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
+                  
+                  {/* Linha espaçadora transparente para expandir a altura do tbody quando o dropdown estiver aberto */}
+                  {(activeCategoryDropdownTxId || activeAccountDropdownTxId || isLoteCategoryDropdownOpen || isLoteAccountDropdownOpen) && (
+                    <tr className="h-56 select-none pointer-events-none border-none">
+                      <td colSpan={7} className="border-none bg-transparent h-56"></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           )}
         </div>
+
+        {/* Modal Footer (Aceitar Todos em Lote Fixo) */}
+        {pendingTxsInMonth.length > 0 && (
+          <div className="bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between shrink-0 animate-in slide-in-from-bottom duration-300">
+            <div className="text-xs font-bold text-slate-400">
+              Restam <span className="text-amber-600 font-black">{pendingTxsInMonth.length}</span> lançamentos pendentes para aceitar neste mês.
+            </div>
+            <button
+              onClick={handleAcceptAllPendingInMonth}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 uppercase tracking-wider"
+            >
+              <Check size={14} className="stroke-[3]" />
+              Aceitar Todos do Mês
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

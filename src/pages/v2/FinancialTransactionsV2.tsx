@@ -103,6 +103,15 @@ const FinancialTransactionsV2 = () => {
   const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<any | null>(null);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
+  // Estado para confirmação de exclusão de lançamentos únicos
+  const [deleteConfirmModalConfig, setDeleteConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    transaction: TransactionInstance | null;
+  }>({
+    isOpen: false,
+    transaction: null,
+  });
+
   const today = new Date();
 
   const fetchTransactions = async () => {
@@ -141,7 +150,7 @@ const FinancialTransactionsV2 = () => {
       const { data, error } = await supabase
         .from('financial_accounts')
         .select('*')
-        .in('type', ['checking', 'investment'])
+        .in('type', ['checking', 'investment', 'savings'])
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('name');
@@ -150,7 +159,7 @@ const FinancialTransactionsV2 = () => {
       const fetchedAccounts = data || [];
       setAccounts(fetchedAccounts);
 
-      const saved = localStorage.getItem('recebimento_smart_selected_accounts');
+      const saved = localStorage.getItem(`recebimento_smart_selected_accounts_${user.id}`);
       let usedSaved = false;
       if (saved) {
         try {
@@ -209,16 +218,20 @@ const FinancialTransactionsV2 = () => {
   };
 
   useEffect(() => {
+    setSelectedAccountIds(new Set());
+    setAccounts([]);
+    setTransactions([]);
+    setCreditCardAccounts([]);
     fetchTransactions();
     fetchAccounts();
     fetchCreditCardAccounts();
   }, [user]);
 
   useEffect(() => {
-    if (selectedAccountIds.size > 0 || accounts.length > 0) {
-      localStorage.setItem('recebimento_smart_selected_accounts', JSON.stringify(Array.from(selectedAccountIds)));
+    if (user && (selectedAccountIds.size > 0 || accounts.length > 0)) {
+      localStorage.setItem(`recebimento_smart_selected_accounts_${user.id}`, JSON.stringify(Array.from(selectedAccountIds)));
     }
-  }, [selectedAccountIds, accounts.length]);
+  }, [selectedAccountIds, accounts.length, user]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -402,12 +415,21 @@ const FinancialTransactionsV2 = () => {
     setOpenDropdown(null);
   };
 
-  const handleDelete = async (t: TransactionInstance, scope: 'this' | 'following' | 'all' = 'this') => {
+  const handleDelete = async (t: TransactionInstance, scope: 'this' | 'following' | 'all' = 'this', confirmOverride = false) => {
     const isRecurring = t.modalidade === 'recorrente' || t.modalidade === 'parcelada' || !!t.parent_id || t.recurrence_enabled;
     
     if (isRecurring && !isDeleteScopeModalOpen && scope === 'this') {
       setItemToDelete(t);
       setIsDeleteScopeModalOpen(true);
+      setOpenDropdown(null);
+      return;
+    }
+
+    if (!isRecurring && !confirmOverride) {
+      setDeleteConfirmModalConfig({
+        isOpen: true,
+        transaction: t
+      });
       setOpenDropdown(null);
       return;
     }
@@ -427,6 +449,7 @@ const FinancialTransactionsV2 = () => {
       setIsDeleteScopeModalOpen(false);
       setItemToDelete(null);
       setOpenDropdown(null);
+      setDeleteConfirmModalConfig({ isOpen: false, transaction: null });
     }
   };
 
@@ -681,6 +704,16 @@ const FinancialTransactionsV2 = () => {
 
     // Combine and sort ALL transactions BEFORE calculating running balance
     const combined = [...filtered, ...filteredInvoices].sort((a, b) => {
+      // Ordenação prioritária: lançamentos atrasados (overdue) sempre no topo
+      const aStatus = getVisualStatus(a);
+      const bStatus = getVisualStatus(b);
+      const aIsOverdue = aStatus === 'overdue';
+      const bIsOverdue = bStatus === 'overdue';
+
+      if (aIsOverdue && !bIsOverdue) return -1;
+      if (!aIsOverdue && bIsOverdue) return 1;
+
+      // Se ambos forem atrasados ou nenhum for atrasado, segue a ordenação normal
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
 
@@ -745,28 +778,30 @@ const FinancialTransactionsV2 = () => {
   const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
 
   const SidebarContent = () => (
-    <div className="space-y-4 h-full pb-6">
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
-        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all active:scale-90">
-          <ChevronLeft size={22} className="text-slate-600" />
+    <div className="space-y-2 h-full pb-2">
+      {/* Mês de Referência */}
+      <div className="bg-white py-1.5 px-3 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-slate-100 rounded-lg transition-all active:scale-90">
+          <ChevronLeft size={16} className="text-slate-600" />
         </button>
         <div className="text-center">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Mês de Referência</span>
-          <h2 className="text-xl font-black text-slate-800 capitalize font-manrope">{monthLabel}</h2>
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-0.5">Mês de Referência</span>
+          <h2 className="text-base font-black text-slate-800 capitalize font-manrope">{monthLabel}</h2>
         </div>
-        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all active:scale-90">
-          <ChevronRight size={22} className="text-slate-600" />
+        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-slate-100 rounded-lg transition-all active:scale-90">
+          <ChevronRight size={16} className="text-slate-600" />
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-xs font-extrabold uppercase tracking-widest text-slate-400">
+      {/* Seção de Contas */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="py-1.5 px-3 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
           <span>Contas</span>
           <span>Saldo</span>
         </div>
-        <div className="divide-y divide-slate-50 max-h-[300px] overflow-y-auto">
+        <div className="divide-y divide-slate-50 max-h-[160px] overflow-y-auto no-scrollbar">
           {accountsData.map((acc) => (
-            <div key={acc.id} className="p-3 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+            <div key={acc.id} className="py-1 px-3 flex items-center gap-2 hover:bg-slate-50 transition-colors">
               <input 
                 type="checkbox"
                 checked={selectedAccountIds.has(acc.id)}
@@ -775,48 +810,61 @@ const FinancialTransactionsV2 = () => {
                   if (next.has(acc.id)) next.delete(acc.id); else next.add(acc.id);
                   setSelectedAccountIds(next);
                 }}
-                className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 cursor-pointer"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-700 truncate">{acc.name}</p>
-                <p className="text-[10px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : 'Inv.'}</p>
+                <p className="text-[11px] font-bold text-slate-700 truncate">{acc.name}</p>
+                <p className="text-[8px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : acc.type === 'savings' ? 'Poupança' : 'Inv.'}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
-                <p className="text-[10px] font-bold text-slate-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
+                <p className="text-[11px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
+                <p className="text-[8px] font-bold text-slate-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
               </div>
             </div>
           ))}
         </div>
-        <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-          <div className="flex flex-col"><span className="text-[10px] font-black opacity-40 uppercase">Total</span></div>
+        <div className="py-1.5 px-3 bg-slate-900 text-white flex justify-between items-center">
+          <div className="flex flex-col"><span className="text-[8px] font-black opacity-40 uppercase">Total</span></div>
           <div className="text-right">
-            <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
-            <p className="text-[10px] font-bold opacity-70">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
+            <p className="text-sm font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
+            <p className="text-[8px] font-bold opacity-70">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-5 rounded-[2.5rem] text-white space-y-6 relative overflow-hidden group">
-        <div className="space-y-4 relative z-10">
-          <div className="flex items-center justify-between opacity-90 border-b border-white/10 pb-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.25em]">Resumo Mensal</span>
-            <Filter size={16} className="text-white/50" />
+      {/* Resumo Mensal */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-3 rounded-xl text-white space-y-3 relative overflow-hidden group border border-slate-800 shadow-xl">
+        <div className="absolute -right-10 -top-10 w-24 h-24 bg-teal-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/15 transition-all duration-500" />
+        <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="space-y-2 relative z-10">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-slate-300">Resumo Mensal</span>
+            <Filter size={10} className="text-slate-500" />
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <span className="text-[10px] uppercase font-black text-white/50">Ganhos</span>
-              <p className="text-lg font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
+          
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
+              <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Ganhos</span>
+              <p className="text-[11px] font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income + totals.transfersIn)}</p>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-black text-white/50">Gastos</span>
-              <p className="text-lg font-black">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
+            <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
+              <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Gastos</span>
+              <p className="text-[11px] font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense + totals.transfersOut)}</p>
             </div>
           </div>
         </div>
-        <div className="pt-6 border-t border-white/20 relative z-10">
-          <span className="text-[10px] font-black uppercase text-white/50">Líquido</span>
-          <p className="text-4xl font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.result)}</p>
+
+        <div className="pt-2 border-t border-slate-800 flex flex-col gap-0.5 relative z-10">
+          <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Resultado Líquido</span>
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <p className={`text-lg font-black tracking-tight ${totals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.result)}
+            </p>
+            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md ${totals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+              {totals.result >= 0 ? 'Superávit' : 'Déficit'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -825,9 +873,9 @@ const FinancialTransactionsV2 = () => {
   return (
     <div className="bg-slate-50 min-h-screen flex flex-col">
       {/* ===== MOBILE LAYOUT ===== */}
-      <div className="lg:hidden flex flex-col min-h-screen">
+      <div className="xl:hidden flex flex-col min-h-screen">
         {/* Mobile Header: Resumo + Busca + Criar */}
-        <div className="sticky top-0 z-30 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+        <div className="sticky top-[57px] z-20 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Linha 1: Hamburger Resumo + Saldo + Botão Criar */}
           <div className="flex items-center justify-between">
             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2">
@@ -1034,12 +1082,12 @@ const FinancialTransactionsV2 = () => {
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-[200] lg:hidden">
+        <div className="fixed inset-0 z-[200] xl:hidden">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[300px] bg-slate-50 p-6 overflow-y-auto animate-in slide-in-from-left">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black">Resumo</h2>
-              <button onClick={() => setIsSidebarOpen(false)} className="p-2"><ChevronLeft size={24} /></button>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px] bg-slate-50 p-4 overflow-y-auto no-scrollbar animate-in slide-in-from-left">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-black text-slate-800">Resumo</h2>
+              <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 text-slate-500 hover:text-slate-700 transition-colors"><ChevronLeft size={20} /></button>
             </div>
             <SidebarContent />
           </div>
@@ -1047,9 +1095,9 @@ const FinancialTransactionsV2 = () => {
       )}
 
       {/* ===== DESKTOP LAYOUT ===== */}
-      <div className="hidden lg:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
+      <div className="hidden xl:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
         {/* Sidebar - Fixa */}
-        <aside className="w-[360px] flex-shrink-0 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto no-scrollbar">
+        <aside className="w-[360px] flex-shrink-0 sticky top-[80px] max-h-[calc(100vh-120px)] overflow-y-auto no-scrollbar">
           <SidebarContent />
         </aside>
 
@@ -1305,6 +1353,39 @@ const FinancialTransactionsV2 = () => {
           type="delete"
           modalidade={(itemToDelete as any).modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
         />
+      )}
+
+      {/* Modal de confirmação premium de exclusão de lançamentos únicos */}
+      {deleteConfirmModalConfig.isOpen && deleteConfirmModalConfig.transaction && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-600 mb-4">
+              <div className="p-3 bg-rose-50 rounded-2xl">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">Excluir Lançamento</h3>
+            </div>
+            
+            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+              Tem certeza que deseja excluir o lançamento <strong className="text-slate-800 font-extrabold">"{deleteConfirmModalConfig.transaction.description}"</strong> de valor <strong className="text-rose-600 font-extrabold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(deleteConfirmModalConfig.transaction.amount)}</strong>? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
+              <button
+                onClick={() => setDeleteConfirmModalConfig({ isOpen: false, transaction: null })}
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmModalConfig.transaction!, 'this', true)}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold shadow-lg shadow-rose-500/30 transition-colors text-xs"
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

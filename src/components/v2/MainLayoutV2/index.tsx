@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { AdBanner } from '../AdBanner';
+import { supabase } from '../../../lib/supabase';
 import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
@@ -33,6 +34,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
+            { label: 'Lançamentos Compartilhados', icon: Share2, href: '/v2/compartilhado' },
         ],
     },
     {
@@ -82,12 +84,146 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const userName = displayUser?.user_metadata?.name || displayUser?.email || 'Usuário';
     const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['Cadastros']); // Cadastro aberto por padrão
+    const [pendingCount, setPendingCount] = useState(0);
+    const [displayedCount, setDisplayedCount] = useState(0);
+    const [animationKey, setAnimationKey] = useState(0);
 
-    // Fechar o menu mobile sempre que a rota mudar
+    // Função para sintetizar um som de notificação sutil e harmônico via Web Audio API
+    const playNotificationChime = () => {
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContextClass) return;
+            
+            const ctx = new AudioContextClass();
+            
+            // Acorde consonante sutil: Sol5 (783.99 Hz) e Dó6 (1046.50 Hz)
+            const frequencies = [783.99, 1046.50];
+            const duration = 0.35; // 350ms
+            
+            frequencies.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                
+                const now = ctx.currentTime;
+                // Envelope suave e rápido
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(idx === 0 ? 0.12 : 0.08, now + 0.015);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                
+                osc.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + duration);
+            });
+        } catch (e) {
+            console.warn('Web Audio API não inicializada ou bloqueada pelo navegador:', e);
+        }
+    };
+
+    // Função para contar notificações pendentes
+    const fetchPendingCount = async () => {
+        if (!user) return;
+        try {
+            // 1. Contar compartilhamentos de clientes pendentes (onde o e-mail do cliente é igual ao e-mail do usuário)
+            const { count: clientSharesCount } = await supabase
+                .from('client_shares')
+                .select('*', { count: 'exact', head: true })
+                .eq('receiver_email', user.email?.toLowerCase())
+                .eq('status', 'pending');
+
+            // 2. Contar lançamentos compartilhados pendentes de aceitação (onde user_id é o logado, shared_by_user_id não é nulo e status é pending)
+            const { count: newTransCount } = await supabase
+                .from('financial_transactions')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .not('shared_by_user_id', 'is', null)
+                .eq('status', 'pending');
+
+            // 3. Contar atualizações de transações pendentes (onde receiver_id é o logado e status é pending)
+            const { count: updatesCount } = await supabase
+                .from('shared_transaction_updates')
+                .select('*', { count: 'exact', head: true })
+                .eq('receiver_id', user.id)
+                .eq('status', 'pending');
+
+            const total = (clientSharesCount || 0) + (newTransCount || 0) + (updatesCount || 0);
+            setPendingCount(total);
+        } catch (err) {
+            console.error('Erro ao buscar notificações pendentes:', err);
+        }
+    };
+
+    // Efeito para gerenciar a animação premium do badge ao mudar o contador
     useEffect(() => {
-        setIsMobileMenuOpen(false);
+        if (pendingCount !== displayedCount) {
+            // Tocar som de chime de notificação se o número de pendentes aumentou
+            if (pendingCount > displayedCount) {
+                playNotificationChime();
+            }
+
+            if (displayedCount === 0) {
+                // Se o badge estava oculto, exibe imediatamente com a animação de explosão
+                setDisplayedCount(pendingCount);
+                setAnimationKey(prev => prev + 1);
+            } else if (pendingCount === 0) {
+                // Se zerou, dispara animação para encolher (scale-0) e depois oculta
+                setAnimationKey(prev => prev + 1);
+                const timer = setTimeout(() => {
+                    setDisplayedCount(0);
+                }, 500);
+                return () => clearTimeout(timer);
+            } else {
+                // Se alterou de um valor maior que zero para outro maior que zero:
+                // Dispara a animação (fazendo encolher)
+                setAnimationKey(prev => prev + 1);
+                // No momento em que está no scale-0 (100ms), troca o número silenciosamente
+                const timer = setTimeout(() => {
+                    setDisplayedCount(pendingCount);
+                }, 100);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [pendingCount, displayedCount]);
+
+    // Subscrição em tempo real para as tabelas relevantes
+    useEffect(() => {
+        if (!user) return;
+
+        fetchPendingCount();
+
+        const channel = supabase
+            .channel('shared_notifications')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'client_shares' },
+                () => fetchPendingCount()
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'financial_transactions' },
+                () => fetchPendingCount()
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'shared_transaction_updates' },
+                () => fetchPendingCount()
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user]);
+
+    // Fechar a sidebar sempre que a rota mudar
+    useEffect(() => {
+        setIsSidebarOpen(false);
     }, [location.pathname]);
 
     const handleSignOut = async () => {
@@ -132,6 +268,8 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             );
         }
 
+        const hasBadge = item.href === '/v2/compartilhado' && displayedCount > 0;
+
         return (
             <Link
                 key={item.href + item.label}
@@ -142,7 +280,15 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     }`}
             >
                 <item.icon size={level === 1 ? 20 : 18} />
-                <span className={level === 1 ? '' : 'text-sm'}>{item.label}</span>
+                <span className={level === 1 ? 'flex-1' : 'text-sm flex-1'}>{item.label}</span>
+                {hasBadge && (
+                    <span
+                        key={animationKey}
+                        className="animate-pop-badge bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center justify-center min-w-[20px] h-[20px]"
+                    >
+                        {displayedCount}
+                    </span>
+                )}
             </Link>
         );
     };
@@ -159,30 +305,27 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 }}
             />
 
-            {/* Overlay para fechar o menu mobile ao clicar fora */}
-            {isMobileMenuOpen && (
+            {/* Overlay para fechar a sidebar ao clicar fora */}
+            {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* ─── Sidebar ─── */}
-            <aside className={`bg-[#0f172a] text-slate-300 flex flex-col fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none`}>
+            <aside className={`bg-[#0f172a] text-slate-300 flex flex-col fixed inset-y-0 left-0 z-50 w-64 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out shadow-2xl`}>
                 {/* Logo */}
                 <div className="p-6 flex items-center gap-3">
                     <div className="bg-white p-1.5 rounded-lg">
                         <img src="/images/logo.svg" alt="Recebimento $mart" className="h-6 w-6" />
                     </div>
-                    <span className="text-white font-bold text-xl tracking-tight hidden md:block">
+                    <span className="text-white font-bold text-xl tracking-tight">
                         Recebimento <span className="text-[#14b8a6]">$mart</span>
                     </span>
-                    <span className="text-white font-bold text-xl tracking-tight md:hidden">
-                        Menu
-                    </span>
                     <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="ml-auto md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                     >
                         <X size={20} />
                     </button>
@@ -238,10 +381,25 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             </aside>
 
             {/* ─── Main Content ─── */}
-            <div className="flex-1 flex flex-col min-h-screen ml-0 md:ml-64 w-full transition-all duration-300">
+            <div className="flex-1 flex flex-col min-h-screen ml-0 w-full transition-all duration-300">
 
-                {/* Header Mobile (Visível apenas em telas pequenas) */}
-                <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+                {/* Header Superior (Sempre visível para permitir abrir o menu lateral colapsado) */}
+                <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3 shadow-sm justify-start">
+                    {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
+                    >
+                        <Menu size={24} />
+                        {displayedCount > 0 && (
+                            <span 
+                                key={animationKey}
+                                className="absolute -top-1.5 -right-1.5 animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm"
+                            >
+                                {displayedCount}
+                            </span>
+                        )}
+                    </button>
                     <div className="flex items-center gap-2">
                         <div className="bg-[#0f172a] p-1.5 rounded-md">
                             <img src="/images/logo.svg" alt="Logo" className="w-5 h-5" />
@@ -250,29 +408,22 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             Recebimento <span className="text-[#14b8a6]">$mart</span>
                         </span>
                     </div>
-                    {/* Aqui está o menu sanduíche mantido no lado superior direito, conforme solicitado */}
-                    <button
-                        onClick={() => setIsMobileMenuOpen(true)}
-                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none"
-                    >
-                        <Menu size={24} />
-                    </button>
                 </header>
 
                 <main className="flex-1 flex flex-col">
                     {originalUser && (
-                        <div className="bg-amber-500 text-white px-4 md:px-6 py-3 flex items-center justify-between shadow-sm z-20 sticky top-0 md:top-0">
-                            <div className="flex items-center gap-3 text-sm font-medium">
-                                <Eye size={20} />
+                        <div className="bg-amber-500 text-white px-4 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-3 shadow-sm z-20 sticky top-[57px] md:top-[64px]">
+                            <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm font-medium">
+                                <Eye size={18} className="flex-shrink-0" />
                                 <span>
-                                    Você está visualizando a plataforma como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
+                                    Você está visualizando como <strong>{user?.user_metadata?.name || user?.email || 'Usuário'}</strong> ({user?.email}).
                                 </span>
                             </div>
                             <button
                                 onClick={stopImpersonating}
-                                className="bg-amber-700 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm hidden md:block"
+                                className="bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 md:px-4 rounded-lg text-xs md:text-sm font-bold transition-colors shadow-sm whitespace-nowrap flex-shrink-0"
                             >
-                                Encerrar Visualização
+                                Sair
                             </button>
                         </div>
                     )}

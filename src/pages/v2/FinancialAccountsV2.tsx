@@ -403,10 +403,10 @@ const FinancialAccountsV2 = () => {
                     </div>
                 </div>
                 <div className="flex gap-1 shrink-0 transition-all">
-                  <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100" title="Editar">
+                  <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => setAccountToDeleteId(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100" title="Excluir">
+                  <button onClick={() => setAccountToDeleteId(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Excluir">
                     <Trash2 size={15} />
                   </button>
                 </div>

@@ -136,9 +136,9 @@ const FinancialTransactionModalV2 = ({
   const [scopeType, setScopeType] = useState<'edit' | 'delete'>('edit');
   const [tempFormData, setTempFormData] = useState<any>(null);
   const [periodicidade, setPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
-  const [startInstallment, setStartInstallment] = useState(1);
+  const [startInstallment, setStartInstallment] = useState<string>('1');
   const [isTotalValue, setIsTotalValue] = useState(false);
-  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [recurrenceInterval, setRecurrenceInterval] = useState<string>('1');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -175,6 +175,10 @@ const FinancialTransactionModalV2 = ({
   const [openTagUpward, setOpenTagUpward] = useState(false);
   const [openAccountUpward, setOpenAccountUpward] = useState(false);
   const [openDestAccountUpward, setOpenDestAccountUpward] = useState(false);
+  const [categoryMaxHeight, setCategoryMaxHeight] = useState(260);
+  const [accountMaxHeight, setAccountMaxHeight] = useState(280);
+  const [destAccountMaxHeight, setDestAccountMaxHeight] = useState(280);
+  const [tagMaxHeight, setTagMaxHeight] = useState(210);
   const [accountSearch, setAccountSearch] = useState('');
   const [destAccountSearch, setDestAccountSearch] = useState('');
 
@@ -193,7 +197,13 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenCategoryUpward(bottomSpace < 280);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
+      setOpenCategoryUpward(shouldOpenUpward);
+      setCategoryMaxHeight(Math.max(150, Math.min(260, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isCategoryDropdownOpen]);
 
@@ -204,7 +214,13 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenTagUpward(bottomSpace < 210);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 100 && topSpace > 250;
+      setOpenTagUpward(shouldOpenUpward);
+      setTagMaxHeight(Math.max(120, Math.min(210, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isTagDropdownOpen]);
 
@@ -215,7 +231,13 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenAccountUpward(bottomSpace < 280);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
+      setOpenAccountUpward(shouldOpenUpward);
+      setAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isAccountDropdownOpen]);
 
@@ -226,7 +248,13 @@ const FinancialTransactionModalV2 = ({
       const bottomSpace = scrollContainer 
         ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
         : window.innerHeight - rect.bottom;
-      setOpenDestAccountUpward(bottomSpace < 280);
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      // Abre para cima apenas em casos extremos de falta de espaço inferior
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
+      setOpenDestAccountUpward(shouldOpenUpward);
+      setDestAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isDestAccountDropdownOpen]);
 
@@ -297,6 +325,16 @@ const FinancialTransactionModalV2 = ({
       if (transaction.card_holder_name) {
         setCardHolderName(transaction.card_holder_name);
       }
+      setIsTotalValue((transaction as any).is_total_value || false);
+      if ((transaction as any).installment_total) {
+        setInstallmentTotal(String((transaction as any).installment_total));
+      }
+      if ((transaction as any).start_installment) {
+        setStartInstallment(String((transaction as any).start_installment));
+      }
+      if ((transaction as any).recurrence_interval) {
+        setRecurrenceInterval(String((transaction as any).recurrence_interval));
+      }
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);
@@ -334,9 +372,9 @@ const FinancialTransactionModalV2 = ({
       setModalidade('unica');
       setDueDay(new Date().getDate());
       setPeriodicidade('mensal');
-      setStartInstallment(1);
+      setStartInstallment('1');
       setIsTotalValue(false);
-      setRecurrenceInterval(1);
+      setRecurrenceInterval('1');
     }
   }, [isOpen, transaction, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate]);
 
@@ -366,6 +404,7 @@ const FinancialTransactionModalV2 = ({
       .from('clients')
       .select('id, name')
       .eq('user_id', user?.id || '')
+      .is('deleted_at', null)
       .order('name');
     if (data) setClients(data);
   };
@@ -601,12 +640,12 @@ const FinancialTransactionModalV2 = ({
         account_id: accountId || undefined,
         destination_account_id: type === 'transfer' ? (destinationAccountId || undefined) : undefined,
         modalidade,
-        installment_total: modalidade === 'parcelada' ? parseInt(installmentTotal) : undefined,
+        installment_total: modalidade === 'parcelada' ? (parseInt(installmentTotal) || 2) : undefined,
         recurrence_period: (modalidade === 'parcelada' || modalidade === 'recorrente') ? mappedRecurrencePeriod : undefined,
-        start_installment: modalidade === 'parcelada' ? startInstallment : undefined,
+        start_installment: modalidade === 'parcelada' ? (parseInt(startInstallment) || 1) : undefined,
         is_total_value: modalidade === 'parcelada' ? isTotalValue : undefined,
         due_day: modalidade === 'recorrente' ? dueDay : undefined,
-        recurrence_interval: modalidade === 'recorrente' ? recurrenceInterval : undefined,
+        recurrence_interval: modalidade === 'recorrente' ? (parseInt(recurrenceInterval) || 1) : undefined,
         auto_confirm: isCreditCard ? false : autoConfirm,
         invoice_month: isCreditCard ? invoiceMonth : undefined,
         card_holder_name: isCreditCard && cardHolderName ? cardHolderName : undefined,
@@ -905,27 +944,98 @@ const FinancialTransactionModalV2 = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Parcelas</label>
-                          <input 
-                            type="number"
-                            min="2"
-                            value={installmentTotal}
-                            onChange={(e) => setInstallmentTotal(e.target.value)}
-                            placeholder="Ex: 12"
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-teal-500/20 focus:outline-none text-center"
-                          />
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Total Parcelas</label>
+                          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(installmentTotal) || 2;
+                                if (val > 2) {
+                                  setInstallmentTotal(String(val - 1));
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              -
+                            </button>
+                            <input 
+                              type="number"
+                              min="2"
+                              value={installmentTotal}
+                              onChange={(e) => setInstallmentTotal(e.target.value)}
+                              onBlur={() => {
+                                const val = parseInt(installmentTotal);
+                                if (isNaN(val) || val < 2) {
+                                  setInstallmentTotal('2');
+                                } else {
+                                  setInstallmentTotal(String(val));
+                                }
+                              }}
+                              placeholder="Ex: 12"
+                              className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(installmentTotal) || 2;
+                                setInstallmentTotal(String(val + 1));
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Parc. Inicial</label>
-                          <input 
-                            type="number"
-                            min="1"
-                            max={parseInt(installmentTotal) || 1}
-                            value={startInstallment}
-                            onChange={(e) => setStartInstallment(parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-teal-500/20 focus:outline-none text-center"
-                          />
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Parc. Inicial</label>
+                          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(startInstallment) || 1;
+                                if (val > 1) {
+                                  setStartInstallment(String(val - 1));
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              -
+                            </button>
+                            <input 
+                              type="number"
+                              min="1"
+                              max={parseInt(installmentTotal) || 1}
+                              value={startInstallment}
+                              onChange={(e) => setStartInstallment(e.target.value)}
+                              onBlur={() => {
+                                const val = parseInt(startInstallment);
+                                const maxVal = parseInt(installmentTotal) || 1;
+                                if (isNaN(val) || val < 1) {
+                                  setStartInstallment('1');
+                                } else if (val > maxVal) {
+                                  setStartInstallment(String(maxVal));
+                                } else {
+                                  setStartInstallment(String(val));
+                                }
+                              }}
+                              placeholder="Ex: 1"
+                              className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = parseInt(startInstallment) || 1;
+                                const maxVal = parseInt(installmentTotal) || 1;
+                                if (val < maxVal) {
+                                  setStartInstallment(String(val + 1));
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -938,9 +1048,9 @@ const FinancialTransactionModalV2 = ({
                             <button
                               type="button"
                               onClick={() => setIsTotalValue(!isTotalValue)}
-                              className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
+                              className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${isTotalValue ? 'bg-teal-600' : 'bg-slate-300'}`}
                             >
-                              <div className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-4.5' : 'translate-x-0'}`} />
+                              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${isTotalValue ? 'translate-x-5' : 'translate-x-0'}`} />
                             </button>
                             <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isTotalValue ? 'text-teal-600' : 'text-slate-400'}`}>Total</span>
                           </div>
@@ -979,18 +1089,49 @@ const FinancialTransactionModalV2 = ({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block text-center">
                           Repetir a cada
                         </label>
-                        <div className="relative flex items-center">
+                        <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 relative">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = parseInt(recurrenceInterval) || 1;
+                              if (val > 1) {
+                                setRecurrenceInterval(String(val - 1));
+                              }
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none"
+                          >
+                            -
+                          </button>
                           <input 
                             type="number"
                             min="1"
                             value={recurrenceInterval}
-                            onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-teal-500/20 focus:outline-none text-center pr-12"
+                            onChange={(e) => setRecurrenceInterval(e.target.value)}
+                            onBlur={() => {
+                              const val = parseInt(recurrenceInterval);
+                              if (isNaN(val) || val < 1) {
+                                setRecurrenceInterval('1');
+                              } else {
+                                setRecurrenceInterval(String(val));
+                              }
+                            }}
+                            placeholder="Ex: 1"
+                            className="w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="absolute right-3 text-[10px] font-bold text-slate-400 pointer-events-none uppercase">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = parseInt(recurrenceInterval) || 1;
+                              setRecurrenceInterval(String(val + 1));
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 font-bold active:scale-90 transition-all text-sm select-none mr-12"
+                          >
+                            +
+                          </button>
+                          <span className="absolute right-3 text-[9px] font-bold text-slate-400 pointer-events-none uppercase">
                             {periodicidade === 'diaria' ? 'Dias' : periodicidade === 'semanal' ? 'Sem' : periodicidade === 'anual' ? 'Anos' : 'Meses'}
                           </span>
                         </div>
@@ -1041,7 +1182,10 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => setIsAccountDropdownOpen(false)} 
                         />
-                        <div className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto`}>
+                        <div 
+                          className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                          style={{ maxHeight: `${accountMaxHeight}px` }}
+                        >
                           {accounts.filter(a => a.id !== destinationAccountId).map(a => (
                             <button
                               key={a.id}
@@ -1113,7 +1257,10 @@ const FinancialTransactionModalV2 = ({
                             className="fixed inset-0 z-20" 
                             onClick={() => setIsDestAccountDropdownOpen(false)} 
                           />
-                          <div className={`absolute z-30 ${openDestAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto`}>
+                          <div 
+                            className={`absolute z-30 ${openDestAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                            style={{ maxHeight: `${destAccountMaxHeight}px` }}
+                          >
                             {accounts.filter(a => a.id !== accountId).map(a => (
                               <button
                                 key={a.id}
@@ -1183,7 +1330,10 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
                         />
-                        <div className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col max-h-[260px]`}>
+                        <div 
+                          className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col`}
+                          style={{ maxHeight: `${categoryMaxHeight}px` }}
+                        >
                           {/* Campo de busca de categoria */}
                           <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
                             <Search size={14} className="text-slate-400 shrink-0 ml-2" />
@@ -1402,7 +1552,10 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => { setIsTagDropdownOpen(false); setTagSearch(''); }} 
                         />
-                        <div className={`absolute z-30 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto`}>
+                        <div 
+                          className={`absolute z-30 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                          style={{ maxHeight: `${tagMaxHeight}px` }}
+                        >
                           {tags
                             .filter(t => !selectedTags.includes(t.id))
                             .filter(t => !tagSearch.trim() || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
