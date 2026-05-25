@@ -93,6 +93,10 @@ export default function ClientStatementModalV2({
   
   const [activeCategoryDropdownTxId, setActiveCategoryDropdownTxId] = useState<string | null>(null);
   const [activeAccountDropdownTxId, setActiveAccountDropdownTxId] = useState<string | null>(null);
+  const [loteCategory, setLoteCategory] = useState<string>('');
+  const [loteAccount, setLoteAccount] = useState<string>('');
+  const [isLoteCategoryDropdownOpen, setIsLoteCategoryDropdownOpen] = useState(false);
+  const [isLoteAccountDropdownOpen, setIsLoteAccountDropdownOpen] = useState(false);
 
   const getAccountTypeIcon = (type: string) => {
     switch (type) {
@@ -222,12 +226,21 @@ export default function ClientStatementModalV2({
     }
   };
 
-  const handleAcceptTransaction = async (txId: string) => {
+  const handleAcceptTransaction = async (tx: FinancialTransaction) => {
+    if (!tx.category_id || !tx.account_id) {
+      toast.error("Associe uma categoria e uma conta antes de aceitar este lançamento.");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('financial_transactions')
-        .update({ status: 'paid' })
-        .eq('id', txId);
+        .update({ 
+          status: 'paid',
+          category_id: tx.category_id,
+          account_id: tx.account_id
+        })
+        .eq('id', tx.id);
 
       if (error) throw error;
       toast.success("Lançamento aceito com sucesso!");
@@ -238,20 +251,58 @@ export default function ClientStatementModalV2({
     }
   };
 
-  const handleAcceptAllPendingInMonth = async (pendingIds: string[]) => {
-    try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update({ status: 'paid' })
-        .in('id', pendingIds);
+  const handleAcceptAllPendingInMonth = async () => {
+    const pendingTxs = monthInstances.filter(t => t.status === 'pending');
+    
+    // Validar se todas as transações pendentes têm categoria e conta
+    for (const tx of pendingTxs) {
+      if (!tx.category_id || !tx.account_id) {
+        toast.error(`Associe uma categoria e uma conta para o lançamento "${tx.description || 'Sem descrição'}".`);
+        return;
+      }
+    }
 
-      if (error) throw error;
+    try {
+      const promises = pendingTxs.map(t => 
+        supabase
+          .from('financial_transactions')
+          .update({ 
+            status: 'paid',
+            category_id: t.category_id,
+            account_id: t.account_id
+          })
+          .eq('id', t.id)
+      );
+
+      await Promise.all(promises);
       toast.success("Todos os lançamentos pendentes foram aceitos!");
       fetchStatement();
     } catch (err) {
       console.error('Erro ao aceitar todos os lançamentos:', err);
       toast.error('Erro ao aceitar lançamentos.');
     }
+  };
+
+  const handleGlobalCategoryChange = (catId: string | null) => {
+    setLoteCategory(catId || '');
+    setRawTransactions(prev => prev.map(t => {
+      const inst = monthInstances.find(i => i.id === t.id);
+      if (inst && inst.status === 'pending') {
+        return { ...t, category_id: catId };
+      }
+      return t;
+    }));
+  };
+
+  const handleGlobalAccountChange = (accId: string | null) => {
+    setLoteAccount(accId || '');
+    setRawTransactions(prev => prev.map(t => {
+      const inst = monthInstances.find(i => i.id === t.id);
+      if (inst && inst.status === 'pending') {
+        return { ...t, account_id: accId };
+      }
+      return t;
+    }));
   };
 
   // Atualização inline de campos da transação
@@ -466,17 +517,6 @@ export default function ClientStatementModalV2({
                 <ChevronRight size={16} className="text-slate-600" />
               </button>
             </div>
-
-            {pendingTxsInMonth.length > 0 && (
-              <button
-                onClick={() => handleAcceptAllPendingInMonth(pendingTxsInMonth.map(t => t.id))}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition-all duration-150 active:scale-95 whitespace-nowrap"
-              >
-                <Check size={14} />
-                Aceitar Todos do Mês
-              </button>
-            )}
-
             <button
               onClick={onClose}
               className="p-2 hover:bg-slate-100 active:scale-95 rounded-xl transition-all border border-slate-200/60 bg-white"
@@ -542,9 +582,177 @@ export default function ClientStatementModalV2({
                     <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-44">Conta Bancária</th>
                     <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-48">Tags</th>
                     <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right w-32">Valor</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-center w-28">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
+                  {/* Linha Superior de Preenchimento em Lote */}
+                  {pendingTxsInMonth.length > 0 && (
+                    <tr className="bg-teal-50/20 border-b border-teal-100/50">
+                      {/* Data */}
+                      <td className="px-4 py-3 text-xs font-black text-teal-600 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="animate-pulse">⚡</span> Lote
+                        </span>
+                      </td>
+
+                      {/* Descrição */}
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-black text-teal-800">
+                          Preencher em lote todos os pendentes
+                        </div>
+                        <div className="text-[9px] font-bold text-slate-400">
+                          Aplica categoria e conta para todos os pendentes do mês
+                        </div>
+                      </td>
+
+                      {/* Categoria Global */}
+                      <td className="px-4 py-3 relative">
+                        {(() => {
+                          const currentGlobalCat = categories.find(c => c.id === loteCategory);
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsLoteCategoryDropdownOpen(!isLoteCategoryDropdownOpen);
+                                  setIsLoteAccountDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-2.5 py-2 bg-white/80 hover:bg-white rounded-xl flex items-center justify-between text-xs font-extrabold text-teal-700 border border-teal-100/60 shadow-sm transition-all gap-1.5"
+                              >
+                                <span className="flex items-center gap-2 truncate">
+                                  <span className="text-base shrink-0 select-none">{currentGlobalCat?.icon || '📁'}</span>
+                                  <span className="truncate">{currentGlobalCat?.name || 'Definir Categoria'}</span>
+                                </span>
+                                <ChevronDown size={12} className="text-teal-500 shrink-0" />
+                              </button>
+                              
+                              {isLoteCategoryDropdownOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-20" onClick={() => setIsLoteCategoryDropdownOpen(false)} />
+                                  <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleGlobalCategoryChange(null);
+                                        setIsLoteCategoryDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                    >
+                                      <span className="text-sm shrink-0 select-none">📁</span>
+                                      <span className="leading-tight font-semibold text-slate-400">Limpar Categoria</span>
+                                    </button>
+                                    
+                                    {categories.map(c => (
+                                      <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                          handleGlobalCategoryChange(c.id);
+                                          setIsLoteCategoryDropdownOpen(false);
+                                        }}
+                                        className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                          loteCategory === c.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                        }`}
+                                      >
+                                        <span className="text-base shrink-0 select-none">{c.icon || '📁'}</span>
+                                        <span className="truncate">{c.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Conta Global */}
+                      <td className="px-4 py-3 relative">
+                        {(() => {
+                          const currentGlobalAcc = accounts.find(a => a.id === loteAccount);
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsLoteAccountDropdownOpen(!isLoteAccountDropdownOpen);
+                                  setIsLoteCategoryDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 bg-white/80 hover:bg-white rounded-xl flex items-center justify-between text-xs font-extrabold text-teal-700 border border-teal-100/60 shadow-sm transition-all gap-1.5"
+                              >
+                                <span className="flex items-center gap-2.5 truncate">
+                                  <AccountIcon account={currentGlobalAcc} />
+                                  <div className="flex flex-col min-w-0 text-left">
+                                    <span className="truncate font-extrabold text-xs leading-tight">
+                                      {currentGlobalAcc?.name || 'Definir Conta'}
+                                    </span>
+                                    {currentGlobalAcc && (
+                                      <span className="text-[8px] text-teal-500 font-semibold leading-none mt-0.5">
+                                        {getAccountTypeLabel(currentGlobalAcc.type)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </span>
+                                <ChevronDown size={12} className="text-teal-500 shrink-0" />
+                              </button>
+                              
+                              {isLoteAccountDropdownOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-20" onClick={() => setIsLoteAccountDropdownOpen(false)} />
+                                  <div className="absolute left-2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleGlobalAccountChange(null);
+                                        setIsLoteAccountDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs font-medium text-slate-400 transition-colors border-b border-slate-50 rounded-lg"
+                                    >
+                                      <div className="w-5 h-5 rounded flex items-center justify-center border border-slate-200 bg-slate-50 text-slate-400 shrink-0">
+                                        <Landmark size={12} />
+                                      </div>
+                                      <span className="leading-tight font-semibold text-slate-400">Limpar Conta</span>
+                                    </button>
+                                    
+                                    {accounts.map(a => (
+                                      <button
+                                        key={a.id}
+                                        type="button"
+                                        onClick={() => {
+                                          handleGlobalAccountChange(a.id);
+                                          setIsLoteAccountDropdownOpen(false);
+                                        }}
+                                        className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 text-xs transition-colors rounded-lg ${
+                                          loteAccount === a.id ? 'bg-teal-50/50 font-black text-teal-800' : 'text-slate-600 font-medium'
+                                        }`}
+                                      >
+                                        <AccountIcon account={a} />
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="truncate font-semibold leading-tight">{a.name}</span>
+                                          <span className="text-[8px] text-slate-400 mt-0.5">{getAccountTypeLabel(a.type)}</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Tags */}
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold text-xs">-</td>
+
+                      {/* Valor */}
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold text-xs">-</td>
+
+                      {/* Ação */}
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold text-xs">-</td>
+                    </tr>
+                  )}
+
                   {monthInstances.map((t) => {
                     const isIncome = t.type === 'income'; 
                     const formattedDate = format(parseISO(t.instanceDate), 'dd/MM/yyyy');
@@ -570,20 +778,6 @@ export default function ClientStatementModalV2({
                             className="bg-transparent hover:bg-slate-100/70 focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-2 py-1 w-full text-xs font-bold text-slate-700 transition-all border border-transparent focus:border-slate-200 outline-none"
                             placeholder="Descrição do lançamento..."
                           />
-                          {t.status === 'pending' && (
-                            <div className="inline-flex items-center gap-1.5 mt-1 ml-2">
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wide">
-                                Pendente
-                              </span>
-                              <button
-                                onClick={() => handleAcceptTransaction(t.id)}
-                                className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[8px] font-bold shadow-sm transition-all duration-150 active:scale-95 uppercase tracking-wide"
-                              >
-                                <Check size={8} />
-                                Aceitar
-                              </button>
-                            </div>
-                          )}
                         </td>
 
                         {/* Categoria */}
@@ -776,14 +970,32 @@ export default function ClientStatementModalV2({
                             {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
                           </span>
                         </td>
+
+                        {/* Ação */}
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          {t.status === 'pending' ? (
+                            <button
+                              onClick={() => handleAcceptTransaction(t)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 transition-all duration-150 active:scale-95 uppercase tracking-wider"
+                            >
+                              <Check size={10} className="stroke-[3]" />
+                              Aceitar
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase tracking-wide">
+                              <Check size={10} className="stroke-[3]" />
+                              Aceito
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                   
                   {/* Linha espaçadora transparente para expandir a altura do tbody quando o dropdown estiver aberto */}
-                  {(activeCategoryDropdownTxId || activeAccountDropdownTxId) && (
+                  {(activeCategoryDropdownTxId || activeAccountDropdownTxId || isLoteCategoryDropdownOpen || isLoteAccountDropdownOpen) && (
                     <tr className="h-56 select-none pointer-events-none border-none">
-                      <td colSpan={6} className="border-none bg-transparent h-56"></td>
+                      <td colSpan={7} className="border-none bg-transparent h-56"></td>
                     </tr>
                   )}
                 </tbody>
@@ -791,6 +1003,22 @@ export default function ClientStatementModalV2({
             </div>
           )}
         </div>
+
+        {/* Modal Footer (Aceitar Todos em Lote Fixo) */}
+        {pendingTxsInMonth.length > 0 && (
+          <div className="bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between shrink-0 animate-in slide-in-from-bottom duration-300">
+            <div className="text-xs font-bold text-slate-400">
+              Restam <span className="text-amber-600 font-black">{pendingTxsInMonth.length}</span> lançamentos pendentes para aceitar neste mês.
+            </div>
+            <button
+              onClick={handleAcceptAllPendingInMonth}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 uppercase tracking-wider"
+            >
+              <Check size={14} className="stroke-[3]" />
+              Aceitar Todos do Mês
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
