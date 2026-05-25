@@ -73,7 +73,7 @@ export const ShareTransactionsModalV2: React.FC<ShareTransactionsModalV2Props> =
       text += `💰 *Resultado Líquido:* ${formatBRL(resultVal)} (${resultVal >= 0 ? 'Superávit' : 'Déficit'})\n\n`;
       
       if (filteredList.length > 0) {
-        text += `📝 *Lançamentos Filtrados (${filteredList.length}):*\n`;
+        text += `📝 *Lançamentos (${filteredList.length}):*\n`;
         text += `----------------------------------\n`;
         filteredList.forEach(t => {
           const dateFormatted = t.instanceDate ? format(parseISO(t.instanceDate), 'dd/MM') : '';
@@ -87,7 +87,8 @@ export const ShareTransactionsModalV2: React.FC<ShareTransactionsModalV2Props> =
         text += `----------------------------------\n`;
       }
       
-      text += `*Compartilhado via Recebimento $mart* ⚡`;
+      text += `*Compartilhado via Recebimento $mart* ⚡\n`;
+      text += `https://www.recebimentosmart.com.br`;
       
       navigator.clipboard.writeText(text);
       setCopied(true);
