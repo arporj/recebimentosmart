@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Send, Sparkles, RefreshCw, AlertTriangle, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Mail, Send, Sparkles, RefreshCw, AlertTriangle, CheckCircle, Clock, AlertCircle, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,6 +29,7 @@ export default function AdminBroadcastV2() {
     const [fetchingHistory, setFetchingHistory] = useState(false);
     const [latestGeminiModel, setLatestGeminiModel] = useState<string | null>(null);
     const [hasNewGeminiVersion, setHasNewGeminiVersion] = useState(false);
+    const [showVariablesHelp, setShowVariablesHelp] = useState(false);
 
     useEffect(() => {
         fetchBroadcastHistory();
@@ -49,9 +50,9 @@ export default function AdminBroadcastV2() {
             const models = data?.models || [];
 
             // A versão que estamos utilizando atualmente no sistema
-            const CURRENT_VERSION = 2.5;
+            const CURRENT_VERSION = 3.5;
             let highestVersion = CURRENT_VERSION;
-            let bestModelName = 'gemini-2.5-flash';
+            let bestModelName = 'gemini-3.5-flash';
 
             models.forEach((m: any) => {
                 const name = m.name || '';
@@ -108,10 +109,20 @@ export default function AdminBroadcastV2() {
         try {
             setOptimizing(true);
             
-            const prompt = `Melhore o texto do e-mail de anúncio para os usuários a seguir de forma extremamente persuasiva, amigável e profissional. Mantenha os links e qualquer tag HTML se houver. Escreva APENAS a versão melhorada da mensagem, sem nenhuma introdução, explicação adicional ou aspas extras:\n\n${body}`;
+            const prompt = `Você é um copywriter profissional especialista em e-mails de marketing e comunicados.
+Melhore o assunto e o corpo do e-mail a seguir para torná-lo extremamente persuasivo, amigável e profissional.
+Mantenha os links e qualquer tag HTML se houver no corpo.
+
+E-mail original:
+Assunto: ${subject}
+Corpo: ${body}
+
+Responda APENAS com o formato estruturado a seguir, sem nenhuma introdução, explicação adicional ou aspas extras:
+ASSUNTO: [Escreva aqui o assunto aprimorado]
+CORPO: [Escreva aqui o corpo aprimorado, mantendo formatação HTML se aplicável]`;
 
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
                 {
                     method: 'POST',
                     headers: {
@@ -139,8 +150,26 @@ export default function AdminBroadcastV2() {
             const improvedText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (improvedText) {
-                setBody(improvedText.trim());
-                toast.success('Texto aprimorado com inteligência artificial!');
+                const subjectMatch = improvedText.match(/ASSUNTO:\s*(.*)/i);
+                const bodyMatch = improvedText.match(/CORPO:\s*([\s\S]*)/i);
+                
+                let finalSubject = subject;
+                let finalBody = body;
+                
+                if (subjectMatch) {
+                    finalSubject = subjectMatch[1].trim();
+                }
+                
+                if (bodyMatch) {
+                    finalBody = bodyMatch[1].trim();
+                } else {
+                    // Fallback caso o Gemini retorne o formato de forma ligeiramente diferente
+                    finalBody = improvedText.replace(/ASSUNTO:\s*(.*)/i, '').replace(/CORPO:\s*/i, '').trim();
+                }
+
+                setSubject(finalSubject);
+                setBody(finalBody);
+                toast.success('Assunto e conteúdo aprimorados com inteligência artificial!');
             } else {
                 throw new Error('Retorno inválido do modelo.');
             }
@@ -314,18 +343,53 @@ export default function AdminBroadcastV2() {
 
                         <div className="space-y-1.5">
                             <div className="flex justify-between items-center">
-                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Conteúdo do E-mail (Suporta HTML)</label>
+                                <div className="flex items-center gap-1.5">
+                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Conteúdo do E-mail (Suporta HTML)</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowVariablesHelp(!showVariablesHelp)}
+                                        className="text-slate-400 hover:text-teal-600 transition-colors flex items-center"
+                                        title="Ver variáveis de personalização disponíveis"
+                                    >
+                                        <HelpCircle size={14} />
+                                    </button>
+                                </div>
                                 <button
                                     type="button"
                                     onClick={handleImproveText}
                                     disabled={optimizing || loading || !body.trim()}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-md hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${optimizing ? 'animate-pulse' : ''}`}
-                                    title="O Gemini reescreverá sua mensagem de forma profissional"
+                                    title="O Gemini reescreverá o assunto e conteúdo de forma profissional"
                                 >
                                     <Sparkles size={13} className={optimizing ? 'animate-spin' : ''} />
                                     {optimizing ? 'Aprimorando...' : 'Melhorar com Gemini Pro'}
                                 </button>
                             </div>
+
+                            {showVariablesHelp && (
+                                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-xs space-y-2 animate-in fade-in zoom-in-95 duration-200">
+                                    <h4 className="font-extrabold text-slate-700 uppercase tracking-wider text-[10px]">Variáveis Dinâmicas Disponíveis</h4>
+                                    <p className="text-slate-500 leading-normal font-semibold">
+                                        Você pode utilizar as tags abaixo no assunto ou corpo do e-mail. Elas serão substituídas automaticamente com as informações de cada destinatário no momento do envio:
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                        <div className="p-2.5 bg-white border border-slate-100 rounded-xl flex items-start gap-2">
+                                            <code className="text-teal-600 font-extrabold font-mono bg-teal-50 px-1.5 py-0.5 rounded text-[10px]">{"{{name}}"}</code>
+                                            <div>
+                                                <p className="font-extrabold text-slate-700">Nome do Usuário</p>
+                                                <p className="text-[10px] text-slate-400 font-medium">Substitui pelo nome do destinatário. Ex: João da Silva</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-2.5 bg-white border border-slate-100 rounded-xl flex items-start gap-2">
+                                            <code className="text-teal-600 font-extrabold font-mono bg-teal-50 px-1.5 py-0.5 rounded text-[10px]">{"{{email}}"}</code>
+                                            <div>
+                                                <p className="font-extrabold text-slate-700">E-mail do Usuário</p>
+                                                <p className="text-[10px] text-slate-400 font-medium">Substitui pelo e-mail do destinatário. Ex: joao@exemplo.com</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <textarea
                                 value={body}
                                 onChange={(e) => setBody(e.target.value)}

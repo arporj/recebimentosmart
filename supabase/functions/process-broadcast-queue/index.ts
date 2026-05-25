@@ -193,8 +193,12 @@ serve(async (req) => {
 
         // MELHORIA: Usar messageVersions para personalização
         const messageVersions = batch.map(user => {
+            // Substituições dinâmicas no corpo
             const personalizedBody = broadcast.body
                 .replace(/Olá!/g, `Olá, ${user.name || 'Cliente'}!`)
+                .replace(/{{name}}/g, user.name || 'Cliente')
+                .replace(/{{nome}}/g, user.name || 'Cliente')
+                .replace(/{{email}}/g, user.email || '')
                 .replace(/Recebimento \$mart/g, '<b>Recebimento $mart</b>')
                 .replace(/R\$ ?([\d,.]+)/g, (match, valueStr) => {
                     const value = parseFloat(valueStr.replace('.', '').replace(',', '.'));
@@ -202,10 +206,16 @@ serve(async (req) => {
                 })
                 .replace(/Não se preocupe, você continuará pagando o preço antigo até a data da sua próxima renovação\./g, '');
 
+            // Substituições dinâmicas no assunto
+            const personalizedSubject = broadcast.subject
+                .replace(/{{name}}/g, user.name || 'Cliente')
+                .replace(/{{nome}}/g, user.name || 'Cliente')
+                .replace(/{{email}}/g, user.email || '');
+
             return {
                 to: [{ email: user.email, name: user.name }],
                 htmlContent: personalizedBody,
-                subject: broadcast.subject
+                subject: personalizedSubject
             };
         });
 
