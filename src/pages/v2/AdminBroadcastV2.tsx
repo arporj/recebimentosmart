@@ -27,10 +27,53 @@ export default function AdminBroadcastV2() {
     const [loading, setLoading] = useState(false);
     const [optimizing, setOptimizing] = useState(false);
     const [fetchingHistory, setFetchingHistory] = useState(false);
+    const [latestGeminiModel, setLatestGeminiModel] = useState<string | null>(null);
+    const [hasNewGeminiVersion, setHasNewGeminiVersion] = useState(false);
 
     useEffect(() => {
         fetchBroadcastHistory();
+        checkForNewGeminiVersion();
     }, []);
+
+    const checkForNewGeminiVersion = async () => {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!apiKey) return;
+
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+            );
+            if (!response.ok) throw new Error('Erro ao listar modelos do Gemini');
+
+            const data = await response.json();
+            const models = data?.models || [];
+
+            // A versão que estamos utilizando atualmente no sistema
+            const CURRENT_VERSION = 2.5;
+            let highestVersion = CURRENT_VERSION;
+            let bestModelName = 'gemini-2.5-flash';
+
+            models.forEach((m: any) => {
+                const name = m.name || '';
+                // Procura por modelos gemini-X-flash ou gemini-X.Y-flash (ex: models/gemini-2.5-flash, models/gemini-3.5-flash)
+                const match = name.match(/models\/gemini-(\d+(\.\d+)?)-flash/);
+                if (match) {
+                    const versionNum = parseFloat(match[1]);
+                    if (versionNum > highestVersion) {
+                        highestVersion = versionNum;
+                        bestModelName = name.replace('models/', '');
+                    }
+                }
+            });
+
+            if (highestVersion > CURRENT_VERSION) {
+                setLatestGeminiModel(bestModelName);
+                setHasNewGeminiVersion(true);
+            }
+        } catch (err) {
+            console.warn('Não foi possível verificar novas versões do Gemini na API:', err);
+        }
+    };
 
     const fetchBroadcastHistory = async () => {
         try {
@@ -193,6 +236,29 @@ export default function AdminBroadcastV2() {
                     Crie e envie comunicados, novidades e atualizações por e-mail para todos os usuários cadastrados no sistema.
                 </p>
             </div>
+
+            {hasNewGeminiVersion && latestGeminiModel && (
+                <div className="mb-6 bg-gradient-to-r from-teal-500/10 to-indigo-500/10 border-2 border-teal-200/80 rounded-3xl p-5 shadow-sm animate-in slide-in-from-top duration-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-start gap-3">
+                        <div className="bg-gradient-to-r from-teal-500 to-indigo-500 p-2.5 rounded-2xl text-white shadow-md shadow-teal-500/10">
+                            <Sparkles className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div>
+                            <h3 className="font-extrabold text-sm text-slate-800">Nova versão do Gemini disponível!</h3>
+                            <p className="text-xs text-slate-500 mt-0.5 font-medium leading-relaxed">
+                                Detectamos a disponibilidade do modelo <span className="font-extrabold text-[#0d9488]">{latestGeminiModel}</span> no Google AI Studio. 
+                                Você pode modificar o sistema nas configurações de código para atualizar a IA e usufruir de maior velocidade e assertividade.
+                            </p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => setHasNewGeminiVersion(false)}
+                        className="text-xs font-black uppercase text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-xl hover:bg-slate-100/80 active:scale-95 transition-all self-end md:self-auto shrink-0"
+                    >
+                        Entendido
+                    </button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Form Column */}
