@@ -1076,9 +1076,9 @@ const FinancialTransactionsV2 = () => {
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-xs text-slate-800 truncate">{t.description || 'S/ Descrição'}</span>
                       <div className="flex items-center gap-1 shrink-0 ml-1">
-                        {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500/60" />}
-                        {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-400/60" />}
-                        {t.auto_confirm && <Zap size={10} className="text-amber-500/60" />}
+                        {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
+                        {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-600 stroke-[2.5]" />}
+                        {t.auto_confirm && <Zap size={10} className="text-amber-500 fill-amber-500" />}
                       </div>
                     </div>
                     {(t.account || t.category || t.client || t.type === 'transfer') && (
@@ -1317,9 +1317,9 @@ const FinancialTransactionsV2 = () => {
                           <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
 
                           <div className="flex items-center gap-1.5 px-2">
-                            {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500/60" />}
-                            {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-400/60" />}
-                            {t.auto_confirm && <Zap size={12} className="text-amber-500/60" />}
+                            {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                            {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
+                            {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
                           </div>
                         </div>
 
