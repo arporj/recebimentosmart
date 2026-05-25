@@ -387,9 +387,17 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
                     <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0"
+                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
                     >
                         <Menu size={24} />
+                        {displayedCount > 0 && (
+                            <span 
+                                key={animationKey}
+                                className="absolute -top-1.5 -right-1.5 animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm"
+                            >
+                                {displayedCount}
+                            </span>
+                        )}
                     </button>
                     <div className="flex items-center gap-2">
                         <div className="bg-[#0f172a] p-1.5 rounded-md">
