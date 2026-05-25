@@ -19,7 +19,8 @@ import {
   ArrowRight,
   CreditCard,
   User,
-  Wallet
+  Wallet,
+  Share2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +31,7 @@ import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactio
 import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { TransactionSummaryModal } from '../../components/v2/TransactionSummaryModal';
+import { ShareTransactionsModalV2 } from '../../components/v2/ShareTransactionsModalV2';
 
 interface FinancialTransaction {
   id: string;
@@ -102,6 +104,9 @@ const FinancialTransactionsV2 = () => {
   // Estados para o modal de resumo
   const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<any | null>(null);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+
+  // Estado para o modal de compartilhamento
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Estado para confirmação de exclusão de lançamentos únicos
   const [deleteConfirmModalConfig, setDeleteConfirmModalConfig] = useState<{
@@ -967,6 +972,7 @@ const FinancialTransactionsV2 = () => {
               )}
             </div>
             <button onClick={fetchTransactions} disabled={loading} className={`p-2 bg-slate-50 border border-slate-200 rounded-xl ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={16} /></button>
+            <button onClick={() => setIsShareModalOpen(true)} className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-[#0d9488] hover:bg-slate-100/80 transition-all flex items-center justify-center" title="Compartilhar Lançamentos"><Share2 size={16} /></button>
           </div>
           {/* Linha 3: Filtros */}
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
@@ -1171,6 +1177,14 @@ const FinancialTransactionsV2 = () => {
             </div>
             <div className="flex items-center gap-2">
               <button onClick={fetchTransactions} disabled={loading} className={`p-4 bg-white border border-slate-200 rounded-3xl shadow-sm ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={20} /></button>
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="flex items-center gap-2 bg-white border border-slate-200 text-[#0d9488] px-5 py-4 rounded-3xl font-bold shadow-sm hover:bg-slate-50 transition-all text-sm"
+                title="Compartilhar Lançamentos"
+              >
+                <Share2 size={20} />
+                <span className="hidden sm:inline">Compartilhar</span>
+              </button>
             </div>
           </div>
 
@@ -1392,6 +1406,14 @@ const FinancialTransactionsV2 = () => {
         onClose={() => setIsSummaryModalOpen(false)}
         transaction={selectedSummaryTransaction}
         onEdit={(t) => handleEdit(t)}
+      />
+
+      <ShareTransactionsModalV2
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        currentMonth={currentMonth}
+        totals={dynamicTotals}
+        displayInstances={displayInstances}
       />
 
       {itemToDelete && (
