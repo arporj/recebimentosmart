@@ -5,6 +5,8 @@ import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../../lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
 import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertCircle, HelpCircle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import axios from 'axios';
 
 type PlanName = 'free' | 'basico' | 'pro';
 
@@ -18,10 +20,9 @@ const PLAN_MAPPING: Record<string, PlanName> = {
 
 // Chave CNPJ oficial do usuário formatada para exibição
 const PIX_DISPLAY_KEY = '37.905.181/0001-05';
-// Chave CNPJ limpa para montagem do BR Code
 const PIX_CLEAN_KEY = '37905181000105';
 
-// Função de cálculo de CRC16 CCITT (Polinômio 0x1021, valor inicial 0xFFFF) exigido no padrão BR Code do Banco Central
+// Função de cálculo de CRC16 CCITT exigido no padrão BR Code do Banco Central para fallback offline
 function calculateCRC16(str: string): string {
   let crc = 0xFFFF;
   const polynomial = 0x1021;
@@ -42,17 +43,12 @@ function calculateCRC16(str: string): string {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-// Gera o código do PIX "Copia e Cola" (BR Code) dinamicamente baseado no valor da assinatura
+// Gera o código do PIX "Copia e Cola" (BR Code) para fallback offline do frontend
 const generatePixPayload = (amount: number): string => {
   const name = "Recebimento Smart";
   const city = "Rio de Janeiro";
   
-  // ID 26: Merchant Account Information - Contém a chave PIX do usuário
-  // GUI (00): br.gov.bcb.pix
-  // Chave PIX (01): CNPJ
   const merchantAccountInfo = `0014br.gov.bcb.pix0114${PIX_CLEAN_KEY}`;
-  
-  // ID 54: Transaction Amount - Formata o valor exato com 2 casas decimais e separador ponto (ex: 24.90)
   const amountStr = amount.toFixed(2);
   const amountTag = `54${amountStr.length.toString().padStart(2, '0')}${amountStr}`;
   
@@ -109,6 +105,12 @@ export default function SubscriptionPageV2() {
   const [copied, setCopied] = useState(false);
   const [qrCodeLoaded, setQrCodeLoaded] = useState(false);
 
+  // Estados específicos para integração da API do Banco Inter
+  const [loadingPix, setLoadingPix] = useState(false);
+  const [pixData, setPixData] = useState<{ txid: string; pixCopiaECola: string; simulated?: boolean } | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   // Força a atualização de dados da assinatura ao abrir a tela
   useEffect(() => {
     fetchData();
@@ -142,20 +144,125 @@ export default function SubscriptionPageV2() {
   const finalAmount = Math.max(0, planPrice - userCredits);
   const planDisplayName = currentPlanObj?.name ?? (selectedPlan === 'free' ? 'Free' : selectedPlan === 'basico' ? 'Básico' : 'Pró');
 
-  // Gera o código do PIX "Copia e Cola" dinamicamente baseado no valor da mensalidade e créditos deduzidos
-  const pixCopyPasteCode = generatePixPayload(finalAmount);
+  // Geração dinâmica de PIX conectando com nosso backend Express
+  useEffect(() => {
+    if (selectedPlan === 'free' || !user?.id) {
+      setPixData(null);
+      return;
+    }
 
-  // Gera a URL da imagem do QR Code a partir de uma API pública gratuita e instantânea
-  const pixQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(pixCopyPasteCode)}`;
+    const fetchDynamicPix = async () => {
+      try {
+        setLoadingPix(true);
+        setQrCodeLoaded(false);
+
+        console.log(`[PIX] Solicitando geração de PIX para o plano ${planDisplayName}. Valor original: R$ ${finalAmount}`);
+        
+        const response = await axios.post('/api/pix/create-payment', {
+          amount: finalAmount,
+          planName: planDisplayName,
+          userId: user.id
+        });
+
+        if (response.data && response.data.success) {
+          setPixData({
+            txid: response.data.txid,
+            pixCopiaECola: response.data.pixCopiaECola,
+            simulated: response.data.simulated
+          });
+        }
+      } catch (error) {
+        console.error('[PIX] Erro ao chamar API do Banco Inter, usando fallback local:', error);
+        toast.error('Erro de conexão financeira. Utilizando gerador local redundante.');
+        
+        // Fallback local robusto (offline) para manter o sistema operacional em qualquer falha externa
+        const fallbackPayload = generatePixPayload(finalAmount);
+        setPixData({
+          txid: 'LOCAL_' + Date.now() + Math.floor(Math.random() * 1000),
+          pixCopiaECola: fallbackPayload,
+          simulated: false
+        });
+      } finally {
+        setLoadingPix(false);
+      }
+    };
+
+    // Debounce sutil para evitar múltiplos requests ao alternar cliques rapidamente
+    const timer = setTimeout(() => {
+      fetchDynamicPix();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [selectedPlan, finalAmount, planDisplayName, user?.id]);
+
+  // Escuta ativa em Tempo Real no Supabase para aprovação automática do webhook do Banco Inter
+  useEffect(() => {
+    if (!pixData?.txid || !user?.id) return;
+
+    console.log(`[Realtime] Registrando escuta de canal Supabase para transação: ${pixData.txid}`);
+
+    const channel = supabase
+      .channel(`pix_checkout_${pixData.txid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pix_transactions',
+          filter: `transaction_id=eq.${pixData.txid}`
+        },
+        (payload) => {
+          console.log('[Realtime] Mudança de status na transação recebida:', payload);
+          if (payload.new && payload.new.status === 'COMPLETED') {
+            setPaymentSuccess(true);
+            toast.success('Pagamento confirmado automaticamente! Sua assinatura está liberada.', {
+              duration: 6000,
+              icon: '🎉'
+            });
+            fetchData();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log(`[Realtime] Removendo canal de escuta: ${pixData.txid}`);
+      supabase.removeChannel(channel);
+    };
+  }, [pixData?.txid, user?.id, fetchData]);
+
+  // Função exclusiva de Sandbox para simulação de recebimento de webhook do Inter
+  const handleSimulatePayment = async () => {
+    if (!pixData?.txid) return;
+
+    try {
+      setSimulating(true);
+      console.log(`[Sandbox] Disparando requisição de simulação de webhook para txid: ${pixData.txid}`);
+      
+      const response = await axios.post('/api/pix/simulate-webhook', {
+        txid: pixData.txid
+      });
+
+      if (response.data && response.data.success) {
+        toast.success('Pagamento simulado enviado com sucesso! Processando ativação...', { duration: 4000 });
+      }
+    } catch (error) {
+      console.error('[Sandbox] Erro ao simular pagamento de webhook:', error);
+      toast.error('Não foi possível disparar a simulação do webhook.');
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   const handleCopyKey = () => {
-    navigator.clipboard.writeText(pixCopyPasteCode);
+    if (!pixData?.pixCopiaECola) return;
+    navigator.clipboard.writeText(pixData.pixCopiaECola);
     setCopied(true);
-    toast.success('PIX Copia e Cola copiado com sucesso!');
+    toast.success('Código PIX Copia e Cola copiado para a área de transferência!');
     setTimeout(() => setCopied(false), 3000);
   };
 
-  // Gera o link do WhatsApp para envio do comprovante
+  // Gera o link do WhatsApp para envio manual do comprovante em caso de contingência
   const getWhatsAppLink = () => {
     const formattedAmount = formatCurrency(finalAmount);
     const email = user?.email ?? 'N/A';
@@ -186,9 +293,78 @@ export default function SubscriptionPageV2() {
     );
   }
 
+  // ─── TELA DE SUCESSO PREMIUM (Aprovação Instantânea Realtime) ───
+  if (paymentSuccess) {
+    return (
+      <div className="w-full max-w-2xl mx-auto space-y-8 animate-in zoom-in-95 duration-500 pb-20 px-4 font-['Inter',sans-serif] text-center">
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 md:p-12 shadow-xl space-y-6 flex flex-col items-center">
+          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 text-emerald-500 shadow-sm animate-bounce">
+            <CheckCircle size={44} />
+          </div>
+          
+          <div className="space-y-2">
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest shadow-sm">
+              Assinatura Ativada
+            </span>
+            <h1 className="text-slate-900 text-3xl font-black tracking-tight mt-3">
+              Parabéns! Sua conta está liberada!
+            </h1>
+            <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+              Seu pagamento via PIX foi confirmado automaticamente pelo Banco Inter. O plano **{planDisplayName}** já está ativo em sua conta.
+            </p>
+          </div>
+
+          <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-left text-xs space-y-2.5 max-w-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-400 font-bold">Plano Contratado:</span>
+              <span className="text-slate-800 font-black capitalize">{planDisplayName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400 font-bold">Método de Ativação:</span>
+              <span className="text-slate-800 font-bold flex items-center gap-1">
+                <Shield className="w-3.5 h-3.5 text-[#29a8a8]" />
+                Banco Inter PJ mTLS Webhook
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400 font-bold">Período de Acesso:</span>
+              <span className="text-emerald-600 font-extrabold">+31 dias habilitados</span>
+            </div>
+          </div>
+
+          <div className="pt-4 w-full max-w-sm space-y-3">
+            <button
+              onClick={() => {
+                window.location.href = '/';
+              }}
+              className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm shadow-md transition-all active:scale-95 cursor-pointer block text-center"
+            >
+              Acessar o Painel Principal
+            </button>
+            
+            <button
+              onClick={() => {
+                setPaymentSuccess(false);
+                fetchData();
+              }}
+              className="w-full py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              Ver Detalhes do Plano
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const userPlanRaw = pageData?.user?.plan?.toLowerCase() || '';
   const userPlanActive = PLAN_MAPPING[userPlanRaw] || 'free';
   const userValidUntil = pageData?.user?.valid_until;
+
+  // URL dinâmica para renderizar o QR Code gerado pelo Inter
+  const pixQrCodeUrl = pixData?.pixCopiaECola
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(pixData.pixCopiaECola)}`
+    : '';
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 px-4 md:px-6 font-['Inter',sans-serif]">
@@ -200,10 +376,9 @@ export default function SubscriptionPageV2() {
             Configuração de Assinatura
             <Sparkles className="w-5 h-5 text-[#29a8a8] animate-pulse" />
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Selecione seu plano de uso e realize o pagamento com liberação manual.</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Selecione seu plano de uso e realize o pagamento com ativação automática em tempo real.</p>
         </div>
 
-        {/* Informações da conta atual do usuário */}
         <div className="shrink-0 flex items-center">
           {userPlanRaw === 'admin' ? (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-[#29a8a8] font-bold text-xs shadow-sm">
@@ -250,7 +425,6 @@ export default function SubscriptionPageV2() {
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                {/* Badges de destaque */}
                 {planKey === 'pro' && (
                   <div className="absolute -top-3 right-6 bg-[#29a8a8] text-white text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest shadow-md shadow-[#29a8a8]/20">
                     Recomendado
@@ -273,7 +447,6 @@ export default function SubscriptionPageV2() {
                   </div>
                 </div>
 
-                {/* Recursos do Plano */}
                 <ul className="space-y-3 flex-1 border-t border-slate-100 pt-5 text-xs">
                   {(STATIC_PLAN_FEATURES[planKey] || []).map((feature, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-slate-600">
@@ -296,26 +469,23 @@ export default function SubscriptionPageV2() {
         </div>
       </div>
 
-      {/* ─── PAINEL CENTRAL DE PAGAMENTO (FOCADO, ARRUMADO E LIMPO) ─── */}
+      {/* ─── PAINEL CENTRAL DE PAGAMENTO (INTEGRADO À API BANCO INTER) ─── */}
       {selectedPlan !== 'free' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
           
-          {/* Título de Pagamento */}
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <span className="bg-[#29a8a8] text-white w-7 h-7 rounded-full flex items-center justify-center font-black text-sm shadow-sm">PIX</span>
             <div>
               <h2 className="text-slate-900 text-lg font-black tracking-tight">Pagamento da Assinatura ({planDisplayName})</h2>
-              <p className="text-slate-400 text-[11px] font-semibold mt-0.5">Realize o pagamento escaneando o QR Code dinâmico ou copiando a chave.</p>
+              <p className="text-slate-400 text-[11px] font-semibold mt-0.5">Cobrança gerada e validada em tempo real diretamente na API do Banco Inter.</p>
             </div>
           </div>
 
-          {/* Grid de Checkout e Instruções */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* Coluna da Esquerda: Resumo, Valores e Copia e Cola (60%) */}
+            {/* Coluna da Esquerda: Resumo de preço e Instruções */}
             <div className="lg:col-span-7 space-y-6">
               
-              {/* Box de detalhamento de preço */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-100 rounded-xl p-5">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor do Plano</span>
@@ -335,7 +505,6 @@ export default function SubscriptionPageV2() {
                 )}
               </div>
 
-              {/* Total final em destaque */}
               <div className="border border-slate-100 rounded-xl p-5 flex items-center justify-between bg-teal-50/15">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor total a transferir</span>
@@ -346,21 +515,20 @@ export default function SubscriptionPageV2() {
                 </div>
               </div>
 
-              {/* Instruções de Pagamento */}
               <div className="space-y-3.5">
                 <h4 className="text-slate-800 font-extrabold text-sm">Instruções para liberação:</h4>
                 <div className="grid grid-cols-1 gap-2.5 text-xs text-slate-600 pl-1 leading-relaxed">
                   <div className="flex gap-2.5 items-start">
                     <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
-                    <span>Abra o app do seu banco, escolha a opção **PIX** e aponte a câmera para o **QR Code dinâmico ao lado**.</span>
+                    <span>Abra o app do seu banco de preferência, selecione **Pagar via Pix** e aponte a câmera para o **QR Code dinâmico**.</span>
                   </div>
                   <div className="flex gap-2.5 items-start">
                     <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
-                    <span>Se preferir, clique em **Copiar Código PIX** logo abaixo para efetuar a transferência na modalidade *PIX Copia e Cola*.</span>
+                    <span>Se preferir pagar pelo celular, copie o código Pix `copia e cola` no campo abaixo e insira no app do seu banco.</span>
                   </div>
-                  <div className="flex gap-2.5 items-start">
-                    <span className="bg-[#29a8a8]/10 text-[#29a8a8] w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
-                    <span>Após efetuar o PIX, clique no botão **Confirmar e Enviar Comprovante** para nos encaminhar o comprovante pelo WhatsApp do suporte.</span>
+                  <div className="flex gap-2.5 items-start text-emerald-600 font-bold">
+                    <span className="bg-emerald-50 text-emerald-600 w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
+                    <span>**Ativação Instantânea:** Assim que o PIX for compensado, o sistema atualizará sua conta em tempo real automaticamente!</span>
                   </div>
                 </div>
               </div>
@@ -372,87 +540,119 @@ export default function SubscriptionPageV2() {
                   <span className="text-[10px] text-slate-500 font-bold block">Chave CNPJ: {PIX_DISPLAY_KEY}</span>
                 </div>
                 
-                <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl p-2 pl-3.5 overflow-hidden">
-                  <span className="text-slate-500 font-bold text-xs truncate flex-1 leading-relaxed">{pixCopyPasteCode}</span>
-                  <button
-                    onClick={handleCopyKey}
-                    className="flex items-center gap-1.5 justify-center py-2 px-4 rounded-lg bg-white border border-slate-200 hover:border-[#29a8a8] hover:text-[#29a8a8] text-slate-600 text-xs font-bold transition-all shrink-0 active:scale-95 shadow-sm"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-emerald-600">Copiado</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar Código</span>
-                      </>
-                    )}
-                  </button>
+                <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl p-2 pl-3.5 overflow-hidden min-h-[52px]">
+                  {loadingPix ? (
+                    <div className="flex items-center gap-2 pl-2 text-slate-400 text-xs">
+                      <div className="animate-spin rounded-full h-4.5 w-4.5 border-b-2 border-[#29a8a8]"></div>
+                      <span>Solicitando BR Code seguro ao Banco Inter...</span>
+                    </div>
+                  ) : pixData?.pixCopiaECola ? (
+                    <>
+                      <span className="text-slate-500 font-bold text-xs truncate flex-1 leading-relaxed">{pixData.pixCopiaECola}</span>
+                      <button
+                        onClick={handleCopyKey}
+                        className="flex items-center gap-1.5 justify-center py-2 px-4 rounded-lg bg-white border border-slate-200 hover:border-[#29a8a8] hover:text-[#29a8a8] text-slate-600 text-xs font-bold transition-all shrink-0 active:scale-95 shadow-sm"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-600">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copiar Código</span>
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-slate-400 text-xs pl-2 italic">Aguardando geração da cobrança...</span>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Coluna da Direita: QR Code Real/Dinâmico e WhatsApp (40%) */}
+            {/* Coluna da Direita: QR Code e WhatsApp (40%) */}
             <div className="lg:col-span-5 flex flex-col items-center border-t lg:border-t-0 lg:border-l border-slate-100 pt-6 lg:pt-0 lg:pl-8 space-y-6">
               
-              {/* QR Code Container (Gera imagem do PIX dinâmica com API pública instantânea) */}
+              {/* QR Code Container */}
               <div className="flex flex-col items-center">
                 <div className="relative bg-white border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-center w-48 h-48 select-none overflow-hidden">
-                  {/* API pública gera a imagem do QR Code real na hora a partir do payload PIX completo */}
-                  <img 
-                    src={pixQrCodeUrl} 
-                    alt="QR Code PIX Real" 
-                    className="w-full h-full object-contain rounded-lg transition-opacity duration-300"
-                    onLoad={() => setQrCodeLoaded(true)}
-                  />
-                  
-                  {!qrCodeLoaded && (
+                  {loadingPix ? (
+                    <div className="absolute inset-0 bg-slate-50/50 flex flex-col items-center justify-center gap-2 text-slate-400 text-[10px] font-bold">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#29a8a8]"></div>
+                      <span>Gerando QR Code...</span>
+                    </div>
+                  ) : pixQrCodeUrl ? (
+                    <img 
+                      src={pixQrCodeUrl} 
+                      alt="QR Code PIX Banco Inter" 
+                      className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${qrCodeLoaded ? 'opacity-100' : 'opacity-0'}`}
+                      onLoad={() => setQrCodeLoaded(true)}
+                    />
+                  ) : (
+                    <div className="text-slate-400 text-xs text-center p-4">Erro ao processar QR Code.</div>
+                  )}
+
+                  {pixQrCodeUrl && !qrCodeLoaded && !loadingPix && (
                     <div className="absolute inset-0 bg-slate-50 flex items-center justify-center text-slate-400">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#29a8a8]"></div>
                     </div>
                   )}
                 </div>
                 
-                <span className="text-[10px] text-[#29a8a8] font-bold mt-3.5 text-center leading-relaxed flex items-center gap-1.5">
+                <span className="text-[10px] text-[#29a8a8] font-black mt-3.5 text-center leading-relaxed flex items-center gap-1.5">
                   <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                  QR Code PIX Dinâmico Ativo (Valor Exato)
+                  QR Code Dinâmico Ativo
                 </span>
               </div>
 
-              {/* Ação principal: Botão de confirmação do WhatsApp */}
+              {/* Ações e Suporte */}
               {finalAmount > 0 ? (
-                <div className="w-full space-y-3">
+                <div className="w-full space-y-3.5">
+                  {/* Botão de Simulação de Pagamento - Exclusivo para UAT/Sandbox */}
+                  {pixData?.txid && (pixData.simulated || interEnv === 'sandbox') && (
+                    <button
+                      onClick={handleSimulatePayment}
+                      disabled={simulating}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-extrabold text-xs shadow-sm hover:scale-[1.01] active:scale-95 transition-all text-center cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 shrink-0 animate-pulse" />
+                      {simulating ? 'Confirmando no Banco...' : 'Simular Confirmação Instantânea (Sandbox)'}
+                    </button>
+                  )}
+
+                  {/* WhatsApp de fallback de contingência */}
                   <a
                     href={getWhatsAppLink()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 hover:scale-[1.01] active:scale-95 transition-all text-center cursor-pointer animate-pulse"
+                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-sm hover:scale-[1.01] active:scale-95 transition-all text-center cursor-pointer"
                   >
                     <MessageSquare className="w-4.5 h-4.5 shrink-0" />
-                    Confirmar e Enviar Comprovante
+                    Enviar Comprovante de Contingência
                   </a>
 
                   <div className="flex gap-2 items-start bg-slate-50 border border-slate-100 rounded-xl p-3.5 text-slate-500">
                     <Shield className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
                     <p className="text-[10px] leading-relaxed">
-                      Seu plano é ativado em até 10 minutos após o recebimento do seu comprovante pelo suporte oficial.
+                      O sistema monitora a transação em tempo real. Não é necessário enviar o comprovante a menos que ocorra alguma inconsistência com o seu aplicativo bancário.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="w-full bg-emerald-50/50 rounded-xl p-4 border border-dashed border-emerald-200 text-center flex flex-col items-center">
-                  <span className="text-xs font-bold text-slate-800">Isenção de Pagamento Pronta</span>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed max-w-[200px]">Você possui créditos de indicação suficientes para isentar este plano!</p>
+                  <span className="text-xs font-bold text-slate-800">Isenção de Pagamento Habilitada</span>
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed max-w-[200px]">Seus créditos acumulados cobrem o valor total do plano contratado.</p>
                   <a
-                    href={`https://wa.me/5521967621494?text=Olá, tenho saldo de indicações suficiente no e-mail ${user?.email} e desejo ativar o plano ${planDisplayName} com isenção total.`}
+                    href={`https://wa.me/5521967621494?text=Olá, tenho saldo de indicações suficiente no e-mail ${user?.email} e desejo liberar o plano ${planDisplayName} com isenção total.`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex mt-4 items-center justify-center gap-2 py-2.5 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-[11px] shadow-sm shadow-emerald-600/20"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    Ativar Isenção via WhatsApp
+                    Liberar Isenção com Suporte
                   </a>
                 </div>
               )}
@@ -462,7 +662,7 @@ export default function SubscriptionPageV2() {
         </div>
       )}
 
-      {/* FAQs Integradas para dar suporte editorial na página de Assinaturas */}
+      {/* FAQs Integradas */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-4">
         <h3 className="text-slate-800 font-extrabold text-sm flex items-center gap-2 border-b border-slate-50 pb-3">
           <HelpCircle className="w-4 h-4 text-[#29a8a8]" />
@@ -470,12 +670,12 @@ export default function SubscriptionPageV2() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 leading-relaxed">
           <div>
-            <h4 className="font-bold text-slate-800 mb-1">Como funciona o pagamento via PIX manual?</h4>
-            <p>O PIX manual permite manter custos de transação mínimos, nos permitindo oferecer planos extremamente acessíveis. Você transfere o valor e nos envia o comprovante de forma prática pelo botão do WhatsApp.</p>
+            <h4 className="font-bold text-slate-800 mb-1">Como funciona a liberação automática via Pix?</h4>
+            <p>Graças à nossa integração com a API PJ do Banco Inter, assim que você efetua a transferência Pix do QR Code gerado, nossa rota de Webhook é acionada instantaneamente pelo banco, liberando a sua conta em até 5 segundos de forma 100% automatizada!</p>
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 mb-1">O que acontece ao atingir o vencimento da assinatura?</h4>
-            <p>Sua conta é suspensa temporariamente, mantendo seus dados cadastrados protegidos por até 30 dias. Você poderá regularizar o acesso a qualquer momento através do pagamento de um novo plano.</p>
+            <h4 className="font-bold text-slate-800 mb-1">E se eu pagar e a conta não for liberada imediatamente?</h4>
+            <p>Fique tranquilo! Caso seu banco sofra alguma oscilação de rede com o Banco Central, basta clicar em "Enviar Comprovante de Contingência" para nos enviar o comprovante. Nossa equipe de suporte operacional ativa o seu plano manualmente em minutos.</p>
           </div>
         </div>
       </div>
