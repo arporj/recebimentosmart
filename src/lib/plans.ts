@@ -34,11 +34,10 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     priceDefault: '0,00',
     description: 'Plano gratuito com anúncios para organizar suas finanças básicas.',
     featuresDefault: [
-      { text: 'Até 15 clientes', available: true },
+      { text: 'Controle de até 15 clientes', available: true },
       { text: 'Até 30 transações mensais', available: true },
-      { text: 'Máximo 2 contas bancárias', available: true },
-      { text: 'Até 10 tags', available: true },
-      { text: 'Exibição de anúncios', available: true },
+      { text: 'Até 2 contas bancárias', available: true },
+      { text: 'Até 10 tags para organização', available: true },
     ],
     popular: false,
     cta: 'Começar Grátis',
@@ -50,9 +49,10 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     priceDefault: '9,90',
     description: 'Para quem está começando a organizar suas cobranças.',
     featuresDefault: [
-      { text: 'Controle de até 20 clientes', available: true },
-      { text: 'Dashboard simples', available: true },
-      { text: 'Notificação de cobrança por e-mail', available: true },
+      { text: 'Controle de até 35 clientes', available: true },
+      { text: 'Até 60 transações mensais', available: true },
+      { text: 'Até 4 contas bancárias', available: true },
+      { text: 'Até 30 tags para organização', available: true },
     ],
     popular: false,
     cta: 'Começar Agora',
@@ -64,10 +64,10 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     priceDefault: '24,90',
     description: 'Para profissionais que precisam de mais automação e relatórios.',
     featuresDefault: [
-      { text: 'Clientes ilimitados', available: true },
-      { text: 'Tudo do plano Básico', available: true },
-      { text: 'Relatórios detalhados', available: true },
-      { text: 'Suporte via chat', available: true },
+      { text: 'Controle de até 80 clientes', available: true },
+      { text: 'Até 120 transações mensais', available: true },
+      { text: 'Até 10 contas bancárias', available: true },
+      { text: 'Até 70 tags para organização', available: true },
     ],
     popular: true,
     cta: 'Começar Agora',
@@ -79,10 +79,10 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     priceDefault: '39,90',
     description: 'Para empresas que buscam o máximo de performance e suporte.',
     featuresDefault: [
-      { text: 'Tudo do plano Pró', available: true },
-      { text: 'Notificação por WhatsApp', available: true },
-      { text: 'Suporte prioritário', available: true },
-      { text: 'Acesso antecipado a recursos', available: true },
+      { text: 'Clientes e contatos ilimitados', available: true },
+      { text: 'Transações e lançamentos ilimitados', available: true },
+      { text: 'Bancos e contas ilimitadas', available: true },
+      { text: 'Tags de organização ilimitadas', available: true },
     ],
     popular: false,
     cta: 'Assinar Premium',
@@ -90,13 +90,42 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
   }
 ];
 
-export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
-  // Prioriza a lista de features do banco de dados se ela existir e for válida
-  if (planData && planData.features && Array.isArray(planData.features) && planData.features.length > 0) {
-    return planData.features.map((featureText: string) => ({
-      text: featureText,
+export function generateFeaturesFromLimits(clients: number, transactions: number, accounts: number, tags: number): PlanFeature[] {
+  return [
+    {
+      text: clients === -1 ? 'Clientes e contatos ilimitados' : `Controle de até ${clients} clientes`,
       available: true
-    }));
+    },
+    {
+      text: transactions === -1 ? 'Transações e lançamentos ilimitados' : `Até ${transactions} transações mensais`,
+      available: true
+    },
+    {
+      text: accounts === -1 ? 'Bancos e contas ilimitadas' : `Até ${accounts} contas bancárias`,
+      available: true
+    },
+    {
+      text: tags === -1 ? 'Tags de organização ilimitadas' : `Até ${tags} tags para organização`,
+      available: true
+    }
+  ];
+}
+
+export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
+  if (planData) {
+    const clients = planData.limit_clients !== undefined ? planData.limit_clients : (planData.limit_clientes !== undefined ? planData.limit_clientes : undefined);
+    const transactions = planData.limit_transactions !== undefined ? planData.limit_transactions : (planData.limit_transacoes !== undefined ? planData.limit_transacoes : undefined);
+    const accounts = planData.limit_accounts !== undefined ? planData.limit_accounts : (planData.limit_contas !== undefined ? planData.limit_contas : undefined);
+    const tags = planData.limit_tags !== undefined ? planData.limit_tags : undefined;
+
+    if (clients !== undefined || transactions !== undefined || accounts !== undefined || tags !== undefined) {
+      return generateFeaturesFromLimits(
+        clients ?? -1,
+        transactions ?? -1,
+        accounts ?? -1,
+        tags ?? -1
+      );
+    }
   }
 
   // Fallback estático
@@ -114,3 +143,4 @@ export function getPlanDescription(slug: PlanSlug, planData: any): string {
   const baseConfig = INITIAL_PLANS_CONFIG.find(t => t.slug === slug);
   return baseConfig ? baseConfig.description : '';
 }
+
