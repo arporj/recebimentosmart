@@ -219,10 +219,6 @@ export default function SubscriptionPageV2() {
           if (payload.new && payload.new.status === 'COMPLETED') {
             setPaymentSuccess(true);
             setPixData(null);
-            toast.success('Pagamento confirmado automaticamente! Sua assinatura está liberada.', {
-              duration: 6000,
-              icon: '🎉'
-            });
             fetchData();
           }
         }
@@ -248,10 +244,6 @@ export default function SubscriptionPageV2() {
           console.log('[Polling] Sucesso! Pagamento confirmado via polling.');
           setPaymentSuccess(true);
           setPixData(null);
-          toast.success('Pagamento confirmado automaticamente! Sua assinatura está liberada.', {
-            duration: 6000,
-            icon: '🎉'
-          });
           fetchData();
         }
       } catch (err) {
