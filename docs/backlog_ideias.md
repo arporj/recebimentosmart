@@ -60,7 +60,7 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 * **Referência:** Ver [docs/cron_jobs.md](cron_jobs.md) — Job 8 para detalhes técnicos completos
 
 ### 📊 Melhorias na Tela de Lançamentos (UI/UX)
-* **Status:** Pendente de implementação.
+* **Status:** Concluído.
 * **Melhorias solicitadas:**
   * **Cores de Valores Previstos:** O valor previsto que aparece abaixo do valor de cada conta (na tela de lançamento) deve ter as cores verde (quando for positivo) e vermelho (quando for negativo), usando tons discretos e suaves (diferentes dos tons originais e mais fortes das contas).
   * **Filtros Fixos no Scroll (Sticky Desktop):** A barra de busca e o filtro de seleção do mês, na tela de lançamento para desktop, devem se manter fixados (sticky) no topo da página quando o usuário rola a tela para baixo.

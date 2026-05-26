@@ -905,7 +905,7 @@ const FinancialTransactionsV2 = () => {
               </div>
               <div className="text-right">
                 <p className="text-[11px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
-                <p className="text-[8px] font-bold text-slate-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
+                <p className={`text-[8px] font-bold ${acc.projected >= 0 ? 'text-emerald-600/75' : 'text-rose-500/75'}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
               </div>
             </div>
           ))}
@@ -1241,33 +1241,62 @@ const FinancialTransactionsV2 = () => {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col space-y-6 min-w-0">
-          {/* Header da Lista (Fixo) */}
-          <div className="flex flex-col xl:flex-row gap-4 justify-between shrink-0">
-            <div className="flex-1 relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          {/* Header da Lista (Sticky e Lado a Lado Compacto) */}
+          <div className="sticky top-[80px] z-20 bg-slate-50/95 backdrop-blur-md py-4 flex flex-col lg:flex-row gap-3 items-center justify-between shrink-0 border-b border-slate-200/50">
+            {/* Busca */}
+            <div className="flex-1 relative group w-full lg:w-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
-                type="text" placeholder="Filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-14 pr-12 py-4 bg-white border border-slate-200 rounded-3xl font-bold shadow-sm"
+                type="text" placeholder="Buscar lançamentos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-10 py-3 bg-white border border-slate-200 rounded-2xl font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
               />
               {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                >
-                  <X size={18} />
+                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                  <X size={16} />
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={fetchTransactions} disabled={loading} className={`p-4 bg-white border border-slate-200 rounded-3xl shadow-sm ${loading ? 'animate-spin' : ''}`}><RefreshCcw size={20} /></button>
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="flex items-center gap-2 bg-white border border-slate-200 text-[#0d9488] px-5 py-4 rounded-3xl font-bold shadow-sm hover:bg-slate-50 transition-all text-sm"
-                title="Compartilhar Lançamentos"
-              >
-                <Share2 size={20} />
-                <span className="hidden sm:inline">Compartilhar</span>
-              </button>
+
+            {/* Barra de Mês, Resumo e Ações Lado a Lado */}
+            <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
+              {/* Filtro de Mês */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-1.5 flex items-center justify-between min-w-[170px] shadow-sm shrink-0">
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-slate-50 rounded-lg transition-all active:scale-90">
+                  <ChevronLeft size={16} className="text-slate-600" />
+                </button>
+                <span className="text-xs font-black text-slate-800 capitalize select-none">{monthLabel}</span>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-slate-50 rounded-lg transition-all active:scale-90">
+                  <ChevronRight size={16} className="text-slate-600" />
+                </button>
+              </div>
+
+              {/* Resumo Financeiro Compacto */}
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl p-1 shadow-sm shrink-0">
+                <div className="px-2.5 py-0.5 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
+                  <span className="text-[8px] font-black text-emerald-600 uppercase tracking-wider block leading-none pt-0.5">Ganhos</span>
+                  <span className="text-[11px] font-black text-emerald-700 block mt-0.5 leading-none pb-0.5">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.income + dynamicTotals.transfersIn)}
+                  </span>
+                </div>
+                <div className="px-2.5 py-0.5 bg-rose-50 border border-rose-100 rounded-xl text-center">
+                  <span className="text-[8px] font-black text-rose-600 uppercase tracking-wider block leading-none pt-0.5">Gastos</span>
+                  <span className="text-[11px] font-black text-rose-700 block mt-0.5 leading-none pb-0.5">
+                    -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.expense + dynamicTotals.transfersOut)}
+                  </span>
+                </div>
+                <div className={`px-2.5 py-0.5 rounded-xl text-center border leading-none ${dynamicTotals.result >= 0 ? 'bg-teal-50 border-teal-100 text-teal-700' : 'bg-rose-50 border-rose-100 text-rose-700'}`}>
+                  <span className="text-[8px] font-black uppercase tracking-wider block leading-none pt-0.5">Resultado</span>
+                  <span className="text-[11px] font-black block mt-0.5 leading-none pb-0.5">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.result)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Ações */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={fetchTransactions} disabled={loading} className={`p-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 transition-all ${loading ? 'animate-spin' : ''}`} title="Recarregar"><RefreshCcw size={16} /></button>
+                <button onClick={() => setIsShareModalOpen(true)} className="p-2.5 bg-white border border-slate-200 text-[#0d9488] rounded-2xl shadow-sm hover:bg-slate-50 transition-all" title="Compartilhar"><Share2 size={16} /></button>
+              </div>
             </div>
           </div>
 
