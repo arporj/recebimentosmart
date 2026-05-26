@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Settings, Save, RefreshCw, Shield, Zap, Star, Award, UserCheck, Tags, Wallet, Activity } from 'lucide-react';
+import { Settings, Save, RefreshCw, Shield, Zap, Star, Award, UserCheck, Tags, Wallet, Activity, Inbox } from 'lucide-react';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { supabase } from '../../lib/supabase';
 
