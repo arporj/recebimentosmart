@@ -697,11 +697,11 @@ export default function SubscriptionPageV2() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 leading-relaxed">
           <div>
             <h4 className="font-bold text-slate-800 mb-1">Como funciona a liberação automática via Pix?</h4>
-            <p>Graças à nossa integração com a API PJ do Banco Inter, assim que você efetua a transferência Pix do QR Code gerado, nossa rota de Webhook é acionada instantaneamente pelo banco, liberando a sua conta em até 5 segundos de forma 100% automatizada!</p>
+            <p>O processo é totalmente seguro e automatizado. Assim que você realiza o pagamento usando o QR Code ou o código copia e cola, nosso sistema identifica a confirmação em poucos segundos e libera todos os recursos do seu plano imediatamente.</p>
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 mb-1">E se eu pagar e a conta não for liberada imediatamente?</h4>
-            <p>Fique tranquilo! Caso seu banco sofra alguma oscilação de rede com o Banco Central, basta clicar em "Enviar Comprovante de Contingência" para nos enviar o comprovante. Nossa equipe de suporte operacional ativa o seu plano manualmente em minutos.</p>
+            <h4 className="font-bold text-slate-800 mb-1">E se meu plano não for liberado na mesma hora?</h4>
+            <p>Não se preocupe! Se ocorrer qualquer instabilidade temporária na rede que atrase a liberação automática, basta clicar no botão para nos enviar o comprovante de pagamento. Nossa equipe de suporte fará a ativação manual para você em poucos minutos.</p>
           </div>
         </div>
       </div>
