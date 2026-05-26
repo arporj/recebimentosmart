@@ -15,6 +15,8 @@ interface SinglePlanLimits {
     clients: number;
     tags: number;
     accounts: number;
+    email_enabled?: boolean;
+    email_frequency?: 'daily' | 'weekly';
 }
 
 interface PlanLimits {
@@ -32,23 +34,17 @@ export default function AdminSettingsV2() {
     const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
     
     const [limits, setLimits] = useState<PlanLimits>({
-        free: { transactions: 30, clients: 15, tags: 10, accounts: 2 },
-        basico: { transactions: 60, clients: -1, tags: -1, accounts: -1 },
-        pro: { transactions: 120, clients: -1, tags: -1, accounts: -1 },
-        premium: { transactions: -1, clients: -1, tags: -1, accounts: -1 },
+        free: { transactions: 30, clients: 15, tags: 10, accounts: 2, email_enabled: false, email_frequency: 'daily' },
+        basico: { transactions: 60, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'weekly' },
+        pro: { transactions: 120, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'daily' },
+        premium: { transactions: -1, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'daily' },
     });
     const [initialLimits, setInitialLimits] = useState<PlanLimits>({
-        free: { transactions: 30, clients: 15, tags: 10, accounts: 2 },
-        basico: { transactions: 60, clients: -1, tags: -1, accounts: -1 },
-        pro: { transactions: 120, clients: -1, tags: -1, accounts: -1 },
-        premium: { transactions: -1, clients: -1, tags: -1, accounts: -1 },
+        free: { transactions: 30, clients: 15, tags: 10, accounts: 2, email_enabled: false, email_frequency: 'daily' },
+        basico: { transactions: 60, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'weekly' },
+        pro: { transactions: 120, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'daily' },
+        premium: { transactions: -1, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'daily' },
     });
-
-    // Novos estados de controle de e-mail alertas
-    const [emailNotifyEnabled, setEmailNotifyEnabled] = useState(true);
-    const [initialEmailNotifyEnabled, setInitialEmailNotifyEnabled] = useState(true);
-    const [emailNotifyFrequency, setEmailNotifyFrequency] = useState<'daily' | 'weekly'>('daily');
-    const [initialEmailNotifyFrequency, setInitialEmailNotifyFrequency] = useState<'daily' | 'weekly'>('daily');
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -76,7 +72,9 @@ export default function AdminSettingsV2() {
                         transactions: plan.limit_transactions ?? -1,
                         clients: plan.limit_clients ?? -1,
                         tags: plan.limit_tags ?? -1,
-                        accounts: plan.limit_accounts ?? -1
+                        accounts: plan.limit_accounts ?? -1,
+                        email_enabled: plan.email_notification_enabled ?? true,
+                        email_frequency: (plan.email_notification_frequency ?? 'daily') as 'daily' | 'weekly'
                     };
 
                     fetchedLimits[slug] = planLimits;
@@ -92,36 +90,16 @@ export default function AdminSettingsV2() {
                 };
 
                 const numericLimits: PlanLimits = {
-                    free: fetchedLimits.free ?? { transactions: 30, clients: 15, tags: 10, accounts: 2 },
-                    basico: fetchedLimits.basico ?? { transactions: 60, clients: -1, tags: -1, accounts: -1 },
-                    pro: fetchedLimits.pro ?? { transactions: 120, clients: -1, tags: -1, accounts: -1 },
-                    premium: fetchedLimits.premium ?? { transactions: -1, clients: -1, tags: -1, accounts: -1 },
+                    free: fetchedLimits.free ?? { transactions: 30, clients: 15, tags: 10, accounts: 2, email_enabled: false, email_frequency: 'daily' },
+                    basico: fetchedLimits.basico ?? { transactions: 60, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'weekly' },
+                    pro: fetchedLimits.pro ?? { transactions: 120, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'daily' },
+                    premium: fetchedLimits.premium ?? { transactions: -1, clients: -1, tags: -1, accounts: -1, email_enabled: true, email_frequency: 'daily' },
                 };
 
                 setPrices(numericPrices);
                 setInitialPrices(numericPrices);
                 setLimits(numericLimits);
                 setInitialLimits(numericLimits);
-            }
-
-            // 2. Busca parâmetros globais de alertas por e-mail da tabela app_settings
-            const { data: settingsData, error: settingsError } = await supabase
-                .from('app_settings')
-                .select('*');
-            
-            if (settingsError) throw settingsError;
-
-            if (settingsData) {
-                const enabledSetting = settingsData.find(s => s.key === 'notify_email_enabled');
-                const frequencySetting = settingsData.find(s => s.key === 'notify_email_frequency');
-
-                const enabled = enabledSetting ? enabledSetting.value === 'true' : true;
-                const freq = (frequencySetting ? frequencySetting.value : 'daily') as 'daily' | 'weekly';
-
-                setEmailNotifyEnabled(enabled);
-                setInitialEmailNotifyEnabled(enabled);
-                setEmailNotifyFrequency(freq);
-                setInitialEmailNotifyFrequency(freq);
             }
 
         } catch (error: any) {
@@ -136,7 +114,7 @@ export default function AdminSettingsV2() {
         setPrices(prev => ({ ...prev, [plan]: value || 0 }));
     };
 
-    const handleLimitFieldChange = (plan: keyof PlanLimits, field: keyof SinglePlanLimits, value: number) => {
+    const handleLimitFieldChange = (plan: keyof PlanLimits, field: keyof SinglePlanLimits, value: any) => {
         setLimits(prev => ({
             ...prev,
             [plan]: {
@@ -149,27 +127,16 @@ export default function AdminSettingsV2() {
     const handleUpdateSettings = async () => {
         setSaving(true);
         try {
-            // 1. Atualiza cotas operacionais e precificação via RPC
+            // 1. Atualiza cotas operacionais, precificação e e-mail alertas por plano via RPC
             const { error: rpcError } = await supabase.rpc('update_plan_settings', { 
                 prices_data: prices, 
                 limits_data: limits 
             });
             if (rpcError) throw rpcError;
 
-            // 2. Atualiza os parâmetros globais de disparo por e-mail no app_settings
-            const { error: settingsError } = await supabase
-                .from('app_settings')
-                .upsert([
-                    { key: 'notify_email_enabled', value: emailNotifyEnabled ? 'true' : 'false', description: 'Controle global de disparo de alertas de vencimento por e-mail (true/false)' },
-                    { key: 'notify_email_frequency', value: emailNotifyFrequency, description: 'Frequência do disparo do alerta de vencimento (daily/weekly)' }
-                ]);
-            if (settingsError) throw settingsError;
-
             toast.success('Configurações de planos e alertas atualizadas com sucesso!');
             setInitialPrices(prices);
             setInitialLimits(limits);
-            setInitialEmailNotifyEnabled(emailNotifyEnabled);
-            setInitialEmailNotifyFrequency(emailNotifyFrequency);
         } catch (error: any) {
             toast.error(`Falha ao atualizar: ${error.message}`);
             console.error('Erro:', error);
@@ -179,12 +146,13 @@ export default function AdminSettingsV2() {
     };
 
     const hasChanges = JSON.stringify(prices) !== JSON.stringify(initialPrices) || 
-                       JSON.stringify(limits) !== JSON.stringify(initialLimits) ||
-                       emailNotifyEnabled !== initialEmailNotifyEnabled ||
-                       emailNotifyFrequency !== initialEmailNotifyFrequency;
+                       JSON.stringify(limits) !== JSON.stringify(initialLimits);
 
     const renderPlanLimitsGrid = (slug: keyof PlanLimits) => {
         const planLimits = limits[slug];
+        const isEmailEnabled = planLimits.email_enabled ?? (slug !== 'free');
+        const emailFrequency = planLimits.email_frequency ?? (slug === 'basico' ? 'weekly' : 'daily');
+
         return (
             <div className="border-t border-dashed border-slate-200 pt-4 mt-2 space-y-3">
                 <div className="flex items-center justify-between">
@@ -252,6 +220,64 @@ export default function AdminSettingsV2() {
                         />
                     </div>
                 </div>
+
+                {/* CONTROLE INDIVIDUAL DE E-MAIL ALERTAS POR PLANO */}
+                <div className="border-t border-slate-100 pt-3 mt-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Alertas por E-mail</span>
+                        
+                        {/* Botão Liga/Desliga */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleLimitFieldChange(slug, 'email_enabled', !isEmailEnabled)}
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                    isEmailEnabled ? 'bg-teal-600' : 'bg-slate-200'
+                                }`}
+                                disabled={saving}
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                        isEmailEnabled ? 'translate-x-4' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                            <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider min-w-[32px]">
+                                {isEmailEnabled ? 'Ativo' : 'Desat.'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {isEmailEnabled && (
+                        <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 shadow-inner w-full">
+                            <button
+                                type="button"
+                                onClick={() => handleLimitFieldChange(slug, 'email_frequency', 'daily')}
+                                className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${
+                                    emailFrequency === 'daily'
+                                        ? 'bg-slate-900 text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                                disabled={saving}
+                            >
+                                Diário
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleLimitFieldChange(slug, 'email_frequency', 'weekly')}
+                                className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${
+                                    emailFrequency === 'weekly'
+                                        ? 'bg-slate-900 text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                                disabled={saving}
+                            >
+                                Semanal
+                            </button>
+                        </div>
+                    )}
+                </div>
+                
                 <p className="text-[9px] text-slate-400 mt-2 font-medium italic">* Digite -1 para liberar cota ilimitada</p>
             </div>
         );
@@ -398,80 +424,6 @@ export default function AdminSettingsV2() {
                                 {renderPlanLimitsGrid('premium')}
                             </div>
 
-                            {/* SEÇÃO DE ALERTAS E NOTIFICAÇÕES */}
-                            <div className="md:col-span-2 border-t border-slate-100 pt-8 mt-6">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="bg-teal-50 p-2.5 rounded-xl text-teal-600">
-                                        <Inbox className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900">Alertas de Vencimento de Contas</h3>
-                                        <p className="text-sm text-slate-500">Controle o envio automático de notificações por e-mail sobre contas a vencer para os assinantes.</p>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                    <div className="space-y-1 max-w-md">
-                                        <span className="text-[10px] bg-slate-200/80 text-slate-700 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                                            Notificações Automáticas
-                                        </span>
-                                        <h4 className="font-bold text-slate-800 text-sm mt-2">Disparar Alertas Diários/Semanais</h4>
-                                        <p className="text-xs text-slate-500 leading-relaxed">
-                                            Os assinantes dos planos Básico, Pró e Premium receberão um e-mail às <strong>05:00 da manhã (horário de Brasília)</strong> detalhando suas contas pendentes do dia ou da semana.
-                                        </p>
-                                    </div>
-
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                                        {/* Botão Liga/Desliga */}
-                                        <div className="flex items-center gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setEmailNotifyEnabled(!emailNotifyEnabled)}
-                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                                    emailNotifyEnabled ? 'bg-custom' : 'bg-slate-200'
-                                                }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                                        emailNotifyEnabled ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
-                                                />
-                                            </button>
-                                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                                {emailNotifyEnabled ? 'Ativado' : 'Desativado'}
-                                            </span>
-                                        </div>
-
-                                        {/* Frequência (Diário/Semanal) */}
-                                        <div className="flex bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                                            <button
-                                                type="button"
-                                                onClick={() => setEmailNotifyFrequency('daily')}
-                                                disabled={!emailNotifyEnabled}
-                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                                                    emailNotifyFrequency === 'daily'
-                                                        ? 'bg-slate-900 text-white shadow-sm'
-                                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                            >
-                                                Diário (05:00 BRT)
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setEmailNotifyFrequency('weekly')}
-                                                disabled={!emailNotifyEnabled}
-                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                                                    emailNotifyFrequency === 'weekly'
-                                                        ? 'bg-slate-900 text-white shadow-sm'
-                                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                            >
-                                                Semanal (Domingos 05:00)
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                         </div>
                     )}
