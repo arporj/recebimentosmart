@@ -8,15 +8,9 @@ import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertC
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
 
-type PlanName = 'free' | 'basico' | 'pro';
+import { PLAN_ORDER, PLAN_MAPPING, INITIAL_PLANS_CONFIG, buildDynamicFeatures, PlanSlug } from '../../lib/plans';
 
-const PLAN_MAPPING: Record<string, PlanName> = {
-  'free': 'free',
-  'básico': 'basico',
-  'basico': 'basico',
-  'pró': 'pro',
-  'pro': 'pro',
-};
+type PlanName = PlanSlug;
 
 // Chave CNPJ oficial do usuário formatada para exibição
 const PIX_DISPLAY_KEY = '37.905.181/0001-05';
@@ -67,35 +61,7 @@ const generatePixPayload = (amount: number): string => {
   return payload + crc;
 };
 
-interface PlanFeatureList {
-  free: string[];
-  basico: string[];
-  pro: string[];
-}
-
-const STATIC_PLAN_FEATURES: PlanFeatureList = {
-  free: [
-    'Até 15 clientes cadastrados',
-    'Até 30 transações mensais',
-    'Máximo 2 contas bancárias',
-    'Até 10 tags para organização',
-    'Exibição de anúncios',
-  ],
-  basico: [
-    'Controle de até 50 clientes',
-    'Transações e lançamentos ilimitados',
-    'Bancos e contas ilimitadas',
-    'Campos personalizados nos cadastros',
-    'Sem exibição de anúncios',
-  ],
-  pro: [
-    'Clientes e contatos ilimitados',
-    'Transações e contas ilimitadas',
-    'Painel de relatórios detalhados',
-    'Campos personalizados completos',
-    'Suporte prioritário via WhatsApp',
-  ]
-};
+// Interfaces e constantes de planos removidas em favor da importação unificada de src/lib/plans.ts
 
 export default function SubscriptionPageV2() {
   const { loading, pageData, fetchData } = useSubscription();
@@ -297,16 +263,18 @@ export default function SubscriptionPageV2() {
     return `https://wa.me/5521967621494?text=${text}`;
   };
 
-  // Filtra e ordena os planos na ordem exata exigida: Free (1º), Básico (2º) e Pró (3º)
+  // Filtra e ordena os planos de acordo com a ordem unificada (Free, Básico, Pró, Premium)
   const getOrderedPlans = () => {
     if (!pageData?.plans) return [];
-    const order = ['free', 'basico', 'pro'];
     return [...pageData.plans]
-      .filter(p => p.name.toLowerCase() !== 'premium')
+      .filter(p => {
+        const slug = PLAN_MAPPING[p.slug || p.name.toLowerCase()];
+        return slug && PLAN_ORDER.includes(slug);
+      })
       .sort((a, b) => {
-        const keyA = PLAN_MAPPING[a.name.toLowerCase()] || 'free';
-        const keyB = PLAN_MAPPING[b.name.toLowerCase()] || 'free';
-        return order.indexOf(keyA) - order.indexOf(keyB);
+        const keyA = PLAN_MAPPING[a.slug || a.name.toLowerCase()] || 'free';
+        const keyB = PLAN_MAPPING[b.slug || b.name.toLowerCase()] || 'free';
+        return PLAN_ORDER.indexOf(keyA) - PLAN_ORDER.indexOf(keyB);
       });
   };
 
@@ -430,16 +398,20 @@ export default function SubscriptionPageV2() {
         </div>
       </div>
 
-      {/* ─── PAINEL DE PREÇOS (HORIZONTAL E EM ORDEM ESTREITA: Free, Básico, Pró) ─── */}
+      {/* ─── PAINEL DE PREÇOS (HORIZONTAL E EM ORDEM ESTREITA: Free, Básico, Pró, Premium) ─── */}
       <div className="space-y-4">
         <h2 className="text-slate-800 font-black text-lg tracking-tight pl-1">Planos Disponíveis</h2>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {orderedPlans.map(plan => {
-            const planKey = PLAN_MAPPING[plan.name.toLowerCase()] || 'free';
+            const planKey = PLAN_MAPPING[plan.slug || plan.name.toLowerCase()] || 'free';
             const isSelected = selectedPlan === planKey;
             const isUserCurrent = userPlanActive === planKey && userPlanRaw !== 'admin';
             const price = plan.price_monthly;
+            
+            const planStatic = INITIAL_PLANS_CONFIG.find(p => p.slug === planKey);
+            const description = planStatic?.description || '';
+            const dynamicFeatures = buildDynamicFeatures(planKey, plan);
 
             return (
               <div
@@ -456,8 +428,13 @@ export default function SubscriptionPageV2() {
                     Recomendado
                   </div>
                 )}
+                {planKey === 'premium' && (
+                  <div className="absolute -top-3 right-6 bg-slate-900 text-white text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest shadow-md">
+                    VIP / Ilimitado
+                  </div>
+                )}
                 {isUserCurrent && (
-                  <div className="absolute -top-3 left-6 bg-slate-900 text-white text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest border border-slate-800 shadow-sm">
+                  <div className="absolute -top-3 left-6 bg-slate-900 text-[#29a8a8] text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest border border-slate-800 shadow-sm">
                     Seu Plano Atual
                   </div>
                 )}
@@ -465,7 +442,7 @@ export default function SubscriptionPageV2() {
                 <div className="space-y-2">
                   <h3 className="text-slate-900 font-black text-lg capitalize">{plan.name}</h3>
                   <p className="text-slate-400 text-xs font-semibold leading-relaxed">
-                    {planKey === 'free' ? 'Ideal para testar a ferramenta e controle simples.' : planKey === 'basico' ? 'O empurrão financeiro que seu negócio precisa.' : 'Controle total e sem limites para quem quer crescer.'}
+                    {description}
                   </p>
                   <div className="flex items-baseline gap-0.5 pt-3">
                     <span className="text-slate-900 text-3xl font-black tracking-tight">{formatCurrency(price)}</span>
@@ -474,10 +451,14 @@ export default function SubscriptionPageV2() {
                 </div>
 
                 <ul className="space-y-3 flex-1 border-t border-slate-100 pt-5 text-xs">
-                  {(STATIC_PLAN_FEATURES[planKey] || []).map((feature, i) => (
-                    <li key={`${planKey}-feature-${i}`} className="flex items-start gap-2.5 text-slate-600">
-                      <Check className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
-                      <span>{feature}</span>
+                  {dynamicFeatures.map((f, i) => (
+                    <li key={`${planKey}-feature-${i}`} className={`flex items-start gap-2.5 ${f.available ? 'text-slate-600' : 'text-slate-400 line-through'}`}>
+                      {f.available ? (
+                        <Check className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />
+                      ) : (
+                        <span className="text-slate-400 font-bold shrink-0 mt-0.5 w-4 text-center">✕</span>
+                      )}
+                      <span>{f.text}</span>
                     </li>
                   ))}
                 </ul>

@@ -2,67 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { formatCurrency } from '../../../lib/utils';
-
-const normalizePlanName = (name: string) =>
-    name.toLowerCase().normalize("NFD").replace(/[^\w\s]/gi, '');
-
-const initialTiers = [
-    {
-        slug: 'free',
-        name: 'Free',
-        price: '0,00',
-        description: 'Ideal para organizar suas finanças básicas.',
-        features: [
-            { text: 'Até 15 clientes', available: true },
-            { text: 'Até 30 transações/mês', available: true },
-            { text: 'Até 2 contas bancárias', available: true },
-            { text: 'Até 10 tags', available: true },
-            { text: 'Exibição de anúncios', available: true },
-            { text: 'Campos personalizados', available: false },
-        ],
-        popular: false,
-        disabled: false,
-        cta: 'Começar Grátis',
-        ctaLink: '/v2/cadastro',
-    },
-    {
-        slug: 'basico',
-        name: 'Básico',
-        price: '--,--',
-        description: 'O essencial para pequenos negócios.',
-        features: [
-            { text: 'Cota flexível de clientes', available: true },
-            { text: 'Cota de transações mensais', available: true },
-            { text: 'Gestão financeira', available: true },
-            { text: 'Sem anúncios', available: true },
-            { text: 'Campos personalizados', available: true },
-        ],
-        popular: false,
-        disabled: false,
-        cta: 'Começar Agora',
-        ctaLink: '/v2/cadastro',
-    },
-    {
-        slug: 'pro',
-        name: 'Pró',
-        price: '--,--',
-        description: 'Para quem quer crescer sem limites.',
-        features: [
-            { text: 'Clientes ilimitados', available: true },
-            { text: 'Transações ilimitadas', available: true },
-            { text: 'Sem anúncios', available: true },
-            { text: 'Relatórios detalhados', available: true },
-            { text: 'Campos personalizados', available: true },
-        ],
-        popular: true,
-        disabled: false,
-        cta: 'Começar Agora',
-        ctaLink: '/v2/cadastro',
-    },
-];
+import { INITIAL_PLANS_CONFIG, PLAN_ORDER, buildDynamicFeatures, PlanSlug } from '../../../lib/plans';
 
 export const LandingPagePremium: React.FC = () => {
-    const [pricingTiers, setPricingTiers] = useState(initialTiers);
+    // Inicializa a UI usando as configurações padrão do arquivo unificado
+    const [pricingTiers, setPricingTiers] = useState<any[]>(INITIAL_PLANS_CONFIG.map(p => ({
+        ...p,
+        price: p.priceDefault,
+        features: p.featuresDefault,
+        disabled: false
+    })));
     const [heroSlide, setHeroSlide] = useState(0);
 
     // Auto-play do carrossel de screenshots
@@ -77,66 +26,30 @@ export const LandingPagePremium: React.FC = () => {
             if (error) {
                 console.error("Erro ao resgatar os planos na landing page:", error);
             } else if (data) {
-                const slugsToRender = ['free', 'basico', 'pro'];
-                const filteredData = data.filter((p: any) => slugsToRender.includes(p.slug));
+                const updatedTiers = PLAN_ORDER.map(slug => {
+                    const planData = data.find((p: any) => p.slug === slug);
+                    const baseTier = INITIAL_PLANS_CONFIG.find(t => t.slug === slug)!;
 
-                const updatedTiers = slugsToRender.map(slug => {
-                    const planData = filteredData.find((p: any) => p.slug === slug);
-                    const baseTier = initialTiers.find(t => t.slug === slug) || initialTiers[0];
-
-                    if (!planData) return baseTier;
+                    if (!planData) {
+                        return {
+                            ...baseTier,
+                            price: baseTier.priceDefault,
+                            features: baseTier.featuresDefault,
+                            disabled: false
+                        };
+                    }
 
                     const formattedPrice = formatCurrency(planData.price_monthly)
                         .replace('R$\xa0', '')
                         .replace('R$ ', '');
 
-                    // Constrói os limites textuais dinamicamente de acordo com as colunas do banco
-                    const dynamicFeatures = [];
-
-                    // 1. Clientes
-                    if (planData.limit_clients === -1) {
-                        dynamicFeatures.push({ text: 'Clientes ilimitados', available: true });
-                    } else {
-                        dynamicFeatures.push({ text: `Até ${planData.limit_clients} clientes`, available: true });
-                    }
-
-                    // 2. Transações
-                    if (planData.limit_transactions === -1) {
-                        dynamicFeatures.push({ text: 'Transações ilimitadas', available: true });
-                    } else {
-                        dynamicFeatures.push({ text: `Até ${planData.limit_transactions} transações/mês`, available: true });
-                    }
-
-                    // 3. Contas bancárias
-                    if (planData.limit_accounts === -1) {
-                        dynamicFeatures.push({ text: 'Contas bancárias ilimitadas', available: true });
-                    } else {
-                        dynamicFeatures.push({ text: `Até ${planData.limit_accounts} contas bancárias`, available: true });
-                    }
-
-                    // 4. Tags
-                    if (planData.limit_tags === -1) {
-                        dynamicFeatures.push({ text: 'Tags ilimitadas', available: true });
-                    } else {
-                        dynamicFeatures.push({ text: `Até ${planData.limit_tags} tags para categorização`, available: true });
-                    }
-
-                    // 5. Diferenciais Específicos do Modelo de Negócio
-                    if (slug === 'free') {
-                        dynamicFeatures.push({ text: 'Exibição de anúncios', available: true });
-                        dynamicFeatures.push({ text: 'Campos personalizados', available: false });
-                    } else {
-                        dynamicFeatures.push({ text: 'Sem anúncios', available: true });
-                        dynamicFeatures.push({ text: 'Campos personalizados', available: true });
-                        if (slug === 'pro') {
-                            dynamicFeatures.push({ text: 'Dashboard e relatórios Pró', available: true });
-                        }
-                    }
+                    const dynamicFeatures = buildDynamicFeatures(slug, planData);
 
                     return {
                         ...baseTier,
                         price: formattedPrice,
-                        features: dynamicFeatures
+                        features: dynamicFeatures,
+                        disabled: false
                     };
                 });
 
@@ -299,7 +212,7 @@ export const LandingPagePremium: React.FC = () => {
                                 <h2 className="text-[#29a8a8] text-sm font-bold uppercase tracking-[0.2em] mb-3">Preços</h2>
                                 <h3 className="text-3xl font-black text-slate-900 md:text-4xl">O plano ideal para cada fase do seu negócio</h3>
                             </div>
-                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 items-center">
+                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-4 items-start">
                                 {pricingTiers.map((tier) => (
                                     <div
                                         key={tier.name}
