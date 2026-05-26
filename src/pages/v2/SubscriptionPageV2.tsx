@@ -144,9 +144,12 @@ export default function SubscriptionPageV2() {
   const finalAmount = Math.max(0, planPrice - userCredits);
   const planDisplayName = currentPlanObj?.name ?? (selectedPlan === 'free' ? 'Free' : selectedPlan === 'basico' ? 'Básico' : 'Pró');
 
+  const userPlanRaw = pageData?.user?.plan?.toLowerCase() || '';
+  const userPlanActive = PLAN_MAPPING[userPlanRaw] || 'free';
+
   // Geração dinâmica de PIX conectando com nosso backend Express
   useEffect(() => {
-    if (selectedPlan === 'free' || !user?.id) {
+    if (selectedPlan === 'free' || !user?.id || selectedPlan === userPlanActive) {
       setPixData(null);
       return;
     }
@@ -193,7 +196,7 @@ export default function SubscriptionPageV2() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [selectedPlan, finalAmount, planDisplayName, user?.id]);
+  }, [selectedPlan, finalAmount, planDisplayName, user?.id, userPlanActive]);
 
   // Escuta ativa em Tempo Real no Supabase para aprovação automática do webhook do Banco Inter
   useEffect(() => {
@@ -387,8 +390,6 @@ export default function SubscriptionPageV2() {
     );
   }
 
-  const userPlanRaw = pageData?.user?.plan?.toLowerCase() || '';
-  const userPlanActive = PLAN_MAPPING[userPlanRaw] || 'free';
   const userValidUntil = pageData?.user?.valid_until;
 
   // URL dinâmica para renderizar o QR Code gerado pelo Inter
@@ -500,7 +501,7 @@ export default function SubscriptionPageV2() {
       </div>
 
       {/* ─── PAINEL CENTRAL DE PAGAMENTO (INTEGRADO À API BANCO INTER) ─── */}
-      {selectedPlan !== 'free' && (
+      {selectedPlan !== 'free' && selectedPlan !== userPlanActive && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
           
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
