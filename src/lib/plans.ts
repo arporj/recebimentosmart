@@ -134,6 +134,16 @@ export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
     }
   }
 
+  const emailEnabled = planData
+    ? (planData.email_notification_enabled ?? false)
+    : (slug !== 'free');
+  const emailFrequency = planData
+    ? (planData.email_notification_frequency ?? 'daily')
+    : (slug === 'basico' ? 'weekly' : 'daily');
+
+  const frequencyLabel = emailFrequency === 'weekly' ? 'semanal' : 'diária';
+  const emailFeatureText = `Notificação ${frequencyLabel} de contas por e-mail`;
+
   const limitFeatures = [
     {
       text: clients === -1 ? 'Clientes e contatos ilimitados' : `Controle de até ${clients} clientes`,
@@ -163,7 +173,7 @@ export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
   if (slug === 'basico') {
     return [
       ...limitFeatures,
-      { text: 'Notificação de cobrança por e-mail', available: true }
+      { text: emailEnabled ? emailFeatureText : 'Sem notificações por e-mail', available: emailEnabled }
     ];
   }
 
@@ -171,6 +181,7 @@ export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
     return [
       { text: 'Tudo do plano Básico', available: true },
       ...limitFeatures,
+      { text: emailEnabled ? emailFeatureText : 'Sem notificações por e-mail', available: emailEnabled },
       { text: 'Painel de relatórios detalhados', available: true }
     ];
   }
@@ -179,6 +190,7 @@ export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
     return [
       { text: 'Tudo do plano Pró', available: true },
       ...limitFeatures,
+      { text: emailEnabled ? emailFeatureText : 'Sem notificações por e-mail', available: emailEnabled },
       { text: 'Suporte prioritário', available: true },
       { text: 'Acesso antecipado a recursos', available: true }
     ];
