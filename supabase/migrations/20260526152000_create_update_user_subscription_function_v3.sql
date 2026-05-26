@@ -1,11 +1,9 @@
--- Migration: Cria a função `update_user_subscription` corrigida (V2).
+-- Migration: Cria a função `update_user_subscription` corrigida (V3).
 --
 -- Motivo:
--- Corrige a lógica de renovação da validade do plano do usuário.
--- Adiciona exatamente 1 mês (interval '1 month') em vez de 31 dias fixos.
--- Caso o usuário possua uma validade futura (valid_until > now()), o novo vencimento 
--- é acrescido em 1 mês a partir do vencimento atual (pagamento antecipado cumulativo).
--- Caso a validade esteja expirada ou seja nula, o acréscimo de 1 mês é feito a partir de agora (now()).
+-- Corrige o nome da coluna da tabela profiles de 'plan' para 'plano' e realiza o cast do plano para o tipo ENUM plan_type.
+-- Corrige o cálculo cumulativo da data de expiração adicionando exatamente 1 mês (interval '1 month')
+-- a partir do vencimento futuro existente ou a partir de agora (now()) caso esteja expirado/nulo.
 
 CREATE OR REPLACE FUNCTION public.update_user_subscription(p_user_id UUID, p_plan_name TEXT)
 RETURNS VOID
@@ -25,13 +23,13 @@ BEGIN
     IF current_valid_until IS NOT NULL AND current_valid_until > now() THEN
         UPDATE public.profiles
         SET
-            plan = p_plan_name,
+            plano = p_plan_name::plan_type,
             valid_until = current_valid_until + interval '1 month'
         WHERE id = p_user_id;
     ELSE
         UPDATE public.profiles
         SET
-            plan = p_plan_name,
+            plano = p_plan_name::plan_type,
             valid_until = now() + interval '1 month'
         WHERE id = p_user_id;
     END IF;
