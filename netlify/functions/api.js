@@ -15,82 +15,61 @@ const mercadoPagoAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 const mercadoPagoBaseUrl = process.env.MERCADO_PAGO_BASE_URL || 'https://api.mercadopago.com';
 const webhookUrl = process.env.WEBHOOK_URL;
 
-// Banco Inter
-const INTER_API_URL = process.env.INTER_API_URL || 'https://cdpj-sandbox.partners.uatinter.co';
-const INTER_CLIENT_ID = process.env.INTER_CLIENT_ID;
-const INTER_CLIENT_SECRET = process.env.INTER_CLIENT_SECRET;
-const INTER_CONTA_CORRENTE = process.env.INTER_CONTA_CORRENTE;
+// Banco Inter mTLS e Credenciais
+const interEnv = process.env.INTER_ENV || 'sandbox';
+const certName = interEnv === 'sandbox' ? 'Sandbox_InterAPI_Certificado.crt' : 'Inter API_Certificado.crt';
+const keyName = interEnv === 'sandbox' ? 'Sandbox_InterAPI_Chave.key' : 'Inter API_Chave.key';
+const certPath = path.join(__dirname, 'certs', certName);
+const keyPath = path.join(__dirname, 'certs', keyName);
 
-// --- Lógica do Banco Inter (COMENTADO) ---
+let httpsAgent = null;
 
-// Variáveis para armazenar o conteúdo dos certificados e o agente HTTPS
-// let httpsAgent = null;
+try {
+  if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    httpsAgent = new https.Agent({
+      cert: fs.readFileSync(certPath),
+      key: fs.readFileSync(keyPath),
+      rejectUnauthorized: false
+    });
+    console.log(`[mTLS] Certificados do Banco Inter (${interEnv}) carregados com sucesso.`);
+  } else {
+    console.warn(`[mTLS] AVISO: Certificados mTLS do Banco Inter não encontrados em: ${certPath} ou ${keyPath}. Usará fallback simulado.`);
+  }
+} catch (err) {
+  console.error(`[mTLS] Erro ao carregar certificados do Banco Inter:`, err.message);
+}
 
-// Função para carregar os certificados e criar o agente HTTPS
-// function loadInterCertificates( ) {
-//   if (httpsAgent ) return; // Já carregado
-
-//   try {
-//     // Caminhos para os certificados do cliente
-//     const CLIENT_CERT_PATH = path.join(__dirname, 'certs', 'client.crt');
-//     const CLIENT_KEY_PATH = path.join(__dirname, 'certs', 'client.key');
-//     const CA_CERT_PATH = path.join(__dirname, 'certs', 'ca.crt');
-
-//     // ...
-//     const clientCertContent = fs.readFileSync(CLIENT_CERT_PATH, 'utf8');
-//     const clientKeyContent = fs.readFileSync(CLIENT_KEY_PATH, 'utf8');
-//     const caCertContent = fs.readFileSync(CA_CERT_PATH, 'utf8');
-
-//     // Agente HTTPS com os certificados
-//     // O erro 'tlsv1 alert unknown ca' geralmente ocorre em mTLS quando o servidor não confia no certificado do cliente.
-//     // A correção é enviar a cadeia de certificados completa, concatenando o certificado do cliente com o da CA.
-//     httpsAgent = new https.Agent({
-//       cert: clientCertContent + '\n' + caCertContent,
-//       key: clientKeyContent,
-//       passphrase: '',
-//       ca: caCertContent,
-//       secureProtocol: 'TLSv1_2_method',
-//       rejectUnauthorized: false,
-//       keepAlive: false,
-//     });
-
-//     console.log('Certificados do cliente Inter carregados com sucesso.');
-    
-//   } catch (err) {
-//     // CORREÇÃO DE ESCOPO: O erro de carregamento agora lança uma exceção que será capturada
-//     console.error('ERRO: Não foi possível carregar os certificados do cliente Inter:', err);
-//     throw new Error('Certificados do cliente Inter não carregados. Autenticação falhou.');
-//   }
-// }
-
-
-// // O uso global do https.Agent será removido para evitar efeitos colaterais.
-// // A configuração será passada explicitamente para as requisições do Inter.
-
-// // Função para obter o token de autenticação do Inter
-// async function getInterToken() {
-//   loadInterCertificates(); // CORREÇÃO DE ESCOPO: Garante que os certificados estão carregados e o agente criado
+async function getInterOAuthToken() {
+  const baseUrl = interEnv === 'sandbox' 
+    ? 'https://cdpj-sandbox.partners.uatinter.co' 
+    : 'https://cdpj.partners.bancointer.com.br';
   
-//   try {
-//     const response = await axios.post(
-//       `${INTER_API_URL}/oauth/v2/token`,
-//       new URLSearchParams({
-//         client_id: INTER_CLIENT_ID,
-//         client_secret: INTER_CLIENT_SECRET,
-//         grant_type: 'client_credentials',
-//         scope: 'boleto-cobranca.write boleto-cobranca.read'
-//       }),
-//       {
-//         httpsAgent, // CORREÇÃO SSL: Passa o agente explicitamente
-//         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-//       }
-//      );
-//     return response.data.access_token;
-//   } catch (error) {
-//     console.error('Erro ao obter token do Inter:', error.response?.data || error.message);
-//     throw new Error('Falha na autenticação com o Inter');
-//   }
-// }
+  const tokenUrl = `${baseUrl}/oauth/v2/token`;
+  const clientId = process.env.INTER_CLIENT_ID;
+  const clientSecret = process.env.INTER_CLIENT_SECRET;
+
+  if (!httpsAgent) {
+    throw new Error('Certificados mTLS do Banco Inter não foram carregados corretamente.');
+  }
+
+  const params = new URLSearchParams();
+  params.append('grant_type', 'client_credentials');
+  params.append('scope', 'cob.write cob.read pix.read');
+
+  if (clientId && clientSecret) {
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+  }
+
+  const response = await axios.post(tokenUrl, params.toString(), {
+    httpsAgent,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  });
+
+  return response.data.access_token;
+}
 
 
 
@@ -132,12 +111,247 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const path = event.path.replace(/^\/api\//, '');
-  const segments = path.split('/').filter(Boolean);
-  console.log('path (after replace): ', path);
+  let cleanPath = event.path;
+  cleanPath = cleanPath.replace(/^\/\.netlify\/functions\/api/, '');
+  cleanPath = cleanPath.replace(/^\/api/, '');
+  
+  const segments = cleanPath.split('/').filter(Boolean);
+  console.log('cleanPath: ', cleanPath);
   console.log('segments: ', segments);
 
   switch (segments[0]) {
+    case 'pix':
+      if (segments[1] === 'create-payment' && event.httpMethod === 'POST') {
+        try {
+          const { amount, planName, userId } = JSON.parse(event.body);
+
+          if (!amount || !userId || !planName) {
+            return {
+              statusCode: 400,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ success: false, message: 'Parâmetros obrigatórios ausentes.' })
+            };
+          }
+
+          let finalAmount = parseFloat(amount);
+          if (interEnv === 'sandbox') {
+            finalAmount = planName.toLowerCase().includes('pro') ? 2.00 : 1.00;
+          }
+
+          try {
+            const token = await getInterOAuthToken();
+            const baseUrl = interEnv === 'sandbox' 
+              ? 'https://cdpj-sandbox.partners.uatinter.co' 
+              : 'https://cdpj.partners.bancointer.com.br';
+            
+            const cobUrl = `${baseUrl}/pix/v2/cob`;
+            const interChavePix = process.env.INTER_CHAVE_PIX || '37.905.181/0001-05';
+
+            const payload = {
+              calendario: { expiracao: 3600 },
+              valor: { original: finalAmount.toFixed(2) },
+              chave: interChavePix.replace(/[^a-zA-Z0-9]/g, ''),
+              solicitacaoPagador: `Recebimento Smart - Assinatura ${planName}`
+            };
+
+            const response = await axios.post(cobUrl, payload, {
+              httpsAgent,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            const { txid, pixCopiaECola } = response.data;
+
+            const { error: dbError } = await supabaseAdmin
+              .from('pix_transactions')
+              .insert({
+                user_id: userId,
+                transaction_id: txid,
+                amount: finalAmount,
+                status: 'PENDING',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+            if (dbError) throw dbError;
+
+            return {
+              statusCode: 201,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ success: true, txid, pixCopiaECola, simulated: false })
+            };
+
+          } catch (error) {
+            console.error('[PIX] Falha no Banco Inter, usando fallback de Sandbox:', error.message);
+
+            if (interEnv === 'sandbox') {
+              const mockTxid = 'SIMULADO_' + uuidv4().replace(/-/g, '').substring(0, 24);
+              const mockPixCopiaECola = `00020101021226870014br.gov.bcb.pix2565379051810001055204000053039865404${finalAmount.toFixed(2)}5802BR5925RECEBIMENTO SMART6009SAO PAULO62300526${mockTxid}6304`;
+
+              try {
+                const { error: dbError } = await supabaseAdmin
+                  .from('pix_transactions')
+                  .insert({
+                    user_id: userId,
+                    transaction_id: mockTxid,
+                    amount: finalAmount,
+                    status: 'PENDING',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  });
+                if (dbError) {
+                  console.error('[DB Error] Erro ao salvar mock no banco:', dbError.message);
+                }
+              } catch (dbCatchError) {
+                console.error('[DB] Erro no mock:', dbCatchError.message);
+              }
+
+              return {
+                statusCode: 201,
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+                body: JSON.stringify({ success: true, txid: mockTxid, pixCopiaECola: mockPixCopiaECola, simulated: true })
+              };
+            }
+
+            return {
+              statusCode: 500,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ success: false, message: 'Não foi possível gerar a cobrança.', details: error.message })
+            };
+          }
+        } catch (err) {
+          return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ error: err.message })
+          };
+        }
+      }
+
+      if (segments[1] === 'simulate-webhook' && event.httpMethod === 'POST') {
+        if (interEnv !== 'sandbox') {
+          return {
+            statusCode: 403,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ error: 'Apenas para Sandbox' })
+          };
+        }
+        try {
+          const { txid } = JSON.parse(event.body);
+          if (!txid) {
+            return {
+              statusCode: 400,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ error: 'txid obrigatório' })
+            };
+          }
+
+          const mockPayload = {
+            pix: [{
+              txid: txid,
+              valor: "1.00",
+              endToEndId: "E" + Date.now() + "12345678",
+              horario: new Date().toISOString(),
+              status: "CONCLUIDO"
+            }]
+          };
+
+          const host = event.headers.host || 'www.recebimentosmart.com.br';
+          const protocol = event.headers['x-forwarded-proto'] || 'https';
+          
+          await axios.post(`${protocol}://${host}/webhooks/inter`, mockPayload, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ success: true, message: 'Simulação disparada!' })
+          };
+        } catch (err) {
+          return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ error: err.message })
+          };
+        }
+      }
+      break;
+
+    case 'webhooks':
+      if (segments[1] === 'inter' && event.httpMethod === 'POST') {
+        try {
+          console.log('[Webhook] Notificação Banco Inter recebida em Netlify Functions.');
+          const body = JSON.parse(event.body);
+
+          if (!body || !body.pix || !Array.isArray(body.pix)) {
+            return {
+              statusCode: 400,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ error: 'Payload inválido' })
+            };
+          }
+
+          for (const pix of body.pix) {
+            const { txid, endToEndId, valor } = pix;
+            const transactionId = txid || endToEndId;
+
+            if (!transactionId) continue;
+
+            const { data, error } = await supabaseAdmin
+              .from('pix_transactions')
+              .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
+              .eq('transaction_id', transactionId)
+              .select('*');
+
+            if (error || !data || data.length === 0) continue;
+
+            const transaction = data[0];
+            const userId = transaction.user_id;
+            const amountPaid = parseFloat(transaction.amount);
+
+            let planName = 'basico';
+            if (amountPaid >= 20.00 || amountPaid === 2.00) {
+              planName = 'pro';
+            }
+
+            await supabaseAdmin.rpc('update_user_subscription', {
+              p_user_id: userId,
+              p_plan_name: planName
+            });
+
+            await supabaseAdmin.from('payments').insert({
+              user_id: userId,
+              amount: amountPaid,
+              status: 'completed',
+              transaction_id: transactionId,
+              payment_method: 'pix'
+            }).catch(err => console.error('Erro pagto:', err.message));
+
+            await supabaseAdmin.rpc('grant_referral_credit', {
+              referred_user_id: userId,
+              paid_plan: planName
+            }).catch(err => console.error('Erro referral:', err.message));
+          }
+
+          return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ success: true })
+          };
+        } catch (err) {
+          console.error('[Webhook Error]', err.message);
+          return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ error: err.message })
+          };
+        }
+      }
+      break;
+
     case 'generate-pix':
         if (event.httpMethod === 'POST') {
             try {

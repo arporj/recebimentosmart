@@ -14,6 +14,11 @@
   status = 200
 
 [[redirects]]
+  from = "/webhooks/inter"
+  to = "/.netlify/functions/api/webhooks/inter"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
