@@ -32,14 +32,13 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     slug: 'free',
     name: 'Free',
     priceDefault: '0,00',
-    description: 'Ideal para testar a ferramenta e controle simples.',
+    description: 'Plano gratuito com anúncios para organizar suas finanças básicas.',
     featuresDefault: [
-      { text: 'Até 15 clientes cadastrados', available: true },
+      { text: 'Até 15 clientes', available: true },
       { text: 'Até 30 transações mensais', available: true },
       { text: 'Máximo 2 contas bancárias', available: true },
-      { text: 'Até 10 tags para organização', available: true },
+      { text: 'Até 10 tags', available: true },
       { text: 'Exibição de anúncios', available: true },
-      { text: 'Campos personalizados nos cadastros', available: false },
     ],
     popular: false,
     cta: 'Começar Grátis',
@@ -49,14 +48,11 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     slug: 'basico',
     name: 'Básico',
     priceDefault: '9,90',
-    description: 'O empurrão financeiro que seu negócio precisa.',
+    description: 'Para quem está começando a organizar suas cobranças.',
     featuresDefault: [
-      { text: 'Controle de até 40 clientes', available: true },
-      { text: 'Até 60 transações mensais', available: true },
-      { text: 'Até 4 contas bancárias', available: true },
-      { text: 'Até 30 tags para organização', available: true },
-      { text: 'Sem exibição de anúncios', available: true },
-      { text: 'Campos personalizados nos cadastros', available: true },
+      { text: 'Controle de até 20 clientes', available: true },
+      { text: 'Dashboard simples', available: true },
+      { text: 'Notificação de cobrança por e-mail', available: true },
     ],
     popular: false,
     cta: 'Começar Agora',
@@ -66,15 +62,12 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     slug: 'pro',
     name: 'Pró',
     priceDefault: '24,90',
-    description: 'Controle total e sem limites para quem quer crescer.',
+    description: 'Para profissionais que precisam de mais automação e relatórios.',
     featuresDefault: [
-      { text: 'Clientes e contatos ilimitados', available: true },
-      { text: 'Até 120 transações mensais', available: true },
-      { text: 'Contas bancárias ilimitadas', available: true },
-      { text: 'Tags ilimitadas para organização', available: true },
-      { text: 'Sem exibição de anúncios', available: true },
-      { text: 'Campos personalizados completos', available: true },
-      { text: 'Painel de relatórios detalhados', available: true },
+      { text: 'Clientes ilimitados', available: true },
+      { text: 'Tudo do plano Básico', available: true },
+      { text: 'Relatórios detalhados', available: true },
+      { text: 'Suporte via chat', available: true },
     ],
     popular: true,
     cta: 'Começar Agora',
@@ -84,16 +77,12 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
     slug: 'premium',
     name: 'Premium',
     priceDefault: '39,90',
-    description: 'Acesso totalmente ilimitado e assessoria dedicada.',
+    description: 'Para empresas que buscam o máximo de performance e suporte.',
     featuresDefault: [
-      { text: 'Clientes e contatos ilimitados', available: true },
-      { text: 'Transações mensais ilimitadas', available: true },
-      { text: 'Contas bancárias ilimitadas', available: true },
-      { text: 'Tags ilimitadas para organização', available: true },
-      { text: 'Sem exibição de anúncios', available: true },
-      { text: 'Campos personalizados completos', available: true },
-      { text: 'Dashboard e relatórios Premium', available: true },
-      { text: 'Suporte VIP via WhatsApp 24h', available: true },
+      { text: 'Tudo do plano Pró', available: true },
+      { text: 'Notificação por WhatsApp', available: true },
+      { text: 'Suporte prioritário', available: true },
+      { text: 'Acesso antecipado a recursos', available: true },
     ],
     popular: false,
     cta: 'Assinar Premium',
@@ -101,52 +90,27 @@ export const INITIAL_PLANS_CONFIG: PlanStaticConfig[] = [
   }
 ];
 
-export function buildDynamicFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
-  const dynamicFeatures: PlanFeature[] = [];
-
-  // 1. Clientes
-  if (planData.limit_clients === -1) {
-    dynamicFeatures.push({ text: 'Clientes e contatos ilimitados', available: true });
-  } else {
-    dynamicFeatures.push({ text: `Controle de até ${planData.limit_clients} clientes`, available: true });
+export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
+  // Prioriza a lista de features do banco de dados se ela existir e for válida
+  if (planData && planData.features && Array.isArray(planData.features) && planData.features.length > 0) {
+    return planData.features.map((featureText: string) => ({
+      text: featureText,
+      available: true
+    }));
   }
 
-  // 2. Transações
-  if (planData.limit_transactions === -1) {
-    dynamicFeatures.push({ text: 'Transações mensais ilimitadas', available: true });
-  } else {
-    dynamicFeatures.push({ text: `Até ${planData.limit_transactions} transações/mês`, available: true });
+  // Fallback estático
+  const baseConfig = INITIAL_PLANS_CONFIG.find(t => t.slug === slug);
+  return baseConfig ? baseConfig.featuresDefault : [];
+}
+
+export function getPlanDescription(slug: PlanSlug, planData: any): string {
+  // Prioriza a descrição do banco de dados
+  if (planData && planData.description) {
+    return planData.description;
   }
 
-  // 3. Contas bancárias
-  if (planData.limit_accounts === -1) {
-    dynamicFeatures.push({ text: 'Contas bancárias ilimitadas', available: true });
-  } else {
-    dynamicFeatures.push({ text: `Até ${planData.limit_accounts} contas bancárias`, available: true });
-  }
-
-  // 4. Tags
-  if (planData.limit_tags === -1) {
-    dynamicFeatures.push({ text: 'Tags ilimitadas para organização', available: true });
-  } else {
-    dynamicFeatures.push({ text: `Até ${planData.limit_tags} tags para organização`, available: true });
-  }
-
-  // 5. Diferenciais Específicos
-  if (slug === 'free') {
-    dynamicFeatures.push({ text: 'Exibição de anúncios', available: true });
-    dynamicFeatures.push({ text: 'Campos personalizados nos cadastros', available: false });
-  } else {
-    dynamicFeatures.push({ text: 'Sem exibição de anúncios', available: true });
-    dynamicFeatures.push({ text: 'Campos personalizados nos cadastros', available: true });
-    
-    if (slug === 'pro') {
-      dynamicFeatures.push({ text: 'Painel de relatórios detalhados', available: true });
-    } else if (slug === 'premium') {
-      dynamicFeatures.push({ text: 'Dashboard e relatórios Premium', available: true });
-      dynamicFeatures.push({ text: 'Suporte VIP via WhatsApp 24h', available: true });
-    }
-  }
-
-  return dynamicFeatures;
+  // Fallback estático
+  const baseConfig = INITIAL_PLANS_CONFIG.find(t => t.slug === slug);
+  return baseConfig ? baseConfig.description : '';
 }

@@ -8,7 +8,7 @@ import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertC
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
 
-import { PLAN_ORDER, PLAN_MAPPING, INITIAL_PLANS_CONFIG, buildDynamicFeatures, PlanSlug } from '../../lib/plans';
+import { PLAN_ORDER, PLAN_MAPPING, INITIAL_PLANS_CONFIG, getPlanFeatures, getPlanDescription, PlanSlug } from '../../lib/plans';
 
 type PlanName = PlanSlug;
 
@@ -409,9 +409,8 @@ export default function SubscriptionPageV2() {
             const isUserCurrent = userPlanActive === planKey && userPlanRaw !== 'admin';
             const price = plan.price_monthly;
             
-            const planStatic = INITIAL_PLANS_CONFIG.find(p => p.slug === planKey);
-            const description = planStatic?.description || '';
-            const dynamicFeatures = buildDynamicFeatures(planKey, plan);
+            const features = getPlanFeatures(planKey, plan);
+            const description = getPlanDescription(planKey, plan);
 
             return (
               <div
@@ -451,7 +450,7 @@ export default function SubscriptionPageV2() {
                 </div>
 
                 <ul className="space-y-3 flex-1 border-t border-slate-100 pt-5 text-xs">
-                  {dynamicFeatures.map((f, i) => (
+                  {features.map((f, i) => (
                     <li key={`${planKey}-feature-${i}`} className={`flex items-start gap-2.5 ${f.available ? 'text-slate-600' : 'text-slate-400 line-through'}`}>
                       {f.available ? (
                         <Check className="w-4 h-4 text-[#29a8a8] shrink-0 mt-0.5" />

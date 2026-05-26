@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { formatCurrency } from '../../../lib/utils';
-import { INITIAL_PLANS_CONFIG, PLAN_ORDER, buildDynamicFeatures, PlanSlug } from '../../../lib/plans';
+import { INITIAL_PLANS_CONFIG, PLAN_ORDER, getPlanFeatures, getPlanDescription, PlanSlug } from '../../../lib/plans';
 
 export const LandingPagePremium: React.FC = () => {
     // Inicializa a UI usando as configurações padrão do arquivo unificado
@@ -43,12 +43,14 @@ export const LandingPagePremium: React.FC = () => {
                         .replace('R$\xa0', '')
                         .replace('R$ ', '');
 
-                    const dynamicFeatures = buildDynamicFeatures(slug, planData);
+                    const features = getPlanFeatures(slug, planData);
+                    const description = getPlanDescription(slug, planData);
 
                     return {
                         ...baseTier,
                         price: formattedPrice,
-                        features: dynamicFeatures,
+                        description: description,
+                        features: features,
                         disabled: false
                     };
                 });
