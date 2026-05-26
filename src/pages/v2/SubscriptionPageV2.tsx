@@ -3,7 +3,7 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../../lib/utils';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertCircle, HelpCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
@@ -218,6 +218,7 @@ export default function SubscriptionPageV2() {
           console.log('[Realtime] Mudança de status na transação recebida:', payload);
           if (payload.new && payload.new.status === 'COMPLETED') {
             setPaymentSuccess(true);
+            setPixData(null);
             toast.success('Pagamento confirmado automaticamente! Sua assinatura está liberada.', {
               duration: 6000,
               icon: '🎉'
@@ -246,6 +247,7 @@ export default function SubscriptionPageV2() {
         if (data && data.status === 'COMPLETED') {
           console.log('[Polling] Sucesso! Pagamento confirmado via polling.');
           setPaymentSuccess(true);
+          setPixData(null);
           toast.success('Pagamento confirmado automaticamente! Sua assinatura está liberada.', {
             duration: 6000,
             icon: '🎉'
@@ -378,6 +380,7 @@ export default function SubscriptionPageV2() {
             <button
               onClick={() => {
                 setPaymentSuccess(false);
+                setPixData(null);
                 fetchData();
               }}
               className="w-full py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
@@ -711,7 +714,6 @@ export default function SubscriptionPageV2() {
         </div>
       </div>
 
-      <Toaster position="bottom-center" />
     </div>
   );
 }

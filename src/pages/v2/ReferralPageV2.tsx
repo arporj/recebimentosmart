@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
     Users,
     CheckCircle,
@@ -317,7 +317,6 @@ export default function ReferralPageV2() {
 
                 </div>
             </div>
-            <Toaster position="bottom-center" />
         </div>
     );
 }
