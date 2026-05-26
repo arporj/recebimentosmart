@@ -112,25 +112,79 @@ export function generateFeaturesFromLimits(clients: number, transactions: number
 }
 
 export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
-  if (planData) {
-    const clients = planData.limit_clients !== undefined ? planData.limit_clients : (planData.limit_clientes !== undefined ? planData.limit_clientes : undefined);
-    const transactions = planData.limit_transactions !== undefined ? planData.limit_transactions : (planData.limit_transacoes !== undefined ? planData.limit_transacoes : undefined);
-    const accounts = planData.limit_accounts !== undefined ? planData.limit_accounts : (planData.limit_contas !== undefined ? planData.limit_contas : undefined);
-    const tags = planData.limit_tags !== undefined ? planData.limit_tags : undefined;
+  // Resgata os limites (com fallbacks dos limites padrão se planData estiver ausente)
+  let clients = 15;
+  let transactions = 30;
+  let accounts = 2;
+  let tags = 10;
 
-    if (clients !== undefined || transactions !== undefined || accounts !== undefined || tags !== undefined) {
-      return generateFeaturesFromLimits(
-        clients ?? -1,
-        transactions ?? -1,
-        accounts ?? -1,
-        tags ?? -1
-      );
+  if (planData) {
+    clients = planData.limit_clients !== undefined ? planData.limit_clients : (planData.limit_clientes !== undefined ? planData.limit_clientes : -1);
+    transactions = planData.limit_transactions !== undefined ? planData.limit_transactions : (planData.limit_transacoes !== undefined ? planData.limit_transacoes : -1);
+    accounts = planData.limit_accounts !== undefined ? planData.limit_accounts : (planData.limit_contas !== undefined ? planData.limit_contas : -1);
+    tags = planData.limit_tags !== undefined ? planData.limit_tags : -1;
+  } else {
+    // Limites padrão de fallback
+    if (slug === 'basico') {
+      clients = 35; transactions = 60; accounts = 4; tags = 30;
+    } else if (slug === 'pro') {
+      clients = 80; transactions = 120; accounts = 10; tags = 70;
+    } else if (slug === 'premium') {
+      clients = -1; transactions = -1; accounts = -1; tags = -1;
     }
   }
 
-  // Fallback estático
-  const baseConfig = INITIAL_PLANS_CONFIG.find(t => t.slug === slug);
-  return baseConfig ? baseConfig.featuresDefault : [];
+  const limitFeatures = [
+    {
+      text: clients === -1 ? 'Clientes e contatos ilimitados' : `Controle de até ${clients} clientes`,
+      available: true
+    },
+    {
+      text: transactions === -1 ? 'Transações e lançamentos ilimitados' : `Até ${transactions} transações mensais`,
+      available: true
+    },
+    {
+      text: accounts === -1 ? 'Bancos e contas ilimitadas' : `Até ${accounts} contas bancárias`,
+      available: true
+    },
+    {
+      text: tags === -1 ? 'Tags de organização ilimitadas' : `Até ${tags} tags para organização`,
+      available: true
+    }
+  ];
+
+  if (slug === 'free') {
+    return [
+      ...limitFeatures,
+      { text: 'Exibição de anúncios', available: true }
+    ];
+  }
+
+  if (slug === 'basico') {
+    return [
+      ...limitFeatures,
+      { text: 'Notificação de cobrança por e-mail', available: true }
+    ];
+  }
+
+  if (slug === 'pro') {
+    return [
+      { text: 'Tudo do plano Básico', available: true },
+      ...limitFeatures,
+      { text: 'Painel de relatórios detalhados', available: true }
+    ];
+  }
+
+  if (slug === 'premium') {
+    return [
+      { text: 'Tudo do plano Pró', available: true },
+      ...limitFeatures,
+      { text: 'Suporte prioritário', available: true },
+      { text: 'Acesso antecipado a recursos', available: true }
+    ];
+  }
+
+  return limitFeatures;
 }
 
 export function getPlanDescription(slug: PlanSlug, planData: any): string {

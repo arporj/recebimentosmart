@@ -45,7 +45,7 @@ interface WeeklyStat {
 }
 
 const DashboardV2 = () => {
-  const { user } = useAuth();
+  const { user, plano } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,6 +168,50 @@ const DashboardV2 = () => {
 
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
+
+  // Bloqueio amigável com tela de upgrade caso o usuário seja do plano Free
+  if (plano === 'free') {
+    return (
+      <div className="p-6 space-y-8 bg-slate-50 min-h-screen flex flex-col items-center justify-center font-['Inter',sans-serif]">
+        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-slate-200 shadow-xl text-center space-y-6 flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#29a8a8]/10 rounded-full flex items-center justify-center text-[#29a8a8] shadow-inner">
+            <TrendingUp size={32} />
+          </div>
+          
+          <div className="space-y-2">
+            <span className="text-[9px] bg-slate-900 text-[#29a8a8] font-black px-3.5 py-1.5 rounded-full uppercase tracking-widest">
+              Recurso Premium
+            </span>
+            <h2 className="text-slate-900 text-2xl font-black tracking-tight mt-3">
+              Dashboard Financeiro
+            </h2>
+            <p className="text-slate-500 text-xs leading-relaxed max-w-xs mx-auto">
+              O controle de fluxo de caixa semanal, relatórios e métricas de inadimplência histórica estão disponíveis a partir do plano <strong>Básico</strong>.
+            </p>
+          </div>
+
+          <div className="w-full pt-4 space-y-3">
+            <button
+              onClick={() => {
+                window.location.href = '/v2/assinatura';
+              }}
+              className="w-full py-3.5 rounded-xl bg-[#29a8a8] hover:bg-[#29a8a8]/90 text-white font-extrabold text-xs shadow-lg shadow-[#29a8a8]/25 transition-all active:scale-95 cursor-pointer"
+            >
+              Fazer Upgrade Agora
+            </button>
+            <button
+              onClick={() => {
+                window.location.href = '/v2/clientes';
+              }}
+              className="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-all cursor-pointer"
+            >
+              Voltar para Clientes
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-8 bg-slate-50 min-h-screen">
