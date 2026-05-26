@@ -149,7 +149,7 @@ export default function SubscriptionPageV2() {
 
   // Geração dinâmica de PIX conectando com nosso backend Express
   useEffect(() => {
-    if (selectedPlan === 'free' || !user?.id || selectedPlan === userPlanActive) {
+    if (selectedPlan === 'free' || !user?.id) {
       setPixData(null);
       return;
     }
@@ -496,7 +496,7 @@ export default function SubscriptionPageV2() {
       </div>
 
       {/* ─── PAINEL CENTRAL DE PAGAMENTO (INTEGRADO À API BANCO INTER) ─── */}
-      {selectedPlan !== 'free' && selectedPlan !== userPlanActive && (
+      {selectedPlan !== 'free' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
           
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
