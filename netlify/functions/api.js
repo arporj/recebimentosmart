@@ -322,18 +322,26 @@ exports.handler = async (event, context) => {
               p_plan_name: planName
             });
 
-            await supabaseAdmin.from('payments').insert({
-              user_id: userId,
-              amount: amountPaid,
-              status: 'completed',
-              transaction_id: transactionId,
-              payment_method: 'pix'
-            }).catch(err => console.error('Erro pagto:', err.message));
+            try {
+              await supabaseAdmin.from('payments').insert({
+                user_id: userId,
+                amount: amountPaid,
+                status: 'completed',
+                transaction_id: transactionId,
+                payment_method: 'pix'
+              });
+            } catch (err) {
+              console.error('Erro pagto:', err.message);
+            }
 
-            await supabaseAdmin.rpc('grant_referral_credit', {
-              referred_user_id: userId,
-              paid_plan: planName
-            }).catch(err => console.error('Erro referral:', err.message));
+            try {
+              await supabaseAdmin.rpc('grant_referral_credit', {
+                referred_user_id: userId,
+                paid_plan: planName
+              });
+            } catch (err) {
+              console.error('Erro referral:', err.message);
+            }
           }
 
           return {
