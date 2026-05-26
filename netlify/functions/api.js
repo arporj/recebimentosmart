@@ -284,7 +284,22 @@ exports.handler = async (event, context) => {
       if (segments[1] === 'inter' && event.httpMethod === 'POST') {
         try {
           console.log('[Webhook] Notificação Banco Inter recebida em Netlify Functions.');
-          const body = JSON.parse(event.body);
+          
+          let rawBody = event.body;
+          if (event.isBase64Encoded && rawBody) {
+            rawBody = Buffer.from(rawBody, 'base64').toString('utf8');
+          }
+          
+          if (!rawBody) {
+            console.log('[Webhook] Ping/Corpo vazio recebido do Banco Inter.');
+            return {
+              statusCode: 200,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ success: true, message: 'Ping recebido com sucesso!' })
+            };
+          }
+
+          const body = JSON.parse(rawBody);
 
           if (!body || !body.pix || !Array.isArray(body.pix)) {
             return {
