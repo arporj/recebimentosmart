@@ -58,3 +58,10 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
   3. Chama `supabase.functions.invoke('process-broadcast-queue')` diretamente (sem cron)
   4. Exibe progresso/resultado na interface
 * **Referência:** Ver [docs/cron_jobs.md](cron_jobs.md) — Job 8 para detalhes técnicos completos
+
+### 📊 Melhorias na Tela de Lançamentos (UI/UX)
+* **Status:** Pendente de implementação.
+* **Melhorias solicitadas:**
+  * **Cores de Valores Previstos:** O valor previsto que aparece abaixo do valor de cada conta (na tela de lançamento) deve ter as cores verde (quando for positivo) e vermelho (quando for negativo), usando tons discretos e suaves (diferentes dos tons originais e mais fortes das contas).
+  * **Filtros Fixos no Scroll (Sticky Desktop):** A barra de busca e o filtro de seleção do mês, na tela de lançamento para desktop, devem se manter fixados (sticky) no topo da página quando o usuário rola a tela para baixo.
+  * **Layout Compacto Lado a Lado:** As barras de busca/mês e o resumo financeiro devem ficar posicionados lado a lado, ocupando apenas uma única linha (em vez de duas linhas separadas como ocorre hoje) quando a tela do desktop for ligeiramente reduzida.
