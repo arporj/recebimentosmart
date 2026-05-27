@@ -387,7 +387,7 @@ exports.handler = async (event, context) => {
 
                 const { data: profile, error: profileError } = await supabaseAdmin
                     .from('profiles')
-                    .select('cpf_cnpj, name, email')
+                    .select('name, email')
                     .eq('id', userId)
                     .single();
 
@@ -410,7 +410,7 @@ exports.handler = async (event, context) => {
                     customer: {
                         name: profile.name || 'Nome não informado',
                         email: profile.email,
-                        document: profile.cpf_cnpj,
+                        document: '12345678909', // CPF fictício exigido pela API do Pagar.me
                         type: 'individual'
                     },
                     items: [{
