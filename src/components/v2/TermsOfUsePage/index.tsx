@@ -67,7 +67,7 @@ const TermsOfUsePage = () => {
                             Para utilizar o serviço, é necessário criar uma conta com informações válidas. Você é responsável pela segurança de sua senha e por todas as atividades realizadas com sua conta.
                         </p>
                         <p className="text-slate-600 leading-relaxed mt-3">
-                            O Recebimento $mart oferece um período de teste gratuito de 7 dias. Após esse período, é necessário escolher um plano de assinatura para continuar utilizando o serviço. Planos e preços estão disponíveis na página de planos.
+                            O Recebimento $mart oferece um plano de uso gratuito por tempo vitalício com limites de uso. Para obter acesso a limites adicionais ou ferramentas avançadas, você pode escolher um de nossos planos de assinatura pagos a qualquer momento. Planos e preços estão detalhados na página de planos.
                         </p>
                     </section>
 
