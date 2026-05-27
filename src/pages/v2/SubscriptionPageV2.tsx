@@ -412,7 +412,7 @@ export default function SubscriptionPageV2() {
     );
   }
 
-  const userValidUntil = pageData?.user?.valid_until;
+
 
   // URL dinâmica para renderizar o QR Code gerado pelo Inter
   const pixQrCodeUrl = pixData?.pixCopiaECola
