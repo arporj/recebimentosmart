@@ -22,12 +22,12 @@ const FAQ_ITEMS: FAQItem[] = [
     {
         category: 'funcionalidades',
         question: 'Como funciona o controle de clientes?',
-        answer: 'O sistema permite que você cadastre seus clientes com nome, e-mail, telefone e observações. É possível definir campos personalizados de acordo com a necessidade do seu modelo de negócio, anexar documentos à ficha do cliente e acompanhar todo o histórico de pagamentos e cobranças mensais ou recorrentes daquele cliente.'
+        answer: 'O sistema permite que você cadastre seus clientes com nome, e-mail, telefone e observações. É possível definir campos personalizados de acordo com a necessidade do seu modelo de negócio e acompanhar todo o histórico de pagamentos e cobranças mensais ou recorrentes daquele cliente.'
     },
     {
         category: 'funcionalidades',
-        question: 'O que são as Contas Bancárias e Favicons Automáticos?',
-        answer: 'No Recebimento $mart, você pode cadastrar suas contas bancárias reais (como Itaú, Nubank, Banco do Brasil, Bradesco, etc.). O sistema identifica automaticamente o banco pelo nome e atribui o logotipo (favicon) oficial correspondente, facilitando a identificação visual rápida na listagem e na conciliação dos seus lançamentos financeiros.'
+        question: 'Como funciona o cadastro de Contas Bancárias?',
+        answer: 'No Recebimento $mart, você pode cadastrar suas contas bancárias reais (como Itaú, Nubank, Banco do Brasil, Bradesco, etc.). O sistema identifica automaticamente o banco pelo nome e atribui o logotipo oficial correspondente, facilitando a identificação visual rápida na listagem e na conciliação dos seus lançamentos financeiros.'
     },
     {
         category: 'funcionalidades',
@@ -47,17 +47,12 @@ const FAQ_ITEMS: FAQItem[] = [
     {
         category: 'planos',
         question: 'Quais são as formas de pagamento aceitas para a assinatura?',
-        answer: 'Para manter custos operacionais baixos e oferecer o menor preço possível nos nossos planos, nós trabalhamos com o pagamento manual via PIX. Você acessa a tela de assinatura no seu painel, escolhe o plano (Básico ou Pró), faz a leitura do QR Code ou copia a nossa chave PIX, realiza a transferência e nos envia o comprovante de pagamento clicando no botão integrado de WhatsApp. Nosso suporte libera a sua conta imediatamente após a conferência!'
+        answer: 'Trabalhamos exclusivamente com pagamento via PIX. Você acessa a tela de assinatura no seu painel, faz a leitura do QR Code ou copia a chave copia e cola do PIX para realizar a transferência. O sistema identifica o pagamento e atualiza a sua assinatura de forma totalmente automática, liberando os recursos imediatamente!'
     },
     {
         category: 'planos',
         question: 'O que acontece se eu não pagar após o vencimento?',
         answer: 'Sua conta entrará em modo suspenso. Você continuará com acesso à tela de assinatura para regularizar o pagamento, mas não conseguirá acessar seus lançamentos, clientes e relatórios. Seus dados cadastrados ficam protegidos e guardados por até 30 dias após o vencimento antes de serem excluídos definitivamente.'
-    },
-    {
-        category: 'planos',
-        question: 'Como funciona o sistema de indicações (Bônus)?',
-        answer: 'Ao se cadastrar, você recebe um link exclusivo de indicação. Cada amigo que se cadastrar através do seu link e assinar um plano pago do Recebimento $mart concede créditos na sua conta. Esses créditos são acumulados e descontados automaticamente no valor da sua próxima fatura de assinatura mensal, podendo inclusive deixar sua mensalidade em R$ 0,00 (isenção total)!'
     },
     {
         category: 'seguranca',
