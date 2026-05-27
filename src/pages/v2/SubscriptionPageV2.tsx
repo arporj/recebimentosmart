@@ -181,11 +181,15 @@ export default function SubscriptionPageV2() {
 
     let active = true;
 
+    // Resposta imediata ao clique: Limpar PIX anterior e indicar início da preparação
+    setLoadingPix(true);
+    setQrCodeLoaded(false);
+    setPixData(null);
+
     const fetchDynamicPix = async () => {
       try {
         if (!active) return;
         setLoadingPix(true);
-        setQrCodeLoaded(false);
 
         console.log(`[PIX] Solicitando geração de PIX para o plano ${planDisplayName}. Valor original: R$ ${finalAmount}`);
         
@@ -208,7 +212,7 @@ export default function SubscriptionPageV2() {
         if (!active) return;
 
         console.error('[PIX] Erro ao chamar API do Banco Inter, usando fallback local:', error);
-        toast.error('Erro de conexão financeira. Utilizando gerador local redundante.');
+        console.warn('[PIX] Conexão financeira externa indisponível. Ativando gerador local redundante de forma silenciosa para melhoria da experiência do usuário.');
         
         // Fallback local robusto (offline) para manter o sistema operacional em qualquer falha externa
         const fallbackPayload = generatePixPayload(finalAmount);
@@ -224,10 +228,10 @@ export default function SubscriptionPageV2() {
       }
     };
 
-    // Debounce sutil para evitar múltiplos requests ao alternar cliques rapidamente
+    // Debounce de 2 segundos para evitar múltiplos requests e erro 429 (rate limit) no Banco Inter
     const timer = setTimeout(() => {
       fetchDynamicPix();
-    }, 300);
+    }, 2000);
 
     return () => {
       active = false;
@@ -678,7 +682,7 @@ export default function SubscriptionPageV2() {
                   {loadingPix ? (
                     <div className="flex items-center gap-2 pl-2 text-slate-400 text-xs">
                       <div className="animate-spin rounded-full h-4.5 w-4.5 border-b-2 border-[#29a8a8]"></div>
-                      <span>Solicitando BR Code seguro ao Banco Inter...</span>
+                      <span>Preparando seu QR Code para pagamento...</span>
                     </div>
                   ) : pixData?.pixCopiaECola ? (
                     <>
@@ -716,7 +720,7 @@ export default function SubscriptionPageV2() {
                   {loadingPix ? (
                     <div className="absolute inset-0 bg-slate-50/50 flex flex-col items-center justify-center gap-2 text-slate-400 text-[10px] font-bold">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#29a8a8]"></div>
-                      <span>Gerando QR Code...</span>
+                      <span>Preparando seu QR Code para pagamento...</span>
                     </div>
                   ) : pixQrCodeUrl ? (
                     <img 
