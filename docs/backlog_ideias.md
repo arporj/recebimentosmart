@@ -12,13 +12,7 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 
 ## 2. 💡 Planejamento de Ideias e Recursos Futuros
 
-### 2.1. 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
-* **Status:** Planejado (Requer nova branch).
-* **Descrição:** Quando um usuário ativo de qualquer plano optar por fazer um upgrade para um plano superior, o sistema deve calcular dinamicamente o valor proporcional residual até o dia de vencimento original da assinatura.
-* **Exemplo:** Assinatura básica feita no dia 10; no dia 30 o usuário faz upgrade para o Pro. O valor cobrado na transação de upgrade deve ser correspondente apenas ao período parcial (10 dias) restante. No vencimento normal (dia 10 do mês seguinte), a cobrança regular do plano Pro é cobrada inteira.
-* **UX/UI:** Exibir de forma extremamente transparente na tela de assinatura: "O plano Pro custa R$ X. Migrando hoje, você pagará apenas R$ X-Y pelo período proporcional até DD/MM. A partir de DD/MM, a mensalidade será de R$ X."
-
-### 2.2. 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
+### 2.1. 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
 * **Status:** Planejado (Requer nova branch).
 * **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio da primeira mensalidade paga pelo seu indicado.
 * **Regras de Negócio:**
@@ -28,15 +22,15 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * **Solicitação de Saque:** O usuário deve possuir um campo direto na interface para cadastrar e gerenciar sua Chave PIX.
   * **Debitação:** Sempre que o administrador confirmar o pagamento do PIX, o sistema deve registrar a transação e abater o valor pago do saldo acumulado do usuário.
 
-### 2.3. 💬 Chat de Suporte Administrativo
+### 2.2. 💬 Chat de Suporte Administrativo
 * **Status:** Temporariamente removido em Mar/2026 para readequação da interface V2.
 * **Meta V2:** Reimplementar como `AdminChatPageV2.tsx` adotando os padrões visuais definidos (cantos arredondados, sombras suaves, chats em bolha e menu lateral de canais). Recomenda-se utilizar o `FeedbackDetailsV2.tsx` como ponto de partida visual.
 
-### 2.4. 🌟 Implementação do Plano Premium
+### 2.3. 🌟 Implementação do Plano Premium
 * **Status:** Roadmap de Produto (Médio Prazo).
 * **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes. Esse plano deve englobar funcionalidades exclusivas de **atendimento via WhatsApp** e suporte avançado.
 
-### 2.5. 📧 Tela de Envio de E-mails em Massa (Admin)
+### 2.4. 📧 Tela de Envio de E-mails em Massa (Admin)
 * **Status:** Pendente. Infraestrutura backend já existe.
 * **Rota sugerida:** `/v2/admin/broadcasts`
 * **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela.
@@ -76,3 +70,7 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 ### 3.8. 💳 Migração de Gateway de Pagamento
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Substituição do Mercado Pago pelo Stripe concluída com sucesso.
+
+### 3.9. 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
+* **Status:** Concluído em Mai/2026.
+* **Descrição:** Implementação de cálculo dinâmico e reativo de pró-rata de assinatura quando usuários de planos ativos (ex: Básico) realizam upgrade para planos superiores (ex: Pró). O valor é calculado proporcionalmente aos dias restantes no ciclo mensal do usuário, abatendo créditos de indicação e atualizando a cobrança Pix do Banco Inter PJ de forma 100% dinâmica. Inclui banner informativo premium de total transparência financeira no checkout de assinaturas.
