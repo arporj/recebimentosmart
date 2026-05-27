@@ -164,7 +164,7 @@ exports.handler = async (event, context) => {
 
             const { txid, pixCopiaECola } = response.data;
 
-            const { error: dbError } = await supabaseAdmin
+            let { error: dbError } = await supabaseAdmin
               .from('pix_transactions')
               .insert({
                 user_id: userId,
@@ -176,7 +176,22 @@ exports.handler = async (event, context) => {
                 updated_at: new Date().toISOString()
               });
 
-            if (dbError) throw dbError;
+            if (dbError) {
+              console.warn('[DB] Falha ao salvar com plan_name (produção Netlify), tentando fallback sem plan_name:', dbError.message);
+              
+              const { error: fallbackError } = await supabaseAdmin
+                .from('pix_transactions')
+                .insert({
+                  user_id: userId,
+                  transaction_id: txid,
+                  amount: finalAmount,
+                  status: 'PENDING',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+
+              if (fallbackError) throw fallbackError;
+            }
 
             return {
               statusCode: 201,
