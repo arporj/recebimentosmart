@@ -6,15 +6,7 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## 1. 🐛 Bugs Conhecidos
 
-### 1.1. 🔔 Notificação de Erro Duplicada
-* **Status:** Registrado em Mar/2026. Pendente de análise.
-* **Descrição:** Ao ocorrer um erro, o usuário recebe duas notificações simultâneas: uma no canto superior direito e outra no canto inferior esquerdo.
-* **Causa provável:** Presença de dois componentes `<Toaster>` montados na árvore de componentes (um no layout global e outro dentro de páginas específicas como `SubscriptionPageV2`).
-* **Solução Recomendada:** Remover a instância duplicada, mantendo apenas o `<Toaster position="bottom-center" />` configurado no layout global.
-
-### 1.2. 🚀 Rota `/cadastro` Não Encontrada
-* **Status:** Causa raiz identificada (race condition após o processo de signup no `AuthContext.tsx`). Pendente validar correção definitiva.
-* **Descrição:** O console exibe o aviso `No routes matched location "/cadastro"` durante o fluxo de navegação automática pós-registro ou login.
+Nenhum bug conhecido ou ativo no momento. 🎉
 
 ---
 
@@ -61,22 +53,30 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Corrigida a propagação de eventos do clique e touch na div do dropdown da fatura de cartão de crédito, tanto em telas de computadores quanto em dispositivos celulares touch, resolvendo o bug visual onde o menu de ações não se mantinha aberto.
 
-### 3.2. 👤 Remoção de CPF/CNPJ de Cadastros e Perfis
+### 3.2. 🔔 Notificação de Erro Duplicada
+* **Status:** Concluído em Mai/2026.
+* **Descrição:** Validado que a duplicação de Toasters nas páginas internas foi inteiramente resolvida em limpezas de refatoração, mantendo Toasters isolados apenas em telas externas públicas e layouts centrais.
+
+### 3.3. 🚀 Rota `/cadastro` Não Encontrada
+* **Status:** Concluído em Mai/2026.
+* **Descrição:** Resolvido o erro de race condition do roteador adicionando redirecionamento seguro da rota de cadastro de usuário já autenticado direto para a listagem financeira no App.tsx.
+
+### 3.4. 👤 Remoção de CPF/CNPJ de Cadastros e Perfis
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Removido o campo `cpf_cnpj` do banco de dados (tabela `profiles`), triggers, formulários de cadastro legado e V2, e configurado fallback fictício para a API do Pagar.me a fim de manter integrações de PIX em funcionamento silencioso.
 
-### 3.3. 📊 Melhorias na Tela de Lançamentos (UI/UX)
+### 3.5. 📊 Melhorias na Tela de Lançamentos (UI/UX)
 * **Status:** Concluído em Abr/2026.
 * **Descrição:** Cores de valores previstos suaves (verde para positivo, vermelho para negativo), filtros fixos (sticky) no desktop e layout compactado lado a lado das buscas, filtros de mês e resumo em telas reduzidas.
 
-### 3.4. 🔗 Integração de Webhooks
+### 3.6. 🔗 Integração de Webhooks
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada.
 
-### 3.5. 👑 Aprimoramento da Impersonação
+### 3.7. 👑 Aprimoramento da Impersonação
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo.
 
-### 3.6. 💳 Migração de Gateway de Pagamento
+### 3.8. 💳 Migração de Gateway de Pagamento
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Substituição do Mercado Pago pelo Stripe concluída com sucesso.
