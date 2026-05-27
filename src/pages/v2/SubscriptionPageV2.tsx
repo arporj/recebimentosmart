@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, parseISO, isFuture } from 'date-fns';
+import { format, parseISO, isFuture, differenceInDays, subMonths } from 'date-fns';
 import { formatCurrency } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertCircle, HelpCircle } from 'lucide-react';
@@ -107,11 +107,70 @@ export default function SubscriptionPageV2() {
   const currentPlanObj = getSelectedPlanObj();
   const planPrice = currentPlanObj?.price_monthly ?? (selectedPlan === 'free' ? 0 : selectedPlan === 'basico' ? 9.90 : 24.90);
   const userCredits = pageData?.user?.credits ?? 0;
-  const finalAmount = Math.max(0, planPrice - userCredits);
-  const planDisplayName = currentPlanObj?.name ?? (selectedPlan === 'free' ? 'Free' : selectedPlan === 'basico' ? 'Básico' : 'Pró');
-
   const userPlanRaw = pageData?.user?.plan?.toLowerCase() || '';
   const userPlanActive = PLAN_MAPPING[userPlanRaw] || 'free';
+  const userValidUntil = pageData?.user?.valid_until;
+
+  const getPlanPrice = (slug: PlanName): number => {
+    if (slug === 'free') return 0;
+    const plan = pageData?.plans?.find(p => {
+      const pSlug = PLAN_MAPPING[p.slug || p.name.toLowerCase()] || p.name.toLowerCase();
+      return pSlug === slug;
+    });
+    if (plan) return plan.price_monthly;
+    
+    if (slug === 'basico') return 9.90;
+    if (slug === 'pro') return 24.90;
+    if (slug === 'premium') return 99.90;
+    return 0;
+  };
+
+  const hasActiveFuturePlan = 
+    userPlanActive !== 'free' && 
+    userPlanActive !== 'trial' && 
+    userPlanActive !== 'admin' && 
+    userValidUntil && 
+    isFuture(parseISO(userValidUntil));
+
+  const selectedPlanPrice = getPlanPrice(selectedPlan);
+  const currentPlanPrice = getPlanPrice(userPlanActive);
+  const isUpgrade = selectedPlanPrice > currentPlanPrice;
+  const isUpgradeEligible = hasActiveFuturePlan && isUpgrade;
+
+  let upgradeDetails: {
+    currentPlanPrice: number;
+    selectedPlanPrice: number;
+    priceDiff: number;
+    totalDays: number;
+    remainingDays: number;
+    proratedAmount: number;
+    expirationDateFormatted: string;
+  } | null = null;
+
+  let finalAmount = Math.max(0, planPrice - userCredits);
+
+  if (isUpgradeEligible && userValidUntil) {
+    const expirationDate = parseISO(userValidUntil);
+    const startOfCycleDate = subMonths(expirationDate, 1);
+    const totalDays = Math.max(1, differenceInDays(expirationDate, startOfCycleDate));
+    const remainingDays = Math.max(0, differenceInDays(expirationDate, new Date()));
+    const priceDiff = selectedPlanPrice - currentPlanPrice;
+    const proratedAmount = (priceDiff * remainingDays) / totalDays;
+    
+    finalAmount = Math.max(0, proratedAmount - userCredits);
+    
+    upgradeDetails = {
+      currentPlanPrice,
+      selectedPlanPrice,
+      priceDiff,
+      totalDays,
+      remainingDays,
+      proratedAmount,
+      expirationDateFormatted: format(expirationDate, 'dd/MM/yyyy')
+    };
+  }
+
+  const planDisplayName = currentPlanObj?.name ?? (selectedPlan === 'free' ? 'Free' : selectedPlan === 'basico' ? 'Básico' : 'Pró');
 
   // Geração dinâmica de PIX conectando com nosso backend Express
   useEffect(() => {
@@ -492,24 +551,80 @@ export default function SubscriptionPageV2() {
             {/* Coluna da Esquerda: Resumo de preço e Instruções */}
             <div className="lg:col-span-7 space-y-6">
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-100 rounded-xl p-5">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor do Plano</span>
-                  <span className="text-xl font-black text-slate-800 mt-1">{formatCurrency(planPrice)}</span>
+              {upgradeDetails ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 text-[#29a8a8]">
+                    <Sparkles className="w-5 h-5 animate-pulse" />
+                    <span className="text-[11px] font-black uppercase tracking-wider">Cálculo Proporcional de Upgrade Ativo!</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-4">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Plano Atual</span>
+                      <span className="text-xs font-extrabold text-slate-700 capitalize mt-1 truncate">
+                        {PLAN_MAPPING[userPlanRaw] === 'basico' ? 'Básico' : 'Pró'} ({formatCurrency(upgradeDetails.currentPlanPrice)})
+                      </span>
+                    </div>
+                    <div className="flex flex-col border-l border-slate-200 pl-3">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Novo Plano</span>
+                      <span className="text-xs font-extrabold text-slate-800 capitalize mt-1 truncate">
+                        {planDisplayName} ({formatCurrency(upgradeDetails.selectedPlanPrice)})
+                      </span>
+                    </div>
+                    <div className="flex flex-col border-l border-slate-200 pl-3">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Diferença Cheia</span>
+                      <span className="text-xs font-extrabold text-slate-800 mt-1 truncate">
+                        {formatCurrency(upgradeDetails.priceDiff)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#29a8a8]/5 border border-[#29a8a8]/10 rounded-xl p-3.5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-slate-800 font-bold text-[11px]">
+                        <Info className="w-3.5 h-3.5 text-[#29a8a8] shrink-0" />
+                        <span>Pró-rata de dias restantes</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
+                        Seu plano renova em <span className="text-[#29a8a8] font-extrabold">{upgradeDetails.expirationDateFormatted}</span>. Restam <span className="font-extrabold text-slate-700">{upgradeDetails.remainingDays}</span> de <span className="font-extrabold text-slate-700">{upgradeDetails.totalDays}</span> dias do ciclo.
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col items-end shrink-0 md:text-right">
+                      <span className="text-[9px] text-[#29a8a8] font-black uppercase tracking-widest">Valor do Upgrade</span>
+                      <span className="text-base font-black text-[#29a8a8] mt-0.5">{formatCurrency(upgradeDetails.proratedAmount)}</span>
+                    </div>
+                  </div>
+
+                  {userCredits > 0 && (
+                    <div className="flex justify-between items-center bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 text-[11px] text-emerald-800 font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-emerald-600">🎁</span> Créditos de Indicação Aplicados:
+                      </span>
+                      <span className="font-black text-emerald-600">- {formatCurrency(userCredits)}</span>
+                    </div>
+                  )}
                 </div>
-                
-                {userCredits > 0 ? (
-                  <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-5">
-                    <span className="text-[10px] text-[#29a8a8] font-bold uppercase tracking-wider">🎁 Desconto (Créditos)</span>
-                    <span className="text-xl font-black text-[#29a8a8] mt-1">- {formatCurrency(userCredits)}</span>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-100 rounded-xl p-5">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor do Plano</span>
+                    <span className="text-xl font-black text-slate-800 mt-1">{formatCurrency(planPrice)}</span>
                   </div>
-                ) : (
-                  <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-5 justify-center">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Créditos de Indicação</span>
-                    <span className="text-xs text-slate-500 font-semibold mt-1">Nenhum bônus acumulado</span>
-                  </div>
-                )}
-              </div>
+                  
+                  {userCredits > 0 ? (
+                    <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-5">
+                      <span className="text-[10px] text-[#29a8a8] font-bold uppercase tracking-wider">🎁 Desconto (Créditos)</span>
+                      <span className="text-xl font-black text-[#29a8a8] mt-1">- {formatCurrency(userCredits)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-5 justify-center">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Créditos de Indicação</span>
+                      <span className="text-xs text-slate-500 font-semibold mt-1">Nenhum bônus acumulado</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="border border-slate-100 rounded-xl p-5 flex items-center justify-between bg-teal-50/15">
                 <div className="flex flex-col">
