@@ -41,8 +41,8 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'planos',
-        question: 'Como funciona o período de testes gratuito (Trial)?',
-        answer: 'Todos os novos usuários cadastrados recebem automaticamente 7 dias de acesso gratuito e irrestrito (Trial) para testar todas as funcionalidades do sistema. Não é necessário inserir dados de pagamento para iniciar o teste. Se ao final dos 7 dias você decidir não assinar, sua conta será bloqueada temporariamente, mas seus dados ficarão salvos por até 30 dias caso mude de ideia.'
+        question: 'Como funciona o plano gratuito do sistema?',
+        answer: 'Todos os novos usuários cadastrados recebem automaticamente o acesso ao nosso plano gratuito de forma vitalícia para gerenciar suas contas. O plano gratuito possui alguns limites de uso, como quantidade máxima de clientes cadastrados por mês. Você pode usar pelo tempo que quiser sem a necessidade de cadastrar cartão de crédito ou dados de pagamento!'
     },
     {
         category: 'planos',
