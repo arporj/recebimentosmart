@@ -159,6 +159,7 @@ app.post('/api/pix/create-payment', async (req, res) => {
         transaction_id: txid,
         amount: finalAmount,
         status: 'PENDING',
+        plan_name: planName,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
@@ -192,6 +193,7 @@ app.post('/api/pix/create-payment', async (req, res) => {
             transaction_id: mockTxid,
             amount: finalAmount,
             status: 'PENDING',
+            plan_name: planName,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -318,12 +320,12 @@ app.post('/webhooks/inter', async (req, res) => {
         const userId = transaction.user_id;
         const amountPaid = parseFloat(transaction.amount);
 
-        // 2. Determinar o plano com base no valor pago:
-        // Valores reais: Básico = R$ 9,90, Pró = R$ 24,90
-        // Valores simbólicos (UAT): Básico = R$ 1,00, Pró = R$ 2,00
-        let planName = 'basico';
-        if (amountPaid >= 20.00 || amountPaid === 2.00) {
-          planName = 'pro';
+        // 2. Determinar o plano com base na coluna plan_name ou no valor pago (para retrocompatibilidade)
+        let planName = transaction.plan_name ? transaction.plan_name.toLowerCase() : 'basico';
+        if (!transaction.plan_name) {
+          if (amountPaid >= 20.00 || amountPaid === 2.00) {
+            planName = 'pro';
+          }
         }
 
         console.log(`[Webhook] Ativando a assinatura do plano '${planName}' para o usuário ${userId}...`);
