@@ -105,7 +105,7 @@ export function SignUpPage() {
           Criar sua conta gratuita
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          7 dias grátis para testar todas as funcionalidades
+          Acesso completo a todas as ferramentas essenciais
         </p>
       </div>
 
