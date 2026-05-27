@@ -152,7 +152,7 @@ app.post('/api/pix/create-payment', async (req, res) => {
 
     // Salvar no Supabase a transação no estado PENDING
     console.log(`[DB] Salvando transação pendente no Supabase para usuário ${userId}. txid: ${txid}`);
-    const { error: dbError } = await supabaseAdmin
+    let { error: dbError } = await supabaseAdmin
       .from('pix_transactions')
       .insert({
         user_id: userId,
@@ -165,8 +165,23 @@ app.post('/api/pix/create-payment', async (req, res) => {
       });
 
     if (dbError) {
-      console.error('[DB] Erro ao gravar transação no banco de dados:', dbError.message);
-      throw dbError;
+      console.warn('[DB] Falha ao salvar com plan_name (possível migração pendente), tentando fallback sem plan_name:', dbError.message);
+      
+      const { error: fallbackError } = await supabaseAdmin
+        .from('pix_transactions')
+        .insert({
+          user_id: userId,
+          transaction_id: txid,
+          amount: finalAmount,
+          status: 'PENDING',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (fallbackError) {
+        console.error('[DB] Erro crítico ao gravar transação de fallback no banco de dados:', fallbackError.message);
+        throw fallbackError;
+      }
     }
 
     res.status(201).json({
@@ -186,7 +201,7 @@ app.post('/api/pix/create-payment', async (req, res) => {
       const mockPixCopiaECola = `00020101021226870014br.gov.bcb.pix2565379051810001055204000053039865404${finalAmount.toFixed(2)}5802BR5925RECEBIMENTO SMART6009SAO PAULO62300526${mockTxid}6304`;
 
       try {
-        const { error: dbError } = await supabaseAdmin
+        let { error: dbError } = await supabaseAdmin
           .from('pix_transactions')
           .insert({
             user_id: userId,
@@ -199,7 +214,22 @@ app.post('/api/pix/create-payment', async (req, res) => {
           });
 
         if (dbError) {
-          console.error('[DB] Aviso: Erro ao gravar transação simulada no banco de dados (mas prosseguindo no Sandbox):', dbError.message);
+          console.warn('[DB] Falha ao salvar simulado com plan_name, tentando sem plan_name:', dbError.message);
+          
+          const { error: fallbackError } = await supabaseAdmin
+            .from('pix_transactions')
+            .insert({
+              user_id: userId,
+              transaction_id: mockTxid,
+              amount: finalAmount,
+              status: 'PENDING',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (fallbackError) {
+            console.error('[DB] Erro ao gravar transação simulada de fallback:', fallbackError.message);
+          }
         }
       } catch (dbCatchError) {
         console.error('[DB] Erro de exceção ao gravar transação simulada:', dbCatchError.message);
