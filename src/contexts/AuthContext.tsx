@@ -12,7 +12,7 @@ interface AuthContextType {
   plano: string | null;
   loading: boolean;
   signIn: (email: string, password: string, redirectTo?: string) => Promise<void>;
-  signUp: (name: string, email: string, cpf_cnpj: string | undefined, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string, referralCode?: string, redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('valid_until, is_admin, plano, cpf_cnpj')
+          .select('valid_until, is_admin, plano')
           .eq('id', currentUser.id)
           .single();
 
@@ -162,14 +162,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, cpf_cnpj: string | undefined, password: string, referralCode?: string, redirectTo: string = '/login') => {
+  const signUp = async (name: string, email: string, password: string, referralCode?: string, redirectTo: string = '/login') => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name, cpf_cnpj, referral_code: referralCode }
+          data: { name, referral_code: referralCode }
         }
       });
       if (error) throw error;
@@ -210,7 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 <div class="info">
                   <p><strong>Nome:</strong> ${name}</p>
                   <p><strong>E-mail:</strong> ${email}</p>
-                  <p><strong>CPF/CNPJ:</strong> ${cpf_cnpj}</p>
                   <p><strong>ID do Usuário:</strong> ${data.user.id}</p>
                   <p><strong>Data de Cadastro:</strong> ${new Date().toLocaleString('pt-BR')}</p>
                 </div>

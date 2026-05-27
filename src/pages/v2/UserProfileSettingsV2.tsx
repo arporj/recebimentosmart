@@ -9,8 +9,6 @@ export default function UserProfileSettingsV2() {
     const { user, plano, updateUserName, fetchReferralInfo } = useAuth();
 
     const [currentName, setCurrentName] = useState('');
-    const [currentCpfCnpj, setCurrentCpfCnpj] = useState('');
-    const [cpfCnpjError, setCpfCnpjError] = useState<string | null>(null);
 
     // Tab and layout preferences
     const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences'>('profile');
@@ -46,19 +44,6 @@ export default function UserProfileSettingsV2() {
     useEffect(() => {
         if (user) {
             setCurrentName(user.user_metadata?.name || '');
-            const fetchCpfCnpj = async () => {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('cpf_cnpj')
-                    .eq('id', user.id)
-                    .single();
-                if (error) {
-                    console.error('Erro ao buscar CPF/CNPJ:', error);
-                } else if (data && data.cpf_cnpj) {
-                    setCurrentCpfCnpj(data.cpf_cnpj);
-                }
-            };
-            fetchCpfCnpj();
         }
         
         // Recuperar preferencia de layout e opcoes customizadas
@@ -74,13 +59,7 @@ export default function UserProfileSettingsV2() {
         setValueAlignment(savedValAlign || 'right');
     }, [user]);
 
-    const formatCpfCnpj = (value: string) => {
-        const cleaned = value.replace(/\D/g, '');
-        if (cleaned.length <= 11) {
-            return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-        }
-        return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
-    };
+
 
     const handleSave = async () => {
         setSaving(true);
@@ -100,27 +79,7 @@ export default function UserProfileSettingsV2() {
             }
         }
 
-        // CPF / CNPJ Update
-        const cleanedCpfCnpj = currentCpfCnpj.replace(/[^0-9]/g, '');
-        if (!cleanedCpfCnpj || cleanedCpfCnpj.length === 11 || cleanedCpfCnpj.length === 14) {
-            try {
-                const { error } = await supabase
-                    .from('profiles')
-                    .update({ cpf_cnpj: cleanedCpfCnpj || null })
-                    .eq('id', user?.id);
 
-                if (error) throw error;
-                await fetchReferralInfo();
-            } catch (error) {
-                success = false;
-                console.error(error);
-                toast.error('Erro ao atualizar CPF/CNPJ.');
-            }
-        } else {
-            success = false;
-            setCpfCnpjError('CPF/CNPJ inválido. Deve conter 11 ou 14 dígitos.');
-            toast.error('CPF/CNPJ inválido.');
-        }
 
         // Layout Preference and Custom Options
         if (success) {
@@ -263,7 +222,7 @@ export default function UserProfileSettingsV2() {
 
                             <div className="p-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="md:col-span-2">
+                                    <div>
                                         <label className="block text-sm font-semibold text-slate-700 mb-2">Nome Completo</label>
                                         <input
                                             className="w-full rounded-lg border-slate-300 focus:border-custom focus:ring-custom/20 transition-all px-4 py-3 text-slate-900"
@@ -272,17 +231,6 @@ export default function UserProfileSettingsV2() {
                                             value={currentName}
                                             onChange={(e) => setCurrentName(e.target.value)}
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Documento (CPF/CNPJ)</label>
-                                        <input
-                                            className={`w-full rounded-lg ${cpfCnpjError ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-custom focus:ring-custom/20'} transition-all px-4 py-3 text-slate-900`}
-                                            placeholder="000.000.000-00"
-                                            type="text"
-                                            value={formatCpfCnpj(currentCpfCnpj)}
-                                            onChange={(e) => setCurrentCpfCnpj(e.target.value)}
-                                        />
-                                        {cpfCnpjError && <p className="mt-1 text-xs text-red-500">{cpfCnpjError}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-slate-400 mb-2">E-mail (Não editável)</label>
@@ -561,8 +509,6 @@ export default function UserProfileSettingsV2() {
                                 onClick={() => {
                                     if (activeTab === 'profile') {
                                         setCurrentName(user?.user_metadata?.name || '');
-                                        setCurrentCpfCnpj(user?.user_metadata?.cpf_cnpj || '');
-                                        setCpfCnpjError(null);
                                     } else {
                                         const savedPref = localStorage.getItem('transaction_layout_preference') as 'default' | 'value_first' | 'value_right_desc';
                                         setLayoutPreference(savedPref || 'default');
