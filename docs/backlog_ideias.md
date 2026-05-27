@@ -32,15 +32,11 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 * **Status:** Temporariamente removido em Mar/2026 para readequação da interface V2.
 * **Meta V2:** Reimplementar como `AdminChatPageV2.tsx` adotando os padrões visuais definidos (cantos arredondados, sombras suaves, chats em bolha e menu lateral de canais). Recomenda-se utilizar o `FeedbackDetailsV2.tsx` como ponto de partida visual.
 
-### 2.4. 💳 Aprimoramento de Feedback da Tela de Pagamento
-* **Status:** Pendente de implementação UI/UX.
-* **Descrição:** Exibir indicações de progresso visual claras durante o processamento da cobrança (ex: "Redirecionando para plataforma segura...") e exibir dinamicamente a nova data de validade da assinatura do usuário logado logo após a confirmação de sucesso.
-
-### 2.5. 🌟 Implementação do Plano Premium
+### 2.4. 🌟 Implementação do Plano Premium
 * **Status:** Roadmap de Produto (Médio Prazo).
-* **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes.
+* **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes. Esse plano deve englobar funcionalidades exclusivas de **atendimento via WhatsApp** e suporte avançado.
 
-### 2.6. 📧 Tela de Envio de E-mails em Massa (Admin)
+### 2.5. 📧 Tela de Envio de E-mails em Massa (Admin)
 * **Status:** Pendente. Infraestrutura backend já existe.
 * **Rota sugerida:** `/v2/admin/broadcasts`
 * **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela.
