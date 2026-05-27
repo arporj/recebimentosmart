@@ -1132,8 +1132,8 @@ const FinancialTransactionsV2 = () => {
                         </p>
                       </div>
                     )}
-                    <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                      <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
+                    <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                      <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                       {openDropdown === dropdownKey && (
                         <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                           <button onClick={() => {
@@ -1416,8 +1416,8 @@ const FinancialTransactionsV2 = () => {
                             )}
                           </div>
                         )}
-                        <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null}>
-                          <button onClick={() => setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
+                        <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                          <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                           {openDropdown === dropdownKey && (
                             <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                               <button onClick={() => {
