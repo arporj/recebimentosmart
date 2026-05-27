@@ -179,8 +179,11 @@ export default function SubscriptionPageV2() {
       return;
     }
 
+    let active = true;
+
     const fetchDynamicPix = async () => {
       try {
+        if (!active) return;
         setLoadingPix(true);
         setQrCodeLoaded(false);
 
@@ -192,6 +195,8 @@ export default function SubscriptionPageV2() {
           userId: user.id
         });
 
+        if (!active) return;
+
         if (response.data && response.data.success) {
           setPixData({
             txid: response.data.txid,
@@ -200,6 +205,8 @@ export default function SubscriptionPageV2() {
           });
         }
       } catch (error) {
+        if (!active) return;
+
         console.error('[PIX] Erro ao chamar API do Banco Inter, usando fallback local:', error);
         toast.error('Erro de conexão financeira. Utilizando gerador local redundante.');
         
@@ -211,7 +218,9 @@ export default function SubscriptionPageV2() {
           simulated: false
         });
       } finally {
-        setLoadingPix(false);
+        if (active) {
+          setLoadingPix(false);
+        }
       }
     };
 
@@ -220,7 +229,10 @@ export default function SubscriptionPageV2() {
       fetchDynamicPix();
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [selectedPlan, finalAmount, planDisplayName, user?.id, userPlanActive]);
 
   // Escuta ativa em Tempo Real no Supabase para aprovação automática do webhook do Banco Inter
