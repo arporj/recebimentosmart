@@ -22,16 +22,6 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ---
 
-## ✅ Histórico de Tarefas Concluídas
-
-* **Remoção de CPF/CNPJ de Cadastros e Perfis:** Removido o campo `cpf_cnpj` do banco de dados (tabela `profiles`), triggers, formulários de cadastro legado e V2, e configurado fallback fictício para a API do Pagar.me a fim de manter integrações de PIX em funcionamento silencioso (Mai/2026).
-* **Melhorias na Tela de Lançamentos (UI/UX):** Cores de valores previstos suaves (verde para positivo, vermelho para negativo), filtros fixos (sticky) no desktop e layout compactado lado a lado das buscas, filtros de mês e resumo em telas reduzidas (Abr/2026).
-* **Integração de Webhooks:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada (Mar/2026).
-* **Aprimoramento da Impersonação:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo (Mar/2026).
-* **Migração de Gateway de Pagamento:** Substituição do Mercado Pago pelo Stripe concluída com sucesso (Mar/2026).
-
----
-
 ## 💡 Planejamento de Ideias e Recursos Futuros
 
 ### 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
@@ -66,3 +56,13 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 * **Status:** Pendente. Infraestrutura backend já existe.
 * **Rota sugerida:** `/v2/admin/broadcasts`
 * **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela.
+
+---
+
+## ✅ Histórico de Tarefas Concluídas
+
+* **Remoção de CPF/CNPJ de Cadastros e Perfis:** Removido o campo `cpf_cnpj` do banco de dados (tabela `profiles`), triggers, formulários de cadastro legado e V2, e configurado fallback fictício para a API do Pagar.me a fim de manter integrações de PIX em funcionamento silencioso (Mai/2026).
+* **Melhorias na Tela de Lançamentos (UI/UX):** Cores de valores previstos suaves (verde para positivo, vermelho para negativo), filtros fixos (sticky) no desktop e layout compactado lado a lado das buscas, filtros de mês e resumo em telas reduzidas (Abr/2026).
+* **Integração de Webhooks:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada (Mar/2026).
+* **Aprimoramento da Impersonação:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo (Mar/2026).
+* **Migração de Gateway de Pagamento:** Substituição do Mercado Pago pelo Stripe concluída com sucesso (Mar/2026).
