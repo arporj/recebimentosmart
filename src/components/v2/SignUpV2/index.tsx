@@ -149,7 +149,7 @@ export default function SignUpV2() {
                     Criar conta gratuita
                 </h1>
                 <p className="text-slate-500 text-base font-normal leading-normal pb-6">
-                    7 dias grátis para testar todas as funcionalidades.
+                    Acesso imediato a todas as ferramentas essenciais.
                 </p>
 
                 {/* ─── Banner de Indicação ─── */}
@@ -272,7 +272,7 @@ export default function SignUpV2() {
                         disabled={loading}
                         className="w-full bg-custom hover:bg-custom-hover text-white font-bold py-4 rounded-xl shadow-lg shadow-custom/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                        {loading ? 'Criando conta...' : 'Criar conta gratuita (7 dias)'}
+                        {loading ? 'Criando conta...' : 'Criar conta gratuita'}
                         {!loading && <ArrowRight size={18} />}
                     </button>
                 </div>
