@@ -6,6 +6,10 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## 🐛 Bugs Conhecidos
 
+### 📱 Menu de Ações (3 Pontinhos) no Cartão de Crédito no Celular
+* **Status:** Registrado em Mai/2026. Pendente.
+* **Descrição:** Na lista de lançamentos visualizada pelo celular, ao clicar no botão de 3 pontinhos ao lado de uma fatura de cartão de crédito, nenhuma ação ou menu é aberto. No computador o recurso funciona perfeitamente.
+
 ### Notificação de Erro Duplicada
 * **Status:** Registrado em Mar/2026. Pendente de análise.
 * **Descrição:** Ao ocorrer um erro, o usuário recebe duas notificações simultâneas: uma no canto superior direito e outra no canto inferior esquerdo.
@@ -20,19 +24,34 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## ✅ Histórico de Tarefas Concluídas
 
-* **Integração de Webhooks:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada.
-* **Aprimoramento da Impersonação:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo.
-* **Migração de Gateway de Pagamento:** Substituição do Mercado Pago pelo Stripe concluída com sucesso em Março/2026. Atualizados arquivos `server.cjs` e `SubscriptionPageV2.tsx`.
+* **Remoção de CPF/CNPJ de Cadastros e Perfis:** Removido o campo `cpf_cnpj` do banco de dados (tabela `profiles`), triggers, formulários de cadastro legado e V2, e configurado fallback fictício para a API do Pagar.me a fim de manter integrações de PIX em funcionamento silencioso (Mai/2026).
+* **Melhorias na Tela de Lançamentos (UI/UX):** Cores de valores previstos suaves (verde para positivo, vermelho para negativo), filtros fixos (sticky) no desktop e layout compactado lado a lado das buscas, filtros de mês e resumo em telas reduzidas (Abr/2026).
+* **Integração de Webhooks:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada (Mar/2026).
+* **Aprimoramento da Impersonação:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo (Mar/2026).
+* **Migração de Gateway de Pagamento:** Substituição do Mercado Pago pelo Stripe concluída com sucesso (Mar/2026).
 
 ---
 
 ## 💡 Planejamento de Ideias e Recursos Futuros
 
+### 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
+* **Status:** Planejado (Requer nova branch).
+* **Descrição:** Quando um usuário ativo de qualquer plano optar por fazer um upgrade para um plano superior, o sistema deve calcular dinamicamente o valor proporcional residual até o dia de vencimento original da assinatura.
+* **Exemplo:** Assinatura básica feita no dia 10; no dia 30 o usuário faz upgrade para o Pro. O valor cobrado na transação de upgrade deve ser correspondente apenas ao período parcial (10 dias) restante. No vencimento normal (dia 10 do mês seguinte), a cobrança regular do plano Pro é cobrada inteira.
+* **UX/UI:** Exibir de forma extremamente transparente na tela de assinatura: "O plano Pro custa R$ X. Migrando hoje, você pagará apenas R$ X-Y pelo período proporcional até DD/MM. A partir de DD/MM, a mensalidade será de R$ X."
+
+### 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
+* **Status:** Planejado (Requer nova branch).
+* **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio da primeira mensalidade paga pelo seu indicado.
+* **Regras de Negócio:**
+  * O resgate/pagamento via PIX só será liberado após o indicador acumular o valor mínimo de R$ 100,00 de saldo.
+  * **Painel Administrativo:** O admin precisa visualizar detalhadamente quais indicados efetuaram pagamentos, o valor acumulado por indicador e receber notificações automáticas quando um indicador ultrapassar os R$ 100,00 pendentes para resgate.
+  * **Painel do Usuário (Afiliado):** Apresentação visual limpa e transparente mostrando a lista de indicados, pagamentos realizados por eles e o saldo acumulado atual disponível/retirado.
+  * **Solicitação de Saque:** O usuário deve possuir um campo direto na interface para cadastrar e gerenciar sua Chave PIX.
+  * **Debitação:** Sempre que o administrador confirmar o pagamento do PIX, o sistema deve registrar a transação e abater o valor pago do saldo acumulado do usuário.
+
 ### 💬 Chat de Suporte Administrativo
 * **Status:** Temporariamente removido em Mar/2026 para readequação da interface V2.
-* **Histórico V1:**
-  * A página `AdminChat.tsx` gerenciava conversas na rota restrita `/admin/chat`.
-  * Utilizava o Supabase (`chats` e `messages`) para persistência em tempo real.
 * **Meta V2:** Reimplementar como `AdminChatPageV2.tsx` adotando os padrões visuais definidos (cantos arredondados, sombras suaves, chats em bolha e menu lateral de canais). Recomenda-se utilizar o `FeedbackDetailsV2.tsx` como ponto de partida visual.
 
 ### 💳 Aprimoramento de Feedback da Tela de Pagamento
@@ -46,22 +65,4 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 ### 📧 Tela de Envio de E-mails em Massa (Admin)
 * **Status:** Pendente. Infraestrutura backend já existe.
 * **Rota sugerida:** `/v2/admin/broadcasts`
-* **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela — os 2 broadcasts enviados (Jul/2025) foram inseridos manualmente via SQL no banco.
-* **Infraestrutura existente:**
-  * Tabela `email_broadcasts` (campos: `subject`, `body`, `status`)
-  * Edge Function `process-broadcast-queue` (envio via Brevo em lotes de 50)
-  * Função SQL `invoke_process_broadcast_queue_function()` (wrapper HTTP)
-  * Cron Job 8 **desativado** — dispensável quando a tela for criada
-* **Fluxo proposto:**
-  1. Admin compõe o e-mail (assunto + corpo HTML) com prévia visual
-  2. Ao clicar "Enviar", insere na tabela `email_broadcasts` com `status = 'pending'`
-  3. Chama `supabase.functions.invoke('process-broadcast-queue')` diretamente (sem cron)
-  4. Exibe progresso/resultado na interface
-* **Referência:** Ver [docs/cron_jobs.md](cron_jobs.md) — Job 8 para detalhes técnicos completos
-
-### 📊 Melhorias na Tela de Lançamentos (UI/UX)
-* **Status:** Concluído.
-* **Melhorias solicitadas:**
-  * **Cores de Valores Previstos:** O valor previsto que aparece abaixo do valor de cada conta (na tela de lançamento) deve ter as cores verde (quando for positivo) e vermelho (quando for negativo), usando tons discretos e suaves (diferentes dos tons originais e mais fortes das contas).
-  * **Filtros Fixos no Scroll (Sticky Desktop):** A barra de busca e o filtro de seleção do mês, na tela de lançamento para desktop, devem se manter fixados (sticky) no topo da página quando o usuário rola a tela para baixo.
-  * **Layout Compacto Lado a Lado:** As barras de busca/mês e o resumo financeiro devem ficar posicionados lado a lado, ocupando apenas uma única linha (em vez de duas linhas separadas como ocorre hoje) quando a tela do desktop for ligeiramente reduzida.
+* **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela.
