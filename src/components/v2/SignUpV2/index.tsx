@@ -16,7 +16,6 @@ export default function SignUpV2() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        cpf_cnpj: '',
         password: '',
         confirmPassword: '',
     });
@@ -49,11 +48,6 @@ export default function SignUpV2() {
     const validate = () => {
         const newErrors: Record<string, string> = {};
         if (!formData.name) newErrors.name = 'Nome é obrigatório.';
-
-        const cpfCnpj = formData.cpf_cnpj.replace(/[^0-9]/g, '');
-        if (cpfCnpj && cpfCnpj.length !== 11 && cpfCnpj.length !== 14) {
-            newErrors.cpf_cnpj = 'CPF/CNPJ inválido. Deve conter 11 ou 14 dígitos.';
-        }
 
         if (!formData.email) {
             newErrors.email = 'Email é obrigatório.';
@@ -88,7 +82,6 @@ export default function SignUpV2() {
             await signUp(
                 formData.name,
                 formData.email,
-                formData.cpf_cnpj.replace(/[^0-9]/g, ''),
                 formData.password,
                 referralCode || undefined,
                 '/v2/login'
@@ -201,22 +194,7 @@ export default function SignUpV2() {
                         {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                     </label>
 
-                    {/* CPF/CNPJ */}
-                    <label className="flex flex-col w-full">
-                        <p className="text-slate-900 text-sm font-semibold leading-normal pb-2">CPF ou CNPJ</p>
-                        <div className="relative">
-                            <input
-                                id="cpf_cnpj"
-                                className={inputClass('cpf_cnpj')}
-                                placeholder="000.000.000-00"
-                                type="text"
-                                value={formData.cpf_cnpj}
-                                onChange={handleChange}
-                            />
-                            <FileText className="absolute left-4 top-4 text-slate-400" size={20} />
-                        </div>
-                        {errors.cpf_cnpj && <p className="mt-1 text-sm text-red-500">{errors.cpf_cnpj}</p>}
-                    </label>
+
 
                     {/* Email */}
                     <label className="flex flex-col w-full">
