@@ -6,17 +6,13 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## 1. 🐛 Bugs Conhecidos
 
-### 1.1. 📱 Menu de Ações (3 Pontinhos) no Cartão de Crédito no Celular
-* **Status:** Registrado em Mai/2026. Pendente.
-* **Descrição:** Na lista de lançamentos visualizada pelo celular, ao clicar no botão de 3 pontinhos ao lado de uma fatura de cartão de crédito, nenhuma ação ou menu é aberto. No computador o recurso funciona perfeitamente.
-
-### 1.2. 🔔 Notificação de Erro Duplicada
+### 1.1. 🔔 Notificação de Erro Duplicada
 * **Status:** Registrado em Mar/2026. Pendente de análise.
 * **Descrição:** Ao ocorrer um erro, o usuário recebe duas notificações simultâneas: uma no canto superior direito e outra no canto inferior esquerdo.
 * **Causa provável:** Presença de dois componentes `<Toaster>` montados na árvore de componentes (um no layout global e outro dentro de páginas específicas como `SubscriptionPageV2`).
 * **Solução Recomendada:** Remover a instância duplicada, mantendo apenas o `<Toaster position="bottom-center" />` configurado no layout global.
 
-### 1.3. 🚀 Rota `/cadastro` Não Encontrada
+### 1.2. 🚀 Rota `/cadastro` Não Encontrada
 * **Status:** Causa raiz identificada (race condition após o processo de signup no `AuthContext.tsx`). Pendente validar correção definitiva.
 * **Descrição:** O console exibe o aviso `No routes matched location "/cadastro"` durante o fluxo de navegação automática pós-registro ou login.
 
@@ -61,22 +57,26 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## 3. ✅ Histórico de Tarefas Concluídas
 
-### 3.1. 👤 Remoção de CPF/CNPJ de Cadastros e Perfis
+### 3.1. 📱 Menu de Ações (3 Pontinhos) no Cartão de Crédito no Celular
+* **Status:** Concluído em Mai/2026.
+* **Descrição:** Corrigida a propagação de eventos do clique e touch na div do dropdown da fatura de cartão de crédito, tanto em telas de computadores quanto em dispositivos celulares touch, resolvendo o bug visual onde o menu de ações não se mantinha aberto.
+
+### 3.2. 👤 Remoção de CPF/CNPJ de Cadastros e Perfis
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Removido o campo `cpf_cnpj` do banco de dados (tabela `profiles`), triggers, formulários de cadastro legado e V2, e configurado fallback fictício para a API do Pagar.me a fim de manter integrações de PIX em funcionamento silencioso.
 
-### 3.2. 📊 Melhorias na Tela de Lançamentos (UI/UX)
+### 3.3. 📊 Melhorias na Tela de Lançamentos (UI/UX)
 * **Status:** Concluído em Abr/2026.
 * **Descrição:** Cores de valores previstos suaves (verde para positivo, vermelho para negativo), filtros fixos (sticky) no desktop e layout compactado lado a lado das buscas, filtros de mês e resumo em telas reduzidas.
 
-### 3.3. 🔗 Integração de Webhooks
+### 3.4. 🔗 Integração de Webhooks
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada.
 
-### 3.4. 👑 Aprimoramento da Impersonação
+### 3.5. 👑 Aprimoramento da Impersonação
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo.
 
-### 3.5. 💳 Migração de Gateway de Pagamento
+### 3.6. 💳 Migração de Gateway de Pagamento
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Substituição do Mercado Pago pelo Stripe concluída com sucesso.
