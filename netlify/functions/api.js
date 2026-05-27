@@ -171,6 +171,7 @@ exports.handler = async (event, context) => {
                 transaction_id: txid,
                 amount: finalAmount,
                 status: 'PENDING',
+                plan_name: planName,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               });
