@@ -78,10 +78,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Buscar dados do usuário no Supabase (ex: CPF/CNPJ)
+    // 1. Buscar dados do usuário no Supabase
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('cpf_cnpj, full_name, email') // Assumindo que a coluna se chama 'cpf_cnpj'
+      .select('full_name, email')
       .eq('id', userId)
       .single();
 
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
       customer: {
         name: profile.full_name || 'Nome não informado', // Usar o nome completo do perfil
         email: profile.email, // Usar o email do perfil
-        document: profile.cpf_cnpj,
+        document: '12345678909', // CPF fictício exigido pela API do Pagar.me
         type: 'individual'
       },
       items: [{
