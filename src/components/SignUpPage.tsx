@@ -44,7 +44,6 @@ export function SignUpPage() {
       await signUp(
         formData.name,
         formData.email,
-        formData.cpf_cnpj,
         formData.password,
         referralCode
       );
