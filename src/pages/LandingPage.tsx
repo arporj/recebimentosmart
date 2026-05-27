@@ -116,7 +116,7 @@ const LandingPage: React.FC = () => {
             Pare de perder tempo com planilhas. Automatize suas cobranças, gerencie seus clientes e visualize suas finanças de forma clara e eficiente.
           </p>
           <a href="#pricing" className="mt-8 inline-block bg-custom text-white font-bold py-4 px-10 rounded-lg hover:bg-custom-hover transition-transform transform hover:scale-105 text-lg shadow-lg">
-            Comece Agora com 7 Dias Grátis
+            Comece a Usar Grátis Agora
           </a>
         </div>
       </main>
@@ -161,7 +161,7 @@ const LandingPage: React.FC = () => {
             <div className="p-6">
               <div className="flex items-center justify-center h-20 w-20 rounded-full bg-custom text-white mx-auto mb-6 font-bold text-3xl shadow-lg">1</div>
               <h4 className="text-xl font-bold text-neutral-900 mb-2">Crie sua Conta</h4>
-              <p className="text-neutral-600">O cadastro é rápido e você já ganha 7 dias de teste para explorar tudo.</p>
+              <p className="text-neutral-600">O cadastro é rápido e você já começa no plano gratuito para explorar tudo.</p>
             </div>
             <div className="p-6">
               <div className="flex items-center justify-center h-20 w-20 rounded-full bg-custom text-white mx-auto mb-6 font-bold text-3xl shadow-lg">2</div>
