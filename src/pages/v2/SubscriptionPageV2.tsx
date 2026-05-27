@@ -233,7 +233,8 @@ export default function SubscriptionPageV2() {
       active = false;
       clearTimeout(timer);
     };
-  }, [selectedPlan, finalAmount, planDisplayName, user?.id, userPlanActive]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlan, user?.id]);
 
   // Escuta ativa em Tempo Real no Supabase para aprovação automática do webhook do Banco Inter
   useEffect(() => {
