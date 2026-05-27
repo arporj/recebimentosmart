@@ -141,7 +141,7 @@ export function LoginForm() {
                 onClick={() => navigate('/cadastro')} // Agora navega para a rota /cadastro
                 className="text-sm font-medium text-custom hover:text-custom-hover"
               >
-                Não tem uma conta? Cadastre-se de graça por 7 dias
+                Não tem uma conta? Comece grátis agora mesmo
               </button>
             </div>
           </form>
