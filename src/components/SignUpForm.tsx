@@ -152,7 +152,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, loading, referralCode
           
           <div>
             <button type="submit" disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-custom hover:bg-custom-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom disabled:opacity-50">
-              {loading ? 'Criando conta...' : 'Criar conta gratuita (7 dias)'}
+              {loading ? 'Criando conta...' : 'Criar conta gratuita'}
             </button>
           </div>
 
