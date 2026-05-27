@@ -964,51 +964,23 @@ const FinancialTransactionsV2 = () => {
         {/* Mobile Header: Resumo + Busca + Criar */}
         <div className="sticky top-[57px] z-20 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Top Row for Sm and Above / Standard mobile rows */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-            {/* Left side: Resumo toggle + Month filter */}
-            <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
-              <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 shrink-0">
-                <div className="flex flex-col gap-[3px] w-4"><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /></div>
-                <span className="text-xs font-black text-slate-800">Resumo</span>
-              </button>
-
-              {/* Balance (Visible ONLY on mobile here) */}
-              <span className="text-sm font-black text-slate-800 sm:hidden">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</span>
-              
-              {/* Button Criar (Visible ONLY on mobile here) */}
-              <button
-                onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
-                className="flex items-center gap-1.5 bg-[#0d9488] text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider sm:hidden"
-              >
-                <Plus size={12} /> Criar
-              </button>
-
-              {/* Month filter (Visible ONLY on sm and above up to xl) */}
-              <div className="hidden sm:flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-2 py-1 min-w-[155px] shadow-sm shrink-0">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded-lg transition-all active:scale-90">
-                  <ChevronLeft size={14} className="text-slate-600" />
-                </button>
-                <span className="text-xs font-black text-slate-700 capitalize select-none">{monthLabel}</span>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded-lg transition-all active:scale-90">
-                  <ChevronRight size={14} className="text-slate-600" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right side: Balance value + Button Criar (Visible ONLY on sm and above up to xl) */}
-            <div className="hidden sm:flex items-center gap-3 shrink-0">
-              <span className="text-sm font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</span>
-              <button
-                onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
-                className="flex items-center gap-1.5 bg-[#0d9488] text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider"
-              >
-                <Plus size={12} /> Criar
-              </button>
-            </div>
+          {/* Mobile view only: < sm */}
+          <div className="flex sm:hidden items-center justify-between w-full">
+            <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-col gap-[3px] w-4"><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /></div>
+              <span className="text-xs font-black text-slate-800">Resumo</span>
+            </button>
+            <span className="text-sm font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</span>
+            <button
+              onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
+              className="flex items-center gap-1.5 bg-[#0d9488] text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider"
+            >
+              <Plus size={12} /> Criar
+            </button>
           </div>
 
           {/* Month Navigation (ONLY on mobile) */}
-          <div className="flex sm:hidden items-center justify-between bg-slate-50 rounded-xl px-1 py-1">
+          <div className="flex sm:hidden items-center justify-between bg-slate-50 rounded-xl px-1 py-1 w-full">
             <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 hover:bg-white rounded-lg transition-all active:scale-90">
               <ChevronLeft size={18} className="text-slate-600" />
             </button>
@@ -1016,6 +988,45 @@ const FinancialTransactionsV2 = () => {
             <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 hover:bg-white rounded-lg transition-all active:scale-90">
               <ChevronRight size={18} className="text-slate-600" />
             </button>
+          </div>
+
+          {/* Tablet/Medium view: sm to xl - Month filter and balance occupying all middle space */}
+          <div className="hidden sm:flex items-center justify-between w-full gap-4">
+             {/* 1. Resumo button (Far Left) */}
+             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 shrink-0">
+               <div className="flex flex-col gap-[3px] w-4"><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /></div>
+               <span className="text-xs font-black text-slate-800">Resumo</span>
+             </button>
+
+             {/* 2. Central Area: Month Filter and Balance occupying all space */}
+             <div className="flex-1 flex justify-around items-center max-w-xl mx-auto">
+               {/* Month filter */}
+               <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1 min-w-[170px] shadow-sm shrink-0">
+                 <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded-lg transition-all active:scale-90">
+                   <ChevronLeft size={14} className="text-slate-600" />
+                 </button>
+                 <span className="text-xs font-black text-slate-700 capitalize select-none">{monthLabel}</span>
+                 <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded-lg transition-all active:scale-90">
+                   <ChevronRight size={14} className="text-slate-600" />
+                 </button>
+               </div>
+
+               {/* Balance */}
+               <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-1 shadow-sm shrink-0">
+                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block leading-none pt-0.5">Saldo</span>
+                 <span className="text-sm font-black text-slate-800 leading-none">
+                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
+                 </span>
+               </div>
+             </div>
+
+             {/* 3. Button Criar (Far Right) */}
+             <button
+               onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
+               className="flex items-center gap-1.5 bg-[#0d9488] text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider shrink-0"
+             >
+               <Plus size={14} /> Criar
+             </button>
           </div>
           {/* Linha 2: Busca + Refresh */}
           <div className="flex items-center gap-2">
@@ -1287,19 +1298,8 @@ const FinancialTransactionsV2 = () => {
               )}
             </div>
 
-            {/* Barra de Mês e Ações Lado a Lado */}
+            {/* Ações Lado a Lado */}
             <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
-              {/* Filtro de Mês */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-1.5 flex items-center justify-between min-w-[170px] shadow-sm shrink-0">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-slate-50 rounded-lg transition-all active:scale-90">
-                  <ChevronLeft size={16} className="text-slate-600" />
-                </button>
-                <span className="text-xs font-black text-slate-800 capitalize select-none">{monthLabel}</span>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-slate-50 rounded-lg transition-all active:scale-90">
-                  <ChevronRight size={16} className="text-slate-600" />
-                </button>
-              </div>
-
               {/* Ações */}
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={fetchTransactions} disabled={loading} className={`p-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 transition-all ${loading ? 'animate-spin' : ''}`} title="Recarregar"><RefreshCcw size={16} /></button>
