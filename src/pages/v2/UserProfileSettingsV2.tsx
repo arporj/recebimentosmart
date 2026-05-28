@@ -103,7 +103,6 @@ export default function UserProfileSettingsV2() {
 
     const handleSave = async () => {
         setSaving(true);
-        setCpfCnpjError(null);
         let success = true;
 
         // Name Update
