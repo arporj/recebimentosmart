@@ -1130,6 +1130,11 @@ const FinancialTransactionsV2 = () => {
                         <p className="font-medium text-xs text-amber-700">
                           {formatTransactionAmount(t.amount, 'expense')}
                         </p>
+                        {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
+                          <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                          </p>
+                        )}
                       </div>
                     )}
                     <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
