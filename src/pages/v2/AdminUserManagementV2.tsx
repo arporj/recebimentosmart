@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import {
     Users, UserPlus, CheckCircle, Search,
-    ArrowUp, ArrowDown, MoreVertical, Mail, TrendingUp
+    ArrowUp, ArrowDown, MoreVertical, Mail, TrendingUp, CalendarCheck
 } from 'lucide-react';
 import UserDetailsModalV2 from '../../components/v2/UserDetailsModalV2';
 import { UserProfile } from '../../components/admin/UserTable';
@@ -152,6 +152,7 @@ export default function AdminUserManagementV2() {
     };
 
     const [userToNotify, setUserToNotify] = useState<UserProfile | null>(null);
+    const [userToTestNotify, setUserToTestNotify] = useState<UserProfile | null>(null);
 
     const handleNotifyDuePayments = async (u: UserProfile) => {
         const toastId = toast.loading('Enviando notificação...');
@@ -165,6 +166,21 @@ export default function AdminUserManagementV2() {
             toast.error('Erro ao enviar e-mail. Verifique o console.', { id: toastId });
         } finally {
             setUserToNotify(null);
+        }
+    };
+
+    const handleTestTodayNotification = async (u: UserProfile) => {
+        const toastId = toast.loading('Enviando e-mail de teste (contas de hoje)...');
+        try {
+            const { data, error } = await supabase.rpc('process_due_accounts_notification_test', { p_user_id: u.id });
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+            toast.success(data?.message || 'E-mail de teste enviado para andre@andreric.com!', { id: toastId });
+        } catch (error: any) {
+            console.error('Erro ao enviar teste:', error);
+            toast.error(error?.message || 'Erro ao enviar e-mail de teste.', { id: toastId });
+        } finally {
+            setUserToTestNotify(null);
         }
     };
 
@@ -326,9 +342,16 @@ export default function AdminUserManagementV2() {
                                                 <button
                                                     onClick={() => setUserToNotify(user)}
                                                     className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
-                                                    title="Notificar Vencimentos"
+                                                    title="Notificar Vencimentos (antigo)"
                                                 >
                                                     <Mail className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setUserToTestNotify(user)}
+                                                    className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                    title="Testar E-mail Contas Hoje (envia para andre@andreric.com)"
+                                                >
+                                                    <CalendarCheck className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     onClick={() => setSelectedUser(user)}
@@ -393,6 +416,16 @@ export default function AdminUserManagementV2() {
                 title="Enviar notificação"
                 message={<>Deseja enviar o e-mail de notificação de vencimentos para <strong>{userToNotify?.name || userToNotify?.email}</strong>?</>}
                 confirmLabel="Enviar"
+                confirmColor="blue"
+            />
+
+            <ConfirmModal
+                isOpen={!!userToTestNotify}
+                onClose={() => setUserToTestNotify(null)}
+                onConfirm={() => userToTestNotify && handleTestTodayNotification(userToTestNotify)}
+                title="Testar E-mail de Contas Hoje"
+                message={<>Enviar e-mail de teste com as contas de <strong>HOJE</strong> de <strong>{userToTestNotify?.name || userToTestNotify?.email}</strong> para <strong>andre@andreric.com</strong>?</>}
+                confirmLabel="Enviar Teste"
                 confirmColor="blue"
             />
         </div>
