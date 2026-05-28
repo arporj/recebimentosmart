@@ -4,7 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { 
     FlaskConical, Users, Mail, CalendarCheck, AlertTriangle, 
-    Trash2, Play, Terminal, ChevronRight, CheckCircle, ShieldAlert 
+    Trash2, Play, Terminal, ChevronRight, CheckCircle, ShieldAlert,
+    Search, ChevronDown 
 } from 'lucide-react';
 
 interface UserSelectOption {
@@ -26,8 +27,24 @@ export default function AdminSystemTestsV2() {
     const { user: adminUser } = useAuth();
     const [users, setUsers] = useState<UserSelectOption[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
+    const [userSearchTerm, setUserSearchTerm] = useState('');
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [executing, setExecuting] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    // Efeito para fechar o dropdown ao clicar fora
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
     
     // Logs de execução (estilo terminal)
     const [logs, setLogs] = useState<LogEntry[]>([
@@ -44,9 +61,17 @@ export default function AdminSystemTestsV2() {
             try {
                 const { data, error } = await supabase.rpc('get_all_users_admin');
                 if (error) throw error;
-                setUsers(data || []);
-                if (data && data.length > 0) {
-                    setSelectedUserId(data[0].id);
+                
+                // Ordenar usuários em ordem alfabética de forma nativa e insensível a acentos
+                const sortedData = (data || []).sort((a, b) => {
+                    const nameA = a.name || a.email || '';
+                    const nameB = b.name || b.email || '';
+                    return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+                });
+                
+                setUsers(sortedData);
+                if (sortedData.length > 0) {
+                    setSelectedUserId(sortedData[0].id);
                 }
             } catch (error: any) {
                 console.error('Erro ao carregar usuários:', error);
@@ -236,25 +261,135 @@ export default function AdminSystemTestsV2() {
                             </div>
                             <div>
                                 <h3 className="font-extrabold text-sm text-slate-900">1. Selecionar Usuário de Dados</h3>
-                                <p className="text-[10px] text-slate-400 font-medium">Os e-mails serão montados usando o histórico deste usuário</p>
+                                <p className="text-[10px] text-slate-400 font-medium">Filtre por digitação e selecione o usuário desejado</p>
                             </div>
                         </div>
 
                         {loadingUsers ? (
                             <div className="text-xs font-semibold text-slate-400 animate-pulse">Carregando usuários cadastrados...</div>
                         ) : (
-                            <div>
-                                <select
-                                    value={selectedUserId}
-                                    onChange={(e) => setSelectedUserId(e.target.value)}
-                                    className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-custom/20 focus:border-custom outline-none transition-all"
+                            <div className="relative" ref={dropdownRef}>
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                                    Usuário Selecionado
+                                </label>
+                                
+                                {/* Botão Principal do Dropdown */}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold text-slate-900 transition-all focus:ring-2 focus:ring-custom/20 focus:border-custom outline-none shadow-sm"
                                 >
-                                    {users.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name || 'Sem nome'} ({u.email}) — Plano {u.plan_name || 'free'} [{u.subscription_status || 'ativo'}]
-                                        </option>
-                                    ))}
-                                </select>
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="p-1.5 bg-slate-200/60 rounded-lg text-slate-600 shrink-0">
+                                            <Users className="w-4 h-4" />
+                                        </div>
+                                        {getSelectedUser() ? (
+                                            <div className="text-left min-w-0">
+                                                <p className="text-sm font-bold text-slate-800 leading-tight truncate">
+                                                    {getSelectedUser()?.name || 'Sem Nome'}
+                                                </p>
+                                                <p className="text-xs text-slate-500 font-medium leading-none mt-1 truncate">
+                                                    {getSelectedUser()?.email}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-slate-400 font-medium">Nenhum usuário selecionado</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                                        {getSelectedUser()?.plan_name && (
+                                            <span className="hidden sm:inline-block px-2.5 py-1 text-[10px] font-black tracking-wider uppercase bg-custom/10 text-custom rounded-full">
+                                                {getSelectedUser()?.plan_name}
+                                            </span>
+                                        )}
+                                        <ChevronDown className="w-4 h-4 text-slate-400 transition-transform duration-200" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+                                    </div>
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {isDropdownOpen && (
+                                    <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
+                                        
+                                        {/* Barra de Busca dentro do Dropdown */}
+                                        <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                                            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                                            <input
+                                                type="text"
+                                                placeholder="Digite o nome ou e-mail para buscar..."
+                                                value={userSearchTerm}
+                                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                                                className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none border-none placeholder-slate-400 focus:ring-0"
+                                                autoFocus
+                                            />
+                                            {userSearchTerm && (
+                                                <button
+                                                    onClick={() => setUserSearchTerm('')}
+                                                    type="button"
+                                                    className="text-[10px] font-extrabold text-slate-400 hover:text-slate-600 transition-colors uppercase shrink-0"
+                                                >
+                                                    Limpar
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Lista de Usuários */}
+                                        <div className="max-h-60 overflow-y-auto py-1 divide-y divide-slate-50 custom-scrollbar">
+                                            {users.filter(u => {
+                                                const term = userSearchTerm.toLowerCase();
+                                                return (u.name?.toLowerCase().includes(term) || false) || u.email.toLowerCase().includes(term);
+                                            }).length === 0 ? (
+                                                <div className="px-4 py-6 text-center text-xs font-semibold text-slate-400">
+                                                    Nenhum usuário correspondente encontrado
+                                                </div>
+                                            ) : (
+                                                users
+                                                    .filter(u => {
+                                                        const term = userSearchTerm.toLowerCase();
+                                                        return (u.name?.toLowerCase().includes(term) || false) || u.email.toLowerCase().includes(term);
+                                                    })
+                                                    .map((u) => {
+                                                        const isSelected = u.id === selectedUserId;
+                                                        return (
+                                                            <button
+                                                                key={u.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedUserId(u.id);
+                                                                    setIsDropdownOpen(false);
+                                                                    setUserSearchTerm('');
+                                                                }}
+                                                                className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-all ${
+                                                                    isSelected 
+                                                                        ? 'bg-custom/5 border-l-4 border-custom pl-3' 
+                                                                        : 'hover:bg-slate-50 border-l-4 border-transparent pl-3'
+                                                                }`}
+                                                            >
+                                                                <div className="min-w-0 pr-2">
+                                                                    <p className={`text-xs font-bold truncate ${isSelected ? 'text-custom' : 'text-slate-800'}`}>
+                                                                        {u.name || 'Sem Nome'}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                                                                        {u.email}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    {u.plan_name && (
+                                                                        <span className={`px-2 py-0.5 text-[8px] font-black tracking-wider uppercase rounded-full ${
+                                                                            isSelected 
+                                                                                ? 'bg-custom/10 text-custom' 
+                                                                                : 'bg-slate-100 text-slate-500'
+                                                                        }`}>
+                                                                            {u.plan_name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
