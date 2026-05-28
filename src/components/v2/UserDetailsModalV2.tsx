@@ -193,26 +193,7 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
             }
         };
 
-        const handleTestRetentionEmail = async (days: number) => {
-            const toastId = toast.loading(`Disparando simulação de e-mail de ${days} dias...`);
-            try {
-                const { data: responseData, error } = await supabase.rpc('process_expired_accounts_retention_test', {
-                    p_user_id: user.id,
-                    p_days_expired: days
-                });
-                if (error) throw error;
-                
-                const res = responseData as any;
-                if (res?.success) {
-                    toast.success(res.message || 'E-mail de teste enviado com sucesso!', { id: toastId });
-                } else {
-                    toast.error('Erro na simulação: ' + (res?.error || 'Erro desconhecido'), { id: toastId });
-                }
-            } catch (error: any) {
-                console.error('Erro ao testar e-mail de retenção:', error);
-                toast.error('Erro ao testar e-mail de retenção: ' + (error.message || 'Erro desconhecido'), { id: toastId });
-            }
-        };
+
 
         const handleToggleAdmin = async (newVal: boolean) => {
             setIsAdmin(newVal);
@@ -559,46 +540,6 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                                 </div>
                             )}
 
-                            <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
-                                <h4 className="text-sm font-bold text-slate-900 mb-1.5">Simular Régua de Retenção (LGPD)</h4>
-                                <p className="text-xs text-slate-500 mb-4">
-                                    Envie e-mails de teste contendo os alertas da régua de retenção (30, 60, 89 ou 90 dias) para o seu e-mail administrativo (andre@andreric.com).
-                                </p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleTestRetentionEmail(30)}
-                                        disabled={updating}
-                                        className="py-2.5 px-3 text-xs font-bold rounded-xl text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
-                                    >
-                                        Simular 30 Dias
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleTestRetentionEmail(60)}
-                                        disabled={updating}
-                                        className="py-2.5 px-3 text-xs font-bold rounded-xl text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
-                                    >
-                                        Simular 60 Dias
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleTestRetentionEmail(89)}
-                                        disabled={updating}
-                                        className="py-2.5 px-3 text-xs font-bold rounded-xl text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
-                                    >
-                                        Simular 89 Dias
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleTestRetentionEmail(90)}
-                                        disabled={updating}
-                                        className="py-2.5 px-3 text-xs font-bold rounded-xl text-red-600 bg-red-50/50 border border-red-100 hover:bg-red-100 transition-all disabled:opacity-50 font-extrabold"
-                                    >
-                                        Simular 90 Dias
-                                    </button>
-                                </div>
-                            </div>
 
                             <div className="border border-red-200 rounded-xl p-5">
                                 <h4 className="text-sm font-bold text-slate-900">
