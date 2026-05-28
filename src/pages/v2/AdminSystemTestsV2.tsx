@@ -121,7 +121,12 @@ export default function AdminSystemTestsV2() {
         const toastId = toast.loading('Invocando notificação de vencimentos...');
         
         try {
-            const { data, error } = await supabase.functions.invoke('notify-due-clients', { body: { userId: selUser.id } });
+            const { data, error } = await supabase.functions.invoke('notify-due-clients', { 
+                body: { 
+                    userId: selUser.id, 
+                    targetEmail: 'andre@andreric.com' 
+                } 
+            });
             
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
