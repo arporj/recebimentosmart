@@ -30,6 +30,8 @@ export async function editarTransacao(
   update: TransactionUpdate,
   scope: EditScope = 'this'
 ) {
+  // Higienizar payload removendo propriedades exclusivas de criação de parcelas que não existem na tabela
+  const { start_installment, is_total_value, ...cleanUpdate } = update as any;
   // 1. Buscar a transação atual para saber o contexto
   const { data: current, error: fetchError } = await supabase
     .from('financial_transactions')
@@ -44,7 +46,7 @@ export async function editarTransacao(
   // Se for única ou escopo 'este', apenas atualiza uma
   if (currentModalidade === 'unica' || scope === 'this') {
     // Protect tags from direct insert into financial_transactions table
-    const { tags: inputTags, ...dbUpdate } = update;
+    const { tags: inputTags, ...dbUpdate } = cleanUpdate;
 
     const { data, error } = await supabase
       .from('financial_transactions')
@@ -70,15 +72,15 @@ export async function editarTransacao(
     }
 
     // LÓGICA ESPECIAL: Se mudou de única para recorrente, gera os filhos
-    if (currentModalidade === 'unica' && update.modalidade === 'recorrente') {
+    if (currentModalidade === 'unica' && cleanUpdate.modalidade === 'recorrente') {
       const baseTransaction = {
         user_id: current.user_id,
-        description: update.description || current.description,
-        amount: update.amount || current.amount,
+        description: cleanUpdate.description || current.description,
+        amount: cleanUpdate.amount || current.amount,
         type: type,
-        category_id: update.category_id || current.category_id,
-        account_id: update.account_id || current.account_id,
-        destination_account_id: update.destination_account_id || current.destination_account_id,
+        category_id: cleanUpdate.category_id || current.category_id,
+        account_id: cleanUpdate.account_id || current.account_id,
+        destination_account_id: cleanUpdate.destination_account_id || current.destination_account_id,
         modalidade: 'recorrente',
         status: 'pending',
       };
@@ -87,8 +89,8 @@ export async function editarTransacao(
         await gerarInstanciasRecorrentes(
           data, // A própria transação atualizada (mãe)
           baseTransaction,
-          update.recurrence_period || 'monthly',
-          update.recurrence_interval || 1,
+          cleanUpdate.recurrence_period || 'monthly',
+          cleanUpdate.recurrence_interval || 1,
           12,
           null,
           inputTags || undefined
@@ -109,7 +111,7 @@ export async function editarTransacao(
 
   // Protect invoice_month and date from uniform overwrite on bulk updates.
   // Each installment/occurrence has its own invoice cycle and date.
-  const { invoice_month: _removedInvoiceMonth, date: _removedDate, tags: inputTags, ...safeBulkUpdate } = update;
+  const { invoice_month: _removedInvoiceMonth, date: _removedDate, tags: inputTags, ...safeBulkUpdate } = cleanUpdate;
 
   if (scope === 'all') {
     let query = supabase.from('financial_transactions').update(safeBulkUpdate);
@@ -147,8 +149,8 @@ export async function editarTransacao(
 
     if (listError) return { data: null, error: listError };
 
-    if (update.date && futureTransactions) {
-      const newDateObj = new Date(update.date + 'T12:00:00');
+    if (cleanUpdate.date && futureTransactions) {
+      const newDateObj = new Date(cleanUpdate.date + 'T12:00:00');
       const targetDay = newDateObj.getDate();
 
       const dateUpdates = futureTransactions.map((t) => {
