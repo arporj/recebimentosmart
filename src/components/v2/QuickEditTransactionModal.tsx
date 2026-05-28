@@ -74,7 +74,17 @@ const QuickEditTransactionModal = ({
   // Populate form fields
   useEffect(() => {
     if (isOpen && transaction) {
-      setDate(transaction.originalInstanceDate || transaction.date || format(new Date(), 'yyyy-MM-dd'));
+      let initialDate = transaction.originalInstanceDate || transaction.date || format(new Date(), 'yyyy-MM-dd');
+      
+      // Se for confirmação e a data for futura, ajusta para hoje
+      if (isConfirming) {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        if (initialDate > todayStr) {
+          initialDate = todayStr;
+        }
+      }
+      
+      setDate(initialDate);
       setDescription(transaction.description || '');
       setAccountId(transaction.account_id || '');
       setCategoryId(transaction.category_id || '');
@@ -310,9 +320,9 @@ const QuickEditTransactionModal = ({
           onClick={onClose}
         />
 
-        <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+        <div className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200 max-h-[95vh] flex flex-col">
           {/* Header */}
-          <header className="px-5 py-4 flex justify-between items-center border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
+          <header className="px-5 py-3 flex justify-between items-center border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
             <div className="flex items-center gap-3">
               <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                 <X size={18} className="text-slate-500" />
@@ -334,18 +344,35 @@ const QuickEditTransactionModal = ({
           </header>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {/* Valor */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Valor (R$)</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amount}
-                onChange={handleAmountChange}
-                className={`w-full text-2xl font-black py-3 px-4 rounded-2xl border-2 transition-all focus:outline-none focus:ring-2 ${tc.border} ${tc.bg} ${tc.text} focus:ring-offset-1`}
-                placeholder="0,00"
-              />
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Valor e Data lado a lado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Valor */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Valor (R$)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  className={`w-full text-xl font-black py-2.5 px-4 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 ${tc.border} ${tc.bg} ${tc.text} focus:ring-offset-1`}
+                  placeholder="0,00"
+                />
+              </div>
+
+              {/* Data */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Data</label>
+                <div className="relative">
+                  <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full py-2.5 pl-9 pr-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 transition-all"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Descrição */}
@@ -355,170 +382,162 @@ const QuickEditTransactionModal = ({
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-sm font-medium text-slate-800 transition-all"
+                className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 transition-all"
                 placeholder="Ex: Aluguel, Salário..."
               />
             </div>
 
-            {/* Data */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Data</label>
-              <div className="relative">
-                <CalendarIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full py-2.5 pl-10 pr-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-sm font-medium text-slate-800 transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Conta */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Conta</label>
-              <div className="relative">
-                <select
-                  value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-sm font-medium text-slate-800 appearance-none cursor-pointer transition-all bg-white"
-                >
-                  <option value="">Selecione...</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({getAccountTypeLabel(acc.type)})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Categoria */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Categoria</label>
-              <div className="relative">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-sm font-medium text-slate-800 appearance-none cursor-pointer transition-all bg-white"
-                >
-                  <option value="">Selecione...</option>
-                  {organizedCategories.map((parent) => (
-                    <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
-                      {parent.children.length > 0 ? (
-                        parent.children.map((child: any) => (
-                          <option key={child.id} value={child.id}>
-                            {child.icon || ''} {child.name}
-                          </option>
-                        ))
-                      ) : (
-                        <option value={parent.id}>{parent.icon || ''} {parent.name}</option>
-                      )}
-                    </optgroup>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div ref={tagRef} className="relative">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Tags</label>
-              <button
-                type="button"
-                onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 focus:border-teal-400 text-sm font-medium text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <TagIcon size={14} className="text-slate-400 shrink-0" />
-                  {selectedTags.length > 0 ? (
-                    selectedTags.map((tagId) => {
-                      const tag = tags.find((t) => t.id === tagId);
-                      return tag ? (
-                        <span
-                          key={tagId}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-md border"
-                          style={{
-                            backgroundColor: (tag.color || '#94a3b8') + '15',
-                            borderColor: (tag.color || '#94a3b8') + '40',
-                            color: tag.color || '#475569',
-                          }}
-                        >
-                          {tag.name}
-                        </span>
-                      ) : null;
-                    })
-                  ) : (
-                    <span className="text-slate-400">Nenhuma tag</span>
-                  )}
-                </div>
-                <ChevronDown size={16} className={`text-slate-400 transition-transform ${isTagDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isTagDropdownOpen && (
-                <div className="absolute z-20 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-[180px] overflow-y-auto">
-                  {tags.length === 0 ? (
-                    <p className="p-3 text-xs text-slate-400 text-center">Nenhuma tag cadastrada</p>
-                  ) : (
-                    tags.map((tag) => {
-                      const isSelected = selectedTags.includes(tag.id);
-                      return (
-                        <button
-                          key={tag.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTags((prev) =>
-                              isSelected ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
-                            );
-                          }}
-                          className={`w-full px-3 py-2 text-left text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50' : ''}`}
-                        >
-                          {isSelected ? (
-                            <CheckSquare size={14} className="text-teal-600 shrink-0" />
-                          ) : (
-                            <Square size={14} className="text-slate-300 shrink-0" />
-                          )}
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: tag.color || '#94a3b8' }}
-                          />
-                          {tag.name}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Checkbox Pago */}
-            <div
-              onClick={() => setIsPaid(!isPaid)}
-              className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                isPaid
-                  ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
-                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              {isPaid ? (
-                <CheckSquare size={22} className="text-emerald-600 shrink-0" />
-              ) : (
-                <Square size={22} className="text-slate-400 shrink-0" />
-              )}
+            {/* Conta e Categoria lado a lado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Conta */}
               <div>
-                <p className={`text-sm font-black ${isPaid ? 'text-emerald-700' : 'text-slate-600'}`}>
-                  {isPaid ? 'Pago / Confirmado' : 'Pendente'}
-                </p>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  {isPaid ? 'Este lançamento será marcado como pago.' : 'Clique para marcar como pago.'}
-                </p>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Conta</label>
+                <div className="relative">
+                  <select
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 appearance-none cursor-pointer transition-all bg-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({getAccountTypeLabel(acc.type)})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Categoria */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Categoria</label>
+                <div className="relative">
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 appearance-none cursor-pointer transition-all bg-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {organizedCategories.map((parent) => (
+                      <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
+                        {parent.children.length > 0 ? (
+                          parent.children.map((child: any) => (
+                            <option key={child.id} value={child.id}>
+                              {child.icon || ''} {child.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value={parent.id}>{parent.icon || ''} {parent.name}</option>
+                        )}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Tags e Checkbox Pago lado a lado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+              {/* Tags */}
+              <div ref={tagRef} className="relative">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Tags</label>
+                <button
+                  type="button"
+                  onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                  className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <TagIcon size={12} className="text-slate-400 shrink-0" />
+                    {selectedTags.length > 0 ? (
+                      selectedTags.map((tagId) => {
+                        const tag = tags.find((t) => t.id === tagId);
+                        return tag ? (
+                          <span
+                            key={tagId}
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded border"
+                            style={{
+                              backgroundColor: (tag.color || '#94a3b8') + '15',
+                              borderColor: (tag.color || '#94a3b8') + '40',
+                              color: tag.color || '#475569',
+                            }}
+                          >
+                            {tag.name}
+                          </span>
+                        ) : null;
+                      })
+                    ) : (
+                      <span className="text-slate-400">Nenhuma tag</span>
+                    )}
+                  </div>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform ${isTagDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isTagDropdownOpen && (
+                  <div className="absolute z-20 bottom-full mb-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-[140px] overflow-y-auto">
+                    {tags.length === 0 ? (
+                      <p className="p-2 text-xs text-slate-400 text-center">Nenhuma tag cadastrada</p>
+                    ) : (
+                      tags.map((tag) => {
+                        const isSelected = selectedTags.includes(tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTags((prev) =>
+                                isSelected ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
+                              );
+                            }}
+                            className={`w-full px-2.5 py-1.5 text-left text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50' : ''}`}
+                          >
+                            {isSelected ? (
+                              <CheckSquare size={12} className="text-teal-600 shrink-0" />
+                            ) : (
+                              <Square size={12} className="text-slate-300 shrink-0" />
+                            )}
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: tag.color || '#94a3b8' }}
+                            />
+                            {tag.name}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Checkbox Pago */}
+              <div
+                onClick={() => setIsPaid(!isPaid)}
+                className={`flex items-center gap-2.5 p-2 rounded-xl border-2 cursor-pointer transition-all ${
+                  isPaid
+                    ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
+                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {isPaid ? (
+                  <CheckSquare size={18} className="text-emerald-600 shrink-0" />
+                ) : (
+                  <Square size={18} className="text-slate-400 shrink-0" />
+                )}
+                <div>
+                  <p className={`text-xs font-black ${isPaid ? 'text-emerald-700' : 'text-slate-600'}`}>
+                    {isPaid ? 'Pago / Confirmado' : 'Pendente'}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-medium">
+                    {isPaid ? 'Lançamento marcado como pago.' : 'Clique para marcar pago.'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <footer className="px-5 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+          <footer className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
             <button
               type="button"
               onClick={() => handleDelete()}
