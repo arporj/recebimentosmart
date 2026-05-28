@@ -52,7 +52,7 @@ export async function editarTransacao(
       .from('financial_transactions')
       .update({ ...dbUpdate, is_customized: currentModalidade !== 'unica' })
       .eq('id', transactionId)
-      .select()
+      .select('id')
       .single();
 
     if (error) return { data, error };
