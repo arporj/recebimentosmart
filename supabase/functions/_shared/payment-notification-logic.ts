@@ -155,6 +155,10 @@ export async function processUserDuePayments(
         if (item.date > sevenDaysFromNowStr) {
             return false;
         }
+        // Filtrar recorrências finalizadas/expiradas (respeitar data limite)
+        if (item.modalidade === 'recorrente' && item.recurrence_end_date && item.date > item.recurrence_end_date) {
+            return false;
+        }
         // Filtrar clientes deletados logicamente
         if (item.client_id) {
             return item.client && item.client.deleted_at === null;
