@@ -555,6 +555,7 @@ export default function UserProfileSettingsV2() {
                                                 <span className="font-extrabold text-[10px] text-slate-700 truncate text-right flex-1 min-w-0">Supermercado</span>
                                             </div>
                                         </div>
+                                    </div>
                                 </div>
 
                                 {/* Seção Premium: Notificações de Contas por E-mail */}
