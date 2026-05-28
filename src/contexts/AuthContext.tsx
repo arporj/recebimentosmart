@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('valid_until, is_admin, plano')
+          .select('*')
           .eq('id', currentUser.id)
           .single();
 
@@ -103,6 +103,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Erro ao buscar perfil:', error);
           // Se não encontrar perfil, não fazemos throw, pois o usuário existe no Auth.
           // Pode ser necessário criar o perfil ou lidar com isso.
+        }
+
+        if (profile) {
+          // Sincronizar preferências do banco de dados para o LocalStorage
+          if (profile.layout_preference) localStorage.setItem('transaction_layout_preference', profile.layout_preference);
+          if (profile.show_currency_symbol !== undefined && profile.show_currency_symbol !== null) {
+            localStorage.setItem('transaction_show_currency_symbol', String(profile.show_currency_symbol));
+          }
+          if (profile.show_negative_sign !== undefined && profile.show_negative_sign !== null) {
+            localStorage.setItem('transaction_show_negative_sign', String(profile.show_negative_sign));
+          }
+          if (profile.value_alignment) localStorage.setItem('transaction_value_alignment', profile.value_alignment);
         }
 
         // Verificação mais robusta de validade

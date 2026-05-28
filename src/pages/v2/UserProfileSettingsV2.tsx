@@ -128,22 +128,26 @@ export default function UserProfileSettingsV2() {
             localStorage.setItem('transaction_value_alignment', valueAlignment);
         }
 
-        // Email Alert Preferences Update in Supabase
+        // Email Alert and Layout Preferences Update in Supabase
         if (success && user) {
             try {
                 const { error: profileUpdateError } = await supabase
                     .from('profiles')
                     .update({
                         due_email_notify_enabled: dueEmailNotifyEnabled,
-                        due_email_notify_day_of_week: dueEmailNotifyDayOfWeek
+                        due_email_notify_day_of_week: dueEmailNotifyDayOfWeek,
+                        layout_preference: layoutPreference,
+                        show_currency_symbol: showCurrencySymbol,
+                        show_negative_sign: showNegativeSign,
+                        value_alignment: valueAlignment
                     })
                     .eq('id', user.id);
 
                 if (profileUpdateError) throw profileUpdateError;
             } catch (error) {
                 success = false;
-                console.error('Erro ao salvar preferências de e-mail:', error);
-                toast.error('Erro ao salvar preferências de e-mail.');
+                console.error('Erro ao salvar preferências de e-mail e layout:', error);
+                toast.error('Erro ao salvar preferências de e-mail e layout no servidor.');
             }
         }
 

@@ -16,19 +16,24 @@ export async function processUserDuePayments(
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-    // 1. Get User Details
-    const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId)
-    if (userError || !user.user) {
-        console.error(`User not found: ${userId}`, userError)
-        return { success: false, error: 'User not found' }
+    // 1. Obter Perfil e Preferências de Layout do Usuário
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (profileError || !profile) {
+        console.error(`Perfil do usuário não encontrado: ${userId}`, profileError);
+        return { success: false, error: 'Perfil do usuário não encontrado' };
     }
 
-    const recipientEmail = targetEmail || user.user.email
-    const userName = user.user.user_metadata?.name || 'Usuário'
+    const recipientEmail = targetEmail || profile.email;
+    const userName = profile.name || 'Usuário';
 
     if (!recipientEmail) {
-        console.error(`User has no email: ${userId}`)
-        return { success: false, error: 'User has no email' }
+        console.error(`O usuário não tem e-mail cadastrado no perfil: ${userId}`);
+        return { success: false, error: 'O usuário não tem e-mail cadastrado no perfil' };
     }
     // 2. Calcular datas no fuso horário de Brasília (UTC-3)
     const getBrasiliaDateString = (date: Date) => {
@@ -183,8 +188,23 @@ export async function processUserDuePayments(
         return `${day}/${month}/${year}`;
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
+    // Aplicar preferências de layout vindas do banco de dados (public.profiles)
+    const showCurrencySymbol = profile.show_currency_symbol !== false;
+    const showNegativeSign = profile.show_negative_sign !== false;
+    const valueAlignment = profile.value_alignment || 'right';
+    const layoutPreference = profile.layout_preference || 'default';
+    const isValueFirst = layoutPreference === 'value_first';
+
+    const formatCurrency = (amount: number, type: 'income' | 'expense') => {
+        let result = '';
+        if (type === 'expense' && showNegativeSign) {
+            result = '-';
+        }
+        if (showCurrencySymbol) {
+            result += 'R$ ';
+        }
+        result += amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return result;
     };
 
     // Função para tratar a Descrição (Cliente) sem duplicar se forem idênticos
@@ -196,6 +216,80 @@ export async function processUserDuePayments(
         }
         return desc;
     };
+
+    let tableHtml = '';
+
+    if (isValueFirst) {
+        tableHtml = `
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 12px;">
+      <thead>
+        <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <th style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px; width: 40px;">Status</th>
+          <th style="padding: 10px 8px; text-align: left; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Vencimento</th>
+          <th style="padding: 10px 8px; text-align: ${valueAlignment}; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Valor</th>
+          <th style="padding: 10px 8px; text-align: left; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Descrição (Cliente)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${activeTxs.map(tx => {
+            const isOverdue = tx.date < todayStr;
+            const statusBolinha = isOverdue ? '🔴' : '🟡';
+            const valFormatted = formatCurrency(Number(tx.amount), tx.type);
+            const isIncome = tx.type === 'income';
+            const valColor = isIncome ? '#10b981' : '#ef4444';
+            
+            return `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${isOverdue ? 'background-color: #fffafb;' : ''}">
+              <td style="padding: 10px 8px; text-align: center; font-size: 14px; vertical-align: middle;">${statusBolinha}</td>
+              <td style="padding: 10px 8px; vertical-align: middle; font-weight: ${isOverdue ? 'bold' : 'normal'}; color: ${isOverdue ? '#ef4444' : '#334155'};"><div style="white-space: nowrap;">${formatDate(tx.date)}</div></td>
+              <td style="padding: 10px 8px; text-align: ${valueAlignment}; vertical-align: middle; font-weight: bold; color: ${valColor}; white-space: nowrap;">
+                ${valFormatted}
+              </td>
+              <td style="padding: 10px 8px; vertical-align: middle;">
+                <span style="font-weight: bold; color: #1e293b;">${getFormattedDescription(tx)}</span>
+              </td>
+            </tr>
+            `;
+        }).join('')}
+      </tbody>
+    </table>
+        `;
+    } else {
+        tableHtml = `
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 12px;">
+      <thead>
+        <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <th style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px; width: 40px;">Status</th>
+          <th style="padding: 10px 8px; text-align: left; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Vencimento</th>
+          <th style="padding: 10px 8px; text-align: left; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Descrição (Cliente)</th>
+          <th style="padding: 10px 8px; text-align: ${valueAlignment}; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${activeTxs.map(tx => {
+            const isOverdue = tx.date < todayStr;
+            const statusBolinha = isOverdue ? '🔴' : '🟡';
+            const valFormatted = formatCurrency(Number(tx.amount), tx.type);
+            const isIncome = tx.type === 'income';
+            const valColor = isIncome ? '#10b981' : '#ef4444';
+            
+            return `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${isOverdue ? 'background-color: #fffafb;' : ''}">
+              <td style="padding: 10px 8px; text-align: center; font-size: 14px; vertical-align: middle;">${statusBolinha}</td>
+              <td style="padding: 10px 8px; vertical-align: middle; font-weight: ${isOverdue ? 'bold' : 'normal'}; color: ${isOverdue ? '#ef4444' : '#334155'};"><div style="white-space: nowrap;">${formatDate(tx.date)}</div></td>
+              <td style="padding: 10px 8px; vertical-align: middle;">
+                <span style="font-weight: bold; color: #1e293b;">${getFormattedDescription(tx)}</span>
+              </td>
+              <td style="padding: 10px 8px; text-align: ${valueAlignment}; vertical-align: middle; font-weight: bold; color: ${valColor}; white-space: nowrap;">
+                ${valFormatted}
+              </td>
+            </tr>
+            `;
+        }).join('')}
+      </tbody>
+    </table>
+        `;
+    }
 
     let htmlContent = `
   <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #334155; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
@@ -231,40 +325,8 @@ export async function processUserDuePayments(
         </table>
     </div>
 
-    <!-- Tabela Unificada de Lançamentos -->
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 12px;">
-      <thead>
-        <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-          <th style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px; width: 40px;">Status</th>
-          <th style="padding: 10px 8px; text-align: left; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Vencimento</th>
-          <th style="padding: 10px 8px; text-align: left; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Descrição (Cliente)</th>
-          <th style="padding: 10px 8px; text-align: right; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px;">Valor</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${activeTxs.map(tx => {
-            const isOverdue = tx.date < todayStr;
-            const statusBolinha = isOverdue ? '🔴' : '🟡';
-            const valFormatted = formatCurrency(Number(tx.amount));
-            const isIncome = tx.type === 'income';
-            const valColor = isIncome ? '#10b981' : '#ef4444';
-            const valSign = isIncome ? '+' : '-';
-            
-            return `
-            <tr style="border-bottom: 1px solid #f1f5f9; ${isOverdue ? 'background-color: #fffafb;' : ''}">
-              <td style="padding: 10px 8px; text-align: center; font-size: 14px; vertical-align: middle;">${statusBolinha}</td>
-              <td style="padding: 10px 8px; vertical-align: middle; font-weight: ${isOverdue ? 'bold' : 'normal'}; color: ${isOverdue ? '#ef4444' : '#334155'};">${formatDate(tx.date)}</td>
-              <td style="padding: 10px 8px; vertical-align: middle;">
-                <span style="font-weight: bold; color: #1e293b;">${getFormattedDescription(tx)}</span>
-              </td>
-              <td style="padding: 10px 8px; text-align: right; vertical-align: middle; font-weight: bold; color: ${valColor}; white-space: nowrap;">
-                ${valSign} ${valFormatted}
-              </td>
-            </tr>
-            `;
-        }).join('')}
-      </tbody>
-    </table>
+    <!-- Tabela de Lançamentos Customizada -->
+    ${tableHtml}
 
     <div style="text-align: center; margin: 30px 0;">
         <a href="https://recebimentosmart.com.br" style="background-color: #29a8a8; color: white; padding: 12px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(41, 168, 168, 0.25);">
