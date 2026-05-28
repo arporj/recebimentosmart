@@ -143,88 +143,124 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
         }
     };
 
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+        const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    const handleDeleteUser = async () => {
-        setUpdating(true);
-        try {
-            const { data: responseData, error } = await supabase.rpc('admin_delete_user', { p_user_id: user.id });
-            if (error) throw error;
+        const handleDeleteUser = async () => {
+            setUpdating(true);
+            try {
+                const { data: responseData, error } = await supabase.rpc('admin_delete_user', { p_user_id: user.id });
+                if (error) throw error;
 
-            const res = responseData as any;
-            if (res?.status === 'soft_deleted') {
-                toast.success('Acesso desativado e usuário excluído logicamente!');
-            } else {
-                toast.success('Usuário excluído permanentemente do banco de dados!');
+                const res = responseData as any;
+                if (res?.status === 'soft_deleted') {
+                    toast.success('Acesso desativado e usuário excluído logicamente!');
+                } else {
+                    toast.success('Usuário excluído permanentemente do banco de dados!');
+                }
+
+                if (onUserDeleted) {
+                    onUserDeleted();
+                } else {
+                    onClose();
+                }
+            } catch (error: any) {
+                console.error('Erro ao excluir usuário:', error);
+                toast.error('Erro ao excluir usuário: ' + (error.message || 'Erro desconhecido'));
+            } finally {
+                setUpdating(false);
             }
+        };
 
-            if (onUserDeleted) {
-                onUserDeleted();
-            } else {
+        const handleRestoreUser = async () => {
+            setUpdating(true);
+            try {
+                const { error } = await supabase.rpc('admin_restore_user', { p_user_id: user.id });
+                if (error) throw error;
+
+                toast.success('Conta reativada com sucesso! O acesso do usuário foi restabelecido.');
+
+                onUserUpdate({
+                    ...user,
+                    subscription_status: (plans.find(p => p.slug === (user.plan_name?.toLowerCase() || 'free')) ? 'active' : 'expired'),
+                    deleted_at: null
+                });
                 onClose();
+            } catch (error: any) {
+                console.error('Erro ao reativar usuário:', error);
+                toast.error('Erro ao reativar usuário: ' + (error.message || 'Erro desconhecido'));
+            } finally {
+                setUpdating(false);
             }
-        } catch (error: any) {
-            console.error('Erro ao excluir usuário:', error);
-            toast.error('Erro ao excluir usuário: ' + (error.message || 'Erro desconhecido'));
-        } finally {
-            setUpdating(false);
-        }
-    };
+        };
 
-    const handleUpdateProfile = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setUpdating(true);
-
-        try {
-            // 1. Update Plan if changed — selectedPlan stores the slug (lowercase) from the DB
-            const currentPlanSlug = user.plan_name?.toLowerCase() || 'free';
-            if (selectedPlan !== currentPlanSlug) {
-                const { error: planError } = await supabase.rpc('admin_set_user_plan', {
-                    user_id_to_update: user.id,
-                    new_plan_name: selectedPlan
-                });
-                if (planError) throw planError;
-            }
-
-            // 2. Update Validity manually
-            if (validUntil) {
-                const [year, month, day] = validUntil.split('-').map(Number);
-                const date = new Date(year, month - 1, day);
-                date.setHours(23, 59, 59, 999);
-
-                const { error: validityError } = await supabase.rpc('admin_update_user_validity', {
+        const handleToggleAdmin = async (newVal: boolean) => {
+            setIsAdmin(newVal);
+            setUpdating(true);
+            try {
+                const { error } = await supabase.rpc('admin_update_user_admin_status', {
                     p_user_id: user.id,
-                    new_valid_until: date.toISOString()
+                    p_is_admin: newVal
                 });
-                if (validityError) throw validityError;
-            }
-
-            // 3. Update Admin Status
-            if (isAdmin !== user.is_admin) {
-                const { error: adminStatusError } = await supabase.rpc('admin_update_user_admin_status', {
-                    p_user_id: user.id,
-                    p_is_admin: isAdmin
+                if (error) throw error;
+                
+                toast.success(newVal ? 'Acesso administrativo concedido!' : 'Acesso administrativo revogado!');
+                onUserUpdate({
+                    ...user,
+                    is_admin: newVal
                 });
-                if (adminStatusError) throw adminStatusError;
+            } catch (error: any) {
+                console.error('Erro ao atualizar status de administrador:', error);
+                toast.error('Erro ao atualizar status de administrador: ' + (error.message || ''));
+                setIsAdmin(!newVal); // reverter estado
+            } finally {
+                setUpdating(false);
             }
+        };
 
-            onUserUpdate({
-                ...user,
-                plan_name: selectedPlan, // slug value, consistent with DB
-                is_admin: isAdmin,
-                subscription_end_date: validUntil ? new Date(validUntil).toISOString() : user.subscription_end_date
-            });
-            toast.success('Dados atualizados!');
-            onClose();
+        const handleUpdateProfile = async (e: React.FormEvent) => {
+            e.preventDefault();
+            setUpdating(true);
 
-        } catch (error) {
-            console.error('Erro ao atualizar usuário:', error);
-            const message = error instanceof Error ? error.message : 'Falha ao atualizar o usuário.';
-            toast.error(message);
-        } finally {
-            setUpdating(false);
-        }
-    };
+            try {
+                // 1. Update Plan if changed — selectedPlan stores the slug (lowercase) from the DB
+                const currentPlanSlug = user.plan_name?.toLowerCase() || 'free';
+                if (selectedPlan !== currentPlanSlug) {
+                    const { error: planError } = await supabase.rpc('admin_set_user_plan', {
+                        user_id_to_update: user.id,
+                        new_plan_name: selectedPlan
+                    });
+                    if (planError) throw planError;
+                }
+
+                // 2. Update Validity manually
+                if (validUntil) {
+                    const [year, month, day] = validUntil.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    date.setHours(23, 59, 59, 999);
+
+                    const { error: validityError } = await supabase.rpc('admin_update_user_validity', {
+                        p_user_id: user.id,
+                        new_valid_until: date.toISOString()
+                    });
+                    if (validityError) throw validityError;
+                }
+
+                onUserUpdate({
+                    ...user,
+                    plan_name: selectedPlan, // slug value, consistent with DB
+                    subscription_end_date: validUntil ? new Date(validUntil).toISOString() : user.subscription_end_date
+                });
+                toast.success('Dados atualizados!');
+                onClose();
+
+            } catch (error) {
+                console.error('Erro ao atualizar usuário:', error);
+                const message = error instanceof Error ? error.message : 'Falha ao atualizar o usuário.';
+                toast.error(message);
+            } finally {
+                setUpdating(false);
+            }
+        };
 
     const getInitials = (name: string | null, email: string) => {
         if (name) {
@@ -330,9 +366,10 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                                     type="button"
                                     role="switch"
                                     aria-checked={isAdmin}
-                                    onClick={() => setIsAdmin(!isAdmin)}
+                                    onClick={() => handleToggleAdmin(!isAdmin)}
+                                    disabled={updating}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${isAdmin ? 'bg-custom' : 'bg-slate-200'
-                                        }`}
+                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                     <span
                                         className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${isAdmin ? 'translate-x-6' : 'translate-x-1'
@@ -484,6 +521,22 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                                     </div>
                                 </div>
                             </div>
+
+                            {user.subscription_status === 'deleted' && (
+                                <div className="border border-emerald-200 rounded-xl p-5 bg-emerald-50/10">
+                                    <h4 className="text-sm font-bold text-slate-900">Reativar Conta / Restaurar Acesso</h4>
+                                    <p className="text-sm text-slate-500 mt-1 mb-5">
+                                        Este usuário está excluído logicamente. Ao reativar a conta, o login e o acesso do usuário ao sistema serão restabelecidos imediatamente.
+                                    </p>
+                                    <button
+                                        onClick={handleRestoreUser}
+                                        disabled={updating}
+                                        className="w-full py-3 px-4 text-sm font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 disabled:opacity-50 transition-all"
+                                    >
+                                        {updating ? 'Reativando...' : 'REATIVAR USUÁRIO'}
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="border border-red-200 rounded-xl p-5">
                                 <h4 className="text-sm font-bold text-slate-900">
