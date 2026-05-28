@@ -35,7 +35,9 @@ const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ st
     if (!status) return <span className="bg-slate-200 text-slate-700 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">-</span>;
 
     const statusLower = status.toLowerCase();
-    if (statusLower === 'active' || statusLower === 'ativo') {
+    if (statusLower === 'deleted') {
+        return <span className="bg-rose-100 text-rose-700 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">Excluído</span>;
+    } else if (statusLower === 'active' || statusLower === 'ativo') {
         return <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">Ativo</span>;
     } else if (statusLower === 'inactive' || statusLower === 'inativo') {
         return <span className="bg-red-100 text-red-700 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full">Inativo</span>;
@@ -313,7 +315,7 @@ export default function AdminUserManagementV2() {
                                 </tr>
                             ) : (
                                 currentUsers.map(user => (
-                                    <tr key={user.id} className="hover:bg-slate-50/80 transition-colors group">
+                                    <tr key={user.id} className={`hover:bg-slate-50/80 transition-colors group ${user.subscription_status === 'deleted' ? 'opacity-70 bg-rose-50/10' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-custom/10 border border-custom/20 flex items-center justify-center font-bold text-custom shrink-0">

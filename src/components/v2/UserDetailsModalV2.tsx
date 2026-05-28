@@ -148,10 +148,15 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
     const handleDeleteUser = async () => {
         setUpdating(true);
         try {
-            const { error } = await supabase.rpc('admin_delete_user', { p_user_id: user.id });
+            const { data: responseData, error } = await supabase.rpc('admin_delete_user', { p_user_id: user.id });
             if (error) throw error;
 
-            toast.success('Usuário excluído com sucesso.');
+            const res = responseData as any;
+            if (res?.status === 'soft_deleted') {
+                toast.success('Acesso desativado e usuário excluído logicamente!');
+            } else {
+                toast.success('Usuário excluído permanentemente do banco de dados!');
+            }
 
             if (onUserDeleted) {
                 onUserDeleted();
@@ -481,16 +486,20 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
                             </div>
 
                             <div className="border border-red-200 rounded-xl p-5">
-                                <h4 className="text-sm font-bold text-slate-900">Excluir Usuário</h4>
+                                <h4 className="text-sm font-bold text-slate-900">
+                                    {user.subscription_status === 'deleted' ? 'Excluir Permanentemente' : 'Excluir Usuário'}
+                                </h4>
                                 <p className="text-sm text-slate-500 mt-1 mb-5">
-                                    Isso apagará permanentemente a conta, histórico de pagamentos, clientes e todos os dados associados.
+                                    {user.subscription_status === 'deleted'
+                                        ? 'Este usuário já está excluído logicamente (login bloqueado). Esta ação apagará permanentemente a conta e purgará todos os dados financeiros e clientes associados.'
+                                        : 'A primeira exclusão bloqueia o login e o acesso à plataforma (exclusão lógica), mantendo os dados intactos. A reexclusão apagará o usuário permanentemente.'}
                                 </p>
                                 <button
                                     onClick={() => setShowDeleteConfirm(true)}
                                     disabled={updating}
                                     className="w-full py-3 px-4 text-sm font-bold rounded-xl text-white bg-red-600 hover:bg-red-700 shadow-sm shadow-red-600/20 disabled:opacity-50 transition-all"
                                 >
-                                    {updating ? 'Excluindo...' : 'EXCLUIR USUÁRIO'}
+                                    {updating ? 'Excluindo...' : user.subscription_status === 'deleted' ? 'EXCLUIR PERMANENTEMENTE' : 'EXCLUIR USUÁRIO'}
                                 </button>
                             </div>
                         </div>
@@ -503,9 +512,19 @@ export default function UserDetailsModalV2({ user, onClose, onUserUpdate, onUser
             isOpen={showDeleteConfirm}
             onClose={() => setShowDeleteConfirm(false)}
             onConfirm={() => { setShowDeleteConfirm(false); handleDeleteUser(); }}
-            title="Excluir Usuário"
-            message={<>TEM CERTEZA? Essa ação apagará permanentemente <strong>o usuário e todos os dados relacionados</strong> (pagamentos, clientes, etc). Não pode ser desfeito.</>}
-            confirmLabel="EXCLUIR"
+            title={user.subscription_status === 'deleted' ? 'Excluir Permanentemente' : 'Excluir Usuário'}
+            message={
+                user.subscription_status === 'deleted' ? (
+                    <>
+                        TEM CERTEZA ABSOLUTA? Essa ação apagará <strong>permanentemente</strong> o usuário <strong>{user.name || user.email}</strong> e purgará todos os clientes, transações financeiras e histórico do banco de dados! Não pode ser desfeito.
+                    </>
+                ) : (
+                    <>
+                        Deseja realizar a exclusão lógica de <strong>{user.name || user.email}</strong>? O acesso dele será bloqueado, mas os dados históricos serão integralmente preservados.
+                    </>
+                )
+            }
+            confirmLabel={user.subscription_status === 'deleted' ? 'DELETAR DEFINITIVO' : 'EXCLUIR'}
             confirmColor="red"
         />
         </>

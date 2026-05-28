@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout } from 'lucide-react';
+import { Save, User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout, Mail, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -16,6 +16,12 @@ export default function UserProfileSettingsV2() {
     const [showCurrencySymbol, setShowCurrencySymbol] = useState(true);
     const [showNegativeSign, setShowNegativeSign] = useState(true);
     const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
+
+    // Email alert preferences
+    const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(false);
+    const [dueEmailNotifyDayOfWeek, setDueEmailNotifyDayOfWeek] = useState(1);
+    const [canDueEmailNotify, setCanDueEmailNotify] = useState(false);
+    const [loadingPreferences, setLoadingPreferences] = useState(true);
 
     const formatMockValue = (amount: number, isNegative: boolean) => {
         let result = '';
@@ -41,9 +47,43 @@ export default function UserProfileSettingsV2() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+    const fetchProfilePreferences = async () => {
+        if (!user) return;
+        try {
+            setLoadingPreferences(true);
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('due_email_notify_enabled, due_email_notify_day_of_week, plano')
+                .eq('id', user.id)
+                .single();
+            
+            if (profileError) throw profileError;
+
+            if (profile) {
+                setDueEmailNotifyEnabled(profile.due_email_notify_enabled || false);
+                setDueEmailNotifyDayOfWeek(profile.due_email_notify_day_of_week ?? 1);
+
+                const planSlug = profile.plano?.toLowerCase() || 'free';
+                const { data: plan, error: planError } = await supabase
+                    .from('plans')
+                    .select('can_due_email_notify')
+                    .eq('slug', planSlug)
+                    .single();
+
+                if (planError) throw planError;
+                setCanDueEmailNotify(plan?.can_due_email_notify || false);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar preferências de e-mail:', error);
+        } finally {
+            setLoadingPreferences(false);
+        }
+    };
+
     useEffect(() => {
         if (user) {
             setCurrentName(user.user_metadata?.name || '');
+            fetchProfilePreferences();
         }
         
         // Recuperar preferencia de layout e opcoes customizadas
@@ -87,6 +127,25 @@ export default function UserProfileSettingsV2() {
             localStorage.setItem('transaction_show_currency_symbol', String(showCurrencySymbol));
             localStorage.setItem('transaction_show_negative_sign', String(showNegativeSign));
             localStorage.setItem('transaction_value_alignment', valueAlignment);
+        }
+
+        // Email Alert Preferences Update in Supabase
+        if (success && user) {
+            try {
+                const { error: profileUpdateError } = await supabase
+                    .from('profiles')
+                    .update({
+                        due_email_notify_enabled: dueEmailNotifyEnabled,
+                        due_email_notify_day_of_week: dueEmailNotifyDayOfWeek
+                    })
+                    .eq('id', user.id);
+
+                if (profileUpdateError) throw profileUpdateError;
+            } catch (error) {
+                success = false;
+                console.error('Erro ao salvar preferências de e-mail:', error);
+                toast.error('Erro ao salvar preferências de e-mail.');
+            }
         }
 
         if (success) {
@@ -496,7 +555,70 @@ export default function UserProfileSettingsV2() {
                                                 <span className="font-extrabold text-[10px] text-slate-700 truncate text-right flex-1 min-w-0">Supermercado</span>
                                             </div>
                                         </div>
+                                </div>
+
+                                {/* Seção Premium: Notificações de Contas por E-mail */}
+                                <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4 mt-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-custom/10 rounded-lg text-custom">
+                                            <Mail className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-extrabold text-sm text-slate-900">Alerta de Contas a Vencer</h3>
+                                            <p className="text-[11px] text-slate-500 font-medium">Receba semanalmente um consolidado de contas vencidas e a vencer no seu e-mail.</p>
+                                        </div>
                                     </div>
+
+                                    {loadingPreferences ? (
+                                        <div className="text-xs font-semibold text-slate-400 py-2">Carregando configurações...</div>
+                                    ) : !canDueEmailNotify ? (
+                                        <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl flex items-start gap-3">
+                                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-900">Funcionalidade de Plano Pago</p>
+                                                <p className="text-[10px] text-slate-500 font-medium mt-1 leading-relaxed">
+                                                    Seu plano atual não dá direito a alertas de contas por e-mail. Faça upgrade para o plano Básico, Pró ou Premium para automatizar seu fluxo financeiro!
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4 pt-2">
+                                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-900">Habilitar Alertas por E-mail</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Ativar ou desativar o envio automático</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={dueEmailNotifyEnabled}
+                                                    onClick={() => setDueEmailNotifyEnabled(!dueEmailNotifyEnabled)}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${dueEmailNotifyEnabled ? 'bg-custom' : 'bg-slate-200'}`}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${dueEmailNotifyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+
+                                            {dueEmailNotifyEnabled && (
+                                                <div className="space-y-2 animate-in fade-in duration-200">
+                                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Dia de Envio Semanal</label>
+                                                    <select
+                                                        value={dueEmailNotifyDayOfWeek}
+                                                        onChange={(e) => setDueEmailNotifyDayOfWeek(parseInt(e.target.value))}
+                                                        className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-custom/20 focus:border-custom outline-none transition-all"
+                                                    >
+                                                        <option value={1}>Segunda-feira</option>
+                                                        <option value={2}>Terça-feira</option>
+                                                        <option value={3}>Quarta-feira</option>
+                                                        <option value={4}>Quinta-feira</option>
+                                                        <option value={5}>Sexta-feira</option>
+                                                        <option value={6}>Sábado</option>
+                                                        <option value={0}>Domingo</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </section>
