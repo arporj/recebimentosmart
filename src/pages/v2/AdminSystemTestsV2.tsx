@@ -1,0 +1,409 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
+import { 
+    FlaskConical, Users, Mail, CalendarCheck, AlertTriangle, 
+    Trash2, Play, Terminal, ChevronRight, CheckCircle, ShieldAlert 
+} from 'lucide-react';
+
+interface UserSelectOption {
+    id: string;
+    name: string | null;
+    email: string;
+    plan_name: string | null;
+    subscription_status: string | null;
+}
+
+interface LogEntry {
+    timestamp: string;
+    type: 'info' | 'success' | 'error' | 'warning';
+    message: string;
+    details?: any;
+}
+
+export default function AdminSystemTestsV2() {
+    const { user: adminUser } = useAuth();
+    const [users, setUsers] = useState<UserSelectOption[]>([]);
+    const [selectedUserId, setSelectedUserId] = useState<string>('');
+    const [loadingUsers, setLoadingUsers] = useState(true);
+    const [executing, setExecuting] = useState(false);
+    
+    // Logs de execução (estilo terminal)
+    const [logs, setLogs] = useState<LogEntry[]>([
+        {
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'info',
+            message: 'Terminal de Testes do Sistema inicializado. Aguardando comandos...'
+        }
+    ]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setLoadingUsers(true);
+            try {
+                const { data, error } = await supabase.rpc('get_all_users_admin');
+                if (error) throw error;
+                setUsers(data || []);
+                if (data && data.length > 0) {
+                    setSelectedUserId(data[0].id);
+                }
+            } catch (error: any) {
+                console.error('Erro ao carregar usuários:', error);
+                addLog('error', 'Falha ao carregar lista de usuários para seleção.', error.message);
+                toast.error('Erro ao carregar usuários.');
+            } finally {
+                setLoadingUsers(false);
+            }
+        };
+        fetchUsers();
+    }, []);
+
+    const addLog = (type: 'info' | 'success' | 'error' | 'warning', message: string, details?: any) => {
+        const newEntry: LogEntry = {
+            timestamp: new Date().toLocaleTimeString(),
+            type,
+            message,
+            details
+        };
+        setLogs(prev => [newEntry, ...prev]);
+    };
+
+    const clearLogs = () => {
+        setLogs([
+            {
+                timestamp: new Date().toLocaleTimeString(),
+                type: 'info',
+                message: 'Terminal limpo. Aguardando novos disparos...'
+            }
+        ]);
+    };
+
+    const getSelectedUser = () => {
+        return users.find(u => u.id === selectedUserId);
+    };
+
+    // 1. Notificação Semanal / Fila Completa (antigo botão de Mail da tabela)
+    const handleNotifyDuePayments = async () => {
+        const selUser = getSelectedUser();
+        if (!selUser) {
+            toast.error('Por favor, selecione um usuário primeiro.');
+            return;
+        }
+
+        setExecuting(true);
+        addLog('info', `Iniciando invocação da Edge Function para notificar vencimentos do usuário ${selUser.name || selUser.email}...`);
+        const toastId = toast.loading('Invocando notificação de vencimentos...');
+        
+        try {
+            const { data, error } = await supabase.functions.invoke('notify-due-clients', { body: { userId: selUser.id } });
+            
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            addLog('success', `Invocação concluída! Notificação em lote enviada na fila para ${selUser.email}.`, data);
+            toast.success('E-mail enviado com sucesso!', { id: toastId });
+        } catch (error: any) {
+            console.error('Erro:', error);
+            addLog('error', `Erro na execução: ${error.message || 'Erro inesperado'}`, error);
+            toast.error('Erro ao enviar e-mail. Verifique o terminal de logs.', { id: toastId });
+        } finally {
+            setExecuting(false);
+        }
+    };
+
+    // 2. Testar E-mail de Contas Hoje (antigo botão de CalendarCheck da tabela)
+    const handleTestTodayNotification = async () => {
+        const selUser = getSelectedUser();
+        if (!selUser) {
+            toast.error('Por favor, selecione um usuário primeiro.');
+            return;
+        }
+
+        setExecuting(true);
+        addLog('info', `Invocando RPC de teste de contas de HOJE do usuário ${selUser.name || selUser.email}...`);
+        const toastId = toast.loading('Disparando e-mail de teste (contas hoje)...');
+        
+        try {
+            const { data: responseData, error } = await supabase.rpc('process_due_accounts_notification_test', { p_user_id: selUser.id });
+            if (error) throw error;
+            
+            const res = responseData as any;
+            if (res?.success) {
+                addLog('success', `RPC processada! E-mail de contas de hoje enviado para andre@andreric.com.`, res);
+                toast.success(res.message || 'E-mail de teste enviado!', { id: toastId });
+            } else {
+                addLog('warning', `RPC retornou aviso: ${res?.error || 'Nenhum lançamento pendente para hoje.'}`, res);
+                toast.error(res?.error || 'Nenhum lançamento hoje.', { id: toastId });
+            }
+        } catch (error: any) {
+            console.error('Erro:', error);
+            addLog('error', `Erro na RPC process_due_accounts_notification_test: ${error.message || 'Erro inesperado'}`, error);
+            toast.error('Erro ao disparar teste.', { id: toastId });
+        } finally {
+            setExecuting(false);
+        }
+    };
+
+    // 3. Simular e-mails da Régua de Retenção (LGPD)
+    const handleTestRetentionEmail = async (days: number) => {
+        const selUser = getSelectedUser();
+        if (!selUser) {
+            toast.error('Por favor, selecione um usuário primeiro.');
+            return;
+        }
+
+        setExecuting(true);
+        
+        let label = '';
+        if (days === 30) label = '30 dias (Sentimos sua falta)';
+        else if (days === 60) label = '60 dias (Aviso de exclusão em 30 dias)';
+        else if (days === 89) label = '89 dias (Último aviso: exclusão amanhã)';
+        else if (days === 90) label = '90 dias (Purga e exclusão física definitiva)';
+
+        addLog('info', `Simulando estágio de retenção de ${label} para o usuário ${selUser.name || selUser.email}...`);
+        const toastId = toast.loading(`Disparando simulação de ${days} dias...`);
+        
+        try {
+            const { data: responseData, error } = await supabase.rpc('process_expired_accounts_retention_test', {
+                p_user_id: selUser.id,
+                p_days_expired: days
+            });
+            if (error) throw error;
+            
+            const res = responseData as any;
+            if (res?.success) {
+                if (days === 90) {
+                    addLog('warning', `[AÇÃO DE 90 DIAS] Simulação concluída com êxito!`, {
+                        explicacao: 'O estágio de 90 dias não envia e-mail comercial. Sua ação é a eliminação definitiva física do usuário e purga por CASCADE.',
+                        acao_simulada: `DELETE FROM auth.users WHERE id = '${selUser.id}'`,
+                        retorno: res.message
+                    });
+                    toast.success('Simulação de exclusão concluída (ver console de logs)!', { id: toastId });
+                } else {
+                    addLog('success', `E-mail de retenção (${days} dias) enviado com sucesso para andre@andreric.com!`, res);
+                    toast.success(res.message || 'E-mail de teste enviado!', { id: toastId });
+                }
+            } else {
+                addLog('error', `A simulação retornou erro: ${res?.error || 'Erro inesperado'}`, res);
+                toast.error(res?.error || 'Erro na simulação.', { id: toastId });
+            }
+        } catch (error: any) {
+            console.error('Erro:', error);
+            addLog('error', `Erro na RPC process_expired_accounts_retention_test: ${error.message || 'Erro inesperado'}`, error);
+            toast.error('Falha ao rodar simulação de e-mail.', { id: toastId });
+        } finally {
+            setExecuting(false);
+        }
+    };
+
+    return (
+        <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+            {/* Header */}
+            <div className="flex items-start gap-4 mt-8">
+                <div className="p-3 bg-custom/10 rounded-xl text-custom border border-custom/20">
+                    <FlaskConical className="w-8 h-8 animate-pulse" />
+                </div>
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">TESTES DO SISTEMA (ÁREA ADMIN)</h2>
+                    <p className="text-slate-500 mt-0.5">
+                        Simule o comportamento de disparos de e-mail, alertas financeiros e exclusão automática de dados da LGPD.
+                    </p>
+                </div>
+            </div>
+
+            {/* Aviso Premium */}
+            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3 shadow-sm">
+                <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                <div>
+                    <p className="text-xs font-bold text-slate-900">Ambiente de Auditoria e Teste Seguro</p>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed font-medium">
+                        Todas as ações de e-mail disparadas por esta tela serão canalizadas exclusivamente para o e-mail administrativo principal do sistema (<strong>andre@andreric.com</strong>). O usuário selecionado abaixo servirá como a **fonte dos dados cadastrados e financeiros** (como faturas pendentes, nome no cabeçalho e limites do plano).
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* Lado Esquerdo: Configuração e Ações */}
+                <div className="lg:col-span-2 space-y-6">
+                    
+                    {/* Card 1: Seleção do Usuário Fonte */}
+                    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-slate-100 rounded-lg text-slate-700">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-extrabold text-sm text-slate-900">1. Selecionar Usuário de Dados</h3>
+                                <p className="text-[10px] text-slate-400 font-medium">Os e-mails serão montados usando o histórico deste usuário</p>
+                            </div>
+                        </div>
+
+                        {loadingUsers ? (
+                            <div className="text-xs font-semibold text-slate-400 animate-pulse">Carregando usuários cadastrados...</div>
+                        ) : (
+                            <div>
+                                <select
+                                    value={selectedUserId}
+                                    onChange={(e) => setSelectedUserId(e.target.value)}
+                                    className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-custom/20 focus:border-custom outline-none transition-all"
+                                >
+                                    {users.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name || 'Sem nome'} ({u.email}) — Plano {u.plan_name || 'free'} [{u.subscription_status || 'ativo'}]
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Grid de Disparos de E-mail */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        {/* Seção 1: Notificações de Vencimento */}
+                        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-5 flex flex-col justify-between">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                                        <CalendarCheck className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-extrabold text-sm text-slate-900">Alertas de Vencimentos</h3>
+                                        <p className="text-[10px] text-slate-400 font-medium">Contas e faturas pendentes do extrato</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                    Dispare alertas financeiros em lote ou teste a renderização de faturas agendadas para o dia de hoje.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2.5 pt-4">
+                                <button
+                                    onClick={handleTestTodayNotification}
+                                    disabled={executing || loadingUsers}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 hover:bg-slate-100 transition-all disabled:opacity-50"
+                                >
+                                    <span>Testar E-mail de Contas Hoje</span>
+                                    <Play className="w-4 h-4 text-emerald-500" />
+                                </button>
+                                <button
+                                    onClick={handleNotifyDuePayments}
+                                    disabled={executing || loadingUsers}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 hover:bg-slate-100 transition-all disabled:opacity-50"
+                                >
+                                    <span>Disparar Fila Semanal (Lote)</span>
+                                    <Mail className="w-4 h-4 text-custom" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Seção 2: Régua de Retenção LGPD */}
+                        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-5 flex flex-col justify-between">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                                        <ShieldAlert className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-extrabold text-sm text-slate-900">Régua de Retenção LGPD</h3>
+                                        <p className="text-[10px] text-slate-400 font-medium">Ciclo de descarte de contas expiradas</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                    Dispare cada e-mail da régua de privacidade LGPD ou simule a purga e limpeza de 90 dias.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 pt-4">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => handleTestRetentionEmail(30)}
+                                        disabled={executing || loadingUsers}
+                                        className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-800 transition-all disabled:opacity-50"
+                                        title="Estágio 1: Sumido (30 dias)"
+                                    >
+                                        Simular 30 Dias
+                                    </button>
+                                    <button
+                                        onClick={() => handleTestRetentionEmail(60)}
+                                        disabled={executing || loadingUsers}
+                                        className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-800 transition-all disabled:opacity-50"
+                                        title="Estágio 2: Aviso de Exclusão (60 dias)"
+                                    >
+                                        Simular 60 Dias
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => handleTestRetentionEmail(89)}
+                                        disabled={executing || loadingUsers}
+                                        className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-800 transition-all disabled:opacity-50"
+                                        title="Estágio 3: Último Aviso Urgente (89 dias)"
+                                    >
+                                        Simular 89 Dias
+                                    </button>
+                                    <button
+                                        onClick={() => handleTestRetentionEmail(90)}
+                                        disabled={executing || loadingUsers}
+                                        className="py-2.5 px-3 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl text-[10px] font-extrabold text-red-600 transition-all disabled:opacity-50"
+                                        title="Estágio 4: Purga e Limpeza total (90 dias)"
+                                    >
+                                        Simular 90 Dias
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                {/* Lado Direito: Terminal de Logs da API */}
+                <div className="lg:col-span-1 flex flex-col h-[480px]">
+                    <div className="bg-slate-900 rounded-2xl flex-1 flex flex-col overflow-hidden border border-slate-800 shadow-2xl">
+                        
+                        {/* Terminal Header */}
+                        <div className="bg-slate-950 px-4 py-3.5 border-b border-slate-800/80 flex items-center justify-between flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Terminal className="w-4 h-4 text-emerald-500" />
+                                <span className="text-xs font-black text-slate-300 uppercase tracking-widest font-mono">LOGS DO SERVIDOR</span>
+                            </div>
+                            <button
+                                onClick={clearLogs}
+                                className="text-[10px] font-bold text-slate-500 hover:text-slate-300 uppercase transition-colors"
+                            >
+                                Limpar
+                            </button>
+                        </div>
+
+                        {/* Terminal Content */}
+                        <div className="flex-1 p-4 overflow-y-auto space-y-3 font-mono text-[11px] leading-relaxed custom-scrollbar bg-slate-950/40">
+                            {logs.map((log, index) => (
+                                <div key={index} className="space-y-1 animate-in fade-in duration-200">
+                                    <div className="flex items-start gap-1.5">
+                                        <span className="text-slate-600 shrink-0 select-none">[{log.timestamp}]</span>
+                                        <span className={`shrink-0 select-none font-bold ${
+                                            log.type === 'success' ? 'text-emerald-500' :
+                                            log.type === 'error' ? 'text-red-500' :
+                                            log.type === 'warning' ? 'text-amber-500' : 'text-blue-400'
+                                        }`}>
+                                            {log.type.toUpperCase()}:
+                                        </span>
+                                        <span className="text-slate-300">{log.message}</span>
+                                    </div>
+                                    {log.details && (
+                                        <pre className="text-[10px] text-slate-500 bg-slate-950 p-2 rounded-lg border border-slate-900 overflow-x-auto whitespace-pre">
+                                            {JSON.stringify(log.details, null, 2)}
+                                        </pre>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+}
