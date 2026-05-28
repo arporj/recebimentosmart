@@ -44,14 +44,12 @@ export async function processUserDuePayments(
     sevenDaysFromNowDate.setDate(sevenDaysFromNowDate.getDate() + 7);
     const sevenDaysFromNowStr = getBrasiliaDateString(sevenDaysFromNowDate);
 
-    // 3. Buscar lançamentos financeiros da tabela 'financial_transactions' do usuário
-    // com status = 'pending' e data <= sevenDaysFromNowStr
+    // 3. Buscar todos os lançamentos ativos (não cancelados) do usuário
     const { data: txs, error: txsError } = await supabase
         .from('financial_transactions')
-        .select('*, client:clients(*)')
+        .select('*, client:clients(*), account:financial_accounts(type, name, due_day)')
         .eq('user_id', userId)
-        .eq('status', 'pending')
-        .lte('date', sevenDaysFromNowStr);
+        .neq('status', 'cancelled');
 
     if (txsError) {
         console.error(`Erro ao buscar lançamentos para usuário ${userId}:`, txsError);
@@ -59,23 +57,111 @@ export async function processUserDuePayments(
     }
 
     if (!txs || txs.length === 0) {
-        return { success: true, message: 'Nenhum lançamento pendente encontrado', recipients: { overdue: 0, upcoming: 0 } };
+        return { success: true, message: 'Nenhum lançamento ativo encontrado', recipients: { overdue: 0, upcoming: 0 } };
     }
 
-    // 4. Filtrar transações com base na integridade de exclusão lógica dos clientes (deleted_at IS NULL)
-    const activeTxs = txs.filter((tx: any) => {
-        if (tx.client_id) {
-            // Se possui client_id, o cliente deve existir e não estar deletado logicamente
-            return tx.client && tx.client.deleted_at === null;
+    // 4. Separar transações normais das de cartão de crédito e pagamentos de fatura
+    const normalTxs: any[] = [];
+    const creditCardTxs: any[] = [];
+    const invoicePayments: any[] = [];
+
+    txs.forEach((tx: any) => {
+        const isCreditCard = tx.account?.type === 'credit_card';
+        if (isCreditCard) {
+            if (tx.type === 'expense') {
+                creditCardTxs.push(tx);
+            }
+        } else if (tx.type === 'transfer' && tx.destination_account_id && tx.invoice_month) {
+            // Verificar se a conta de destino é um cartão de crédito
+            const isDestCreditCard = txs.some((otherTx: any) => otherTx.account_id === tx.destination_account_id && otherTx.account?.type === 'credit_card');
+            if (isDestCreditCard) {
+                invoicePayments.push(tx);
+            } else {
+                if (tx.status === 'pending') normalTxs.push(tx);
+            }
+        } else {
+            if (tx.status === 'pending') {
+                normalTxs.push(tx);
+            }
         }
-        return true; // Lançamentos não vinculados a clientes são mantidos
+    });
+
+    // 5. Agrupar despesas de cartão de crédito por conta e por mês de fatura (invoice_month)
+    const invoiceGroups = new Map<string, { accountId: string; cardName: string; invoiceMonth: string; total: number; dueDay: number }>();
+
+    creditCardTxs.forEach((tx: any) => {
+        const invoiceMonth = tx.invoice_month;
+        if (!invoiceMonth) return;
+
+        const accountId = tx.account_id;
+        const key = `${accountId}_${invoiceMonth}`;
+        const amount = Number(tx.amount) || 0;
+
+        if (invoiceGroups.has(key)) {
+            const group = invoiceGroups.get(key)!;
+            group.total += amount;
+        } else {
+            invoiceGroups.set(key, {
+                accountId: accountId!,
+                cardName: tx.account?.name || 'Cartão de Crédito',
+                invoiceMonth,
+                total: amount,
+                dueDay: tx.account?.due_day || 1
+            });
+        }
+    });
+
+    // 6. Gerar lançamentos virtuais consolidados de faturas pendentes (não pagas)
+    const consolidatedInvoices: any[] = [];
+
+    for (const group of invoiceGroups.values()) {
+        const [yearStr, monthStr] = group.invoiceMonth.split('-');
+        const year = Number(yearStr);
+        const month = Number(monthStr) - 1;
+
+        const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+        const safeDay = Math.min(group.dueDay, lastDayOfMonth);
+        const dueDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+
+        // Uma fatura está paga se houver alguma transferência destinada a esse cartão naquele mês de fatura
+        const isPaid = invoicePayments.some((pay: any) => 
+            pay.destination_account_id === group.accountId && 
+            pay.invoice_month === group.invoiceMonth
+        );
+
+        if (!isPaid) {
+            consolidatedInvoices.push({
+                id: `invoice-${group.accountId}-${group.invoiceMonth}`,
+                type: 'expense',
+                amount: group.total,
+                date: dueDateStr,
+                description: `Fatura ${group.cardName}`,
+                client_id: null,
+                client: null
+            });
+        }
+    }
+
+    // 7. Combinar transações normais com faturas pendentes, aplicar limite de data e exclusão lógica de clientes
+    const allPendingItems = [...normalTxs, ...consolidatedInvoices];
+
+    const activeTxs = allPendingItems.filter((item: any) => {
+        // Filtrar limite temporal (atrasadas e vencendo nos próximos 7 dias)
+        if (item.date > sevenDaysFromNowStr) {
+            return false;
+        }
+        // Filtrar clientes deletados logicamente
+        if (item.client_id) {
+            return item.client && item.client.deleted_at === null;
+        }
+        return true;
     });
 
     if (activeTxs.length === 0) {
         return { success: true, message: 'Nenhum lançamento ativo pendente encontrado', recipients: { overdue: 0, upcoming: 0 } };
     }
 
-    // 5. Ordenar transações sempre pela data
+    // 8. Ordenar transações sempre pela data
     activeTxs.sort((a: any, b: any) => a.date.localeCompare(b.date));
 
     // Categorizar em Atrasados e Próximos 7 dias
