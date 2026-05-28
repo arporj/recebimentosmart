@@ -759,6 +759,19 @@ const FinancialTransactionsV2 = () => {
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
 
+      // Se a data for hoje, aplica a ordenação especial: pagos -> em atraso -> pendentes
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      if (a.instanceDate === todayStr) {
+        const getHojeCategory = (t: TransactionInstance) => {
+          if (t.status === 'paid') return 0;
+          if (t.status !== 'paid' && !!t.originalInstanceDate && t.originalInstanceDate < todayStr) return 1;
+          return 2;
+        };
+        const aCat = getHojeCategory(a);
+        const bCat = getHojeCategory(b);
+        if (aCat !== bCat) return aCat - bCat;
+      }
+
       const aIsRolled = !!a.originalInstanceDate && a.originalInstanceDate < a.instanceDate;
       const bIsRolled = !!b.originalInstanceDate && b.originalInstanceDate < b.instanceDate;
 
