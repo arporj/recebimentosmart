@@ -52,7 +52,7 @@ export async function processUserDuePayments(
     // 3. Buscar todos os lançamentos ativos (não cancelados) do usuário
     const { data: txs, error: txsError } = await supabase
         .from('financial_transactions')
-        .select('*, client:clients(*), account:financial_accounts(type, name, due_day)')
+        .select('*, client:clients(*), account:financial_accounts!financial_transactions_account_id_fkey(type, name, due_day)')
         .eq('user_id', userId)
         .neq('status', 'cancelled');
 
