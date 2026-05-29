@@ -313,6 +313,10 @@ const FinancialTransactionsV2 = () => {
         if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
           let finalInstanceDate = t.date;
           const isUnpaid = t.status !== 'paid';
+          // Paid transactions: show at the actual payment date
+          if (!isUnpaid && t.paid_date) {
+            finalInstanceDate = format(parseISO(t.paid_date), 'yyyy-MM-dd');
+          }
           if (isUnpaid && finalInstanceDate < todayStr) {
             finalInstanceDate = todayStr;
           }
@@ -358,6 +362,10 @@ const FinancialTransactionsV2 = () => {
           const status = dateStr !== t.date ? 'pending' : t.status;
           let finalInstanceDate = dateStr;
           const isUnpaid = status !== 'paid';
+          // For the parent's own instance: if paid, show at the actual payment date
+          if (!isUnpaid && dateStr === t.date && t.paid_date) {
+            finalInstanceDate = format(parseISO(t.paid_date), 'yyyy-MM-dd');
+          }
           if (isUnpaid && finalInstanceDate < todayStr) {
              finalInstanceDate = todayStr;
           }
