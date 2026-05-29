@@ -750,6 +750,14 @@ const FinancialTransactionsV2 = () => {
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
 
+      // Se ambos estiverem pagos na mesma data (hoje ou qualquer outro dia), ordena pelo momento exato do pagamento (paid_date)
+      if (a.status === 'paid' && b.status === 'paid') {
+        const aPaid = a.paid_date || '';
+        const bPaid = b.paid_date || '';
+        const paidCompare = aPaid.localeCompare(bPaid);
+        if (paidCompare !== 0) return paidCompare;
+      }
+
       // Se a data for hoje, aplica a ordenação especial: pagos -> em atraso -> pendentes
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       if (a.instanceDate === todayStr) {

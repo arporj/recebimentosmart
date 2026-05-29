@@ -198,6 +198,11 @@ const QuickEditTransactionModal = ({
     try {
       setLoading(true);
 
+      const isStatusChangedToPaid = isPaid && transaction.status !== 'paid';
+      const paidDate = isPaid 
+        ? (isStatusChangedToPaid ? new Date().toISOString() : transaction.paid_date)
+        : null;
+
       const payload: any = {
         date,
         amount: parsedAmount,
@@ -205,6 +210,7 @@ const QuickEditTransactionModal = ({
         account_id: accountId || undefined,
         category_id: categoryId || undefined,
         status: isPaid ? 'paid' : 'pending',
+        paid_date: paidDate,
         tags: selectedTags,
       };
 
