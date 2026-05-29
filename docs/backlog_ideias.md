@@ -32,6 +32,18 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 * **Status:** Roadmap de Produto (Médio Prazo).
 * **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes. Esse plano deve englobar funcionalidades exclusivas de **atendimento via WhatsApp** e suporte avançado.
 
+### 2.4. 🔔 Sistema de Notificações Mobile (Opção B Selecionada)
+* **Status:** Planejado para Teste.
+* **Descrição:** Desenvolver o mecanismo para o administrador receber notificações de chat e de novos feedbacks em tempo real no celular.
+* **Opções Analisadas:**
+  * **Opção A (Alternativa):** Mensagens Automáticas de Alerta via WhatsApp/Telegram pessoal. (Guardada para uso futuro se necessário).
+  * **Opção B (ESCOLHIDA E MARCADA PARA TESTE):** Web Push Notifications via PWA. Configurar a plataforma como um Progressive Web App (PWA) instalável, permitindo o recebimento de notificações nativas na tela de bloqueio do celular (Android e iOS 16.4+) usando Service Workers e Edge Functions no Supabase.
+  * **Opção C (Alternativa):** Aplicativo Mobile Nativo usando Capacitor. Mapeamento de Push FCM nativo. (Guardada para expansão futura).
+* **Escopo Inicial de Teste (Feedbacks):**
+  * Voltar a exibir a tela de **Feedback** para os usuários comuns no menu lateral do sistema.
+  * Configurar a infraestrutura PWA básica no frontend.
+  * Criar um trigger no banco (Supabase) e Edge Function de envio de Web Push para disparar uma notificação instantânea para o celular do Administrador sempre que qualquer usuário enviar um feedback no sistema.
+
 ---
 
 ## 3. ✅ Histórico de Tarefas Concluídas
