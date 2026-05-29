@@ -40,6 +40,16 @@ const FAQ_ITEMS: FAQItem[] = [
         answer: 'Categorias servem para organizar seus lançamentos no fluxo de caixa (ex: Alimentação, Aluguel, Serviços Prestados). As Tags servem para uma classificação secundária e cruzada (ex: Tag "Projeto X" ou "Cliente Especial"), permitindo que você filtre relatórios de formas extremamente detalhadas para entender para onde seu dinheiro está indo.'
     },
     {
+        category: 'funcionalidades',
+        question: 'Como funciona o pagamento de lançamentos recorrentes?',
+        answer: 'Ao confirmar o pagamento de um lançamento recorrente ou parcelado, o sistema confirma apenas a parcela selecionada ("Somente este") para evitar a alteração acidental de parcelas futuras. O lançamento pago é então registrado na data exata em que você confirmou o pagamento (data do pagamento), enquanto as parcelas e lançamentos futuros são mantidos intactos em suas respectivas datas de vencimento originais.'
+    },
+    {
+        category: 'funcionalidades',
+        question: 'Como funciona a ordenação dos lançamentos na tela principal?',
+        answer: 'Para facilitar o controle financeiro, no dia de "Hoje", os lançamentos são agrupados e ordenados automaticamente de forma inteligente: primeiro são exibidos os lançamentos pagos, seguidos pelos vencidos (em atraso) e, por último, os pendentes. Além disso, os lançamentos que foram pagos no mesmo dia são exibidos em ordem cronológica de pagamento (do primeiro ao último pago).'
+    },
+    {
         category: 'planos',
         question: 'Como funciona o plano gratuito do sistema?',
         answer: 'Todos os novos usuários cadastrados recebem automaticamente o acesso ao nosso plano gratuito de forma vitalícia para gerenciar suas contas. O plano gratuito possui alguns limites de uso, como quantidade máxima de clientes cadastrados por mês. Você pode usar pelo tempo que quiser sem a necessidade de cadastrar cartão de crédito ou dados de pagamento!'
