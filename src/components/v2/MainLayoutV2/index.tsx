@@ -61,7 +61,6 @@ const sidebarSections: SidebarSection[] = [
             { label: 'Campos Personalizados', icon: FormInput, href: '/v2/campos-personalizados' },
             { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
-            { label: 'Enviar Feedback', icon: MessageCircle, href: '/v2/feedbacks' },
         ],
     },
 ];
