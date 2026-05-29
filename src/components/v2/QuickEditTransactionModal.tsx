@@ -208,8 +208,8 @@ const QuickEditTransactionModal = ({
         tags: selectedTags,
       };
 
-      // If recurrent and no scope selected yet, ask
-      if (isRecurring && !scope) {
+      // If recurrent and no scope selected yet, ask (unless we are just confirming, which is always 'this')
+      if (isRecurring && !scope && !isConfirming) {
         setPendingPayload(payload);
         setScopeAction('edit');
         setIsScopeModalOpen(true);
