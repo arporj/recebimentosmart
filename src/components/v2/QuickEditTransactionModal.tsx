@@ -203,8 +203,15 @@ const QuickEditTransactionModal = ({
         ? (isStatusChangedToPaid ? new Date().toISOString() : transaction.paid_date)
         : null;
 
+      // When confirming a parent recurrent transaction, preserve its original date
+      // to avoid shifting all future virtual instances. Only status/paid_date should change.
+      const isParentRecurrent = transaction.recurrence_enabled && !transaction.parent_id;
+      const effectiveDate = (isConfirming && isParentRecurrent)
+        ? (transaction.originalInstanceDate || transaction.date)
+        : date;
+
       const payload: any = {
-        date,
+        date: effectiveDate,
         amount: parsedAmount,
         description,
         account_id: accountId || undefined,
