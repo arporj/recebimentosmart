@@ -441,6 +441,45 @@ export default function AdminSettingsV2() {
                 </div>
             </section>
 
+            {/* NOTIFICAÇÕES MOBILE (WEB PUSH PWA) */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-start gap-4">
+                    <div className="p-2.5 bg-teal-50 text-teal-600 rounded-lg shrink-0">
+                        <Inbox className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-slate-800">Notificações no Celular (Web Push PWA)</h4>
+                        <p className="text-xs text-slate-500 leading-normal mt-1">
+                            Ative as notificações neste dispositivo para receber alertas instantâneos de novos feedbacks e mensagens de chat. 
+                            Como o Web Push é associado a este navegador específico, se mudar de celular ou usar outro navegador, você precisará repetir este registro.
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={async () => {
+                        try {
+                            if (!('Notification' in window)) {
+                                toast.error('Seu navegador não suporta notificações de sistema.');
+                                return;
+                            }
+                            
+                            const permission = await Notification.requestPermission();
+                            if (permission === 'granted') {
+                                toast.success('Permissão concedida! Notificações habilitadas com sucesso neste dispositivo.');
+                            } else {
+                                toast.error('Permissão negada. Você precisa habilitar a permissão de notificações nas configurações do seu navegador.');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            toast.error('Erro ao registrar notificações.');
+                        }
+                    }}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-black shadow-lg shadow-teal-600/20 hover:bg-teal-700 hover:shadow-teal-700/20 active:scale-95 transition-all shrink-0 whitespace-nowrap text-center"
+                >
+                    Ativar neste Celular
+                </button>
+            </div>
+
             <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100 flex gap-4 items-start">
                 <div className="p-2 bg-amber-100 rounded-lg text-amber-600 shrink-0">
                     <Shield className="w-5 h-5" />
