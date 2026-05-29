@@ -14,26 +14,23 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 
 ### 2.1. 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
 * **Status:** Planejado (Requer nova branch).
-* **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio da primeira mensalidade paga pelo seu indicado.
+* **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio (integral) da primeira mensalidade paga pelo seu indicado na sua carteira de cashback. O usuário indicado, ao assinar utilizando a indicação, recebe um desconto especial de 20% em seu primeiro pagamento de assinatura.
 * **Regras de Negócio:**
+  * **Regra de Desconto e Indicação:** O usuário que entra por um link de indicação ganha automaticamente **20% de desconto no seu primeiro pagamento**. O usuário que indicou (afiliado) acumula o **valor cheio/integral da primeira mensalidade** paga pelo indicado.
   * O resgate/pagamento via PIX só será liberado após o indicador acumular o valor mínimo de R$ 100,00 de saldo.
   * **Painel Administrativo:** O admin precisa visualizar detalhadamente quais indicados efetuaram pagamentos, o valor acumulado por indicador e receber notificações automáticas quando um indicador ultrapassar os R$ 100,00 pendentes para resgate.
   * **Painel do Usuário (Afiliado):** Apresentação visual limpa e transparente mostrando a lista de indicados, pagamentos realizados por eles e o saldo acumulado atual disponível/retirado.
   * **Solicitação de Saque:** O usuário deve possuir um campo direto na interface para cadastrar e gerenciar sua Chave PIX.
   * **Debitação:** Sempre que o administrador confirmar o pagamento do PIX, o sistema deve registrar a transação e abater o valor pago do saldo acumulado do usuário.
 
-### 2.2. 💬 Chat de Suporte Administrativo
+### 2.2. 💬 Chat de Suporte Administrativo (AdminChatPageV2.tsx)
 * **Status:** Temporariamente removido em Mar/2026 para readequação da interface V2.
-* **Meta V2:** Reimplementar como `AdminChatPageV2.tsx` adotando os padrões visuais definidos (cantos arredondados, sombras suaves, chats em bolha e menu lateral de canais). Recomenda-se utilizar o `FeedbackDetailsV2.tsx` como ponto de partida visual.
+* **Descrição:** O sistema possuía anteriormente um chat de suporte interno que permitia a comunicação direta em tempo real entre o usuário/cliente final e o administrador do sistema.
+* **Meta V2:** Reimplementar a interface do chat de suporte como `AdminChatPageV2.tsx` no painel do administrador e a interface correspondente no painel do cliente final, adotando os padrões visuais premium definidos na V2 (cantos arredondados, sombras suaves, bolhas de chat organizadas e um menu lateral limpo de canais/conversas ativas). Recomenda-se utilizar a tela de controle de feedbacks `FeedbackDetailsV2.tsx` como base e ponto de partida estético.
 
 ### 2.3. 🌟 Implementação do Plano Premium
 * **Status:** Roadmap de Produto (Médio Prazo).
 * **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes. Esse plano deve englobar funcionalidades exclusivas de **atendimento via WhatsApp** e suporte avançado.
-
-### 2.4. 📧 Tela de Envio de E-mails em Massa (Admin)
-* **Status:** Pendente. Infraestrutura backend já existe.
-* **Rota sugerida:** `/v2/admin/broadcasts`
-* **Descrição:** Criar página administrativa para compor e enviar e-mails em massa para todos os usuários ativos. Atualmente não existe nenhuma tela.
 
 ---
 
@@ -74,3 +71,7 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 ### 3.9. 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Implementação de cálculo dinâmico e reativo de pró-rata de assinatura quando usuários de planos ativos (ex: Básico) realizam upgrade para planos superiores (ex: Pró). O valor é calculado proporcionalmente aos dias restantes no ciclo mensal do usuário, abatendo créditos de indicação e atualizando a cobrança Pix do Banco Inter PJ de forma 100% dinâmica. Inclui banner informativo premium de total transparência financeira no checkout de assinaturas.
+
+### 3.10. 📧 Tela de Envio de E-mails em Massa (Admin)
+* **Status:** Concluído em Mai/2026.
+* **Descrição:** Criada a página administrativa `AdminBroadcastV2.tsx` de alto nível para compor e realizar envios de e-mails em lote para toda a base de usuários ativos. A tela possui suporte nativo a tags HTML para estilização, inclusão de imagens coladas com upload direto ao Storage do Supabase, inserção de emojis e integração inteligente com o modelo Gemini Pro (API da Google) para otimização profissional de conteúdo.
