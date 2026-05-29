@@ -746,16 +746,7 @@ const FinancialTransactionsV2 = () => {
 
     // Combine and sort ALL transactions BEFORE calculating running balance
     const combined = [...filtered, ...filteredInvoices].sort((a, b) => {
-      // Ordenação prioritária: lançamentos atrasados (overdue) sempre no topo
-      const aStatus = getVisualStatus(a);
-      const bStatus = getVisualStatus(b);
-      const aIsOverdue = aStatus === 'overdue';
-      const bIsOverdue = bStatus === 'overdue';
-
-      if (aIsOverdue && !bIsOverdue) return -1;
-      if (!aIsOverdue && bIsOverdue) return 1;
-
-      // Se ambos forem atrasados ou nenhum for atrasado, segue a ordenação normal
+      // Ordenação cronológica normal das instâncias
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
 
