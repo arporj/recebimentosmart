@@ -680,8 +680,12 @@ const FinancialTransactionModalV2 = ({
         // e o escopo for 'this', precisamos INSERIR um novo registro físico (filho)
         if ((transaction as any).isVirtual && scope === 'this') {
           const { tags: virtualTags, ...dbPayload } = payload;
+          // CRITICAL: Use the original instance date as `date` so that
+          // physicalDatesByParent correctly identifies this date as materialized.
+          const originalDate = (transaction as any).originalInstanceDate || (transaction as any).instanceDate || transaction!.date;
           const newChildPayload = {
             ...dbPayload,
+            date: originalDate,
             user_id: user.id,
             parent_id: transaction!.parent_id || transaction!.id,
             modalidade: 'unica', // a instância filha não carrega as regras de recorrência do pai
