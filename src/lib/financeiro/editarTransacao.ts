@@ -48,6 +48,20 @@ export async function editarTransacao(
     // Protect tags from direct insert into financial_transactions table
     const { tags: inputTags, ...dbUpdate } = cleanUpdate;
 
+    // Se for uma transação pertencente a uma recorrência (filha física) e a data for alterada,
+    // cria um blocker cancelado na data antiga para que o frontend não gere o virtual de novo nela.
+    if (parent_id && dbUpdate.date && dbUpdate.date !== currentDate) {
+      const { id: _, created_at: _c, updated_at: _u, ...parentFields } = current as any;
+      const blockerPayload = {
+        ...parentFields,
+        date: currentDate, // Data original antiga
+        status: 'cancelled',
+        is_customized: true,
+        recurrence_enabled: false,
+      };
+      await supabase.from('financial_transactions').insert(blockerPayload);
+    }
+
     const { data, error } = await supabase
       .from('financial_transactions')
       .update({ ...dbUpdate, is_customized: currentModalidade !== 'unica' })

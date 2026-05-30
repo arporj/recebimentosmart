@@ -235,14 +235,32 @@ const QuickEditTransactionModal = ({
       // Handle virtual instances: insert physical child
       if (transaction.isVirtual && finalScope === 'this') {
         const { tags: _tags, ...dbPayload } = payload;
-        // CRITICAL: Use the original instance date as `date` so that
-        // physicalDatesByParent correctly identifies this date as materialized.
-        // Without this, changing the date (e.g. confirming on the 28th a bill due on the 30th)
-        // would cause the virtual instance for the 30th to still be generated = duplication.
         const originalDate = transaction.originalInstanceDate || transaction.instanceDate || transaction.date;
+        const chosenDate = payload.date;
+
+        // If the chosen date is different from the original date, create a cancelled blocker at the original date
+        if (chosenDate !== originalDate) {
+          const blockerPayload = {
+            ...dbPayload,
+            date: originalDate,
+            status: 'cancelled',
+            user_id: user!.id,
+            type: transaction.type,
+            parent_id: transaction.parent_id || transaction.id,
+            modalidade: 'unica',
+            is_customized: true,
+            installment_current: transaction.installment_current || 1,
+            recurrence_enabled: false,
+          };
+          const { error: blockerError } = await supabase
+            .from('financial_transactions')
+            .insert(blockerPayload);
+          if (blockerError) throw blockerError;
+        }
+
         const newChildPayload = {
           ...dbPayload,
-          date: originalDate,
+          date: chosenDate, // Save the actual date chosen by the user
           user_id: user!.id,
           type: transaction.type,
           parent_id: transaction.parent_id || transaction.id,

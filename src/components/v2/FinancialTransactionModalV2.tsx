@@ -680,12 +680,31 @@ const FinancialTransactionModalV2 = ({
         // e o escopo for 'this', precisamos INSERIR um novo registro físico (filho)
         if ((transaction as any).isVirtual && scope === 'this') {
           const { tags: virtualTags, ...dbPayload } = payload;
-          // CRITICAL: Use the original instance date as `date` so that
-          // physicalDatesByParent correctly identifies this date as materialized.
           const originalDate = (transaction as any).originalInstanceDate || (transaction as any).instanceDate || transaction!.date;
+          const chosenDate = payload.date;
+
+          // Se a data escolhida for diferente da data original do lote virtual, cria um blocker cancelado na data original
+          if (chosenDate !== originalDate) {
+            const blockerPayload = {
+              ...dbPayload,
+              date: originalDate,
+              status: 'cancelled',
+              user_id: user.id,
+              parent_id: transaction!.parent_id || transaction!.id,
+              modalidade: 'unica',
+              is_customized: true,
+              installment_current: (transaction as any).installment_current || 1,
+              recurrence_enabled: false
+            };
+            const { error: blockerError } = await supabase
+              .from('financial_transactions')
+              .insert(blockerPayload);
+            if (blockerError) throw blockerError;
+          }
+
           const newChildPayload = {
             ...dbPayload,
-            date: originalDate,
+            date: chosenDate, // Salva a data real escolhida pelo usuário
             user_id: user.id,
             parent_id: transaction!.parent_id || transaction!.id,
             modalidade: 'unica', // a instância filha não carrega as regras de recorrência do pai
