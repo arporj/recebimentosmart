@@ -94,6 +94,23 @@ const FinancialTransactionsV2 = () => {
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down');
+
+  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, dropdownKey: string) => {
+    e.stopPropagation();
+    if (openDropdown === dropdownKey) {
+      setOpenDropdown(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < 180) {
+      setDropdownDirection('up');
+    } else {
+      setDropdownDirection('down');
+    }
+    setOpenDropdown(dropdownKey);
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -1162,9 +1179,9 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     )}
                     <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                      <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
+                      <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                       {openDropdown === dropdownKey && (
-                        <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+                        <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                           <button onClick={() => {
                             setOpenDropdown(null);
                             const cardId = t.invoiceData?.cardId;
@@ -1269,9 +1286,9 @@ const FinancialTransactionsV2 = () => {
                   )}
                   {/* Menu */}
                   <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                    <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
+                    <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
                     {openDropdown === dropdownKey && (
-                      <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${index >= displayInstances.length - 3 ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+                      <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
                           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
                         )}
@@ -1446,9 +1463,9 @@ const FinancialTransactionsV2 = () => {
                           </div>
                         )}
                         <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                          <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
+                          <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                           {openDropdown === dropdownKey && (
-                            <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+                            <div className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                               <button onClick={() => {
                                 setOpenDropdown(null);
                                 const cardId = t.invoiceData?.cardId;
@@ -1571,9 +1588,9 @@ const FinancialTransactionsV2 = () => {
                       )}
 
                       <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                        <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === dropdownKey ? null : dropdownKey); }} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
+                        <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
                         {openDropdown === dropdownKey && (
-                          <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${displayInstances.indexOf(t) >= displayInstances.length - 3 ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+                          <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
                               <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
                             )}
