@@ -287,7 +287,9 @@ const CreditCardV2 = () => {
       if (!physicalDatesByParent.has(parentId)) physicalDatesByParent.set(parentId, new Set());
       physicalDatesByParent.get(parentId)!.add(t.date);
 
-      if (t.installment_current !== null && t.installment_current !== undefined) {
+      // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
+      // Isso nos permite detectar quando uma ocorrência específica foi desmembrada por edição de escopo 'somente este'.
+      if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
         if (!physicalIndicesByParent.has(parentId)) physicalIndicesByParent.set(parentId, new Set());
         physicalIndicesByParent.get(parentId)!.add(t.installment_current);
       }
@@ -339,7 +341,9 @@ const CreditCardV2 = () => {
           inPeriod = isSameMonth(cursorDate, currentMonth);
         }
 
-        if (inPeriod && (!alreadyHasPhysical || dateStr === t.date)) {
+        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
+        // ou uma virtual que não existe fisicamente.
+        if (inPeriod && (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex))) {
           instances.push({
             ...t,
             instanceDate: dateStr,
