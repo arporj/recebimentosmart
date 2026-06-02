@@ -525,7 +525,9 @@ export default function SharedWithMeV2() {
       }
       physicalDatesByParent.get(key)!.add(t.date);
 
-      if (t.installment_current !== null && t.installment_current !== undefined) {
+      // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
+      // Isso nos permite detectar quando uma ocorrência específica foi desmembrada por edição de escopo 'somente este'.
+      if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
         if (!physicalIndicesByParent.has(key)) {
           physicalIndicesByParent.set(key, new Set());
         }
@@ -563,7 +565,9 @@ export default function SharedWithMeV2() {
         const hasPhysicalByDate = physicalDatesByParent.get(key)?.has(dateStr);
         const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
 
-        if (!alreadyHasPhysical || dateStr === t.date) {
+        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
+        // ou uma virtual que não existe fisicamente.
+        if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
           instances.push({
             ...t,
             instanceDate: dateStr,
