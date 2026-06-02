@@ -171,11 +171,13 @@ const FinancialTransactionModalV2 = ({
   const tagRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const destAccountRef = useRef<HTMLDivElement>(null);
+  const modalidadeRef = useRef<HTMLDivElement>(null);
   
   const [openCategoryUpward, setOpenCategoryUpward] = useState(false);
   const [openTagUpward, setOpenTagUpward] = useState(false);
   const [openAccountUpward, setOpenAccountUpward] = useState(false);
   const [openDestAccountUpward, setOpenDestAccountUpward] = useState(false);
+  const [openModalidadeUpward, setOpenModalidadeUpward] = useState(false);
   const [categoryMaxHeight, setCategoryMaxHeight] = useState(260);
   const [accountMaxHeight, setAccountMaxHeight] = useState(280);
   const [destAccountMaxHeight, setDestAccountMaxHeight] = useState(280);
@@ -258,6 +260,21 @@ const FinancialTransactionModalV2 = ({
       setDestAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isDestAccountDropdownOpen]);
+
+  useEffect(() => {
+    if (isModalidadeDropdownOpen && modalidadeRef.current) {
+      const rect = modalidadeRef.current.getBoundingClientRect();
+      const scrollContainer = modalidadeRef.current.closest('.overflow-y-auto');
+      const bottomSpace = scrollContainer 
+        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
+        : window.innerHeight - rect.bottom;
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 140 && topSpace > 140;
+      setOpenModalidadeUpward(shouldOpenUpward);
+    }
+  }, [isModalidadeDropdownOpen]);
 
   // Auto-focus amount field when modal opens for a new transaction
   useEffect(() => {
@@ -899,7 +916,7 @@ const FinancialTransactionModalV2 = ({
                   <div className="h-5 flex items-center px-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Modalidade</label>
                   </div>
-                  <div className={`relative ${isModalidadeDropdownOpen ? 'z-40' : 'z-10'}`}>
+                  <div ref={modalidadeRef} className={`relative ${isModalidadeDropdownOpen ? 'z-40' : 'z-10'}`}>
                     <button
                       type="button"
                       onClick={() => {
@@ -926,7 +943,7 @@ const FinancialTransactionModalV2 = ({
                     {isModalidadeDropdownOpen && (
                       <>
                         <div className="fixed inset-0 z-20" onClick={() => setIsModalidadeDropdownOpen(false)} />
-                        <div className="absolute z-30 mt-1 w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className={`absolute z-30 ${openModalidadeUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200`}>
                           <button
                             type="button"
                             onClick={() => {
