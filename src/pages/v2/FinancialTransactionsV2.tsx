@@ -317,7 +317,10 @@ const FinancialTransactionsV2 = () => {
       }
       physicalDatesByParent.get(parentId)!.add(t.date);
 
-      if (t.installment_current !== null && t.installment_current !== undefined) {
+      // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
+      // Isso nos permite detectar quando uma ocorrência específica (inclusive a primeira/mãe)
+      // foi desmembrada em um filho físico separado por edição de escopo 'somente este'.
+      if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
         if (!physicalIndicesByParent.has(parentId)) {
           physicalIndicesByParent.set(parentId, new Set());
         }
@@ -369,8 +372,9 @@ const FinancialTransactionsV2 = () => {
         const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
         const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
 
-        // Se for a data original do pai ou uma virtual que não existe fisicamente
-        if (!alreadyHasPhysical || dateStr === t.date) {
+        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
+        // ou uma virtual que não existe fisicamente.
+        if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
           // Compute correct invoice_month for virtual credit card transactions
           let newInvoiceMonth = t.invoice_month;
           if (t.account_type === 'credit_card' && t.invoice_month) {
