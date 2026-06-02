@@ -342,9 +342,6 @@ const FinancialTransactionsV2 = () => {
           if (!isUnpaid && t.paid_date) {
             finalInstanceDate = format(parseISO(t.paid_date), 'yyyy-MM-dd');
           }
-          if (isUnpaid && finalInstanceDate < todayStr) {
-            finalInstanceDate = todayStr;
-          }
           instances.push({ ...t, instanceDate: finalInstanceDate, originalInstanceDate: t.date, isVirtual: false });
         }
         continue;
@@ -388,9 +385,6 @@ const FinancialTransactionsV2 = () => {
           // For the parent's own instance: if paid, show at the actual payment date
           if (!isUnpaid && dateStr === t.date && t.paid_date) {
             finalInstanceDate = format(parseISO(t.paid_date), 'yyyy-MM-dd');
-          }
-          if (isUnpaid && finalInstanceDate < todayStr) {
-             finalInstanceDate = todayStr;
           }
 
           instances.push({
