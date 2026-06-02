@@ -45,6 +45,8 @@ export async function gerarInstanciasRecorrentes(
       recurrence_interval: intervalo,
       invoice_month: invoiceMonth,
       status: 'pending', // Future instances are always pending
+      installment_current: (parentData.installment_current || 1) + i,
+      installment_total: 1,
     });
   }
 
