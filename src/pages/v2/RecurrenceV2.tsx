@@ -252,7 +252,7 @@ export default function RecurrenceV2() {
       if (!physicalDatesByParent.has(parentId)) physicalDatesByParent.set(parentId, new Set());
       physicalDatesByParent.get(parentId)!.add(t.date);
 
-      if (t.installment_current !== null && t.installment_current !== undefined) {
+      if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
         if (!physicalIndicesByParent.has(parentId)) physicalIndicesByParent.set(parentId, new Set());
         physicalIndicesByParent.get(parentId)!.add(t.installment_current);
       }
