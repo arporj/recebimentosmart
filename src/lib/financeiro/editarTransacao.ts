@@ -49,6 +49,44 @@ export async function editarTransacao(
     // Protect tags from direct insert into financial_transactions table
     const { tags: inputTags, ...dbUpdate } = cleanUpdate;
 
+    // Se for o registro mãe de uma recorrência e o escopo for 'somente este',
+    // nós não atualizamos a mãe diretamente. Em vez disso, inserimos um novo filho físico
+    // mantendo a mãe original intacta como geradora de recorrências futuras.
+    if (currentModalidade === 'recorrente' && !parent_id) {
+      const newChildPayload = {
+        ...dbUpdate,
+        date: dbUpdate.date || currentDate,
+        user_id: current.user_id,
+        type: type,
+        parent_id: current.id,
+        modalidade: 'unica', // o filho físico é isolado
+        is_customized: true,
+        installment_current: current.installment_current || 1,
+        recurrence_enabled: false,
+      };
+
+      const { data: newChild, error: insertError } = await supabase
+        .from('financial_transactions')
+        .insert(newChildPayload)
+        .select('id')
+        .single();
+
+      if (insertError) return { data: null, error: insertError };
+
+      // Copiar tags para o novo filho físico
+      if (inputTags && newChild) {
+        if (inputTags.length > 0) {
+          const junctionRows = inputTags.map(tagId => ({
+            transaction_id: newChild.id,
+            tag_id: tagId
+          }));
+          await supabase.from('transaction_tags').insert(junctionRows);
+        }
+      }
+
+      return { data: newChild, error: null };
+    }
+
     const { data, error } = await supabase
       .from('financial_transactions')
       .update({ ...dbUpdate, is_customized: currentModalidade !== 'unica' })
