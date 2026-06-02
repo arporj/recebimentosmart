@@ -178,6 +178,8 @@ export async function criarTransacao(input: TransactionInput) {
       recurrence_period: recurrencePeriod,
       recurrence_interval: recurrenceInterval,
       recurrence_enabled: true,
+      installment_current: 1,
+      installment_total: 1,
     }).select().single();
 
     if (parentError) return { data: null, error: parentError };
