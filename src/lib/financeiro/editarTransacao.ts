@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { gerarInstanciasRecorrentes } from './recorrenciaUtils';
+import { format, subDays, parseISO } from 'date-fns';
 
 export type EditScope = 'this' | 'following' | 'all';
 
@@ -47,20 +48,6 @@ export async function editarTransacao(
   if (currentModalidade === 'unica' || scope === 'this') {
     // Protect tags from direct insert into financial_transactions table
     const { tags: inputTags, ...dbUpdate } = cleanUpdate;
-
-    // Se for uma transação pertencente a uma recorrência (filha física) e a data for alterada,
-    // cria um blocker cancelado na data antiga para que o frontend não gere o virtual de novo nela.
-    if (parent_id && dbUpdate.date && dbUpdate.date !== currentDate) {
-      const { id: _, created_at: _c, updated_at: _u, ...parentFields } = current as any;
-      const blockerPayload = {
-        ...parentFields,
-        date: currentDate, // Data original antiga
-        status: 'cancelled',
-        is_customized: true,
-        recurrence_enabled: false,
-      };
-      await supabase.from('financial_transactions').insert(blockerPayload);
-    }
 
     const { data, error } = await supabase
       .from('financial_transactions')
@@ -154,6 +141,71 @@ export async function editarTransacao(
   }
 
   if (scope === 'following') {
+    // Se for recorrente infinita, aplica a fragmentação elegante
+    if (currentModalidade === 'recorrente') {
+      const effectiveDate = cleanUpdate.date || currentDate;
+      const parsedEffectiveDate = parseISO(effectiveDate);
+      
+      // 1. Finalizar a mãe atual definindo a data de término como o dia anterior à nova data de corte
+      const endDate = format(subDays(parsedEffectiveDate, 1), 'yyyy-MM-dd');
+      
+      await supabase
+        .from('financial_transactions')
+        .update({ recurrence_end_date: endDate })
+        .eq('id', refId);
+
+      // Deletar filhas físicas futuras da mãe antiga que estejam na data de corte ou depois
+      await supabase
+        .from('financial_transactions')
+        .delete()
+        .eq('parent_id', refId)
+        .gte('date', effectiveDate);
+
+      // 2. Criar a nova mãe com as novas regras começando a partir da data de corte
+      const newMotherPayload = {
+        user_id: current.user_id,
+        client_id: cleanUpdate.client_id !== undefined ? cleanUpdate.client_id : current.client_id,
+        description: cleanUpdate.description !== undefined ? cleanUpdate.description : current.description,
+        amount: cleanUpdate.amount !== undefined ? cleanUpdate.amount : current.amount,
+        type: type,
+        category_id: cleanUpdate.category_id !== undefined ? cleanUpdate.category_id : current.category_id,
+        account_id: cleanUpdate.account_id !== undefined ? cleanUpdate.account_id : current.account_id,
+        destination_account_id: cleanUpdate.destination_account_id !== undefined ? cleanUpdate.destination_account_id : current.destination_account_id,
+        date: effectiveDate,
+        status: cleanUpdate.status || 'pending',
+        paid_date: cleanUpdate.paid_date || null,
+        modalidade: 'recorrente',
+        recurrence_enabled: true,
+        recurrence_period: cleanUpdate.recurrence_period !== undefined ? cleanUpdate.recurrence_period : current.recurrence_period,
+        recurrence_interval: cleanUpdate.recurrence_interval !== undefined ? cleanUpdate.recurrence_interval : current.recurrence_interval,
+        installment_current: 1, // Recomeça como ciclo 1 da nova série
+        invoice_month: cleanUpdate.invoice_month !== undefined ? cleanUpdate.invoice_month : current.invoice_month,
+        card_holder_name: cleanUpdate.card_holder_name !== undefined ? cleanUpdate.card_holder_name : current.card_holder_name
+      };
+
+      const { data: newMother, error: createError } = await supabase
+        .from('financial_transactions')
+        .insert(newMotherPayload)
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+
+      // Vincular as tags à nova transação mãe se fornecidas
+      if (inputTags && newMother) {
+        if (inputTags.length > 0) {
+          const junctionRows = inputTags.map(tagId => ({
+            transaction_id: newMother.id,
+            tag_id: tagId
+          }));
+          await supabase.from('transaction_tags').insert(junctionRows);
+        }
+      }
+
+      return { data: [newMother], error: null };
+    }
+
+    // Comportamento original para parcelas físicas
     const { data: futureTransactions, error: listError } = await supabase
       .from('financial_transactions')
       .select('id, date')

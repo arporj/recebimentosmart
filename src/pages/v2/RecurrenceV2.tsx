@@ -244,6 +244,20 @@ export default function RecurrenceV2() {
     const limitDate = endOfMonth(currentMonth); // Limite superior para projeções virtuais
     const allInstances: FinancialTransaction[] = [];
 
+    // Mapeamento para checagem por índice e data
+    const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalIndicesByParent = new Map<string, Set<number>>();
+    for (const t of transactions) {
+      const parentId = t.parent_id || t.id;
+      if (!physicalDatesByParent.has(parentId)) physicalDatesByParent.set(parentId, new Set());
+      physicalDatesByParent.get(parentId)!.add(t.date);
+
+      if (t.installment_current !== null && t.installment_current !== undefined) {
+        if (!physicalIndicesByParent.has(parentId)) physicalIndicesByParent.set(parentId, new Set());
+        physicalIndicesByParent.get(parentId)!.add(t.installment_current);
+      }
+    }
+
     transactions.forEach(tx => {
       // Caso 1: Transação Pontual ou Filha de Recorrência (Instância já materializada com parent_id)
       if (!tx.recurrence_enabled || tx.parent_id !== null) {
@@ -268,16 +282,18 @@ export default function RecurrenceV2() {
         // Se há data de término na recorrência e passou dela, para
         if (endDate && isAfter(startOfDay(instanceDate), endDate)) break;
 
+        const currentInst = (tx.installment_current || 1) + iteration;
+
         // Adiciona a instância se for a primeira (mãe original) ou se já passou da primeira
         if (iteration === 0) {
           allInstances.push(tx); // A mãe original carrega o status real do banco
         } else {
-          // Verifica se já existe uma instância REAL materializada no banco para esta mesma data de recorrência
-          // para não duplicar a cobrança (o banco materializa quando o usuário paga ou altera uma específica)
-          const hasMaterializedChild = transactions.some(child => 
-            child.parent_id === tx.id && 
-            isSameDay(parseISO(child.date), instanceDate)
-          );
+          const dateStr = format(instanceDate, 'yyyy-MM-dd');
+          
+          // Checar por índice sequencial e por data (fallback)
+          const hasPhysicalByIndex = physicalIndicesByParent.get(tx.id)?.has(currentInst);
+          const hasPhysicalByDate = physicalDatesByParent.get(tx.id)?.has(dateStr);
+          const hasMaterializedChild = hasPhysicalByIndex || hasPhysicalByDate;
 
           if (!hasMaterializedChild) {
             // Cria instância virtual pendente
@@ -286,7 +302,8 @@ export default function RecurrenceV2() {
               id: `${tx.id}-virtual-${instanceDate.getTime()}`,
               date: instanceDate.toISOString(),
               status: 'pending', // Virtuais são sempre geradas em aberto
-              parent_id: tx.id
+              parent_id: tx.id,
+              installment_current: currentInst
             });
           }
         }

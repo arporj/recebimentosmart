@@ -309,12 +309,20 @@ const FinancialTransactionsV2 = () => {
 
     // 1. Identificar registros físicos daquela cadeia para evitar sobreposição
     const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalIndicesByParent = new Map<string, Set<number>>();
     for (const t of transactions) {
       const parentId = t.parent_id || t.id;
       if (!physicalDatesByParent.has(parentId)) {
         physicalDatesByParent.set(parentId, new Set());
       }
       physicalDatesByParent.get(parentId)!.add(t.date);
+
+      if (t.installment_current !== null && t.installment_current !== undefined) {
+        if (!physicalIndicesByParent.has(parentId)) {
+          physicalIndicesByParent.set(parentId, new Set());
+        }
+        physicalIndicesByParent.get(parentId)!.add(t.installment_current);
+      }
     }
 
     const maxDate = endOfMonth(currentMonth);
@@ -348,24 +356,22 @@ const FinancialTransactionsV2 = () => {
       
       let cursor = new Date(tDate);
       const parentId = t.id; // Se tem recurrence_enabled é o pai
+      let occurrenceIndex = 0;
       
       while (isBefore(cursor, maxDate) || isSameDay(cursor, maxDate)) {
         // Respect recurrence_end_date: stop generating after this date
         if (recEndDate && isAfter(cursor, recEndDate)) break;
 
         const dateStr = format(cursor, 'yyyy-MM-dd');
-        // Só gera virtual se não houver registro físico correspondente
-        const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const currentInst = (t.installment_current || 1) + occurrenceIndex;
+
+        // Checar por índice sequencial e por data (fallback)
+        const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
+        const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
 
         // Se for a data original do pai ou uma virtual que não existe fisicamente
         if (!alreadyHasPhysical || dateStr === t.date) {
-          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-          const currentInst = (t.installment_current || 1) + monthsDiff;
-
-          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
-            break;
-          }
-
           // Compute correct invoice_month for virtual credit card transactions
           let newInvoiceMonth = t.invoice_month;
           if (t.account_type === 'credit_card' && t.invoice_month) {
@@ -398,6 +404,7 @@ const FinancialTransactionsV2 = () => {
           });
         }
         
+        occurrenceIndex++;
         switch (period) {
           case 'daily': cursor = addDays(cursor, interval); break;
           case 'weekly': cursor = addWeeks(cursor, interval); break;
@@ -506,6 +513,7 @@ const FinancialTransactionsV2 = () => {
         transactionId: t.id,
         scope,
         instanceDate: t.originalInstanceDate || t.instanceDate || t.date,
+        installmentCurrent: t.installment_current,
       });
       if (error) throw error;
       toast.success('Excluído!');

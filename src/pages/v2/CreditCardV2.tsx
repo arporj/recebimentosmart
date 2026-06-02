@@ -279,12 +279,18 @@ const CreditCardV2 = () => {
     const instances: TransactionInstance[] = [];
     const cardTransactions = transactions.filter(t => t.account_id === selectedCardId);
 
-    // Build set of physical dates per parent
+    // Build set of physical dates and indices per parent
     const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalIndicesByParent = new Map<string, Set<number>>();
     for (const t of cardTransactions) {
       const parentId = t.parent_id || t.id;
       if (!physicalDatesByParent.has(parentId)) physicalDatesByParent.set(parentId, new Set());
       physicalDatesByParent.get(parentId)!.add(t.date);
+
+      if (t.installment_current !== null && t.installment_current !== undefined) {
+        if (!physicalIndicesByParent.has(parentId)) physicalIndicesByParent.set(parentId, new Set());
+        physicalIndicesByParent.get(parentId)!.add(t.installment_current);
+      }
     }
 
     for (const t of cardTransactions) {
@@ -310,13 +316,20 @@ const CreditCardV2 = () => {
       const absMax = addYears(today, 5);
       let cursor = new Date(tDate);
       const parentId = t.id;
+      let occurrenceIndex = 0;
 
       while (isBefore(cursor, absMax)) {
         // Respect recurrence_end_date
         if (recEndDate && isAfter(cursor, recEndDate)) break;
 
         const dateStr = format(cursor, 'yyyy-MM-dd');
-        const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const currentInst = (t.installment_current || 1) + occurrenceIndex;
+
+        // Checar por índice sequencial e por data (fallback)
+        const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
+        const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
+
         const cursorDate = parseISO(dateStr);
 
         let inPeriod = false;
@@ -327,11 +340,6 @@ const CreditCardV2 = () => {
         }
 
         if (inPeriod && (!alreadyHasPhysical || dateStr === t.date)) {
-          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-          const currentInst = (t.installment_current || 1) + monthsDiff;
-
-          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) break;
-
           instances.push({
             ...t,
             instanceDate: dateStr,
@@ -343,6 +351,7 @@ const CreditCardV2 = () => {
         if (invoicePeriod && isAfter(cursor, invoicePeriod.endDate)) break;
         if (!invoicePeriod && isAfter(cursor, endOfMonth(currentMonth))) break;
 
+        occurrenceIndex++;
         switch (period) {
           case 'daily': cursor = addDays(cursor, interval); break;
           case 'weekly': cursor = addWeeks(cursor, interval); break;
@@ -437,6 +446,7 @@ const CreditCardV2 = () => {
         transactionId: itemToDelete.id,
         scope,
         instanceDate: (itemToDelete as any).instanceDate || itemToDelete.date,
+        installmentCurrent: (itemToDelete as any).installment_current,
       });
       toast.success('Lançamento excluído!');
       setIsDeleteScopeModalOpen(false);
@@ -517,7 +527,7 @@ const CreditCardV2 = () => {
               <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
                 <Pencil size={14} /> Editar
               </button>
-              <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao({ transactionId: t.id, scope: 'this', instanceDate: t.instanceDate || t.date }).then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
+              <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao({ transactionId: t.id, scope: 'this', instanceDate: t.instanceDate || t.date, installmentCurrent: t.installment_current }).then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
                 <Trash2 size={14} /> Excluir
               </button>
             </div>

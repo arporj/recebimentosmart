@@ -378,28 +378,7 @@ const QuickEditTransactionModal = ({
       // Handle virtual instances: insert physical child
       if (transaction.isVirtual && finalScope === 'this') {
         const { tags: _tags, ...dbPayload } = payload;
-        const originalDate = transaction.originalInstanceDate || transaction.instanceDate || transaction.date;
         const chosenDate = payload.date;
-
-        // If the chosen date is different from the original date, create a cancelled blocker at the original date
-        if (chosenDate !== originalDate) {
-          const blockerPayload = {
-            ...dbPayload,
-            date: originalDate,
-            status: 'cancelled',
-            user_id: user!.id,
-            type: transaction.type,
-            parent_id: transaction.parent_id || transaction.id,
-            modalidade: 'unica',
-            is_customized: true,
-            installment_current: transaction.installment_current || 1,
-            recurrence_enabled: false,
-          };
-          const { error: blockerError } = await supabase
-            .from('financial_transactions')
-            .insert(blockerPayload);
-          if (blockerError) throw blockerError;
-        }
 
         const newChildPayload = {
           ...dbPayload,
@@ -461,6 +440,7 @@ const QuickEditTransactionModal = ({
         transactionId: transaction.id,
         scope: scope || 'this',
         instanceDate: transaction.originalInstanceDate || transaction.instanceDate || transaction.date,
+        installmentCurrent: transaction.installment_current,
       });
       if (error) throw error;
       toast.success('Excluído!');

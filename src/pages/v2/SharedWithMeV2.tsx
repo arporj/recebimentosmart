@@ -516,6 +516,7 @@ export default function SharedWithMeV2() {
 
     // Identificar registros físicos daquela cadeia por cliente para evitar duplicações
     const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalIndicesByParent = new Map<string, Set<number>>();
     for (const t of rawTransactions) {
       const parentId = t.parent_id || t.id;
       const key = `${t.client_id}_${parentId}`;
@@ -523,6 +524,13 @@ export default function SharedWithMeV2() {
         physicalDatesByParent.set(key, new Set());
       }
       physicalDatesByParent.get(key)!.add(t.date);
+
+      if (t.installment_current !== null && t.installment_current !== undefined) {
+        if (!physicalIndicesByParent.has(key)) {
+          physicalIndicesByParent.set(key, new Set());
+        }
+        physicalIndicesByParent.get(key)!.add(t.installment_current);
+      }
     }
 
     for (const t of rawTransactions) {
@@ -542,21 +550,20 @@ export default function SharedWithMeV2() {
       let cursor = new Date(tDate);
       const parentId = t.id;
       const key = `${t.client_id}_${parentId}`;
+      let occurrenceIndex = 0;
       
       while (isBefore(cursor, maxDate) || isSameDay(cursor, maxDate)) {
         if (recEndDate && isAfter(cursor, recEndDate)) break;
 
         const dateStr = format(cursor, 'yyyy-MM-dd');
-        const alreadyHasPhysical = physicalDatesByParent.get(key)?.has(dateStr);
+        const currentInst = (t.installment_current || 1) + occurrenceIndex;
+
+        // Checar por índice sequencial e por data (fallback)
+        const hasPhysicalByIndex = physicalIndicesByParent.get(key)?.has(currentInst);
+        const hasPhysicalByDate = physicalDatesByParent.get(key)?.has(dateStr);
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
 
         if (!alreadyHasPhysical || dateStr === t.date) {
-          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-          const currentInst = (t.installment_current || 1) + monthsDiff;
-
-          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
-            break;
-          }
-
           instances.push({
             ...t,
             instanceDate: dateStr,
@@ -566,6 +573,7 @@ export default function SharedWithMeV2() {
           });
         }
         
+        occurrenceIndex++;
         switch (period) {
           case 'daily': cursor = addDays(cursor, interval); break;
           case 'weekly': cursor = addWeeks(cursor, interval); break;

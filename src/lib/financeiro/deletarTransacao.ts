@@ -8,6 +8,7 @@ interface DeleteOptions {
   scope?: DeleteScope;
   /** Required for virtual instances — the date shown in the UI */
   instanceDate?: string;
+  installmentCurrent?: number;
 }
 
 export async function deletarTransacao(
@@ -20,7 +21,7 @@ export async function deletarTransacao(
       ? { transactionId: transactionIdOrOptions, scope: scopeArg }
       : transactionIdOrOptions;
 
-  const { transactionId, scope = 'this', instanceDate } = opts;
+  const { transactionId, scope = 'this', instanceDate, installmentCurrent } = opts;
 
   // 1. Fetch context
   const { data: current, error: fetchError } = await supabase
@@ -81,6 +82,7 @@ export async function deletarTransacao(
         status: 'cancelled',
         parent_id: refId,
         recurrence_enabled: false,
+        installment_current: installmentCurrent || null,
         ...(isShared ? { shared_status: 'modified' } : {}),
       });
     }
