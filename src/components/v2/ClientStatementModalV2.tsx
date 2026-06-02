@@ -464,12 +464,22 @@ export default function ClientStatementModalV2({
 
     // Identificar registros físicos daquela cadeia para evitar duplicações
     const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalIndicesByParent = new Map<string, Set<number>>();
     for (const t of rawTransactions) {
       const parentId = t.parent_id || t.id;
       if (!physicalDatesByParent.has(parentId)) {
         physicalDatesByParent.set(parentId, new Set());
       }
       physicalDatesByParent.get(parentId)!.add(t.date);
+
+      // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
+      // Isso nos permite detectar quando uma ocorrência específica foi desmembrada por edição de escopo 'somente este'.
+      if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
+        if (!physicalIndicesByParent.has(parentId)) {
+          physicalIndicesByParent.set(parentId, new Set());
+        }
+        physicalIndicesByParent.get(parentId)!.add(t.installment_current);
+      }
     }
 
     for (const t of rawTransactions) {
@@ -493,12 +503,17 @@ export default function ClientStatementModalV2({
         if (recEndDate && isAfter(cursor, recEndDate)) break;
 
         const dateStr = format(cursor, 'yyyy-MM-dd');
-        const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+        const currentInst = (t.installment_current || 1) + monthsDiff;
 
-        if (!alreadyHasPhysical || dateStr === t.date) {
-          const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-          const currentInst = (t.installment_current || 1) + monthsDiff;
+        // Checar por índice sequencial e por data (fallback)
+        const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
+        const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
 
+        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
+        // ou uma virtual que não existe fisicamente.
+        if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
           if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
             break;
           }
