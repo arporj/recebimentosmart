@@ -676,10 +676,16 @@ const FinancialTransactionModalV2 = ({
 
       payload.status = isConfirming ? 'paid' : (isCreditCard ? 'pending' : status);
 
+      const isDateChanged = date !== transaction?.date;
       const isStatusChangedToPaid = payload.status === 'paid' && (!isEditing || transaction?.status !== 'paid');
-      payload.paid_date = payload.status === 'paid'
+      let paidDate = payload.status === 'paid'
         ? (isStatusChangedToPaid ? new Date().toISOString() : transaction?.paid_date)
         : null;
+
+      if (payload.status === 'paid' && isDateChanged && !isStatusChangedToPaid) {
+        paidDate = date;
+      }
+      payload.paid_date = paidDate;
 
       if (isEditing) {
         // Se estiver confirmando, o escopo é SEMPRE 'this' e não abre o modal de escopo

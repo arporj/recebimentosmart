@@ -341,10 +341,15 @@ const QuickEditTransactionModal = ({
     try {
       setLoading(true);
 
+      const isDateChanged = date !== (transaction.originalInstanceDate || transaction.date);
       const isStatusChangedToPaid = isPaid && transaction.status !== 'paid';
-      const paidDate = isPaid 
+      let paidDate = isPaid 
         ? (isStatusChangedToPaid ? new Date().toISOString() : transaction.paid_date)
         : null;
+
+      if (isPaid && isDateChanged && !isStatusChangedToPaid) {
+        paidDate = date;
+      }
 
       // When confirming a parent recurrent transaction, preserve its original date
       // to avoid shifting all future virtual instances. Only status/paid_date should change.
