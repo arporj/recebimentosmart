@@ -118,6 +118,23 @@ const CreditCardV2 = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down');
+
+  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, dropdownKey: string) => {
+    e.stopPropagation();
+    if (openDropdown === dropdownKey) {
+      setOpenDropdown(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < 130) {
+      setDropdownDirection('up');
+    } else {
+      setDropdownDirection('down');
+    }
+    setOpenDropdown(dropdownKey);
+  };
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isCardDropdownOpen, setIsCardDropdownOpen] = useState(false);
   const [hasInitializedParams, setHasInitializedParams] = useState(false);
@@ -490,13 +507,13 @@ const CreditCardV2 = () => {
         </span>
         <div className="relative" ref={openDropdown === t.id + t.instanceDate ? dropdownRef : null}>
           <button
-            onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === t.id + t.instanceDate ? null : t.id + t.instanceDate); }}
+            onClick={(e) => handleDropdownClick(e, t.id + t.instanceDate)}
             className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <MoreVertical size={14} />
           </button>
           {openDropdown === t.id + t.instanceDate && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-30">
+            <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-30 ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
               <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
                 <Pencil size={14} /> Editar
               </button>
