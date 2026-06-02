@@ -10,6 +10,13 @@ import {
   ChevronDown,
   Loader2,
   AlertTriangle,
+  Landmark,
+  PiggyBank,
+  TrendingUp,
+  CreditCard,
+  Plus,
+  Search,
+  CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -54,7 +61,22 @@ const QuickEditTransactionModal = ({
   // UI states
   const [loading, setLoading] = useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+
+  // Dynamic directions and heights
+  const [openAccountUpward, setOpenAccountUpward] = useState(false);
+  const [openCategoryUpward, setOpenCategoryUpward] = useState(false);
+  const [openTagUpward, setOpenTagUpward] = useState(false);
+  const [accountMaxHeight, setAccountMaxHeight] = useState(200);
+  const [categoryMaxHeight, setCategoryMaxHeight] = useState(200);
+  const [tagMaxHeight, setTagMaxHeight] = useState(140);
+
+  // Refs
   const tagRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const categoryRef = useRef<HTMLDivElement>(null);
 
   // Scope modal for recurrent/installment transactions
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
@@ -67,7 +89,7 @@ const QuickEditTransactionModal = ({
   const isRecurring = transaction?.modalidade === 'recorrente' || transaction?.modalidade === 'parcelada' || !!transaction?.parent_id || transaction?.recurrence_enabled;
 
   useEscapeKey(() => {
-    if (isScopeModalOpen || isDeleteConfirmOpen) return;
+    if (isScopeModalOpen || isDeleteConfirmOpen || isAccountDropdownOpen || isCategoryDropdownOpen || isTagDropdownOpen) return;
     onClose();
   }, isOpen);
 
@@ -117,11 +139,67 @@ const QuickEditTransactionModal = ({
     }
   }, [isOpen, user]);
 
-  // Close tag dropdown on outside click
+  // Measure dropdown spaces dynamically
+  useEffect(() => {
+    if (isCategoryDropdownOpen && categoryRef.current) {
+      const rect = categoryRef.current.getBoundingClientRect();
+      const scrollContainer = categoryRef.current.closest('.overflow-y-auto');
+      const bottomSpace = scrollContainer 
+        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
+        : window.innerHeight - rect.bottom;
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 200;
+      setOpenCategoryUpward(shouldOpenUpward);
+      setCategoryMaxHeight(Math.max(120, Math.min(220, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
+    }
+  }, [isCategoryDropdownOpen]);
+
+  useEffect(() => {
+    if (isAccountDropdownOpen && accountRef.current) {
+      const rect = accountRef.current.getBoundingClientRect();
+      const scrollContainer = accountRef.current.closest('.overflow-y-auto');
+      const bottomSpace = scrollContainer 
+        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
+        : window.innerHeight - rect.bottom;
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 120 && topSpace > 200;
+      setOpenAccountUpward(shouldOpenUpward);
+      setAccountMaxHeight(Math.max(120, Math.min(220, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
+    }
+  }, [isAccountDropdownOpen]);
+
+  useEffect(() => {
+    if (isTagDropdownOpen && tagRef.current) {
+      const rect = tagRef.current.getBoundingClientRect();
+      const scrollContainer = tagRef.current.closest('.overflow-y-auto');
+      const bottomSpace = scrollContainer 
+        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
+        : window.innerHeight - rect.bottom;
+      const topSpace = scrollContainer
+        ? rect.top - scrollContainer.getBoundingClientRect().top
+        : rect.top;
+      const shouldOpenUpward = bottomSpace < 100 && topSpace > 180;
+      setOpenTagUpward(shouldOpenUpward);
+      setTagMaxHeight(Math.max(100, Math.min(180, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
+    }
+  }, [isTagDropdownOpen]);
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (tagRef.current && !tagRef.current.contains(e.target as Node)) {
         setIsTagDropdownOpen(false);
+      }
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setIsAccountDropdownOpen(false);
+      }
+      if (categoryRef.current && !categoryRef.current.contains(e.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+        setCategorySearch('');
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -178,14 +256,79 @@ const QuickEditTransactionModal = ({
     }));
   }, [categories]);
 
+  // Filtragem de categorias baseada no termo de busca
+  const filteredCategories = useMemo(() => {
+    const search = categorySearch.trim().toLowerCase();
+    if (!search) {
+      return {
+        parentCategories: organizedCategories,
+        getChildren: (parentId: string) => categories.filter(c => c.parent_id === parentId)
+      };
+    }
+
+    const matchingCats = categories.filter(c => c.name.toLowerCase().includes(search));
+    const matchingIds = new Set(matchingCats.map(c => c.id));
+    
+    const parentIdsFromChildren = new Set<string>();
+    matchingCats.forEach(c => {
+      if (c.parent_id) {
+        parentIdsFromChildren.add(c.parent_id);
+      }
+    });
+
+    const parentCats = organizedCategories.filter(c => matchingIds.has(c.id) || parentIdsFromChildren.has(c.id));
+
+    const getFilteredChildren = (parentId: string) => {
+      const parentMatches = matchingCats.some(c => c.id === parentId && !c.parent_id);
+      return categories.filter(c => 
+        c.parent_id === parentId && 
+        (parentMatches || c.name.toLowerCase().includes(search))
+      );
+    };
+
+    return {
+      parentCategories: parentCats,
+      getChildren: getFilteredChildren
+    };
+  }, [categories, organizedCategories, categorySearch]);
+
   const getAccountTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      checking: 'Corrente',
+      checking: 'Conta Corrente',
       savings: 'Poupança',
-      credit_card: 'Cartão',
-      investment: 'Investimento',
+      credit_card: 'Cartão de Crédito',
+      investment: 'Investimento'
     };
     return labels[type] || type;
+  };
+
+  const getAccountTypeIcon = (type: string) => {
+    switch (type) {
+      case 'checking': return <Landmark size={18} className="text-teal-600" />;
+      case 'savings': return <PiggyBank size={18} className="text-blue-600" />;
+      case 'credit_card': return <CreditCard size={18} className="text-indigo-600" />;
+      case 'investment': return <TrendingUp size={18} className="text-slate-600" />;
+      default: return <Landmark size={18} className="text-slate-600" />;
+    }
+  };
+
+  const AccountIcon = ({ account }: { account: any }) => {
+    if (!account) return <div className="text-slate-400">{getAccountTypeIcon('')}</div>;
+
+    const typeConfig: Record<string, string> = {
+      checking: 'bg-blue-50 text-blue-700 border-blue-200',
+      savings: 'bg-green-50 text-green-700 border-green-200',
+      credit_card: 'bg-purple-50 text-purple-700 border-purple-200',
+      investment: 'bg-amber-50 text-amber-700 border-amber-200'
+    };
+
+    const bgColorClass = typeConfig[account.type] || 'bg-slate-50 text-slate-400 border-slate-200';
+
+    return (
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center border overflow-hidden shrink-0 ${bgColorClass}`}>
+        {getAccountTypeIcon(account.type)}
+      </div>
+    );
   };
 
   const handleSave = async (scope?: 'this' | 'following' | 'all') => {
@@ -429,48 +572,154 @@ const QuickEditTransactionModal = ({
               {/* Conta */}
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Conta</label>
-                <div className="relative">
-                  <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 appearance-none cursor-pointer transition-all bg-white"
+                <div ref={accountRef} className={`relative ${isAccountDropdownOpen ? 'z-40' : 'z-10'}`}>
+                  <button 
+                    type="button"
+                    onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
+                    className="w-full px-4 py-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
                   >
-                    <option value="">Selecione...</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name} ({getAccountTypeLabel(acc.type)})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    {accountId ? (
+                      <div className="flex items-center gap-3">
+                        <AccountIcon account={accounts.find(a => a.id === accountId)} />
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-700 text-xs leading-tight">{accounts.find(a => a.id === accountId)?.name}</span>
+                          <span className="text-[9px] text-slate-400 font-medium">{getAccountTypeLabel(accounts.find(a => a.id === accountId)?.type || '')}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">Selecione a conta</span>
+                    )}
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </button>
+
+                  {isAccountDropdownOpen && (
+                    <div 
+                      className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
+                      style={{ maxHeight: `${accountMaxHeight}px` }}
+                    >
+                      {accounts.map(a => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setAccountId(a.id);
+                            setIsAccountDropdownOpen(false);
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                        >
+                          <AccountIcon account={a} />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-700 text-xs leading-tight">{a.name}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{getAccountTypeLabel(a.type)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Categoria */}
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Categoria</label>
-                <div className="relative">
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 appearance-none cursor-pointer transition-all bg-white"
+                <div ref={categoryRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-10'}`}>
+                  <button 
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    className="w-full px-4 py-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
                   >
-                    <option value="">Selecione...</option>
-                    {organizedCategories.map((parent) => (
-                      <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
-                        {parent.children.length > 0 ? (
-                          parent.children.map((child: any) => (
-                            <option key={child.id} value={child.id}>
-                              {child.icon || ''} {child.name}
-                            </option>
-                          ))
-                        ) : (
-                          <option value={parent.id}>{parent.icon || ''} {parent.name}</option>
+                    {categoryId ? (
+                      <div className="flex items-center gap-3">
+                        <span className="text-base">{categories.find(c => c.id === categoryId)?.icon || '📁'}</span>
+                        <span className="font-bold text-slate-700 text-xs leading-tight truncate">{categories.find(c => c.id === categoryId)?.name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">Selecione uma categoria</span>
+                    )}
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </button>
+
+                  {isCategoryDropdownOpen && (
+                    <div 
+                      className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col`}
+                      style={{ maxHeight: `${categoryMaxHeight}px` }}
+                    >
+                      <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
+                        <Search size={14} className="text-slate-400 shrink-0 ml-2" />
+                        <input
+                          type="text"
+                          value={categorySearch}
+                          onChange={(e) => setCategorySearch(e.target.value)}
+                          placeholder="Buscar categoria..."
+                          autoFocus
+                          className="w-full bg-transparent border-none focus:ring-0 text-xs py-1 placeholder:text-slate-400 text-slate-700 focus:outline-none focus:border-none font-bold"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.preventDefault();
+                          }}
+                        />
+                        {categorySearch && (
+                          <button
+                            type="button"
+                            onClick={() => setCategorySearch('')}
+                            className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors shrink-0"
+                          >
+                            <X size={12} />
+                          </button>
                         )}
-                      </optgroup>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+
+                      <div className="overflow-y-auto flex-1">
+                        {filteredCategories.parentCategories.length === 0 ? (
+                          <div className="px-4 py-6 text-center text-xs text-slate-400 font-medium">
+                            Nenhuma categoria encontrada
+                          </div>
+                        ) : (
+                          filteredCategories.parentCategories.map(parent => {
+                            const children = filteredCategories.getChildren(parent.id);
+                            return (
+                              <div key={parent.id} className="border-b border-slate-50 last:border-0 last:mb-0 mb-1 pb-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { 
+                                    e.preventDefault();
+                                    setCategoryId(parent.id); 
+                                    setIsCategoryDropdownOpen(false); 
+                                    setCategorySearch(''); 
+                                  }}
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                                >
+                                  <span className="text-xl">{parent.icon || '📁'}</span>
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-slate-700 text-xs leading-tight">{parent.name}</span>
+                                    {children.length > 0 && (
+                                      <span className="text-[9px] text-slate-400 font-medium">Possui subcategorias</span>
+                                    )}
+                                  </div>
+                                </button>
+                                {children.map(child => (
+                                  <button
+                                    key={child.id}
+                                    type="button"
+                                    onClick={(e) => { 
+                                      e.preventDefault();
+                                      setCategoryId(child.id); 
+                                      setIsCategoryDropdownOpen(false); 
+                                      setCategorySearch(''); 
+                                    }}
+                                    className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
+                                  >
+                                    <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
+                                    <span className="text-xs font-bold text-slate-600">{child.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -483,7 +732,7 @@ const QuickEditTransactionModal = ({
                 <button
                   type="button"
                   onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                  className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
                 >
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <TagIcon size={12} className="text-slate-400 shrink-0" />
@@ -512,7 +761,10 @@ const QuickEditTransactionModal = ({
                 </button>
 
                 {isTagDropdownOpen && (
-                  <div className="absolute z-20 bottom-full mb-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-[140px] overflow-y-auto">
+                  <div 
+                    className={`absolute z-20 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto`}
+                    style={{ maxHeight: `${tagMaxHeight}px` }}
+                  >
                     {tags.length === 0 ? (
                       <p className="p-2 text-xs text-slate-400 text-center">Nenhuma tag cadastrada</p>
                     ) : (
