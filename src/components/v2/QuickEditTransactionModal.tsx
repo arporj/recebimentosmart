@@ -14,9 +14,7 @@ import {
   PiggyBank,
   TrendingUp,
   CreditCard,
-  Plus,
   Search,
-  CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,6 +50,7 @@ const QuickEditTransactionModal = ({
   const [categoryId, setCategoryId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isPaid, setIsPaid] = useState(false);
+  const [autoConfirm, setAutoConfirm] = useState(false);
 
   // Data lists
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -87,6 +86,7 @@ const QuickEditTransactionModal = ({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const isRecurring = transaction?.modalidade === 'recorrente' || transaction?.modalidade === 'parcelada' || !!transaction?.parent_id || transaction?.recurrence_enabled;
+  const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
 
   useEscapeKey(() => {
     if (isScopeModalOpen || isDeleteConfirmOpen || isAccountDropdownOpen || isCategoryDropdownOpen || isTagDropdownOpen) return;
@@ -111,6 +111,7 @@ const QuickEditTransactionModal = ({
       setAccountId(transaction.account_id || '');
       setCategoryId(transaction.category_id || '');
       setIsPaid(isConfirming ? true : transaction.status === 'paid');
+      setAutoConfirm(transaction.auto_confirm || false);
 
       // Format amount
       const amountCents = Math.round((transaction.amount || 0) * 100);
@@ -362,6 +363,7 @@ const QuickEditTransactionModal = ({
         status: isPaid ? 'paid' : 'pending',
         paid_date: paidDate,
         tags: selectedTags,
+        auto_confirm: isCreditCard ? false : autoConfirm,
       };
 
       // If recurrent and no scope selected yet, ask (unless we are just confirming, which is always 'this')
@@ -704,84 +706,88 @@ const QuickEditTransactionModal = ({
               </div>
             </div>
 
-            {/* Tags e Checkbox Pago lado a lado */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-              {/* Tags */}
-              <div ref={tagRef} className="relative">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Tags</label>
-                <button
-                  type="button"
-                  onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
+            {/* Tags */}
+            <div ref={tagRef} className="relative">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Tags</label>
+              <button
+                type="button"
+                onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                className="w-full py-2.5 px-3 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
+              >
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <TagIcon size={12} className="text-slate-400 shrink-0" />
+                  {selectedTags.length > 0 ? (
+                    selectedTags.map((tagId) => {
+                      const tag = tags.find((t) => t.id === tagId);
+                      return tag ? (
+                        <span
+                          key={tagId}
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded border"
+                          style={{
+                            backgroundColor: (tag.color || '#94a3b8') + '15',
+                            borderColor: (tag.color || '#94a3b8') + '40',
+                            color: tag.color || '#475569',
+                          }}
+                        >
+                          {tag.name}
+                        </span>
+                      ) : null;
+                    })
+                  ) : (
+                    <span className="text-slate-400">Nenhuma tag</span>
+                  )}
+                </div>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isTagDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isTagDropdownOpen && (
+                <div 
+                  className={`absolute z-20 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto`}
+                  style={{ maxHeight: `${tagMaxHeight}px` }}
                 >
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <TagIcon size={12} className="text-slate-400 shrink-0" />
-                    {selectedTags.length > 0 ? (
-                      selectedTags.map((tagId) => {
-                        const tag = tags.find((t) => t.id === tagId);
-                        return tag ? (
+                  {tags.length === 0 ? (
+                    <p className="p-2 text-xs text-slate-400 text-center">Nenhuma tag cadastrada</p>
+                  ) : (
+                    tags.map((tag) => {
+                      const isSelected = selectedTags.includes(tag.id);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags((prev) =>
+                              isSelected ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
+                            );
+                          }}
+                          className={`w-full px-2.5 py-1.5 text-left text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50' : ''}`}
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={12} className="text-teal-600 shrink-0" />
+                          ) : (
+                            <Square size={12} className="text-slate-300 shrink-0" />
+                          )}
                           <span
-                            key={tagId}
-                            className="text-[9px] font-bold px-1.5 py-0.5 rounded border"
-                            style={{
-                              backgroundColor: (tag.color || '#94a3b8') + '15',
-                              borderColor: (tag.color || '#94a3b8') + '40',
-                              color: tag.color || '#475569',
-                            }}
-                          >
-                            {tag.name}
-                          </span>
-                        ) : null;
-                      })
-                    ) : (
-                      <span className="text-slate-400">Nenhuma tag</span>
-                    )}
-                  </div>
-                  <ChevronDown size={14} className={`text-slate-400 transition-transform ${isTagDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: tag.color || '#94a3b8' }}
+                          />
+                          {tag.name}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
 
-                {isTagDropdownOpen && (
-                  <div 
-                    className={`absolute z-20 ${openTagUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto`}
-                    style={{ maxHeight: `${tagMaxHeight}px` }}
-                  >
-                    {tags.length === 0 ? (
-                      <p className="p-2 text-xs text-slate-400 text-center">Nenhuma tag cadastrada</p>
-                    ) : (
-                      tags.map((tag) => {
-                        const isSelected = selectedTags.includes(tag.id);
-                        return (
-                          <button
-                            key={tag.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTags((prev) =>
-                                isSelected ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
-                              );
-                            }}
-                            className={`w-full px-2.5 py-1.5 text-left text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50' : ''}`}
-                          >
-                            {isSelected ? (
-                              <CheckSquare size={12} className="text-teal-600 shrink-0" />
-                            ) : (
-                              <Square size={12} className="text-slate-300 shrink-0" />
-                            )}
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: tag.color || '#94a3b8' }}
-                            />
-                            {tag.name}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-
+            {/* Checkboxes de Status e Confirmação */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
               {/* Checkbox Pago */}
               <div
-                onClick={() => setIsPaid(!isPaid)}
+                onClick={() => {
+                  const newPaid = !isPaid;
+                  setIsPaid(newPaid);
+                  if (newPaid) setAutoConfirm(false);
+                }}
                 className={`flex items-center gap-2.5 p-2 rounded-xl border-2 cursor-pointer transition-all ${
                   isPaid
                     ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
@@ -802,6 +808,35 @@ const QuickEditTransactionModal = ({
                   </p>
                 </div>
               </div>
+
+              {/* Auto Confirm Toggle */}
+              {!isPaid && !isCreditCard && (date >= format(new Date(), 'yyyy-MM-dd')) && (
+                <div
+                  onClick={() => setAutoConfirm(!autoConfirm)}
+                  className={`flex items-center gap-2.5 p-2 rounded-xl border-2 cursor-pointer transition-all ${
+                    autoConfirm
+                      ? 'bg-indigo-50 border-indigo-300 shadow-sm shadow-indigo-100'
+                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {autoConfirm ? (
+                    <CheckSquare size={18} className="text-indigo-600 shrink-0" />
+                  ) : (
+                    <Square size={18} className="text-slate-400 shrink-0" />
+                  )}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
+                      Confirmar Automaticamente
+                      <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
+                        <span className="text-[10px] font-black">?</span>
+                      </div>
+                    </h3>
+                    <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
+                      No dia do vencimento
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

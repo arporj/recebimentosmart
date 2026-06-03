@@ -1858,7 +1858,7 @@ const FinancialTransactionModalV2 = ({
                       </button>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
-                          Auto-confirmar
+                          Confirmar Automaticamente
                           <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
                             <span className="text-[10px] font-black">?</span>
                           </div>
