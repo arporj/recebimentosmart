@@ -73,6 +73,11 @@ const FAQ_ITEMS: FAQItem[] = [
         category: 'seguranca',
         question: 'Quem tem acesso às minhas informações financeiras?',
         answer: 'Apenas você e os usuários que você explicitamente autorizar através do recurso de compartilhamento de conta. O suporte técnico do Recebimento $mart só acessa seus dados em casos excepcionais de resolução de chamados sob sua solicitação formal, respeitando estritamente a Lei Geral de Proteção de Dados (LGPD).'
+    },
+    {
+        category: 'funcionalidades',
+        question: 'Como funciona a aceitação de lançamentos compartilhados?',
+        answer: 'Ao aceitar um convite de lançamentos compartilhados, você tem total controle sobre como esses registros aparecem na sua conta. Você pode escolher associar os lançamentos a um cliente existente, criar automaticamente um novo cliente local (com o nome de quem está compartilhando para facilitar sua organização) ou aceitar os lançamentos sem vinculá-los a nenhum cliente específico, de forma totalmente flexível.'
     }
 ];
 
