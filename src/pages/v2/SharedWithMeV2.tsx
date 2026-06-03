@@ -224,10 +224,13 @@ export default function SharedWithMeV2() {
   const [acceptingShare, setAcceptingShare] = useState<{ id: string; clientName: string } | null>(null);
   const [categories, setCategories] = useState<{id: string; name: string; icon?: string}[]>([]);
   const [accounts, setAccounts] = useState<{id: string; name: string; type?: string; bank_icon?: string}[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
   const [acceptTxsConfig, setAcceptTxsConfig] = useState<Record<string, { categoryId: string; accountId: string }>>({});
-  const [isAccepting, setIsAccepting] = useState(false);  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [associationType, setAssociationType] = useState<'new' | 'existing' | 'none'>('new');
+  const [selectedReceiverClientId, setSelectedReceiverClientId] = useState('');  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
   const [sentShares, setSentShares] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'shares' | 'sent' | 'updates'>('shares');
   const [pendingUpdates, setPendingUpdates] = useState<any[]>([]);
@@ -259,8 +262,24 @@ export default function SharedWithMeV2() {
     if (user?.email) {
       fetchShares();
       fetchCategoriesAndAccounts();
+      fetchClients();
     }
   }, [user]);
+
+  const fetchClients = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .order('name');
+      if (data) setClients(data);
+    } catch (err) {
+      console.error('Erro ao buscar clientes:', err);
+    }
+  };
 
   const fetchCategoriesAndAccounts = async () => {
     if (!user) return;
@@ -625,29 +644,6 @@ export default function SharedWithMeV2() {
     const share = shares.find(s => s.id === shareId);
     if (!share) return;
 
-    const clientTxs = pendingTransactions.filter(tx => tx.client_id === share.client_id);
-
-    if (clientTxs.length === 0) {
-      setIsAccepting(true);
-      try {
-        const { error } = await supabase.rpc('fn_accept_share_v2', {
-          p_share_id: shareId,
-          p_configs: []
-        });
-
-        if (error) throw error;
-
-        toast.success(`Você aceitou o compartilhamento de "${clientName}"!`);
-        fetchShares();
-      } catch (err) {
-        console.error('Erro ao aceitar compartilhamento:', err);
-        toast.error('Erro ao aceitar convite.');
-      } finally {
-        setIsAccepting(false);
-      }
-      return;
-    }
-
     setSelectedCategory('');
     if (accounts.length === 1) {
       setSelectedAccount(accounts[0].id);
@@ -655,6 +651,7 @@ export default function SharedWithMeV2() {
       setSelectedAccount('');
     }
 
+    const clientTxs = pendingTransactions.filter(tx => tx.client_id === share.client_id);
     const initialConfig: Record<string, { categoryId: string; accountId: string }> = {};
     clientTxs.forEach(tx => {
       initialConfig[tx.id] = {
@@ -663,6 +660,8 @@ export default function SharedWithMeV2() {
       };
     });
     setAcceptTxsConfig(initialConfig);
+    setAssociationType('new');
+    setSelectedReceiverClientId('');
     setAcceptingShare({ id: shareId, clientName });
   };
 
@@ -702,6 +701,51 @@ export default function SharedWithMeV2() {
     }));
   };
 
+  const resolveReceiverClientId = async (share: SharedItem): Promise<string | null> => {
+    if (associationType === 'none') {
+      return null;
+    }
+    if (associationType === 'existing') {
+      if (!selectedReceiverClientId) {
+        toast.error('Por favor, selecione um cliente existente.');
+        throw new Error('Cliente não selecionado');
+      }
+      return selectedReceiverClientId;
+    }
+    
+    // Criar novo cliente
+    try {
+      const clientData = {
+        name: share.sender.name || 'Parceiro Compartilhado',
+        phone: '',
+        monthly_payment: 0,
+        payment_due_day: 1,
+        start_date: format(new Date(), 'yyyy-MM-dd'),
+        next_payment_date: format(new Date(), 'yyyy-MM-dd'),
+        status: true,
+        payment_frequency: 'monthly',
+        user_id: user?.id,
+      };
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .insert([clientData])
+        .select('id')
+        .single();
+        
+      if (error) throw error;
+      if (!data) throw new Error('Falha ao criar o cliente');
+      
+      // Atualizar a lista local de clientes
+      await fetchClients();
+      return data.id;
+    } catch (err) {
+      console.error('Erro ao criar cliente:', err);
+      toast.error('Erro ao criar novo cliente para a associação.');
+      throw err;
+    }
+  };
+
   const handleConfirmAcceptShare = async () => {
     if (!acceptingShare) return;
 
@@ -726,9 +770,12 @@ export default function SharedWithMeV2() {
 
     setIsAccepting(true);
     try {
+      const finalReceiverClientId = await resolveReceiverClientId(share);
+
       const { error } = await supabase.rpc('fn_accept_share_v2', {
         p_share_id: acceptingShare.id,
-        p_configs: configsArray
+        p_configs: configsArray,
+        p_receiver_client_id: finalReceiverClientId
       });
 
       if (error) throw error;
@@ -738,7 +785,6 @@ export default function SharedWithMeV2() {
       fetchShares();
     } catch (err) {
       console.error('Erro ao aceitar compartilhamento:', err);
-      toast.error('Erro ao aceitar convite.');
     } finally {
       setIsAccepting(false);
     }
@@ -746,6 +792,9 @@ export default function SharedWithMeV2() {
 
   const handleAcceptIndividualTx = async (txId: string) => {
     if (!acceptingShare) return;
+    const share = shares.find(s => s.id === acceptingShare.id);
+    if (!share) return;
+
     const config = acceptTxsConfig[txId];
     if (!config || !config.categoryId || !config.accountId) {
       toast.error("Selecione uma categoria e uma conta para este lançamento.");
@@ -754,13 +803,16 @@ export default function SharedWithMeV2() {
 
     setIsAccepting(true);
     try {
+      const finalReceiverClientId = await resolveReceiverClientId(share);
+
       const { error } = await supabase.rpc('fn_accept_share_v2', {
         p_share_id: acceptingShare.id,
         p_configs: [{
           original_transaction_id: txId,
           category_id: config.categoryId,
           account_id: config.accountId
-        }]
+        }],
+        p_receiver_client_id: finalReceiverClientId
       });
 
       if (error) throw error;
@@ -770,7 +822,6 @@ export default function SharedWithMeV2() {
       fetchShares();
     } catch (err) {
       console.error('Erro ao aceitar lançamento individual:', err);
-      toast.error('Erro ao aceitar lançamento.');
     } finally {
       setIsAccepting(false);
     }
@@ -795,9 +846,12 @@ export default function SharedWithMeV2() {
 
     setIsAccepting(true);
     try {
+      const finalReceiverClientId = await resolveReceiverClientId(share);
+
       const { error } = await supabase.rpc('fn_accept_share_v2', {
         p_share_id: acceptingShare.id,
-        p_configs: configsArray
+        p_configs: configsArray,
+        p_receiver_client_id: finalReceiverClientId
       });
 
       if (error) throw error;
@@ -807,7 +861,6 @@ export default function SharedWithMeV2() {
       fetchShares();
     } catch (err) {
       console.error('Erro ao aceitar todos de uma vez:', err);
-      toast.error('Erro ao aceitar todos os lançamentos.');
     } finally {
       setIsAccepting(false);
     }
@@ -1646,7 +1699,118 @@ export default function SharedWithMeV2() {
               </div>
 
               {/* Corpo com scroll se necessário */}
-              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="p-6 overflow-y-auto space-y-4 flex-grow flex-1">
+                {/* Seção de Associação de Cliente */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 space-y-4">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Como deseja associar este cliente em sua conta?</h3>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      Ao aceitar, os lançamentos compartilhados serão integrados às suas finanças. Escolha como vincular esses lançamentos a um cliente na sua conta:
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Opção 1: Criar novo cliente */}
+                    <label className={`flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      associationType === 'new' 
+                        ? 'border-teal-500 bg-teal-50/20' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-extrabold text-slate-800">Criar Novo Cliente</span>
+                        <input
+                          type="radio"
+                          name="associationType"
+                          value="new"
+                          checked={associationType === 'new'}
+                          onChange={() => setAssociationType('new')}
+                          className="text-teal-600 focus:ring-teal-500 w-4 h-4"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-tight">
+                        Cria um novo cliente chamado <strong className="text-teal-700">{share?.sender.name}</strong> para estes lançamentos.
+                      </span>
+                    </label>
+
+                    {/* Opção 2: Associar a cliente existente */}
+                    <label className={`flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      associationType === 'existing' 
+                        ? 'border-teal-500 bg-teal-50/20' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-extrabold text-slate-800">Associar a Existente</span>
+                        <input
+                          type="radio"
+                          name="associationType"
+                          value="existing"
+                          checked={associationType === 'existing'}
+                          onChange={() => {
+                            setAssociationType('existing');
+                            if (clients.length > 0 && !selectedReceiverClientId) {
+                              setSelectedReceiverClientId(clients[0].id);
+                            }
+                          }}
+                          className="text-teal-600 focus:ring-teal-500 w-4 h-4"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-tight">
+                        Vincula as transações a um cliente que você já possui cadastrado.
+                      </span>
+                    </label>
+
+                    {/* Opção 3: Não associar */}
+                    <label className={`flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      associationType === 'none' 
+                        ? 'border-teal-500 bg-teal-50/20' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-extrabold text-slate-800">Não Associar</span>
+                        <input
+                          type="radio"
+                          name="associationType"
+                          value="none"
+                          checked={associationType === 'none'}
+                          onChange={() => setAssociationType('none')}
+                          className="text-teal-600 focus:ring-teal-500 w-4 h-4"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-tight">
+                        Mantém os lançamentos avulsos, sem vínculo com nenhum cliente cadastrado.
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Seletor de Cliente Existente */}
+                  {associationType === 'existing' && (
+                    <div className="pt-2 animate-in slide-in-from-top-2 duration-200">
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">Selecione o Cliente</label>
+                      {clients.length === 0 ? (
+                        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                          Nenhum cliente cadastrado em sua conta. Crie um novo cliente ou escolha outra opção.
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <select
+                            value={selectedReceiverClientId}
+                            onChange={(e) => setSelectedReceiverClientId(e.target.value)}
+                            className="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="">Selecione um cliente...</option>
+                            {clients.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <ChevronDown size={16} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
                   Para aceitar o histórico de lançamentos compartilhados, associe uma categoria e uma conta bancária para cada um. 
                   Você pode usar a primeira linha (<strong className="text-teal-700">⚡ PREENCHER EM LOTE</strong>) para preencher automaticamente todas as linhas de uma vez só, ou personalizar cada uma individualmente.
