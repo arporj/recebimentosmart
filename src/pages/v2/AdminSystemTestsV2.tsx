@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { 
     FlaskConical, Users, Mail, CalendarCheck, AlertTriangle, 
     Trash2, Play, Terminal, ChevronRight, CheckCircle, ShieldAlert,
-    Search, ChevronDown 
+    Search, ChevronDown, CreditCard
 } from 'lucide-react';
 
 interface UserSelectOption {
@@ -169,6 +169,39 @@ export default function AdminSystemTestsV2() {
         } catch (error: any) {
             console.error('Erro:', error);
             addLog('error', `Erro na RPC process_due_accounts_notification_test: ${error.message || 'Erro inesperado'}`, error);
+            toast.error('Erro ao disparar teste.', { id: toastId });
+        } finally {
+            setExecuting(false);
+        }
+    };
+
+    // 2.1. Testar E-mail de Fechamento de Fatura do Cartão
+    const handleTestCardInvoiceNotification = async () => {
+        const selUser = getSelectedUser();
+        if (!selUser) {
+            toast.error('Por favor, selecione um usuário primeiro.');
+            return;
+        }
+
+        setExecuting(true);
+        addLog('info', `Invocando RPC de teste de fechamento de fatura de cartão do usuário ${selUser.name || selUser.email}...`);
+        const toastId = toast.loading('Disparando e-mail de teste (fechamento de fatura)...');
+        
+        try {
+            const { data: responseData, error } = await supabase.rpc('process_card_invoice_notification_test', { p_user_id: selUser.id });
+            if (error) throw error;
+            
+            const res = responseData as any;
+            if (res?.success) {
+                addLog('success', `RPC processada! E-mail de fechamento de fatura enviado para andre@andreric.com.`, res);
+                toast.success(res.message || 'E-mail de teste enviado!', { id: toastId });
+            } else {
+                addLog('warning', `RPC retornou aviso: ${res?.error || 'Nenhum cartão com gastos no mês atual.'}`, res);
+                toast.error(res?.error || 'Nenhum cartão com gastos.', { id: toastId });
+            }
+        } catch (error: any) {
+            console.error('Erro:', error);
+            addLog('error', `Erro na RPC process_card_invoice_notification_test: ${error.message || 'Erro inesperado'}`, error);
             toast.error('Erro ao disparar teste.', { id: toastId });
         } finally {
             setExecuting(false);
@@ -427,6 +460,14 @@ export default function AdminSystemTestsV2() {
                                 >
                                     <span>Testar E-mail de Contas Hoje</span>
                                     <Play className="w-4 h-4 text-emerald-500" />
+                                </button>
+                                <button
+                                    onClick={handleTestCardInvoiceNotification}
+                                    disabled={executing || loadingUsers}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 hover:bg-slate-100 transition-all disabled:opacity-50"
+                                >
+                                    <span>Testar Fechamento de Fatura de Cartão</span>
+                                    <CreditCard className="w-4 h-4 text-indigo-500" />
                                 </button>
                                 <button
                                     onClick={handleNotifyDuePayments}
