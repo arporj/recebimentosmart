@@ -19,8 +19,10 @@ export default function UserProfileSettingsV2() {
 
     // Email alert preferences
     const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(false);
-    const [dueEmailNotifyDayOfWeek, setDueEmailNotifyDayOfWeek] = useState(1);
+    const [dueEmailNotifyDayOfWeek, setDueEmailNotifyDayOfWeek] = useState(0);
+    const [cardInvoiceEmailNotifyEnabled, setCardInvoiceEmailNotifyEnabled] = useState(true);
     const [canDueEmailNotify, setCanDueEmailNotify] = useState(false);
+    const [planEmailFrequency, setPlanEmailFrequency] = useState<'daily' | 'weekly'>('weekly');
     const [loadingPreferences, setLoadingPreferences] = useState(true);
 
     const formatMockValue = (amount: number, isNegative: boolean) => {
@@ -53,7 +55,7 @@ export default function UserProfileSettingsV2() {
             setLoadingPreferences(true);
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('due_email_notify_enabled, due_email_notify_day_of_week, plano')
+                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, plano')
                 .eq('id', user.id)
                 .single();
             
@@ -61,17 +63,20 @@ export default function UserProfileSettingsV2() {
 
             if (profile) {
                 setDueEmailNotifyEnabled(profile.due_email_notify_enabled || false);
-                setDueEmailNotifyDayOfWeek(profile.due_email_notify_day_of_week ?? 1);
+                setDueEmailNotifyDayOfWeek(profile.due_email_notify_day_of_week ?? 0);
+                setCardInvoiceEmailNotifyEnabled(profile.card_invoice_email_notify_enabled !== false);
 
                 const planSlug = profile.plano?.toLowerCase() || 'free';
                 const { data: plan, error: planError } = await supabase
                     .from('plans')
-                    .select('can_due_email_notify')
+                    .select('email_notification_enabled, email_notification_frequency')
                     .eq('slug', planSlug)
                     .single();
 
-                if (planError) throw planError;
-                setCanDueEmailNotify(plan?.can_due_email_notify || false);
+                if (!planError && plan) {
+                    setCanDueEmailNotify(plan.email_notification_enabled || false);
+                    setPlanEmailFrequency((plan.email_notification_frequency || 'weekly') as 'daily' | 'weekly');
+                }
             }
         } catch (error) {
             console.error('Erro ao buscar preferências de e-mail:', error);
@@ -136,6 +141,7 @@ export default function UserProfileSettingsV2() {
                     .update({
                         due_email_notify_enabled: dueEmailNotifyEnabled,
                         due_email_notify_day_of_week: dueEmailNotifyDayOfWeek,
+                        card_invoice_email_notify_enabled: cardInvoiceEmailNotifyEnabled,
                         layout_preference: layoutPreference,
                         show_currency_symbol: showCurrencySymbol,
                         show_negative_sign: showNegativeSign,
@@ -240,7 +246,7 @@ export default function UserProfileSettingsV2() {
                             }`}
                         >
                             <Layout className="w-5 h-5" />
-                            Preferências de Layout
+                            Preferências
                         </button>
                         {plano && ['pro', 'pró', 'premium'].includes(plano.toLowerCase()) && (
                             <button
@@ -350,226 +356,26 @@ export default function UserProfileSettingsV2() {
                                         <Layout className="w-5 h-5 text-custom" />
                                     </div>
                                     <div>
-                                        <h2 className="text-lg font-bold text-slate-900">Preferências de Layout</h2>
-                                        <p className="text-sm text-slate-500">Selecione a disposição preferida para a tabela de transações do seu extrato.</p>
+                                        <h2 className="text-lg font-bold text-slate-900">Preferências</h2>
+                                        <p className="text-sm text-slate-500">Selecione suas preferências de exibição de layout e alertas por e-mail.</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="p-6 space-y-6">
-                                {/* Painel de Opções Adicionais de Exibição */}
-                                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-                                    {/* Opção R$ */}
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Exibir Símbolo (R$)</label>
-                                        <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowCurrencySymbol(true)}
-                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${showCurrencySymbol ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
-                                                Sim
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowCurrencySymbol(false)}
-                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${!showCurrencySymbol ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
-                                                Não
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Opção Sinal Negativo */}
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Sinal de Negativo (-)</label>
-                                        <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNegativeSign(true)}
-                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${showNegativeSign ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
-                                                Sim
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNegativeSign(false)}
-                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${!showNegativeSign ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
-                                                Não
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Opção Alinhamento do Valor */}
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Alinhamento do Valor</label>
-                                        <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setValueAlignment('left')}
-                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${valueAlignment === 'left' ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
-                                                Esquerda
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setValueAlignment('right')}
-                                                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${valueAlignment === 'right' ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
-                                                Direita
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {/* CARD 1: Padrão */}
-                                    <div 
-                                        onClick={() => setLayoutPreference('default')}
-                                        className={`group relative rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-md ${
-                                            layoutPreference === 'default'
-                                                ? 'border-custom bg-custom/5 ring-1 ring-custom'
-                                                : 'border-slate-200 bg-white hover:border-slate-300'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center mb-3">
-                                            <h4 className="font-extrabold text-xs text-slate-800">1. Layout Padrão</h4>
-                                            {layoutPreference === 'default' && (
-                                                <span className="w-4 h-4 rounded-full bg-custom flex items-center justify-center text-white text-[9px] font-black">✓</span>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
-                                            Descrição e indicadores à esquerda, valor financeiro à direita. Formato padrão do sistema.
-                                        </p>
-                                        
-                                        {/* Mockup visual premium */}
-                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
-                                                    <div className="flex gap-0.5 shrink-0">
-                                                        <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
-                                                        <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
-                                                    </div>
-                                                </div>
-                                                <span className={`font-extrabold text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
-                                                    {formatMockValue(150, false)}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
-                                                </div>
-                                                <span className={`font-extrabold text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
-                                                    {formatMockValue(320.40, true)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* CARD 2: Valor Primeiro */}
-                                    <div 
-                                        onClick={() => setLayoutPreference('value_first')}
-                                        className={`group relative rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-md ${
-                                            layoutPreference === 'value_first'
-                                                ? 'border-custom bg-custom/5 ring-1 ring-custom'
-                                                : 'border-slate-200 bg-white hover:border-slate-300'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center mb-3">
-                                            <h4 className="font-extrabold text-xs text-slate-800">2. Valor em Destaque</h4>
-                                            {layoutPreference === 'value_first' && (
-                                                <span className="w-4 h-4 rounded-full bg-custom flex items-center justify-center text-white text-[9px] font-black">✓</span>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
-                                            Coluna de valor na frente, seguida pela descrição do lançamento com badges à direita.
-                                        </p>
-                                        
-                                        {/* Mockup visual premium */}
-                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
-                                            <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
-                                                    {formatMockValue(150, false)}
-                                                </span>
-                                                <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
-                                                <div className="flex gap-0.5 shrink-0 ml-auto">
-                                                    <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
-                                                    <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
-                                                    {formatMockValue(320.40, true)}
-                                                </span>
-                                                <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* CARD 3: Valor Esquerda, Descrição Direita */}
-                                    <div 
-                                        onClick={() => setLayoutPreference('value_right_desc')}
-                                        className={`group relative rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-md ${
-                                            layoutPreference === 'value_right_desc'
-                                                ? 'border-custom bg-custom/5 ring-1 ring-custom'
-                                                : 'border-slate-200 bg-white hover:border-slate-300'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center mb-3">
-                                            <h4 className="font-extrabold text-xs text-slate-800">3. Valor & Descrição Invertidos</h4>
-                                            {layoutPreference === 'value_right_desc' && (
-                                                <span className="w-4 h-4 rounded-full bg-custom flex items-center justify-center text-white text-[9px] font-black">✓</span>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
-                                            Valor à esquerda e descrição à direita. Badges de recorrência e auto confirmar antes do nome.
-                                        </p>
-                                        
-                                        {/* Mockup visual premium */}
-                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                    <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
-                                                        {formatMockValue(150, false)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                                                    <div className="flex gap-0.5 shrink-0">
-                                                        <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
-                                                        <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
-                                                    </div>
-                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                    <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
-                                                        {formatMockValue(320.40, true)}
-                                                    </span>
-                                                </div>
-                                                <span className="font-extrabold text-[10px] text-slate-700 truncate text-right flex-1 min-w-0">Supermercado</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Seção Premium: Notificações de Contas por E-mail */}
-                                <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4 mt-6">
+                                {/* Seção Premium: Alertas por E-mail (NO TOPO) */}
+                                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-custom/10 rounded-lg text-custom">
                                             <Mail className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <h3 className="font-extrabold text-sm text-slate-900">Alerta de Contas a Vencer</h3>
-                                            <p className="text-[11px] text-slate-500 font-medium">Receba semanalmente um consolidado de contas vencidas e a vencer no seu e-mail.</p>
+                                            <h3 className="font-extrabold text-sm text-slate-900">Alertas por E-mail</h3>
+                                            <p className="text-[11px] text-slate-500 font-medium">
+                                                {planEmailFrequency === 'weekly' 
+                                                    ? 'Receba semanalmente um consolidado de contas vencidas e a vencer no seu e-mail.'
+                                                    : 'Configure a frequência diária dos alertas de contas e fechamento de faturas.'}
+                                            </p>
                                         </div>
                                     </div>
 
@@ -585,12 +391,13 @@ export default function UserProfileSettingsV2() {
                                                 </p>
                                             </div>
                                         </div>
-                                    ) : (
+                                    ) : planEmailFrequency === 'weekly' ? (
+                                        // Layout Semanal
                                         <div className="space-y-4 pt-2">
                                             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-900">Habilitar Alertas por E-mail</p>
-                                                    <p className="text-[10px] text-slate-500 font-medium">Ativar ou desativar o envio automático</p>
+                                                    <p className="text-xs font-bold text-slate-900">Habilitar Alerta de Contas Semanal</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Ativar ou desativar o envio automático consolidado</p>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -619,10 +426,257 @@ export default function UserProfileSettingsV2() {
                                                         <option value={6}>Sábado</option>
                                                         <option value={0}>Domingo</option>
                                                     </select>
+                                                    <p className="text-[10px] text-slate-400 font-medium italic mt-1">
+                                                        * Nota: No plano semanal, o resumo da fatura do seu cartão de crédito (caso configurado) será enviado consolidado junto com as demais contas.
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
+                                    ) : (
+                                        // Layout Diário
+                                        <div className="space-y-4 pt-2">
+                                            {/* Switch 1: Contas do Dia */}
+                                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-900">E-mail de Contas do Dia</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Receber alerta diário de contas a vencer hoje</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={dueEmailNotifyEnabled}
+                                                    onClick={() => setDueEmailNotifyEnabled(!dueEmailNotifyEnabled)}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${dueEmailNotifyEnabled ? 'bg-custom' : 'bg-slate-200'}`}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${dueEmailNotifyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+
+                                            {/* Switch 2: E-mail do Cartão de Crédito */}
+                                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-900">E-mail do Cartão de Crédito</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Receber notificação quando a fatura do cartão fechar</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={cardInvoiceEmailNotifyEnabled}
+                                                    onClick={() => setCardInvoiceEmailNotifyEnabled(!cardInvoiceEmailNotifyEnabled)}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${cardInvoiceEmailNotifyEnabled ? 'bg-custom' : 'bg-slate-200'}`}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${cardInvoiceEmailNotifyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
+                                </div>
+
+                                <div className="border-t border-slate-100 pt-6">
+                                    <h3 className="font-extrabold text-sm text-slate-900 mb-4">Disposição do Extrato</h3>
+                                    {/* Painel de Opções Adicionais de Exibição */}
+                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+                                        {/* Opção R$ */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Exibir Símbolo (R$)</label>
+                                            <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCurrencySymbol(true)}
+                                                    className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${showCurrencySymbol ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                                >
+                                                    Sim
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCurrencySymbol(false)}
+                                                    className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${!showCurrencySymbol ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                                >
+                                                    Não
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Opção Sinal Negativo */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Sinal de Negativo (-)</label>
+                                            <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowNegativeSign(true)}
+                                                    className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${showNegativeSign ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                                >
+                                                    Sim
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowNegativeSign(false)}
+                                                    className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${!showNegativeSign ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                                >
+                                                    Não
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Opção Alinhamento do Valor */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Alinhamento do Valor</label>
+                                            <div className="flex bg-slate-200/70 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setValueAlignment('left')}
+                                                    className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${valueAlignment === 'left' ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                                >
+                                                    Esquerda
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setValueAlignment('right')}
+                                                    className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition-all ${valueAlignment === 'right' ? 'bg-white text-custom shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                                >
+                                                    Direita
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {/* CARD 1: Padrão */}
+                                        <div 
+                                            onClick={() => setLayoutPreference('default')}
+                                            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-md ${
+                                                layoutPreference === 'default'
+                                                    ? 'border-custom bg-custom/5 ring-1 ring-custom'
+                                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h4 className="font-extrabold text-xs text-slate-800">1. Layout Padrão</h4>
+                                                {layoutPreference === 'default' && (
+                                                    <span className="w-4 h-4 rounded-full bg-custom flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
+                                                Descrição e indicadores à esquerda, valor financeiro à direita. Formato padrão do sistema.
+                                            </p>
+                                            
+                                            {/* Mockup visual premium */}
+                                            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
+                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                        <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
+                                                        <div className="flex gap-0.5 shrink-0">
+                                                            <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
+                                                            <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`font-extrabold text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        {formatMockValue(150, false)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                        <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
+                                                    </div>
+                                                    <span className={`font-extrabold text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        {formatMockValue(320.40, true)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* CARD 2: Valor Primeiro */}
+                                        <div 
+                                            onClick={() => setLayoutPreference('value_first')}
+                                            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-md ${
+                                                layoutPreference === 'value_first'
+                                                    ? 'border-custom bg-custom/5 ring-1 ring-custom'
+                                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h4 className="font-extrabold text-xs text-slate-800">2. Valor em Destaque</h4>
+                                                {layoutPreference === 'value_first' && (
+                                                    <span className="w-4 h-4 rounded-full bg-custom flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
+                                                Coluna de valor na frente, seguida pela descrição do lançamento com badges à direita.
+                                            </p>
+                                            
+                                            {/* Mockup visual premium */}
+                                            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
+                                                <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                    <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        {formatMockValue(150, false)}
+                                                    </span>
+                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
+                                                    <div className="flex gap-0.5 shrink-0 ml-auto">
+                                                        <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
+                                                        <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                    <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        {formatMockValue(320.40, true)}
+                                                    </span>
+                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* CARD 3: Valor Esquerda, Descrição Direita */}
+                                        <div 
+                                            onClick={() => setLayoutPreference('value_right_desc')}
+                                            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all hover:shadow-md ${
+                                                layoutPreference === 'value_right_desc'
+                                                    ? 'border-custom bg-custom/5 ring-1 ring-custom'
+                                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h4 className="font-extrabold text-xs text-slate-800">3. Valor & Descrição Invertidos</h4>
+                                                {layoutPreference === 'value_right_desc' && (
+                                                    <span className="w-4 h-4 rounded-full bg-custom flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
+                                                Valor à esquerda e descrição à direita. Badges de recorrência e auto confirmar antes do nome.
+                                            </p>
+                                            
+                                            {/* Mockup visual premium */}
+                                            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-2 select-none pointer-events-none">
+                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                        <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                            {formatMockValue(150, false)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                                                        <div className="flex gap-0.5 shrink-0">
+                                                            <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[8px]">🔄</span>
+                                                            <span className="w-3.5 h-3.5 rounded bg-slate-100 flex items-center justify-center text-amber-500 font-bold text-[8px]">⚡</span>
+                                                        </div>
+                                                        <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100 shadow-sm gap-2">
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                        <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                            {formatMockValue(320.40, true)}
+                                                        </span>
+                                                    </div>
+                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate text-right flex-1 min-w-0">Supermercado</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
