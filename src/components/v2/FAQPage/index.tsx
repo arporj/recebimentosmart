@@ -36,8 +36,8 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
-        question: 'Como funcionam os alertas por e-mail de contas e cartões?',
-        answer: 'Dependendo do seu plano, você pode habilitar alertas por e-mail em suas Preferências. Para planos de envio diário, é possível ativar alertas de contas que vencem no dia e notificações na data exata de fechamento da fatura do seu cartão. Para planos semanais, você recebe um resumo consolidado das contas da semana juntamente com a fatura do cartão a vencer, tudo de forma automática no dia escolhido.'
+        question: 'Como funcionam os alertas por e-mail e notificações push de contas e cartões?',
+        answer: 'Dependendo do seu plano, você pode habilitar alertas por e-mail e notificações por push em suas Preferências. Para planos de envio diário, é possível ativar alertas de contas que vencem no dia e notificações na data exata de fechamento da fatura do seu cartão. Para planos semanais, você recebe um resumo consolidado das contas da semana por e-mail. Adicionalmente, você pode cadastrar seus dispositivos (computadores ou celulares) para receber essas notificações direto na sua tela instantaneamente.'
     },
     {
         category: 'funcionalidades',
