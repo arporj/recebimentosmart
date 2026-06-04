@@ -8,6 +8,10 @@ import {
     Search, ChevronDown, CreditCard
 } from 'lucide-react';
 
+const removeAccents = (str: string): string => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
+
 interface UserSelectOption {
     id: string;
     name: string | null;
@@ -373,8 +377,10 @@ export default function AdminSystemTestsV2() {
                                         {/* Lista de Usuários */}
                                         <div className="max-h-60 overflow-y-auto py-1 divide-y divide-slate-50 custom-scrollbar">
                                             {users.filter(u => {
-                                                const term = userSearchTerm.toLowerCase();
-                                                return (u.name?.toLowerCase().includes(term) || false) || u.email.toLowerCase().includes(term);
+                                                const term = removeAccents(userSearchTerm.toLowerCase());
+                                                const nameNormalized = removeAccents((u.name || '').toLowerCase());
+                                                const emailNormalized = removeAccents((u.email || '').toLowerCase());
+                                                return nameNormalized.includes(term) || emailNormalized.includes(term);
                                             }).length === 0 ? (
                                                 <div className="px-4 py-6 text-center text-xs font-semibold text-slate-400">
                                                     Nenhum usuário correspondente encontrado
@@ -382,8 +388,10 @@ export default function AdminSystemTestsV2() {
                                             ) : (
                                                 users
                                                     .filter(u => {
-                                                        const term = userSearchTerm.toLowerCase();
-                                                        return (u.name?.toLowerCase().includes(term) || false) || u.email.toLowerCase().includes(term);
+                                                        const term = removeAccents(userSearchTerm.toLowerCase());
+                                                        const nameNormalized = removeAccents((u.name || '').toLowerCase());
+                                                        const emailNormalized = removeAccents((u.email || '').toLowerCase());
+                                                        return nameNormalized.includes(term) || emailNormalized.includes(term);
                                                     })
                                                     .map((u) => {
                                                         const isSelected = u.id === selectedUserId;
