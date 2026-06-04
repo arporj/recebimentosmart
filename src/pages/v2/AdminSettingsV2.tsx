@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { Settings, Save, RefreshCw, Shield, Zap, Star, Award, UserCheck, Tags, Wallet, Activity, Inbox } from 'lucide-react';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PlanPrices {
     basico: number;
@@ -30,6 +31,7 @@ const normalizePlanName = (name: string) =>
     name.toLowerCase().normalize("NFD").replace(/[^\w\s]/gi, '');
 
 export default function AdminSettingsV2() {
+    const { user } = useAuth();
     const [prices, setPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
     const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
     
@@ -441,42 +443,96 @@ export default function AdminSettingsV2() {
                 </div>
             </section>
 
-            {/* NOTIFICAÇÕES MOBILE (WEB PUSH PWA) */}
-            <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {/* NOTIFICAÇÕES DISPOSITIVO (WEB PUSH) */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in fade-in duration-200">
                 <div className="flex items-start gap-4">
                     <div className="p-2.5 bg-teal-50 text-teal-600 rounded-lg shrink-0">
                         <Inbox className="w-5 h-5" />
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-800">Notificações no Celular (Web Push PWA)</h4>
+                        <h4 className="font-bold text-slate-800">Notificações no Dispositivo (Web Push)</h4>
                         <p className="text-xs text-slate-500 leading-normal mt-1">
                             Ative as notificações neste dispositivo para receber alertas instantâneos de novos feedbacks e mensagens de chat. 
-                            Como o Web Push é associado a este navegador específico, se mudar de celular ou usar outro navegador, você precisará repetir este registro.
+                            Como o Web Push é associado a este navegador específico, se mudar de dispositivo ou usar outro navegador, você precisará repetir este registro.
                         </p>
                     </div>
                 </div>
                 <button
                     onClick={async () => {
+                        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                            toast.error('Este navegador/dispositivo não suporta notificações de sistema.');
+                            return;
+                        }
                         try {
-                            if (!('Notification' in window)) {
-                                toast.error('Seu navegador não suporta notificações de sistema.');
+                            const permission = await Notification.requestPermission();
+                            if (permission !== 'granted') {
+                                toast.error('Permissão de notificações negada pelo navegador.');
                                 return;
                             }
+
+                            const reg = await navigator.serviceWorker.ready;
+                            const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
                             
-                            const permission = await Notification.requestPermission();
-                            if (permission === 'granted') {
-                                toast.success('Permissão concedida! Notificações habilitadas com sucesso neste dispositivo.');
-                            } else {
-                                toast.error('Permissão negada. Você precisa habilitar a permissão de notificações nas configurações do seu navegador.');
+                            if (!vapidPublicKey) {
+                                toast.error('Chave pública de push (VAPID) não configurada no frontend.');
+                                return;
                             }
-                        } catch (err) {
-                            console.error(err);
-                            toast.error('Erro ao registrar notificações.');
+
+                            const urlBase64ToUint8Array = (base64String: string) => {
+                                const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                                const base64 = (base64String + padding)
+                                    .replace(/\-/g, '+')
+                                    .replace(/_/g, '/');
+                                const rawData = window.atob(base64);
+                                const outputArray = new Uint8Array(rawData.length);
+                                for (let i = 0; i < rawData.length; ++i) {
+                                    outputArray[i] = rawData.charCodeAt(i);
+                                }
+                                return outputArray;
+                            };
+
+                            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+                            const sub = await reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: convertedVapidKey
+                            });
+
+                            const jsonSub = sub.toJSON();
+                            const p256dh = jsonSub.keys?.p256dh;
+                            const auth = jsonSub.keys?.auth;
+
+                            if (!p256dh || !auth) {
+                                throw new Error('Chaves da subscrição inválidas.');
+                            }
+
+                            const { error } = await supabase
+                                .from('user_push_subscriptions')
+                                .insert({
+                                    user_id: user?.id,
+                                    endpoint: sub.endpoint,
+                                    p256dh: p256dh,
+                                    auth: auth,
+                                    user_agent: navigator.userAgent
+                                });
+
+                            if (error) {
+                                if (error.code === '23505') {
+                                    toast.success('Dispositivo registrado com sucesso!');
+                                    return;
+                                }
+                                throw error;
+                            }
+
+                            toast.success('Dispositivo registrado com sucesso!');
+                        } catch (err: any) {
+                            console.error('Erro ao cadastrar dispositivo:', err);
+                            toast.error('Falha ao cadastrar dispositivo: ' + err.message);
                         }
                     }}
                     className="w-full sm:w-auto px-6 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-black shadow-lg shadow-teal-600/20 hover:bg-teal-700 hover:shadow-teal-700/20 active:scale-95 transition-all shrink-0 whitespace-nowrap text-center"
                 >
-                    Ativar neste Celular
+                    Ativar neste Dispositivo
                 </button>
             </div>
 
