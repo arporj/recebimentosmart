@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast, Toaster } from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { setRememberMe } from '../../../lib/storage';
 
 export default function LoginV2() {
   const { signIn } = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +21,9 @@ export default function LoginV2() {
     setRememberMe(remember);
 
     try {
-      await signIn(email, password, '/v2/clientes');
+      const from = (location.state as any)?.from;
+      const redirectUrl = from ? (from.pathname + from.search) : '/v2/clientes';
+      await signIn(email, password, redirectUrl);
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

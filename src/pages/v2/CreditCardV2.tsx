@@ -223,6 +223,24 @@ const CreditCardV2 = () => {
 
   useEffect(() => { fetchCards(); fetchTransactions(); }, [user]);
 
+  // Sincroniza dinamicamente o cartão selecionado quando os parâmetros de busca da URL mudarem
+  useEffect(() => {
+    const cardId = searchParams.get('cardId');
+    const month = searchParams.get('month');
+    if (cardId && cards.length > 0) {
+      const foundCard = cards.find(c => c.id === cardId);
+      if (foundCard) {
+        setSelectedCardId(foundCard.id);
+        if (month) {
+          const [year, m] = month.split('-');
+          setCurrentMonth(new Date(parseInt(year), parseInt(m) - 1, 1));
+        } else {
+          setCurrentMonth(getSmartCurrentMonth(foundCard));
+        }
+      }
+    }
+  }, [searchParams, cards]);
+
   // When card changes, update smart month
   useEffect(() => {
     if (selectedCard && hasInitializedParams) {
