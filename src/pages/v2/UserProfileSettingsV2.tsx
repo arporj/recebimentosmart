@@ -18,7 +18,7 @@ export default function UserProfileSettingsV2() {
     const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
 
     // Email alert preferences
-    const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(false);
+    const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(true);
     const [dueEmailNotifyDayOfWeek, setDueEmailNotifyDayOfWeek] = useState(0);
     const [cardInvoiceEmailNotifyEnabled, setCardInvoiceEmailNotifyEnabled] = useState(true);
     const [canDueEmailNotify, setCanDueEmailNotify] = useState(false);
@@ -78,7 +78,7 @@ export default function UserProfileSettingsV2() {
             }
 
             if (profileData) {
-                setDueEmailNotifyEnabled(profileData.due_email_notify_enabled || false);
+                setDueEmailNotifyEnabled(profileData.due_email_notify_enabled !== false);
                 setDueEmailNotifyDayOfWeek(profileData.due_email_notify_day_of_week ?? 0);
                 // Define true se a coluna não vier ou vier true
                 setCardInvoiceEmailNotifyEnabled(profileData.card_invoice_email_notify_enabled !== false);
