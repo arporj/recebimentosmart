@@ -32,7 +32,12 @@ const FAQ_ITEMS: FAQItem[] = [
     {
         category: 'funcionalidades',
         question: 'Como funciona o gerenciamento de cartões de crédito?',
-        answer: 'Você pode cadastrar seus cartões de crédito na plataforma, definindo o limite total, o dia de fechamento da fatura e o dia de vencimento. Ao lançar uma despesa no cartão de crédito, o sistema calcula automaticamente em qual fatura ela se enquadra de acordo com a data de fechamento e debita do seu limite restante.'
+        answer: 'Você pode cadastrar seus cartões de crédito na plataforma, definindo o limite total, o dia de fechamento da fatura e o dia de vencimento. Ao lançar uma despesa no cartão de crédito, o sistema calcula automaticamente em qual fatura ela se enquadra de acordo com a data de fechamento e debita do seu limite restante. Além disso, se o seu plano permitir, você será notificado por e-mail assim que a fatura do cartão fechar.'
+    },
+    {
+        category: 'funcionalidades',
+        question: 'Como funcionam os alertas por e-mail de contas e cartões?',
+        answer: 'Dependendo do seu plano, você pode habilitar alertas por e-mail em suas Preferências. Para planos de envio diário, é possível ativar alertas de contas que vencem no dia e notificações na data exata de fechamento da fatura do seu cartão. Para planos semanais, você recebe um resumo consolidado das contas da semana juntamente com a fatura do cartão a vencer, tudo de forma automática no dia escolhido.'
     },
     {
         category: 'funcionalidades',
