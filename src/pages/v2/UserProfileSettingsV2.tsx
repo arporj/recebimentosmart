@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout, Mail, AlertTriangle } from 'lucide-react';
+import { Save, User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout, Mail, AlertTriangle, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -24,6 +24,113 @@ export default function UserProfileSettingsV2() {
     const [canDueEmailNotify, setCanDueEmailNotify] = useState(false);
     const [planEmailFrequency, setPlanEmailFrequency] = useState<'daily' | 'weekly'>('weekly');
     const [loadingPreferences, setLoadingPreferences] = useState(true);
+
+    // Push notification preferences
+    const [pushNotificationsDisabled, setPushNotificationsDisabled] = useState(false);
+    const [isDeviceRegistered, setIsDeviceRegistered] = useState(false);
+    const [checkingDevice, setCheckingDevice] = useState(false);
+
+    const checkDeviceSubscription = useCallback(async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !user) return;
+        try {
+            setCheckingDevice(true);
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) {
+                const { data, error } = await supabase
+                    .from('user_push_subscriptions')
+                    .select('id')
+                    .eq('endpoint', sub.endpoint)
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                
+                if (!error && data) {
+                    setIsDeviceRegistered(true);
+                    return;
+                }
+            }
+            setIsDeviceRegistered(false);
+        } catch (err) {
+            console.error('Erro ao checar subscrição:', err);
+        } finally {
+            setCheckingDevice(false);
+        }
+    }, [user]);
+
+    const handleRegisterDevice = async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            toast.error('Este navegador/dispositivo não suporta notificações de sistema.');
+            return;
+        }
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                toast.error('Permissão de notificações negada pelo navegador.');
+                return;
+            }
+
+            const reg = await navigator.serviceWorker.ready;
+            const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+            
+            if (!vapidPublicKey) {
+                toast.error('Chave pública de push (VAPID) não configurada no frontend.');
+                return;
+            }
+
+            const urlBase64ToUint8Array = (base64String: string) => {
+                const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding)
+                    .replace(/\-/g, '+')
+                    .replace(/_/g, '/');
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
+            };
+
+            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: convertedVapidKey
+            });
+
+            const jsonSub = sub.toJSON();
+            const p256dh = jsonSub.keys?.p256dh;
+            const auth = jsonSub.keys?.auth;
+
+            if (!p256dh || !auth) {
+                throw new Error('Chaves da subscrição inválidas.');
+            }
+
+            const { error } = await supabase
+                .from('user_push_subscriptions')
+                .insert({
+                    user_id: user?.id,
+                    endpoint: sub.endpoint,
+                    p256dh: p256dh,
+                    auth: auth,
+                    user_agent: navigator.userAgent
+                });
+
+            if (error) {
+                if (error.code === '23505') {
+                    setIsDeviceRegistered(true);
+                    toast.success('Dispositivo registrado com sucesso!');
+                    return;
+                }
+                throw error;
+            }
+
+            setIsDeviceRegistered(true);
+            toast.success('Dispositivo registrado com sucesso!');
+        } catch (err: any) {
+            console.error('Erro ao cadastrar dispositivo:', err);
+            toast.error('Falha ao cadastrar dispositivo: ' + err.message);
+        }
+    };
 
     const formatMockValue = (amount: number, isNegative: boolean) => {
         let result = '';
@@ -58,7 +165,7 @@ export default function UserProfileSettingsV2() {
             // Tentativa de buscar o perfil completo
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, plano')
+                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, push_notifications_disabled, plano')
                 .eq('id', user.id)
                 .single();
             
@@ -82,6 +189,7 @@ export default function UserProfileSettingsV2() {
                 setDueEmailNotifyDayOfWeek(profileData.due_email_notify_day_of_week ?? 0);
                 // Define true se a coluna não vier ou vier true
                 setCardInvoiceEmailNotifyEnabled(profileData.card_invoice_email_notify_enabled !== false);
+                setPushNotificationsDisabled(profileData.push_notifications_disabled === true);
 
                 const planSlug = profileData.plano?.toLowerCase() || 'free';
                 const { data: plan, error: planError } = await supabase
@@ -125,6 +233,7 @@ export default function UserProfileSettingsV2() {
         if (user) {
             setCurrentName(user.user_metadata?.name || '');
             fetchProfilePreferences();
+            checkDeviceSubscription();
         }
         
         // Recuperar preferencia de layout e opcoes customizadas
@@ -179,6 +288,7 @@ export default function UserProfileSettingsV2() {
                         due_email_notify_enabled: dueEmailNotifyEnabled,
                         due_email_notify_day_of_week: dueEmailNotifyDayOfWeek,
                         card_invoice_email_notify_enabled: cardInvoiceEmailNotifyEnabled,
+                        push_notifications_disabled: pushNotificationsDisabled,
                         layout_preference: layoutPreference,
                         show_currency_symbol: showCurrencySymbol,
                         show_negative_sign: showNegativeSign,
@@ -508,6 +618,70 @@ export default function UserProfileSettingsV2() {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Seção: Notificações do Dispositivo (Web Push) */}
+                                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4 animate-in fade-in duration-200">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
+                                            <Bell className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-extrabold text-sm text-slate-900">Notificações no Dispositivo (Web Push)</h3>
+                                            <p className="text-[11px] text-slate-500 font-medium">
+                                                Receba alertas instantâneos de novos feedbacks, mensagens de suporte e vencimentos direto na tela do seu dispositivo.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-2">
+                                        {/* Switch: Não quero receber notificações */}
+                                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-900">Não quero receber notificações</p>
+                                                <p className="text-[10px] text-slate-500 font-medium">Desativa todas as notificações em todos os seus dispositivos</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                role="switch"
+                                                aria-checked={pushNotificationsDisabled}
+                                                onClick={() => setPushNotificationsDisabled(!pushNotificationsDisabled)}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${pushNotificationsDisabled ? 'bg-rose-500' : 'bg-slate-300'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${pushNotificationsDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* Registro do dispositivo se não desativado */}
+                                        {!pushNotificationsDisabled && (
+                                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-200">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-900">Este Dispositivo</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed mt-1">
+                                                        {isDeviceRegistered 
+                                                            ? 'Este dispositivo está configurado e pronto para receber notificações push.' 
+                                                            : 'Cadastre este dispositivo para começar a receber alertas em tempo real.'}
+                                                    </p>
+                                                </div>
+                                                
+                                                {checkingDevice ? (
+                                                    <span className="text-xs text-slate-400 font-bold">Verificando...</span>
+                                                ) : isDeviceRegistered ? (
+                                                    <span className="bg-teal-100 text-teal-800 text-[10px] font-bold uppercase px-3 py-1.5 rounded-full shrink-0">
+                                                        Ativado
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRegisterDevice}
+                                                        className="w-full sm:w-auto px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold shadow-md shadow-teal-600/10 hover:bg-teal-700 transition-all shrink-0"
+                                                    >
+                                                        Ativar neste Dispositivo
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="border-t border-slate-100 pt-6">
