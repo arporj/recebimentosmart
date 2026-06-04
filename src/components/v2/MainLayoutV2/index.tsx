@@ -9,7 +9,7 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    UserCheck, Share2, Mail
+    UserCheck, Share2, Mail, Bell, Check, AlertCircle
 } from 'lucide-react';
 
 interface MainLayoutV2Props {
@@ -91,6 +91,128 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const [pendingCount, setPendingCount] = useState(0);
     const [displayedCount, setDisplayedCount] = useState(0);
     const [animationKey, setAnimationKey] = useState(0);
+
+    // Preferências e estados de push
+    const [pushDisabled, setPushDisabled] = useState(false);
+    const [isDeviceRegistered, setIsDeviceRegistered] = useState(false);
+    const [checkingDevice, setCheckingDevice] = useState(false);
+    const [showBellPopover, setShowBellPopover] = useState(false);
+
+    const checkDeviceSubscription = useCallback(async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !user) return;
+        try {
+            setCheckingDevice(true);
+            
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('push_notifications_disabled')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (profile) {
+                setPushDisabled(profile.push_notifications_disabled === true);
+                if (profile.push_notifications_disabled === true) {
+                    return;
+                }
+            }
+
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) {
+                const { data, error } = await supabase
+                    .from('user_push_subscriptions')
+                    .select('id')
+                    .eq('endpoint', sub.endpoint)
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                
+                if (!error && data) {
+                    setIsDeviceRegistered(true);
+                    return;
+                }
+            }
+            setIsDeviceRegistered(false);
+        } catch (err) {
+            console.error('Erro ao verificar subscrição de push:', err);
+        } finally {
+            setCheckingDevice(false);
+        }
+    }, [user]);
+
+    const handleRegisterDevice = async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            toast.error('Este navegador/dispositivo não suporta notificações de sistema.');
+            return;
+        }
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                toast.error('Permissão de notificações negada pelo navegador.');
+                return;
+            }
+
+            const reg = await navigator.serviceWorker.ready;
+            const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+            
+            if (!vapidPublicKey) {
+                toast.error('Chave pública de push (VAPID) não configurada no frontend.');
+                return;
+            }
+
+            const urlBase64ToUint8Array = (base64String: string) => {
+                const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding)
+                    .replace(/\-/g, '+')
+                    .replace(/_/g, '/');
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
+            };
+
+            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: convertedVapidKey
+            });
+
+            const jsonSub = sub.toJSON();
+            const p256dh = jsonSub.keys?.p256dh;
+            const auth = jsonSub.keys?.auth;
+
+            if (!p256dh || !auth) {
+                throw new Error('Chaves da subscrição inválidas.');
+            }
+
+            const { error } = await supabase
+                .from('user_push_subscriptions')
+                .insert({
+                    user_id: user?.id,
+                    endpoint: sub.endpoint,
+                    p256dh: p256dh,
+                    auth: auth,
+                    user_agent: navigator.userAgent
+                });
+
+            if (error) {
+                if (error.code === '23505') {
+                    setIsDeviceRegistered(true);
+                    toast.success('Dispositivo registrado com sucesso!');
+                    return;
+                }
+                throw error;
+            }
+
+            setIsDeviceRegistered(true);
+            toast.success('Dispositivo registrado com sucesso!');
+        } catch (err: any) {
+            console.error('Erro ao cadastrar dispositivo:', err);
+            toast.error('Falha ao cadastrar dispositivo: ' + err.message);
+        }
+    };
 
     // Função para sintetizar um som de notificação sutil e harmônico via Web Audio API
     const playNotificationChime = () => {
@@ -198,6 +320,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         if (!user) return;
 
         fetchPendingCount();
+        checkDeviceSubscription();
 
         const channel = supabase
             .channel('shared_notifications')
@@ -221,7 +344,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user]);
+    }, [user, checkDeviceSubscription]);
 
     // Fechar a sidebar sempre que a rota mudar
     useEffect(() => {
@@ -386,30 +509,99 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             <div className="flex-1 flex flex-col min-h-screen ml-0 w-full transition-all duration-300">
 
                 {/* Header Superior (Sempre visível para permitir abrir o menu lateral colapsado) */}
-                <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3 shadow-sm justify-start">
-                    {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
-                    <button
-                        onClick={() => setIsSidebarOpen(true)}
-                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
-                    >
-                        <Menu size={24} />
-                        {displayedCount > 0 && (
-                            <span 
-                                key={animationKey}
-                                className="absolute -top-1.5 -right-1.5 animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm"
-                            >
-                                {displayedCount}
+                <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+                    {/* Hambúrguer + Logo */}
+                    <div className="flex items-center gap-3">
+                        {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
+                        >
+                            <Menu size={24} />
+                            {displayedCount > 0 && (
+                                <span 
+                                    key={animationKey}
+                                    className="absolute -top-1.5 -right-1.5 animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm"
+                                >
+                                    {displayedCount}
+                                </span>
+                            )}
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <div className="bg-[#0f172a] p-1.5 rounded-md">
+                                <img src="/images/logo.svg" alt="Logo" className="w-5 h-5" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-lg tracking-tight">
+                                Recebimento <span className="text-[#14b8a6]">$mart</span>
                             </span>
-                        )}
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <div className="bg-[#0f172a] p-1.5 rounded-md">
-                            <img src="/images/logo.svg" alt="Logo" className="w-5 h-5" />
                         </div>
-                        <span className="font-bold text-slate-800 text-lg tracking-tight">
-                            Recebimento <span className="text-[#14b8a6]">$mart</span>
-                        </span>
                     </div>
+
+                    {/* Sino de Notificações do Dispositivo (à direita) */}
+                    {!pushDisabled && user && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowBellPopover(!showBellPopover)}
+                                className={`p-2 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative outline-none focus:ring-2 ${
+                                    !isDeviceRegistered ? 'focus:ring-amber-500/20' : 'focus:ring-[#14b8a6]/20'
+                                }`}
+                                title="Notificações do Dispositivo"
+                            >
+                                <Bell size={20} className={!isDeviceRegistered ? 'text-amber-500 animate-pulse' : 'text-slate-600'} />
+                                {!isDeviceRegistered && (
+                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                                )}
+                            </button>
+
+                            {showBellPopover && (
+                                <>
+                                    {/* Overlay invisível para fechar ao clicar fora */}
+                                    <div 
+                                        className="fixed inset-0 z-40" 
+                                        onClick={() => setShowBellPopover(false)} 
+                                    />
+                                    
+                                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="flex items-start gap-3 mb-3">
+                                            <div className={`p-2 rounded-lg shrink-0 ${isDeviceRegistered ? 'bg-teal-50 text-teal-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                {isDeviceRegistered ? <Check size={18} /> : <AlertCircle size={18} />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-xs font-bold text-slate-800">
+                                                    {isDeviceRegistered ? 'Notificações Ativadas' : 'Notificações Pendentes'}
+                                                </h4>
+                                                <p className="text-[10px] text-slate-500 leading-normal mt-0.5">
+                                                    {isDeviceRegistered 
+                                                        ? 'Este dispositivo está devidamente cadastrado e pronto para receber notificações push.' 
+                                                        : 'Ative as notificações para receber alertas instantâneos de vencimentos e feedbacks.'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {!isDeviceRegistered && (
+                                            <button
+                                                onClick={async () => {
+                                                    await handleRegisterDevice();
+                                                    setShowBellPopover(false);
+                                                }}
+                                                className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-teal-600/10 mb-2"
+                                            >
+                                                Ativar neste Dispositivo
+                                            </button>
+                                        )}
+                                        
+                                        <Link
+                                            to="/v2/perfil"
+                                            onClick={() => setShowBellPopover(false)}
+                                            className="block text-center text-[10px] font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider py-1 border-t border-slate-100 mt-2 pt-2"
+                                        >
+                                            Configurações de Notificação
+                                        </Link>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </header>
 
                 <main className="flex-1 flex flex-col">
