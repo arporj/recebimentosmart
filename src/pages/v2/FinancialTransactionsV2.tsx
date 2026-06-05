@@ -539,206 +539,7 @@ const FinancialTransactionsV2 = () => {
     }
   };
 
-  const toggleSelectTransaction = (key: string, e: React.MouseEvent | React.ChangeEvent) => {
-    e.stopPropagation();
-    setSelectedTransactionKeys(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
 
-  const selectableInstances = useMemo(() => {
-    return displayInstances.filter(t => !t.isOpeningBalance && !t.isInvoiceSummary);
-  }, [displayInstances]);
-
-  const isAllSelected = useMemo(() => {
-    return selectableInstances.length > 0 && selectableInstances.every(t => selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`));
-  }, [selectableInstances, selectedTransactionKeys]);
-
-  const handleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedTransactionKeys(prev => {
-        const next = new Set(prev);
-        selectableInstances.forEach(t => next.delete(`${t.id}-${t.instanceDate}`));
-        return next;
-      });
-    } else {
-      setSelectedTransactionKeys(prev => {
-        const next = new Set(prev);
-        selectableInstances.forEach(t => next.add(`${t.id}-${t.instanceDate}`));
-        return next;
-      });
-    }
-  };
-
-  const handleBulkConfirmClick = () => {
-    setBulkConfirmDateMode('original');
-    setBulkConfirmSpecificDate(format(new Date(), 'yyyy-MM-dd'));
-    setIsBulkConfirmOpen(true);
-  };
-
-  const handleBulkConfirmSubmit = async () => {
-    if (!user) return;
-    try {
-      setBulkConfirmLoading(true);
-      
-      const selectedInstances = displayInstances.filter(t => 
-        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
-      );
-
-      const promises = selectedInstances.map(async (t) => {
-        const origDate = t.originalInstanceDate || t.instanceDate || t.date;
-        const targetDate = bulkConfirmDateMode === 'original' ? origDate : bulkConfirmSpecificDate;
-        const paidDate = targetDate;
-
-        if (t.isVirtual) {
-          // Materializar transação virtual
-          const newChildPayload = {
-            user_id: user.id,
-            type: t.type,
-            amount: t.amount,
-            date: targetDate,
-            description: t.description,
-            account_id: t.account_id || null,
-            category_id: t.category_id || null,
-            client_id: t.client_id || null,
-            status: 'paid',
-            paid_date: paidDate,
-            parent_id: t.parent_id || t.id,
-            modalidade: 'unica',
-            is_customized: true,
-            installment_current: t.installment_current || 1,
-            recurrence_enabled: false,
-            auto_confirm: false
-          };
-
-          const { data: newChild, error: insertError } = await supabase
-            .from('financial_transactions')
-            .insert(newChildPayload)
-            .select('id')
-            .single();
-
-          if (insertError) throw insertError;
-
-          // Copiar tags se houver
-          if (t.tags && t.tags.length > 0 && newChild) {
-            const tagIds = t.tags.map((tagObj: any) => tagObj.tag?.id || tagObj.id).filter(Boolean);
-            if (tagIds.length > 0) {
-              const junctionRows = tagIds.map((tagId: string) => ({
-                transaction_id: newChild.id,
-                tag_id: tagId
-              }));
-              await supabase.from('transaction_tags').insert(junctionRows);
-            }
-          }
-        } else {
-          // Atualizar transação física existente
-          const updatePayload: any = {
-            status: 'paid',
-            paid_date: paidDate
-          };
-          
-          const { error: updateError } = await supabase
-            .from('financial_transactions')
-            .update(updatePayload)
-            .eq('id', t.id);
-
-          if (updateError) throw updateError;
-        }
-      });
-
-      await Promise.all(promises);
-      toast.success(`${selectedInstances.length} lançamentos confirmados!`);
-      setSelectedTransactionKeys(new Set());
-      setIsBulkConfirmOpen(false);
-      fetchTransactions();
-    } catch (err: any) {
-      console.error('Erro na confirmação em lote:', err);
-      toast.error('Erro ao confirmar lançamentos: ' + err.message);
-    } finally {
-      setBulkConfirmLoading(false);
-    }
-  };
-
-  const handleBulkUnconfirm = async () => {
-    if (!user) return;
-    try {
-      const selectedInstances = displayInstances.filter(t => 
-        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
-      );
-
-      const physicalPaid = selectedInstances.filter(t => !t.isVirtual && t.status === 'paid');
-
-      if (physicalPaid.length === 0) {
-        toast.error('Nenhum lançamento físico pago selecionado para desconfirmar');
-        return;
-      }
-
-      const promises = physicalPaid.map(async (t) => {
-        const { error } = await supabase
-          .from('financial_transactions')
-          .update({
-            status: 'pending',
-            paid_date: null
-          })
-          .eq('id', t.id);
-        if (error) throw error;
-      });
-
-      await Promise.all(promises);
-      toast.success(`${physicalPaid.length} lançamentos marcados como pendentes!`);
-      setSelectedTransactionKeys(new Set());
-      fetchTransactions();
-    } catch (err: any) {
-      console.error('Erro ao desconfirmar em lote:', err);
-      toast.error('Erro ao desconfirmar lançamentos: ' + err.message);
-    }
-  };
-
-  const handleBulkDeleteClick = () => {
-    setIsBulkDeleteConfirmOpen(true);
-  };
-
-  const handleBulkDeleteSubmit = async () => {
-    if (!user) return;
-    try {
-      setBulkDeleteLoading(true);
-      
-      const selectedInstances = displayInstances.filter(t => 
-        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
-      );
-
-      const physicalIds = selectedInstances.filter(t => !t.isVirtual).map(t => t.id);
-
-      if (physicalIds.length === 0) {
-        toast.error('Nenhum lançamento físico selecionado para exclusão');
-        setIsBulkDeleteConfirmOpen(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .in('id', physicalIds);
-
-      if (error) throw error;
-
-      toast.success(`${physicalIds.length} lançamentos excluídos!`);
-      setSelectedTransactionKeys(new Set());
-      setIsBulkDeleteConfirmOpen(false);
-      fetchTransactions();
-    } catch (err: any) {
-      console.error('Erro ao excluir em lote:', err);
-      toast.error('Erro ao excluir lançamentos: ' + err.message);
-    } finally {
-      setBulkDeleteLoading(false);
-    }
-  };
 
   const accountsData = useMemo(() => {
     return accounts.map(acc => {
@@ -1076,6 +877,207 @@ const FinancialTransactionsV2 = () => {
 
     return sortedList;
   }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances]);
+
+  const toggleSelectTransaction = (key: string, e: React.MouseEvent | React.ChangeEvent) => {
+    e.stopPropagation();
+    setSelectedTransactionKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const selectableInstances = useMemo(() => {
+    return displayInstances.filter(t => !t.isOpeningBalance && !t.isInvoiceSummary);
+  }, [displayInstances]);
+
+  const isAllSelected = useMemo(() => {
+    return selectableInstances.length > 0 && selectableInstances.every(t => selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`));
+  }, [selectableInstances, selectedTransactionKeys]);
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedTransactionKeys(prev => {
+        const next = new Set(prev);
+        selectableInstances.forEach(t => next.delete(`${t.id}-${t.instanceDate}`));
+        return next;
+      });
+    } else {
+      setSelectedTransactionKeys(prev => {
+        const next = new Set(prev);
+        selectableInstances.forEach(t => next.add(`${t.id}-${t.instanceDate}`));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkConfirmClick = () => {
+    setBulkConfirmDateMode('original');
+    setBulkConfirmSpecificDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsBulkConfirmOpen(true);
+  };
+
+  const handleBulkConfirmSubmit = async () => {
+    if (!user) return;
+    try {
+      setBulkConfirmLoading(true);
+      
+      const selectedInstances = displayInstances.filter(t => 
+        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
+      );
+
+      const promises = selectedInstances.map(async (t) => {
+        const origDate = t.originalInstanceDate || t.instanceDate || t.date;
+        const targetDate = bulkConfirmDateMode === 'original' ? origDate : bulkConfirmSpecificDate;
+        const paidDate = targetDate;
+
+        if (t.isVirtual) {
+          // Materializar transação virtual
+          const newChildPayload = {
+            user_id: user.id,
+            type: t.type,
+            amount: t.amount,
+            date: targetDate,
+            description: t.description,
+            account_id: t.account_id || null,
+            category_id: t.category_id || null,
+            client_id: t.client_id || null,
+            status: 'paid',
+            paid_date: paidDate,
+            parent_id: t.parent_id || t.id,
+            modalidade: 'unica',
+            is_customized: true,
+            installment_current: t.installment_current || 1,
+            recurrence_enabled: false,
+            auto_confirm: false
+          };
+
+          const { data: newChild, error: insertError } = await supabase
+            .from('financial_transactions')
+            .insert(newChildPayload)
+            .select('id')
+            .single();
+
+          if (insertError) throw insertError;
+
+          // Copiar tags se houver
+          if (t.tags && t.tags.length > 0 && newChild) {
+            const tagIds = t.tags.map((tagObj: any) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+            if (tagIds.length > 0) {
+              const junctionRows = tagIds.map((tagId: string) => ({
+                transaction_id: newChild.id,
+                tag_id: tagId
+              }));
+              await supabase.from('transaction_tags').insert(junctionRows);
+            }
+          }
+        } else {
+          // Atualizar transação física existente
+          const updatePayload: any = {
+            status: 'paid',
+            paid_date: paidDate
+          };
+          
+          const { error: updateError } = await supabase
+            .from('financial_transactions')
+            .update(updatePayload)
+            .eq('id', t.id);
+
+          if (updateError) throw updateError;
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success(`${selectedInstances.length} lançamentos confirmados!`);
+      setSelectedTransactionKeys(new Set());
+      setIsBulkConfirmOpen(false);
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro na confirmação em lote:', err);
+      toast.error('Erro ao confirmar lançamentos: ' + err.message);
+    } finally {
+      setBulkConfirmLoading(false);
+    }
+  };
+
+  const handleBulkUnconfirm = async () => {
+    if (!user) return;
+    try {
+      const selectedInstances = displayInstances.filter(t => 
+        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
+      );
+
+      const physicalPaid = selectedInstances.filter(t => !t.isVirtual && t.status === 'paid');
+
+      if (physicalPaid.length === 0) {
+        toast.error('Nenhum lançamento físico pago selecionado para desconfirmar');
+        return;
+      }
+
+      const promises = physicalPaid.map(async (t) => {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({
+            status: 'pending',
+            paid_date: null
+          })
+          .eq('id', t.id);
+        if (error) throw error;
+      });
+
+      await Promise.all(promises);
+      toast.success(`${physicalPaid.length} lançamentos marcados como pendentes!`);
+      setSelectedTransactionKeys(new Set());
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro ao desconfirmar em lote:', err);
+      toast.error('Erro ao desconfirmar lançamentos: ' + err.message);
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    setIsBulkDeleteConfirmOpen(true);
+  };
+
+  const handleBulkDeleteSubmit = async () => {
+    if (!user) return;
+    try {
+      setBulkDeleteLoading(true);
+      
+      const selectedInstances = displayInstances.filter(t => 
+        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
+      );
+
+      const physicalIds = selectedInstances.filter(t => !t.isVirtual).map(t => t.id);
+
+      if (physicalIds.length === 0) {
+        toast.error('Nenhum lançamento físico selecionado para exclusão');
+        setIsBulkDeleteConfirmOpen(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .in('id', physicalIds);
+
+      if (error) throw error;
+
+      toast.success(`${physicalIds.length} lançamentos excluídos!`);
+      setSelectedTransactionKeys(new Set());
+      setIsBulkDeleteConfirmOpen(false);
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro ao excluir em lote:', err);
+      toast.error('Erro ao excluir lançamentos: ' + err.message);
+    } finally {
+      setBulkDeleteLoading(false);
+    }
+  };
 
   const dynamicTotals = useMemo(() => {
     let income = 0;
