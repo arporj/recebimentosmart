@@ -780,9 +780,9 @@ const CreditCardV2 = () => {
         </div>
 
         {/* Main Panel */}
-        <div className="flex-1 flex flex-col bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white border border-slate-100 rounded-2xl shadow-sm">
           {/* Toolbar */}
-          <div className="sticky top-[65px] z-20 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4">
+          <div className="sticky top-[65px] z-20 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4 rounded-t-2xl">
             <button
                onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                className="flex items-center gap-2 bg-[#0d9488] text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider shrink-0"
