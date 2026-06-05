@@ -1351,34 +1351,35 @@ const FinancialTransactionsV2 = () => {
         {/* Main Content */}
         <main className="flex-1 flex flex-col space-y-6 min-w-0">
           {/* Header da Lista (Sticky e Lado a Lado Compacto) */}
-          <div className="sticky top-[80px] z-20 bg-slate-50/95 backdrop-blur-md py-4 flex flex-col lg:flex-row gap-3 items-center justify-between shrink-0 border-b border-slate-200/50">
-            {/* Busca */}
-            <div className="flex-1 relative group w-full lg:w-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text" placeholder="Buscar lançamentos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-10 py-3 bg-white border border-slate-200 rounded-2xl font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
-              />
-              {searchTerm && (
-                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
-                  <X size={16} />
-                </button>
-              )}
-            </div>
+          <div className="sticky top-[80px] z-20 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50">
+            {/* Primeira Linha: Busca e Ações */}
+            <div className="flex flex-col lg:flex-row gap-3 items-center justify-between">
+              {/* Busca */}
+              <div className="flex-1 relative group w-full lg:w-auto">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text" placeholder="Buscar lançamentos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-10 py-3 bg-white border border-slate-200 rounded-2xl font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
 
-            {/* Ações Lado a Lado */}
-            <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
-              {/* Ações */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={fetchTransactions} disabled={loading} className={`p-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 transition-all ${loading ? 'animate-spin' : ''}`} title="Recarregar"><RefreshCcw size={16} /></button>
-                <button onClick={() => setIsShareModalOpen(true)} className="p-2.5 bg-white border border-slate-200 text-[#0d9488] rounded-2xl shadow-sm hover:bg-slate-50 transition-all" title="Compartilhar"><Share2 size={16} /></button>
+              {/* Ações Lado a Lado */}
+              <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
+                {/* Ações */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={fetchTransactions} disabled={loading} className={`p-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 transition-all ${loading ? 'animate-spin' : ''}`} title="Recarregar"><RefreshCcw size={16} /></button>
+                  <button onClick={() => setIsShareModalOpen(true)} className="p-2.5 bg-white border border-slate-200 text-[#0d9488] rounded-2xl shadow-sm hover:bg-slate-50 transition-all" title="Compartilhar"><Share2 size={16} /></button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Listagem */}
-          <div className="flex flex-col">
-            <div className="px-4 py-3 border-b border-slate-200 bg-transparent flex flex-row items-center justify-between gap-4 shrink-0">
+            {/* Segunda Linha: Título, Criar Lançamento e Filtros */}
+            <div className="px-4 py-2 flex flex-row items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-4">
                 <h2 className="text-xl font-black">Transações</h2>
                 <button
@@ -1398,6 +1399,10 @@ const FinancialTransactionsV2 = () => {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Listagem */}
+          <div className="flex flex-col">
 
             <div className="divide-y divide-slate-50 pb-20">
               {displayInstances.length === 0 ? (
