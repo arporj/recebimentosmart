@@ -290,6 +290,8 @@ const CreditCardV2 = () => {
     return { startDate, closingDate, dueDate, endDate };
   }, [selectedCard, currentMonth]);
 
+  const currentInvoiceMonthString = format(currentMonth, 'yyyy-MM');
+
   // Filter transactions for this card + invoice period
   const cardInstances = useMemo((): TransactionInstance[] => {
     if (!selectedCardId) return [];
@@ -394,7 +396,6 @@ const CreditCardV2 = () => {
   }, [transactions, selectedCardId, currentMonth, invoicePeriod]);
 
   // Checar se a fatura atual está fechada (existe uma transferência agendada/paga para ela com o invoice_month correspondente)
-  const currentInvoiceMonthString = format(currentMonth, 'yyyy-MM');
   const billPaymentTransaction = useMemo(() => {
     if (!selectedCardId) return null;
     return transactions.find(t => 
