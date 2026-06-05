@@ -963,11 +963,17 @@ const FinancialTransactionsV2 = () => {
             </div>
           ))}
         </div>
-        <div className="py-1.5 px-3 bg-slate-900 text-white flex justify-between items-center">
-          <div className="flex flex-col"><span className="text-[8px] font-black opacity-40 uppercase">Total</span></div>
-          <div className="text-right">
-            <p className="text-sm font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</p>
-            <p className="text-[8px] font-bold opacity-70">Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}</p>
+        <div className="py-2 px-3 bg-gradient-to-br from-[#0d9488] to-[#0f766e] text-white flex justify-between items-center border-t border-teal-700/40">
+          <div className="flex flex-col">
+            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-teal-100">Total</span>
+          </div>
+          <div className="bg-white px-3 py-1 rounded-xl shadow-md text-right">
+            <p className="text-xs font-black text-[#0d9488] leading-tight">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
+            </p>
+            <p className="text-[7px] font-bold text-slate-500 mt-0.5 leading-none">
+              Proj: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}
+            </p>
           </div>
         </div>
       </div>
