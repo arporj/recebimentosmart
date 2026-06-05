@@ -47,7 +47,7 @@ const FAQ_ITEMS: FAQItem[] = [
     {
         category: 'funcionalidades',
         question: 'Como funciona o pagamento de lançamentos recorrentes?',
-        answer: 'Ao confirmar o pagamento de um lançamento recorrente ou parcelado, o sistema confirma apenas a parcela selecionada ("Somente este") para evitar a alteração acidental de parcelas futuras. O lançamento pago é então registrado na data exata em que você confirmou o pagamento (data do pagamento), enquanto as parcelas e lançamentos futuros são mantidos intactos em suas respectivas datas de vencimento originais.'
+        answer: 'Ao confirmar o pagamento de um lançamento recorrente ou parcelado, o sistema confirma apenas a parcela selecionada ("Somente este") para evitar a alteração acidental de parcelas futuras. O lançamento pago é então registrado na data exata em que você confirmou o pagamento (data do pagamento), enquanto as parcelas e lançamentos futuros são mantidos intactos em suas respectivas datas de vencimento originais. Caso você desconfirme um lançamento pago, ele voltará para o status pendente e retornará automaticamente para a sua data de vencimento original.'
     },
     {
         category: 'funcionalidades',
