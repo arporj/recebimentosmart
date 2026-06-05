@@ -594,14 +594,16 @@ const FinancialTransactionsV2 = () => {
 
       for (const card of linkedCards) {
          // Get all transactions for this card
-         const cardTrans = allInstancesUpToMonth.filter(t => t.account_id === card.id && t.type === 'expense' && t.status !== 'cancelled');
+         const cardTrans = allInstancesUpToMonth.filter(t => t.account_id === card.id && (t.type === 'expense' || t.type === 'income') && t.status !== 'cancelled');
          
          // Group by invoice_month
          const byMonth = new Map<string, number>();
          for (const ct of cardTrans) {
             const m = ct.invoice_month;
             if (m) {
-               byMonth.set(m, (byMonth.get(m) || 0) + Number(ct.amount));
+               const valValue = Number(ct.amount) || 0;
+               const adjustedVal = ct.type === 'expense' ? valValue : -valValue;
+               byMonth.set(m, (byMonth.get(m) || 0) + adjustedVal);
             }
          }
 
@@ -652,16 +654,17 @@ const FinancialTransactionsV2 = () => {
       
       const existing = invoiceMap.get(t.account_id!);
       const amount = Number(t.amount) || 0;
+      const adjustedAmount = t.type === 'expense' ? amount : -amount;
       
       if (existing) {
-        existing.total += amount;
+        existing.total += adjustedAmount;
       } else {
         const card = creditCardAccounts.find(c => c.id === t.account_id);
         invoiceMap.set(t.account_id!, {
           cardName: card?.name || t.account?.name || 'Cartão',
           linkedAccountName: card?.linkedAccountName || null,
           invoicePaymentAccountId: card?.invoice_payment_account_id || null,
-          total: amount,
+          total: adjustedAmount,
           dueDay: card?.due_day || null,
         });
       }
