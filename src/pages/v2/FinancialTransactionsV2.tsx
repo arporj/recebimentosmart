@@ -935,7 +935,7 @@ const FinancialTransactionsV2 = () => {
 
       {/* Seção de Contas */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="py-1.5 px-3 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
+        <div className="py-1.5 px-3 border-b border-teal-700/10 bg-teal-950/25 flex justify-between items-center text-[9px] font-extrabold uppercase tracking-widest text-teal-900">
           <span>Contas</span>
           <span>Saldo</span>
         </div>
