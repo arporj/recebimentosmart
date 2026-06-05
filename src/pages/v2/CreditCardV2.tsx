@@ -547,7 +547,7 @@ const CreditCardV2 = () => {
           <Repeat size={12} className="text-indigo-400 shrink-0" />
         )}
         <span className={`text-sm font-bold tabular-nums shrink-0 ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-          {t.type === 'expense' ? '-' : ''}{formatCurrency(t.amount)}
+          {t.type === 'expense' ? '-' : '+'}{formatCurrency(t.amount)}
         </span>
         <div className="relative" ref={openDropdown === t.id + t.instanceDate ? dropdownRef : null}>
           <button
