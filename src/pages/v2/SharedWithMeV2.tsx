@@ -312,7 +312,7 @@ export default function SharedWithMeV2() {
            client_id,
            status,
            created_at,
-           client:clients(id, name, phone),
+           client:clients!client_shares_client_id_fkey(id, name, phone),
            sender:profiles!client_shares_sender_id_fkey(id, name, email)
         `)
         .ilike('receiver_email', user?.email || '')
@@ -334,7 +334,7 @@ export default function SharedWithMeV2() {
            status,
            created_at,
            receiver_email,
-           client:clients(id, name)
+           client:clients!client_shares_client_id_fkey(id, name)
         `)
         .eq('sender_id', user?.id)
         .order('created_at', { ascending: false });
