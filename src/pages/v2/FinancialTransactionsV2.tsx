@@ -1028,17 +1028,34 @@ const FinancialTransactionsV2 = () => {
         <div className="sticky top-[57px] z-20 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Top Row for Sm and Above / Standard mobile rows */}
           {/* Mobile view only: < sm */}
-          <div className="flex sm:hidden items-center justify-between w-full">
-            <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 shrink-0">
-              <div className="flex flex-col gap-[3px] w-4"><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /></div>
-              <span className="text-xs font-black text-slate-800">Resumo</span>
+          <div className="flex sm:hidden items-center justify-between w-full gap-2">
+            <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-1.5 shrink-0">
+              <div className="flex flex-col gap-[3px] w-4.5"><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /><div className="h-[2px] w-full bg-slate-600" /></div>
+              <span className="text-[10px] font-black text-slate-800">Resumo</span>
             </button>
-            <span className="text-sm font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}</span>
+            
+            {/* Saldos Divididos no Mobile */}
+            <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold shadow-sm shrink-0">
+              <div className="flex flex-col items-center leading-none">
+                <span className="text-[6px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Saldo</span>
+                <span className="text-slate-800 font-extrabold">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
+                </span>
+              </div>
+              <div className="w-px h-4 bg-slate-200" />
+              <div className="flex flex-col items-center leading-none">
+                <span className="text-[6px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Previsto</span>
+                <span className="text-slate-500 font-extrabold">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}
+                </span>
+              </div>
+            </div>
+
             <button
               onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
-              className="flex items-center gap-1.5 bg-[#0d9488] text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider"
+              className="flex items-center gap-1 bg-[#0d9488] text-white px-2 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider shrink-0"
             >
-              <Plus size={12} /> Criar
+              <Plus size={10} /> Criar
             </button>
           </div>
 
@@ -1062,7 +1079,7 @@ const FinancialTransactionsV2 = () => {
              </button>
 
              {/* 2. Central Area: Month Filter and Balance occupying all space */}
-             <div className="flex-1 flex justify-around items-center max-w-xl mx-auto">
+             <div className="flex-1 flex justify-around items-center max-w-xl mx-auto gap-4">
                {/* Month filter */}
                <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1 min-w-[170px] shadow-sm shrink-0">
                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-white rounded-lg transition-all active:scale-90">
@@ -1074,12 +1091,21 @@ const FinancialTransactionsV2 = () => {
                  </button>
                </div>
 
-               {/* Balance */}
-               <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-1 shadow-sm shrink-0">
-                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block leading-none pt-0.5">Saldo</span>
-                 <span className="text-sm font-black text-slate-800 leading-none">
-                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
-                 </span>
+               {/* Balance com Saldo Atual e Previsto Divididos */}
+               <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-1 shadow-sm shrink-0 text-xs font-black">
+                 <div className="flex flex-col items-start leading-none">
+                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Saldo</span>
+                   <span className="text-slate-800">
+                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.confirmed)}
+                   </span>
+                 </div>
+                 <div className="w-px h-5 bg-slate-200" />
+                 <div className="flex flex-col items-start leading-none">
+                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Previsto</span>
+                   <span className="text-slate-600">
+                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.projected)}
+                   </span>
+                 </div>
                </div>
              </div>
 
