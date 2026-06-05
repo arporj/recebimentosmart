@@ -1083,7 +1083,7 @@ const FinancialTransactionsV2 = () => {
     }
   };
 
-  const calcularDataVencimentoOriginal = (t: TransactionInstance, transactionsList: any[]): string => {
+  const calcularDataVencimentoOriginal = (t: TransactionInstance, transactionsList: FinancialTransaction[]): string => {
     if (!t.parent_id) return t.originalInstanceDate || t.instanceDate || t.date;
     const mother = transactionsList.find(m => m.id === t.parent_id);
     if (!mother) return t.originalInstanceDate || t.instanceDate || t.date;
@@ -1118,9 +1118,10 @@ const FinancialTransactionsV2 = () => {
       if (error) throw error;
       toast.success('Lançamento desconfirmado!');
       fetchTransactions();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao desconfirmar:', err);
-      toast.error('Erro ao desconfirmar lançamento: ' + err.message);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      toast.error('Erro ao desconfirmar lançamento: ' + errorMsg);
     }
   };
 
