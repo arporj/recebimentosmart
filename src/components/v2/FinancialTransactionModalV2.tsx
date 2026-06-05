@@ -409,7 +409,6 @@ const FinancialTransactionModalV2 = ({
       fetchCategories();
     }
   }, [isOpen, user]);
-
   // Adjust toggles based on date
   useEffect(() => {
     if (!isOpen) return;
@@ -421,6 +420,34 @@ const FinancialTransactionModalV2 = ({
     }
   }, [date, isOpen]);
 
+  // Seleção automática de titular se houver apenas uma opção
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isCreditCard && accountId && accounts.length > 0) {
+      const account = accounts.find(a => a.id === accountId);
+      const holders: string[] = [];
+      if (account) {
+        if (account.main_card_name) holders.push(account.main_card_name);
+        if (Array.isArray(account.secondary_cards)) {
+          (account.secondary_cards as any[]).forEach((c) => {
+            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+            if (name) holders.push(name);
+          });
+        }
+      }
+      if (holders.length === 1) {
+        setCardHolderName(holders[0]);
+      } else if (holders.length === 0) {
+        setCardHolderName('');
+      } else if (cardHolderName && !holders.includes(cardHolderName)) {
+        // Se mudou de cartão e o titular anterior não existe no novo cartão, limpa
+        setCardHolderName('');
+      }
+    } else {
+      setCardHolderName('');
+    }
+  }, [accountId, accounts, isCreditCard, isOpen]);
+
   const fetchClients = async () => {
     const { data } = await supabase
       .from('clients')
@@ -428,7 +455,12 @@ const FinancialTransactionModalV2 = ({
       .eq('user_id', user?.id || '')
       .is('deleted_at', null)
       .order('name');
-    if (data) setClients(data);
+    if (data) {
+      setClients(data);
+      if (data.length === 1 && !transaction) {
+        setClientId(data[0].id);
+      }
+    }
   };
 
   const fetchTags = async () => {
@@ -476,7 +508,12 @@ const FinancialTransactionModalV2 = ({
       .select('id, name, icon, parent_id')
       .eq('user_id', user?.id || '')
       .order('name');
-    if (data) setCategories(data);
+    if (data) {
+      setCategories(data);
+      if (data.length === 1 && !transaction) {
+        setCategoryId(data[0].id);
+      }
+    }
   };
 
   const getAccountTypeLabel = (type: string) => {
@@ -642,6 +679,23 @@ const FinancialTransactionModalV2 = ({
     if (!categoryId) {
       toast.error('Informe a categoria do lançamento');
       return;
+    }
+    if (isCreditCard) {
+      const account = accounts.find(a => a.id === accountId);
+      const holders: string[] = [];
+      if (account) {
+        if (account.main_card_name) holders.push(account.main_card_name);
+        if (Array.isArray(account.secondary_cards)) {
+          (account.secondary_cards as any[]).forEach((c) => {
+            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+            if (name) holders.push(name);
+          });
+        }
+      }
+      if (holders.length > 0 && (!cardHolderName || cardHolderName.trim() === '')) {
+        toast.error('Selecione o titular do cartão');
+        return;
+      }
     }
     if (!date) {
       toast.error('Informe a data do lançamento');
