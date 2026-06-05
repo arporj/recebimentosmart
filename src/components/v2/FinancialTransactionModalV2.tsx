@@ -839,9 +839,9 @@ const FinancialTransactionModalV2 = ({
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <form onSubmit={handleSubmit} className="p-4 md:p-6 pb-24 md:pb-32 flex flex-col">
+          <form onSubmit={handleSubmit} className="p-4 md:p-6 pb-20 md:pb-6 flex flex-col">
             {/* Linha 1: Seletor de Tipo (Despesa / Receita / Transferência) */}
-            <div className="w-full space-y-2 mb-6">
+             <div className="w-full space-y-2 mb-4">
               <div className="h-5 flex items-center px-1">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tipo de Transação</label>
               </div>
@@ -892,11 +892,11 @@ const FinancialTransactionModalV2 = ({
             </div>
 
             {/* Restante do Formulário */}
-            <div className="flex flex-col lg:flex-row gap-6 space-y-4 lg:space-y-0">
+            <div className="flex flex-col lg:flex-row gap-4 space-y-3 lg:space-y-0">
               {/* Coluna Esquerda: Informações Básicas e Modalidade */}
-              <div className="flex-1 space-y-4">
+              <div className="flex-1 space-y-3">
                 {/* Linha 2: Valor, Data, Modalidade, Descrição */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {/* 1. Valor */}
                   <div className="space-y-2">
                     <div className="h-5 flex items-center px-1">
@@ -1389,9 +1389,9 @@ const FinancialTransactionModalV2 = ({
             <div className="hidden lg:block w-[1px] bg-slate-900 self-stretch shrink-0" />
 
             {/* Coluna Direita: Destinos, Categorias e Classificação */}
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 space-y-3">
               {/* Contas, Destinos ou Categorias */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Account Select */}
                 <div className="space-y-2">
                   <div className="h-5 flex items-center px-1">
@@ -1728,7 +1728,7 @@ const FinancialTransactionModalV2 = ({
               )}
 
               {/* Cliente e Tags */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Client Select */}
                 <div className="space-y-2">
                   <div className="h-5 flex justify-between items-center px-1">
@@ -1878,47 +1878,57 @@ const FinancialTransactionModalV2 = ({
 
               {/* Toggles de Status e Confirmação */}
               {!isConfirming && !isCreditCard && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   {/* Lançamento Pago/Recebido Toggle */}
                   {(date <= format(new Date(), 'yyyy-MM-dd')) && (
-                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
-                      <button 
-                        type="button"
-                        onClick={() => setStatus(status === 'paid' ? 'pending' : 'paid')}
-                        className={`p-0.5 rounded-md transition-all shrink-0 ${status === 'paid' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/10' : 'bg-white text-slate-300 border border-slate-200'}`}
-                      >
-                        {status === 'paid' ? <CheckSquare size={16} /> : <Square size={16} />}
-                      </button>
-                      <div className="min-w-0 flex-1 flex items-center gap-2">
-                        <h3 className="text-xs font-bold text-slate-900 truncate">
+                    <div
+                      onClick={() => setStatus(status === 'paid' ? 'pending' : 'paid')}
+                      className={`flex items-center gap-3 py-3 px-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        status === 'paid'
+                          ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {status === 'paid' ? (
+                        <CheckSquare size={18} className="text-emerald-600 shrink-0" />
+                      ) : (
+                        <Square size={18} className="text-slate-400 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className={`text-xs font-black ${status === 'paid' ? 'text-emerald-700' : 'text-slate-600'} leading-tight`}>
                           {type === 'income' ? 'Recebido' : type === 'transfer' ? 'Efetuado' : 'Pago'}
-                        </h3>
-                        <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Marca a transação como liquidada no extrato e atualiza o saldo da conta imediatamente.">
-                          <span className="text-[10px] font-black">?</span>
-                        </div>
+                        </p>
+                        <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">
+                          {status === 'paid' ? 'Confirmado.' : 'Marcar pago.'}
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {/* Auto Confirm Toggle */}
                   {(date >= format(new Date(), 'yyyy-MM-dd')) && (
-                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center gap-2.5 border border-slate-100/50">
-                      <button 
-                        type="button"
-                        onClick={() => setAutoConfirm(!autoConfirm)}
-                        className={`p-0.5 rounded-md transition-all shrink-0 ${autoConfirm ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'bg-white text-slate-300 border border-slate-200'}`}
-                      >
-                        {autoConfirm ? <CheckSquare size={16} /> : <Square size={16} />}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
-                          Confirmar Automaticamente
-                          <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
-                            <span className="text-[10px] font-black">?</span>
+                    <div
+                      onClick={() => setAutoConfirm(!autoConfirm)}
+                      className={`flex items-center gap-3 py-3 px-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        autoConfirm
+                          ? 'bg-indigo-50 border-indigo-300 shadow-sm shadow-indigo-100'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {autoConfirm ? (
+                        <CheckSquare size={18} className="text-indigo-600 shrink-0" />
+                      ) : (
+                        <Square size={18} className="text-slate-400 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="text-xs font-bold text-slate-900 truncate leading-tight flex items-center gap-1">
+                          Auto Confirmar
+                          <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
+                            <span className="text-[9px] font-black">?</span>
                           </div>
                         </h3>
-                        <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
-                          No dia do vencimento
+                        <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold truncate leading-none mt-0.5">
+                          NO DIA DO VENCIMENTO
                         </p>
                       </div>
                     </div>
