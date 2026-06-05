@@ -320,11 +320,13 @@ const CreditCardV2 = () => {
       const tDate = parseISO(t.date);
 
       if (!t.recurrence_enabled) {
-        if (invoicePeriod) {
-          if (!isBefore(tDate, invoicePeriod.startDate) && !isAfter(tDate, invoicePeriod.endDate)) {
-            instances.push({ ...t, instanceDate: t.date, isVirtual: false });
-          }
-        } else if (isSameMonth(tDate, currentMonth)) {
+        const matchesInvoice = t.invoice_month
+          ? t.invoice_month === currentInvoiceMonthString
+          : (invoicePeriod
+              ? (!isBefore(tDate, invoicePeriod.startDate) && !isAfter(tDate, invoicePeriod.endDate))
+              : isSameMonth(tDate, currentMonth));
+
+        if (matchesInvoice) {
           instances.push({ ...t, instanceDate: t.date, isVirtual: false });
         }
         continue;
@@ -353,10 +355,14 @@ const CreditCardV2 = () => {
         const cursorDate = parseISO(dateStr);
 
         let inPeriod = false;
-        if (invoicePeriod) {
-          inPeriod = !isBefore(cursorDate, invoicePeriod.startDate) && !isAfter(cursorDate, invoicePeriod.endDate);
+        if (dateStr === t.date && t.invoice_month) {
+          inPeriod = t.invoice_month === currentInvoiceMonthString;
         } else {
-          inPeriod = isSameMonth(cursorDate, currentMonth);
+          if (invoicePeriod) {
+            inPeriod = !isBefore(cursorDate, invoicePeriod.startDate) && !isAfter(cursorDate, invoicePeriod.endDate);
+          } else {
+            inPeriod = isSameMonth(cursorDate, currentMonth);
+          }
         }
 
         // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
