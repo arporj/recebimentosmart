@@ -53,7 +53,9 @@ export async function editarTransacao(
     // nós não atualizamos a mãe diretamente. Em vez disso, inserimos um novo filho físico
     // mantendo a mãe original intacta como geradora de recorrências futuras.
     if (currentModalidade === 'recorrente' && !parent_id) {
+      const { id: _, created_at: __, ...parentFields } = current;
       const newChildPayload = {
+        ...parentFields,
         ...dbUpdate,
         date: dbUpdate.date || currentDate,
         user_id: current.user_id,
