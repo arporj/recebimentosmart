@@ -202,25 +202,17 @@ export async function editarTransacao(
         .gte('date', effectiveDate);
 
       // 2. Criar a nova mãe com as novas regras começando a partir da data de corte
+      const { id: _, created_at: __, recurrence_end_date: ___, ...parentFields } = current;
       const newMotherPayload = {
-        user_id: current.user_id,
-        client_id: cleanUpdate.client_id !== undefined ? cleanUpdate.client_id : current.client_id,
-        description: cleanUpdate.description !== undefined ? cleanUpdate.description : current.description,
-        amount: cleanUpdate.amount !== undefined ? cleanUpdate.amount : current.amount,
-        type: type,
-        category_id: cleanUpdate.category_id !== undefined ? cleanUpdate.category_id : current.category_id,
-        account_id: cleanUpdate.account_id !== undefined ? cleanUpdate.account_id : current.account_id,
-        destination_account_id: cleanUpdate.destination_account_id !== undefined ? cleanUpdate.destination_account_id : current.destination_account_id,
+        ...parentFields,
+        ...safeBulkUpdate,
+        ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
         date: effectiveDate,
         status: cleanUpdate.status || 'pending',
         paid_date: cleanUpdate.paid_date || null,
         modalidade: 'recorrente',
         recurrence_enabled: true,
-        recurrence_period: cleanUpdate.recurrence_period !== undefined ? cleanUpdate.recurrence_period : current.recurrence_period,
-        recurrence_interval: cleanUpdate.recurrence_interval !== undefined ? cleanUpdate.recurrence_interval : current.recurrence_interval,
         installment_current: 1, // Recomeça como ciclo 1 da nova série
-        invoice_month: cleanUpdate.invoice_month !== undefined ? cleanUpdate.invoice_month : current.invoice_month,
-        card_holder_name: cleanUpdate.card_holder_name !== undefined ? cleanUpdate.card_holder_name : current.card_holder_name
       };
 
       const { data: newMother, error: createError } = await supabase
