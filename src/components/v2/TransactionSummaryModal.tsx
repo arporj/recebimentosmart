@@ -80,9 +80,9 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[90vh] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200 flex flex-col">
         {/* Header */}
-        <div className="p-6 pb-4 border-b border-slate-50 flex justify-between items-start">
+        <div className="p-6 pb-4 border-b border-slate-50 flex justify-between items-start shrink-0">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${currentType.color}`}>
@@ -106,9 +106,9 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
           {/* Amount Badge Panel */}
-          <div className={`p-6 rounded-3xl border text-center space-y-1 ${
+          <div className={`p-6 rounded-3xl border text-center space-y-1 shrink-0 ${
             transaction.type === 'expense' ? 'bg-rose-50/30 border-rose-100/50' : 
             transaction.type === 'income' ? 'bg-emerald-50/30 border-emerald-100/50' : 
             'bg-blue-50/30 border-blue-100/50'
@@ -209,7 +209,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
         </div>
 
         {/* Footer com botões Fechar e Editar */}
-        <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 sm:flex-initial px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all text-center border border-slate-200"
