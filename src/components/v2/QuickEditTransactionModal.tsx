@@ -573,7 +573,7 @@ const QuickEditTransactionModal = ({
                   <button 
                     type="button"
                     onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
+                    className="w-full min-h-[42px] px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
                   >
                     {accountId ? (
                       <div className="flex items-center gap-2">
@@ -624,7 +624,7 @@ const QuickEditTransactionModal = ({
                   <button 
                     type="button"
                     onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
+                    className="w-full min-h-[42px] px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
                   >
                     {categoryId ? (
                       <div className="flex items-center gap-2">
@@ -727,7 +727,7 @@ const QuickEditTransactionModal = ({
                   <select
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold"
+                    className="w-full min-h-[42px] px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold"
                     style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
                   >
                     <option value="">Nenhum cliente</option>
@@ -824,7 +824,7 @@ const QuickEditTransactionModal = ({
                   setIsPaid(newPaid);
                   if (newPaid) setAutoConfirm(false);
                 }}
-                className={`flex items-center gap-2 px-2 rounded-xl border-2 cursor-pointer transition-all ${
+                className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 cursor-pointer transition-all ${
                   isPaid
                     ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
                     : 'bg-slate-50 border-slate-200 hover:border-slate-300'
@@ -849,7 +849,7 @@ const QuickEditTransactionModal = ({
               {!isPaid && !isCreditCard && (date >= format(new Date(), 'yyyy-MM-dd')) && (
                 <div
                   onClick={() => setAutoConfirm(!autoConfirm)}
-                  className={`flex items-center gap-2 px-2 rounded-xl border-2 cursor-pointer transition-all ${
+                  className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 cursor-pointer transition-all ${
                     autoConfirm
                       ? 'bg-indigo-50 border-indigo-300 shadow-sm shadow-indigo-100'
                       : 'bg-slate-50 border-slate-200 hover:border-slate-300'
@@ -868,7 +868,7 @@ const QuickEditTransactionModal = ({
                       </div>
                     </h3>
                     <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold truncate leading-none mt-0.5">
-                      No vencimento
+                      NO DIA DO VENCIMENTO
                     </p>
                   </div>
                 </div>
