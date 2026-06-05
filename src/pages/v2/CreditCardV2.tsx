@@ -581,9 +581,9 @@ const CreditCardV2 = () => {
   }
 
   return (
-    <div className="bg-slate-50 h-screen overflow-hidden flex flex-col">
+    <div className="bg-slate-50 flex flex-col min-h-screen">
       {/* ===== MOBILE LAYOUT ===== */}
-      <div className="lg:hidden flex flex-col h-full overflow-hidden">
+      <div className="lg:hidden flex flex-col">
         {/* Mobile Header */}
         <div className="shrink-0 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Card selector + month */}
@@ -648,7 +648,7 @@ const CreditCardV2 = () => {
         </div>
 
         {/* Mobile List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="divide-y divide-slate-100">
           {loading ? (
             <div className="py-12 text-center text-slate-400 italic">Carregando...</div>
           ) : displayInstances.length === 0 ? (
@@ -660,9 +660,9 @@ const CreditCardV2 = () => {
       </div>
 
       {/* ===== DESKTOP LAYOUT ===== */}
-      <div className="hidden lg:flex h-full gap-0 overflow-hidden">
+      <div className="hidden lg:flex w-full gap-6 items-start">
         {/* Sidebar */}
-        <div className="w-[340px] shrink-0 bg-white border-r border-slate-100 flex flex-col h-full overflow-y-auto">
+        <div className="w-[340px] shrink-0 bg-white border border-slate-100 flex flex-col sticky top-[81px] max-h-[calc(100vh-110px)] overflow-y-auto rounded-2xl shadow-sm">
           {/* Card Selector */}
           <div className="p-4 border-b border-slate-100 space-y-3">
             <div className="flex items-center gap-2">
@@ -780,9 +780,9 @@ const CreditCardV2 = () => {
         </div>
 
         {/* Main Panel */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
           {/* Toolbar */}
-          <div className="shrink-0 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4">
+          <div className="sticky top-[81px] z-20 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4">
             <button
                onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                className="flex items-center gap-2 bg-[#0d9488] text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider shrink-0"
@@ -805,17 +805,17 @@ const CreditCardV2 = () => {
           </div>
 
           {/* Transaction List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="divide-y divide-slate-100">
             {loading ? (
               <div className="py-12 text-center text-slate-400 italic">Carregando...</div>
             ) : displayInstances.length === 0 ? (
               <div className="py-12 text-center text-slate-400 italic">Nenhum lançamento neste período.</div>
             ) : groupedByHolder.length > 0 ? (
               groupedByHolder.map(group => (
-                <div key={group.holder}>
+                <div key={group.holder} className="divide-y divide-slate-100">
                   {/* Group header */}
                   {groupedByHolder.length > 1 && (
-                    <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <div className="px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
                       <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Cartão {group.holder}</span>
                       <span className="text-xs font-bold text-rose-600">
                         -{formatCurrency(group.items.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0))}
