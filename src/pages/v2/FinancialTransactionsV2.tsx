@@ -21,7 +21,8 @@ import {
   User,
   Wallet,
   Share2,
-  Loader2
+  Loader2,
+  XCircle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -979,7 +980,8 @@ const FinancialTransactionsV2 = () => {
           // Atualizar transação física existente
           const updatePayload: any = {
             status: 'paid',
-            paid_date: paidDate
+            paid_date: paidDate,
+            date: targetDate // AQUI: atualiza a data de cadastro para a data do pagamento!
           };
           
           const { error: updateError } = await supabase
@@ -1019,18 +1021,20 @@ const FinancialTransactionsV2 = () => {
       }
 
       const promises = physicalPaid.map(async (t) => {
+        const originalDate = calcularDataVencimentoOriginal(t, transactions);
         const { error } = await supabase
           .from('financial_transactions')
           .update({
             status: 'pending',
-            paid_date: null
+            paid_date: null,
+            date: originalDate // Restaura a data original!
           })
           .eq('id', t.id);
         if (error) throw error;
       });
 
       await Promise.all(promises);
-      toast.success(`${physicalPaid.length} lançamentos marcados como pendentes!`);
+      toast.success(`${physicalPaid.length} lançamentos desconfirmados!`);
       setSelectedTransactionKeys(new Set());
       fetchTransactions();
     } catch (err: any) {
@@ -1076,6 +1080,47 @@ const FinancialTransactionsV2 = () => {
       toast.error('Erro ao excluir lançamentos: ' + err.message);
     } finally {
       setBulkDeleteLoading(false);
+    }
+  };
+
+  const calcularDataVencimentoOriginal = (t: TransactionInstance, transactionsList: any[]): string => {
+    if (!t.parent_id) return t.originalInstanceDate || t.instanceDate || t.date;
+    const mother = transactionsList.find(m => m.id === t.parent_id);
+    if (!mother) return t.originalInstanceDate || t.instanceDate || t.date;
+    const interval = mother.recurrence_interval || 1;
+    const period = mother.recurrence_period || 'monthly';
+    const motherDate = parseISO(mother.date);
+    const diff = (t.installment_current || 1) - (mother.installment_current || 1);
+    if (diff <= 0) return mother.date;
+    let cursor = new Date(motherDate);
+    const steps = diff * interval;
+    switch (period) {
+      case 'daily': cursor = addDays(cursor, steps); break;
+      case 'weekly': cursor = addWeeks(cursor, steps); break;
+      case 'monthly': cursor = addMonths(cursor, steps); break;
+      case 'yearly': cursor = addYears(cursor, steps); break;
+      default: cursor = addMonths(cursor, steps);
+    }
+    return format(cursor, 'yyyy-MM-dd');
+  };
+
+  const handleUnconfirmAction = async (t: TransactionInstance) => {
+    try {
+      const originalDate = calcularDataVencimentoOriginal(t, transactions);
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({
+          status: 'pending',
+          paid_date: null,
+          date: originalDate
+        })
+        .eq('id', t.id);
+      if (error) throw error;
+      toast.success('Lançamento desconfirmado!');
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro ao desconfirmar:', err);
+      toast.error('Erro ao desconfirmar lançamento: ' + err.message);
     }
   };
 
@@ -1591,6 +1636,9 @@ const FinancialTransactionsV2 = () => {
                         {t.status !== 'paid' && (
                           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
                         )}
+                        {t.status === 'paid' && (
+                          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnconfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-amber-600 hover:bg-amber-50 flex items-center gap-2"><XCircle size={12} /> Desconfirmar</button>
+                        )}
                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Pencil size={12} /> Editar</button>
                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleClone(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"><Copy size={12} /> Clonar</button>
                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-rose-50 text-rose-600 border-t mt-0.5 pt-1.5 flex items-center gap-2"><Trash2 size={12} /> Excluir</button>
@@ -1944,6 +1992,9 @@ const FinancialTransactionsV2 = () => {
                           <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
                               <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                            )}
+                            {t.status === 'paid' && (
+                              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnconfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-amber-600 hover:bg-amber-50 flex items-center gap-3"><XCircle size={14} /> Desconfirmar</button>
                             )}
                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(t); }} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Pencil size={14} /> Editar</button>
                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleClone(t); }} className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Copy size={14} /> Clonar</button>
