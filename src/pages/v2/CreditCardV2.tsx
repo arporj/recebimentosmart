@@ -432,14 +432,18 @@ const CreditCardV2 = () => {
 
   // Invoice summary
   const invoiceSummary = useMemo(() => {
-    const allExpenses = cardInstances.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0);
+    const expenses = cardInstances.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const incomes = cardInstances.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const total = expenses - incomes;
     // Fixed expenses: recurrence_enabled
     const fixed = cardInstances.filter(t => t.recurrence_enabled && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     // Installments
-    const installments = cardInstances.filter(t => t.modalidade === 'parcelada').reduce((sum, t) => sum + t.amount, 0);
+    const installments = cardInstances.filter(t => t.modalidade === 'parcelada' && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
     return {
-      total: allExpenses,
+      total,
+      expenses,
+      incomes,
       fixed,
       installments,
     };
@@ -640,8 +644,8 @@ const CreditCardV2 = () => {
         <div className="shrink-0 px-3 py-2 bg-purple-50 border-b border-purple-100">
           <div className="flex items-center justify-between text-xs">
             <span className="text-purple-600 font-bold">Fatura</span>
-            <span className={`font-black ${invoiceSummary.total > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-              {formatCurrency(invoiceSummary.total)}
+            <span className={`font-black tabular-nums ${invoiceSummary.total >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+              {invoiceSummary.total >= 0 ? '-' : ''}{formatCurrency(Math.abs(invoiceSummary.total))}
             </span>
           </div>
         </div>
@@ -753,7 +757,9 @@ const CreditCardV2 = () => {
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between font-bold">
                 <span className="text-slate-700">Total da Fatura</span>
-                <span className="text-rose-600">-{formatCurrency(invoiceSummary.total)}</span>
+                <span className={`tabular-nums ${invoiceSummary.total >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {invoiceSummary.total >= 0 ? '-' : ''}{formatCurrency(Math.abs(invoiceSummary.total))}
+                </span>
               </div>
             </div>
           </div>
@@ -764,15 +770,21 @@ const CreditCardV2 = () => {
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-400">Despesas</span>
-                <span className="font-bold text-rose-600">-{formatCurrency(invoiceSummary.total)}</span>
+                <span className="font-bold text-rose-600">-{formatCurrency(invoiceSummary.expenses)}</span>
               </div>
+              {invoiceSummary.incomes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Estornos/Créditos</span>
+                  <span className="font-bold text-emerald-600">+{formatCurrency(invoiceSummary.incomes)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-400">Despesas fixas</span>
                 <span className="font-bold text-slate-600">-{formatCurrency(invoiceSummary.fixed)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Parcelas</span>
-                <span className="font-bold text-slate-600">{formatCurrency(invoiceSummary.installments)}</span>
+                <span className="font-bold text-slate-600">-{formatCurrency(invoiceSummary.installments)}</span>
               </div>
             </div>
           </div>
@@ -816,9 +828,16 @@ const CreditCardV2 = () => {
                   {groupedByHolder.length > 1 && (
                     <div className="px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
                       <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Cartão {group.holder}</span>
-                      <span className="text-xs font-bold text-rose-600">
-                        -{formatCurrency(group.items.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0))}
-                      </span>
+                      {(() => {
+                        const groupExpenses = group.items.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                        const groupIncomes = group.items.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                        const groupTotal = groupExpenses - groupIncomes;
+                        return (
+                          <span className={`text-xs font-bold tabular-nums ${groupTotal >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            {groupTotal >= 0 ? '-' : ''}{formatCurrency(Math.abs(groupTotal))}
+                          </span>
+                        );
+                      })()}
                     </div>
                   )}
                   {group.items.map(t => <TransactionRow key={t.id + t.instanceDate} t={t} />)}
