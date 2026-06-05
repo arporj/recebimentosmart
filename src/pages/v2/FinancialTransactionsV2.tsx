@@ -973,35 +973,39 @@ const FinancialTransactionsV2 = () => {
       </div>
 
       {/* Resumo Mensal */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-3 rounded-xl text-white space-y-3 relative overflow-hidden group border border-slate-800 shadow-xl">
-        <div className="absolute -right-10 -top-10 w-24 h-24 bg-teal-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/15 transition-all duration-500" />
-        <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-gradient-to-br from-[#0d9488] to-[#0f766e] p-3 rounded-xl text-white space-y-3 relative overflow-hidden group border border-[#0d9488]/30 shadow-xl">
+        <div className="absolute -right-10 -top-10 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none group-hover:bg-white/15 transition-all duration-500" />
+        <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
         <div className="space-y-2 relative z-10">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-slate-300">Resumo Mensal</span>
-            <Filter size={10} className="text-slate-500" />
+          <div className="flex items-center justify-between border-b border-teal-700/40 pb-1.5">
+            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-teal-100">Resumo Mensal</span>
+            <Filter size={10} className="text-teal-200" />
           </div>
           
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
-              <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Ganhos</span>
-              <p className="text-[11px] font-black text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.income + dynamicTotals.transfersIn)}</p>
+            <div className="flex items-center justify-between bg-teal-950/25 py-1.5 px-2.5 rounded-lg border border-teal-700/30 transition-colors">
+              <span className="text-[8px] uppercase font-black text-teal-100 tracking-wider">Ganhos</span>
+              <span className="bg-white px-2 py-0.5 rounded-lg font-black text-[11px] text-emerald-600 shadow-sm">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.income + dynamicTotals.transfersIn)}
+              </span>
             </div>
-            <div className="flex items-center justify-between bg-slate-950/40 py-1.5 px-2.5 rounded-lg border border-slate-800/40 hover:border-slate-800 transition-colors">
-              <span className="text-[8px] uppercase font-black text-slate-400 tracking-wider">Gastos</span>
-              <p className="text-[11px] font-black text-rose-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.expense + dynamicTotals.transfersOut)}</p>
+            <div className="flex items-center justify-between bg-teal-950/25 py-1.5 px-2.5 rounded-lg border border-teal-700/30 transition-colors">
+              <span className="text-[8px] uppercase font-black text-teal-100 tracking-wider">Gastos</span>
+              <span className="bg-white px-2 py-0.5 rounded-lg font-black text-[11px] text-rose-600 shadow-sm">
+                -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.expense + dynamicTotals.transfersOut)}
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="pt-2 border-t border-slate-800 flex flex-col gap-0.5 relative z-10">
-          <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Resultado Líquido</span>
-          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
-            <p className={`text-lg font-black tracking-tight ${dynamicTotals.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+        <div className="pt-2 border-t border-teal-700/40 flex flex-col gap-1 relative z-10">
+          <span className="text-[8px] font-black uppercase text-teal-200 tracking-wider">Resultado Líquido</span>
+          <div className="flex items-center justify-between gap-1.5 flex-wrap">
+            <span className={`text-base font-black tracking-tight bg-white px-3 py-1 rounded-xl shadow-md ${dynamicTotals.result >= 0 ? 'text-[#0d9488]' : 'text-rose-600'}`}>
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dynamicTotals.result)}
-            </p>
-            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md ${dynamicTotals.result >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+            </span>
+            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md ${dynamicTotals.result >= 0 ? 'bg-white/20 text-white border border-white/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}`}>
               {dynamicTotals.result >= 0 ? 'Superávit' : 'Déficit'}
             </span>
           </div>
