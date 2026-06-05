@@ -115,6 +115,8 @@ const FinancialTransactionsV2 = () => {
   };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
   const navigate = useNavigate();
 
   const [layoutPreference, setLayoutPreference] = useState<'default' | 'value_first' | 'value_right_desc'>('default');
@@ -879,8 +881,8 @@ const FinancialTransactionsV2 = () => {
     return sortedList;
   }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances]);
 
-  const toggleSelectTransaction = (key: string, e: React.MouseEvent | React.ChangeEvent) => {
-    e.stopPropagation();
+  const toggleSelectTransaction = (key: string, e?: React.MouseEvent | React.ChangeEvent) => {
+    if (e) e.stopPropagation();
     setSelectedTransactionKeys(prev => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -890,6 +892,38 @@ const FinancialTransactionsV2 = () => {
       }
       return next;
     });
+  };
+
+  const handleTouchStart = (key: string) => {
+    isLongPressRef.current = false;
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    
+    touchTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      toggleSelectTransaction(key);
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 600);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+    if (isLongPressRef.current) {
+      setTimeout(() => {
+        isLongPressRef.current = false;
+      }, 100);
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
   };
 
   const selectableInstances = useMemo(() => {
@@ -1529,7 +1563,15 @@ const FinancialTransactionsV2 = () => {
               return (
                 <div 
                   key={dropdownKey} 
-                  onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
+                  onTouchStart={() => handleTouchStart(`${t.id}-${t.instanceDate}`)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
+                  onClick={() => {
+                    if (!isLongPressRef.current) {
+                      setSelectedSummaryTransaction(t);
+                      setIsSummaryModalOpen(true);
+                    }
+                  }}
                   className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                 >
                   {/* Indicador de Status ou Checkbox */}
