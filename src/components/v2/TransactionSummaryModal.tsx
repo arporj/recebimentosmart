@@ -131,7 +131,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
               <Calendar size={16} className="text-slate-400 shrink-0" />
               <div className="min-w-0">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Data</span>
-                <span className="text-xs font-bold text-slate-700 truncate block leading-tight">{formattedDate}</span>
+                <span className="text-xs font-bold text-slate-700 block leading-tight">{formattedDate}</span>
               </div>
             </div>
 
@@ -142,7 +142,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">
                   {transaction.type === 'transfer' ? 'Conta Origem' : 'Conta'}
                 </span>
-                <span className="text-xs font-bold text-slate-700 truncate block leading-tight">
+                <span className="text-xs font-bold text-slate-700 block leading-tight">
                   {transaction.account?.name || 'Não informada'}
                 </span>
               </div>
@@ -154,7 +154,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
                 <ArrowRightLeft size={16} className="text-slate-400 shrink-0" />
                 <div className="min-w-0">
                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Conta Destino</span>
-                  <span className="text-xs font-bold text-indigo-600 truncate block leading-tight">
+                  <span className="text-xs font-bold text-indigo-600 block leading-tight">
                     {transaction.destination_account.name}
                   </span>
                 </div>
@@ -166,7 +166,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
               <Tag size={16} className="text-slate-400 shrink-0" />
               <div className="min-w-0">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Categoria</span>
-                <span className="text-xs font-bold text-slate-700 truncate block leading-tight">
+                <span className="text-xs font-bold text-slate-700 block leading-tight">
                   {transaction.category?.name || 'Sem Categoria'}
                 </span>
               </div>
@@ -177,7 +177,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
               <User size={16} className="text-slate-400 shrink-0" />
               <div className="min-w-0">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Cliente</span>
-                <span className="text-xs font-bold text-sky-600 truncate block leading-tight">
+                <span className="text-xs font-bold text-sky-600 block leading-tight">
                   {transaction.client?.name || 'Nenhum'}
                 </span>
               </div>
@@ -195,7 +195,7 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">
                     {transaction.installment_total && transaction.installment_total > 1 ? 'Parcelamento' : 'Recorrência'}
                   </span>
-                  <span className="text-xs font-bold text-indigo-600 truncate block leading-tight">
+                  <span className="text-xs font-bold text-indigo-600 block leading-tight">
                     {transaction.installment_total && transaction.installment_total > 1 ? (
                       `Parcela ${transaction.installment_current} de ${transaction.installment_total}`
                     ) : (
