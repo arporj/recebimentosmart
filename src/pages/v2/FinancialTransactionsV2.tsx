@@ -1389,7 +1389,9 @@ const FinancialTransactionsV2 = () => {
               if (t.isOpeningBalance) {
                 return (
                   <div key={dropdownKey} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-slate-50/80">
-                    <div className="w-2 h-2 rounded-full shrink-0 bg-slate-300" />
+                    <div className="w-6 flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-slate-300" />
+                    </div>
                     <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
                       {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                     </span>
@@ -1412,7 +1414,9 @@ const FinancialTransactionsV2 = () => {
               if (t.isInvoiceSummary) {
                 return (
                   <div key={dropdownKey} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40">
-                    <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+                    <div className="w-6 flex items-center justify-center shrink-0">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${t.invoiceData?.isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    </div>
                     <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
                       {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                     </span>
@@ -1480,19 +1484,27 @@ const FinancialTransactionsV2 = () => {
                 <div 
                   key={dropdownKey} 
                   onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                  className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
+                  className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                 >
-                  {/* Checkbox para seleção em lote */}
-                  <div className="shrink-0 flex items-center" onClick={(e) => e.stopPropagation()}>
-                    <input 
-                      type="checkbox"
-                      checked={selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`)}
-                      onChange={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
-                      className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500/30 cursor-pointer transition-all"
-                    />
+                  {/* Indicador de Status ou Checkbox */}
+                  <div className="w-6 flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* Checkbox visível se houver itens selecionados OU hover */}
+                    <div className={selectedTransactionKeys.size > 0 ? 'block' : 'hidden group-hover:block'}>
+                      <input 
+                        type="checkbox"
+                        checked={selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`)}
+                        onChange={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
+                        className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500/30 cursor-pointer transition-all"
+                      />
+                    </div>
+                    {/* Bolinha de status visível por padrão (esconde se selecionados) */}
+                    <div 
+                      className={selectedTransactionKeys.size > 0 ? 'hidden' : 'block group-hover:hidden cursor-pointer p-1'}
+                      onClick={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
+                    >
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
+                    </div>
                   </div>
-                  {/* Status dot */}
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
                   {/* Data */}
                   <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
                     {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
@@ -1694,6 +1706,8 @@ const FinancialTransactionsV2 = () => {
                   if (t.isOpeningBalance) {
                     return (
                       <div key={dropdownKey} className="group flex items-center gap-4 px-4 py-2 bg-slate-50/80 border-b border-slate-100">
+                        {/* Espaçador de alinhamento */}
+                        <div className="w-6 shrink-0" />
                         <div className="p-2 rounded-xl shrink-0 bg-slate-200 text-slate-600">
                           <Wallet size={20} />
                         </div>
@@ -1720,6 +1734,14 @@ const FinancialTransactionsV2 = () => {
                   if (t.isInvoiceSummary) {
                     return (
                       <div key={dropdownKey} className="group flex items-center gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
+                        {/* Status dot de Fatura */}
+                        <div className="w-6 flex items-center justify-center shrink-0">
+                          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                            t.invoiceData?.isPaid 
+                              ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' 
+                              : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                          }`} />
+                        </div>
                         <div className="p-2 rounded-xl shrink-0 bg-amber-100 text-amber-600">
                           <CreditCard size={20} />
                         </div>
@@ -1740,7 +1762,6 @@ const FinancialTransactionsV2 = () => {
 
                         <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
                           <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                            <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
                             <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
                           </div>
                           <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
@@ -1793,16 +1814,32 @@ const FinancialTransactionsV2 = () => {
                     <div 
                       key={dropdownKey} 
                       onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                      className={`flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
+                      className={`flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                     >
-                      {/* Checkbox para seleção em lote */}
-                      <div className="shrink-0 flex items-center" onClick={(e) => e.stopPropagation()}>
-                        <input 
-                          type="checkbox"
-                          checked={selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`)}
-                          onChange={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
-                          className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500/30 cursor-pointer transition-all"
-                        />
+                      {/* Indicador de Status ou Checkbox */}
+                      <div className="w-6 flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                        {/* Checkbox visível se houver itens selecionados OU hover */}
+                        <div className={selectedTransactionKeys.size > 0 ? 'block' : 'hidden group-hover:block'}>
+                          <input 
+                            type="checkbox"
+                            checked={selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`)}
+                            onChange={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
+                            className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500/30 cursor-pointer transition-all"
+                          />
+                        </div>
+                        {/* Bolinha de status visível por padrão (esconde se selecionados) */}
+                        <div 
+                          className={selectedTransactionKeys.size > 0 ? 'hidden' : 'block group-hover:hidden cursor-pointer p-1'}
+                          onClick={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
+                        >
+                          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                            status === 'paid' 
+                              ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' 
+                              : status === 'overdue' 
+                                ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' 
+                                : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                          }`} />
+                        </div>
                       </div>
                       {/* Ícone de Tipo */}
                       <div className={`p-1.5 rounded-lg shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
@@ -1823,10 +1860,9 @@ const FinancialTransactionsV2 = () => {
                         </div>
                       )}
 
-                      {/* Descrição e Metadados (Flex-1) */}
+                       {/* Descrição e Metadados (Flex-1) */}
                       <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
                         <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : status === 'overdue' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
                           
                           {/* Emblemas ANTES do nome no layout 3 */}
                           {layoutPreference === 'value_right_desc' && (
