@@ -393,7 +393,6 @@ const CreditCardV2 = () => {
     }
 
     const sorted = instances.sort((a, b) => new Date(a.instanceDate).getTime() - new Date(b.instanceDate).getTime());
-    console.log('CreditCardV2: cardInstances para ' + currentInvoiceMonthString, sorted);
     return sorted;
   }, [transactions, selectedCardId, currentMonth, invoicePeriod]);
 
