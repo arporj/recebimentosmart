@@ -20,7 +20,8 @@ import {
   CreditCard,
   User,
   Wallet,
-  Share2
+  Share2,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -156,6 +157,15 @@ const FinancialTransactionsV2 = () => {
     isOpen: false,
     transaction: null,
   });
+
+  // Estados para seleção e confirmação em lote
+  const [selectedTransactionKeys, setSelectedTransactionKeys] = useState<Set<string>>(new Set());
+  const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
+  const [bulkConfirmDateMode, setBulkConfirmDateMode] = useState<'original' | 'specific'>('original');
+  const [bulkConfirmSpecificDate, setBulkConfirmSpecificDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [bulkConfirmLoading, setBulkConfirmLoading] = useState(false);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   const today = new Date();
 
@@ -526,6 +536,207 @@ const FinancialTransactionsV2 = () => {
       setItemToDelete(null);
       setOpenDropdown(null);
       setDeleteConfirmModalConfig({ isOpen: false, transaction: null });
+    }
+  };
+
+  const toggleSelectTransaction = (key: string, e: React.MouseEvent | React.ChangeEvent) => {
+    e.stopPropagation();
+    setSelectedTransactionKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const selectableInstances = useMemo(() => {
+    return displayInstances.filter(t => !t.isOpeningBalance && !t.isInvoiceSummary);
+  }, [displayInstances]);
+
+  const isAllSelected = useMemo(() => {
+    return selectableInstances.length > 0 && selectableInstances.every(t => selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`));
+  }, [selectableInstances, selectedTransactionKeys]);
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedTransactionKeys(prev => {
+        const next = new Set(prev);
+        selectableInstances.forEach(t => next.delete(`${t.id}-${t.instanceDate}`));
+        return next;
+      });
+    } else {
+      setSelectedTransactionKeys(prev => {
+        const next = new Set(prev);
+        selectableInstances.forEach(t => next.add(`${t.id}-${t.instanceDate}`));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkConfirmClick = () => {
+    setBulkConfirmDateMode('original');
+    setBulkConfirmSpecificDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsBulkConfirmOpen(true);
+  };
+
+  const handleBulkConfirmSubmit = async () => {
+    if (!user) return;
+    try {
+      setBulkConfirmLoading(true);
+      
+      const selectedInstances = displayInstances.filter(t => 
+        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
+      );
+
+      const promises = selectedInstances.map(async (t) => {
+        const origDate = t.originalInstanceDate || t.instanceDate || t.date;
+        const targetDate = bulkConfirmDateMode === 'original' ? origDate : bulkConfirmSpecificDate;
+        const paidDate = targetDate;
+
+        if (t.isVirtual) {
+          // Materializar transação virtual
+          const newChildPayload = {
+            user_id: user.id,
+            type: t.type,
+            amount: t.amount,
+            date: targetDate,
+            description: t.description,
+            account_id: t.account_id || null,
+            category_id: t.category_id || null,
+            client_id: t.client_id || null,
+            status: 'paid',
+            paid_date: paidDate,
+            parent_id: t.parent_id || t.id,
+            modalidade: 'unica',
+            is_customized: true,
+            installment_current: t.installment_current || 1,
+            recurrence_enabled: false,
+            auto_confirm: false
+          };
+
+          const { data: newChild, error: insertError } = await supabase
+            .from('financial_transactions')
+            .insert(newChildPayload)
+            .select('id')
+            .single();
+
+          if (insertError) throw insertError;
+
+          // Copiar tags se houver
+          if (t.tags && t.tags.length > 0 && newChild) {
+            const tagIds = t.tags.map((tagObj: any) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+            if (tagIds.length > 0) {
+              const junctionRows = tagIds.map((tagId: string) => ({
+                transaction_id: newChild.id,
+                tag_id: tagId
+              }));
+              await supabase.from('transaction_tags').insert(junctionRows);
+            }
+          }
+        } else {
+          // Atualizar transação física existente
+          const updatePayload: any = {
+            status: 'paid',
+            paid_date: paidDate
+          };
+          
+          const { error: updateError } = await supabase
+            .from('financial_transactions')
+            .update(updatePayload)
+            .eq('id', t.id);
+
+          if (updateError) throw updateError;
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success(`${selectedInstances.length} lançamentos confirmados!`);
+      setSelectedTransactionKeys(new Set());
+      setIsBulkConfirmOpen(false);
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro na confirmação em lote:', err);
+      toast.error('Erro ao confirmar lançamentos: ' + err.message);
+    } finally {
+      setBulkConfirmLoading(false);
+    }
+  };
+
+  const handleBulkUnconfirm = async () => {
+    if (!user) return;
+    try {
+      const selectedInstances = displayInstances.filter(t => 
+        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
+      );
+
+      const physicalPaid = selectedInstances.filter(t => !t.isVirtual && t.status === 'paid');
+
+      if (physicalPaid.length === 0) {
+        toast.error('Nenhum lançamento físico pago selecionado para desconfirmar');
+        return;
+      }
+
+      const promises = physicalPaid.map(async (t) => {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({
+            status: 'pending',
+            paid_date: null
+          })
+          .eq('id', t.id);
+        if (error) throw error;
+      });
+
+      await Promise.all(promises);
+      toast.success(`${physicalPaid.length} lançamentos marcados como pendentes!`);
+      setSelectedTransactionKeys(new Set());
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro ao desconfirmar em lote:', err);
+      toast.error('Erro ao desconfirmar lançamentos: ' + err.message);
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    setIsBulkDeleteConfirmOpen(true);
+  };
+
+  const handleBulkDeleteSubmit = async () => {
+    if (!user) return;
+    try {
+      setBulkDeleteLoading(true);
+      
+      const selectedInstances = displayInstances.filter(t => 
+        selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`) && !t.isOpeningBalance && !t.isInvoiceSummary
+      );
+
+      const physicalIds = selectedInstances.filter(t => !t.isVirtual).map(t => t.id);
+
+      if (physicalIds.length === 0) {
+        toast.error('Nenhum lançamento físico selecionado para exclusão');
+        setIsBulkDeleteConfirmOpen(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .in('id', physicalIds);
+
+      if (error) throw error;
+
+      toast.success(`${physicalIds.length} lançamentos excluídos!`);
+      setSelectedTransactionKeys(new Set());
+      setIsBulkDeleteConfirmOpen(false);
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro ao excluir em lote:', err);
+      toast.error('Erro ao excluir lançamentos: ' + err.message);
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -1145,6 +1356,23 @@ const FinancialTransactionsV2 = () => {
               </button>
             ))}
           </div>
+          {/* Mobile Selecionar Todos */}
+          {selectableInstances.length > 0 && (
+            <div className="flex justify-between items-center pt-2 px-1 border-t border-slate-100 mt-2">
+              <button 
+                onClick={handleSelectAll} 
+                className="flex items-center gap-1.5 text-[9px] font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50 hover:bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/40 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  readOnly
+                  className="w-3.5 h-3.5 rounded border-slate-300 text-teal-600 pointer-events-none"
+                />
+                <span>{isAllSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mobile Transaction List - Layout tabular compacto */}
@@ -1252,6 +1480,15 @@ const FinancialTransactionsV2 = () => {
                   onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
                   className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                 >
+                  {/* Checkbox para seleção em lote */}
+                  <div className="shrink-0 flex items-center" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="checkbox"
+                      checked={selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`)}
+                      onChange={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
+                      className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500/30 cursor-pointer transition-all"
+                    />
+                  </div>
                   {/* Status dot */}
                   <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'paid' ? 'bg-emerald-500' : status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`} />
                   {/* Data */}
@@ -1408,6 +1645,20 @@ const FinancialTransactionsV2 = () => {
             <div className="px-4 py-2 flex flex-row items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-4">
                 <h2 className="text-xl font-black">Transações</h2>
+                {selectableInstances.length > 0 && (
+                  <button
+                    onClick={handleSelectAll}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all text-[10px] font-black text-slate-600 shadow-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      readOnly
+                      className="w-3.5 h-3.5 rounded border-slate-300 text-teal-600 pointer-events-none"
+                    />
+                    <span>{isAllSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
+                  </button>
+                )}
                 <button
                   onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                   className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
@@ -1542,6 +1793,15 @@ const FinancialTransactionsV2 = () => {
                       onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
                       className={`flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                     >
+                      {/* Checkbox para seleção em lote */}
+                      <div className="shrink-0 flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox"
+                          checked={selectedTransactionKeys.has(`${t.id}-${t.instanceDate}`)}
+                          onChange={(e) => toggleSelectTransaction(`${t.id}-${t.instanceDate}`, e)}
+                          className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500/30 cursor-pointer transition-all"
+                        />
+                      </div>
                       {/* Ícone de Tipo */}
                       <div className={`p-1.5 rounded-lg shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
                         {t.type === 'income' ? <Plus size={16} /> : t.type === 'expense' ? <ArrowDownCircle size={16} /> : <ArrowRightLeft size={16} />}
@@ -1727,6 +1987,182 @@ const FinancialTransactionsV2 = () => {
                 className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold shadow-lg shadow-rose-500/30 transition-colors text-xs"
               >
                 Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barra de ações em lote flutuante */}
+      {selectedTransactionKeys.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[40] w-full max-w-lg px-4 animate-in slide-in-from-bottom duration-300">
+          <div className="bg-slate-900/90 backdrop-blur-md text-white rounded-3xl p-4 shadow-2xl border border-white/10 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2.5 shrink-0 pl-1">
+              <span className="bg-teal-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-full">
+                {selectedTransactionKeys.size}
+              </span>
+              <span className="text-[11px] font-bold text-slate-300">selecionado(s)</span>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end w-full sm:w-auto">
+              <button
+                onClick={handleBulkConfirmClick}
+                className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-400 active:scale-95 text-slate-950 px-3.5 py-2 rounded-2xl text-[10px] font-black tracking-wide uppercase transition-all shadow-md shrink-0"
+              >
+                <CheckCircle2 size={12} /> Confirmar
+              </button>
+              
+              <button
+                onClick={handleBulkUnconfirm}
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 px-3.5 py-2 rounded-2xl text-[10px] font-black tracking-wide uppercase transition-all shrink-0"
+              >
+                <RefreshCcw size={12} /> Pendente
+              </button>
+              
+              <button
+                onClick={handleBulkDeleteClick}
+                className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white px-3.5 py-2 rounded-2xl text-[10px] font-black tracking-wide uppercase transition-all shadow-md shrink-0"
+              >
+                <Trash2 size={12} /> Excluir
+              </button>
+              
+              <button
+                onClick={() => setSelectedTransactionKeys(new Set())}
+                className="text-[10px] font-bold text-slate-400 hover:text-white px-2 py-2 transition-colors uppercase shrink-0"
+              >
+                Limpar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação em Lote */}
+      {isBulkConfirmOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-teal-600 mb-4">
+              <div className="p-3 bg-teal-50 rounded-2xl">
+                <CheckCircle2 size={24} />
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">Confirmar Lançamentos</h3>
+            </div>
+            
+            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+              Você selecionou <strong className="text-slate-800 font-extrabold">{selectedTransactionKeys.size}</strong> lançamentos para confirmar. Como deseja definir a data de pagamento?
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {/* Opção Datas Originais */}
+              <div 
+                className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                  bulkConfirmDateMode === 'original' 
+                    ? 'border-teal-500 bg-teal-50/20' 
+                    : 'border-slate-100 hover:border-slate-200 bg-white'
+                }`}
+                onClick={() => setBulkConfirmDateMode('original')}
+              >
+                <input
+                  type="radio"
+                  name="bulkConfirmDateMode"
+                  checked={bulkConfirmDateMode === 'original'}
+                  onChange={() => setBulkConfirmDateMode('original')}
+                  className="mt-0.5 text-teal-600 focus:ring-teal-500/30"
+                />
+                <div>
+                  <p className="text-xs font-bold text-slate-800 font-manrope">Datas originais de cada lançamento</p>
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium leading-normal">Cada lançamento será confirmado na sua própria data de vencimento correspondente.</p>
+                </div>
+              </div>
+
+              {/* Opção Data Específica */}
+              <div 
+                className={`flex flex-col gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                  bulkConfirmDateMode === 'specific' 
+                    ? 'border-teal-500 bg-teal-50/20' 
+                    : 'border-slate-100 hover:border-slate-200 bg-white'
+                }`}
+                onClick={() => setBulkConfirmDateMode('specific')}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="bulkConfirmDateMode"
+                    checked={bulkConfirmDateMode === 'specific'}
+                    onChange={() => setBulkConfirmDateMode('specific')}
+                    className="mt-0.5 text-teal-600 focus:ring-teal-500/30"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 font-manrope">Uma data específica para todos</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-medium leading-normal">Todos os lançamentos selecionados serão marcados como pagos na data escolhida.</p>
+                  </div>
+                </div>
+
+                {bulkConfirmDateMode === 'specific' && (
+                  <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="date"
+                      value={bulkConfirmSpecificDate}
+                      onChange={(e) => setBulkConfirmSpecificDate(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
+              <button
+                onClick={() => setIsBulkConfirmOpen(false)}
+                disabled={bulkConfirmLoading}
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-xs disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkConfirmSubmit}
+                disabled={bulkConfirmLoading}
+                className="px-5 py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-2xl font-bold shadow-lg shadow-teal-500/20 transition-colors text-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {bulkConfirmLoading && <Loader2 size={12} className="animate-spin" />}
+                Confirmar Pagamentos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão em Lote */}
+      {isBulkDeleteConfirmOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-600 mb-4">
+              <div className="p-3 bg-rose-50 rounded-2xl">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">Excluir Lançamentos em Lote</h3>
+            </div>
+            
+            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+              Tem certeza que deseja excluir os <strong className="text-slate-800 font-extrabold">{selectedTransactionKeys.size}</strong> lançamentos selecionados?
+              <br /><span className="text-rose-500 font-bold mt-2 block leading-relaxed">Apenas transações físicas serão excluídas diretamente. Instâncias virtuais de lançamentos recorrentes não alteradas permanecerão intocadas (para exclui-las, faça-o individualmente). Esta ação não pode ser desfeita.</span>
+            </p>
+
+            <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
+              <button
+                onClick={() => setIsBulkDeleteConfirmOpen(false)}
+                disabled={bulkDeleteLoading}
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-xs disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkDeleteSubmit}
+                disabled={bulkDeleteLoading}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold shadow-lg shadow-rose-500/30 transition-colors text-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {bulkDeleteLoading && <Loader2 size={12} className="animate-spin" />}
+                Sim, Excluir Todos
               </button>
             </div>
           </div>
