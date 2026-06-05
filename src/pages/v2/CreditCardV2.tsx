@@ -392,7 +392,9 @@ const CreditCardV2 = () => {
       }
     }
 
-    return instances.sort((a, b) => new Date(a.instanceDate).getTime() - new Date(b.instanceDate).getTime());
+    const sorted = instances.sort((a, b) => new Date(a.instanceDate).getTime() - new Date(b.instanceDate).getTime());
+    console.log('CreditCardV2: cardInstances para ' + currentInvoiceMonthString, sorted);
+    return sorted;
   }, [transactions, selectedCardId, currentMonth, invoicePeriod]);
 
   // Checar se a fatura atual está fechada (existe uma transferência agendada/paga para ela com o invoice_month correspondente)
