@@ -48,6 +48,7 @@ const QuickEditTransactionModal = ({
   const [description, setDescription] = useState('');
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [clientId, setClientId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isPaid, setIsPaid] = useState(false);
   const [autoConfirm, setAutoConfirm] = useState(false);
@@ -56,6 +57,7 @@ const QuickEditTransactionModal = ({
   const [accounts, setAccounts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
 
   // UI states
   const [loading, setLoading] = useState(false);
@@ -110,6 +112,7 @@ const QuickEditTransactionModal = ({
       setDescription(transaction.description || '');
       setAccountId(transaction.account_id || '');
       setCategoryId(transaction.category_id || '');
+      setClientId(transaction.client_id || '');
       setIsPaid(isConfirming ? true : transaction.status === 'paid');
       setAutoConfirm(transaction.auto_confirm || false);
 
@@ -137,6 +140,7 @@ const QuickEditTransactionModal = ({
       fetchAccounts();
       fetchCategories();
       fetchTags();
+      fetchClients();
     }
   }, [isOpen, user]);
 
@@ -215,6 +219,16 @@ const QuickEditTransactionModal = ({
       .eq('is_active', true)
       .order('name');
     if (data) setAccounts(data);
+  };
+
+  const fetchClients = async () => {
+    const { data } = await supabase
+      .from('clients')
+      .select('id, name')
+      .eq('user_id', user?.id || '')
+      .is('deleted_at', null)
+      .order('name');
+    if (data) setClients(data);
   };
 
   const fetchCategories = async () => {
@@ -360,6 +374,7 @@ const QuickEditTransactionModal = ({
         description,
         account_id: accountId || undefined,
         category_id: categoryId || undefined,
+        client_id: clientId || null,
         status: isPaid ? 'paid' : 'pending',
         paid_date: paidDate,
         tags: selectedTags,
@@ -482,9 +497,9 @@ const QuickEditTransactionModal = ({
           onClick={onClose}
         />
 
-        <div className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200 max-h-[95vh] flex flex-col">
+        <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
           {/* Header */}
-          <header className="px-5 py-3 flex justify-between items-center border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
+          <header className="px-5 py-2.5 flex justify-between items-center border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
             <div className="flex items-center gap-3">
               <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                 <X size={18} className="text-slate-500" />
@@ -506,32 +521,32 @@ const QuickEditTransactionModal = ({
           </header>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar">
             {/* Valor e Data lado a lado */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {/* Valor */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Valor (R$)</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Valor (R$)</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={amount}
                   onChange={handleAmountChange}
-                  className={`w-full text-xl font-black py-2.5 px-4 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 ${tc.border} ${tc.bg} ${tc.text} focus:ring-offset-1`}
+                  className={`w-full text-lg font-black py-2 px-3.5 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 ${tc.border} ${tc.bg} ${tc.text} focus:ring-offset-1`}
                   placeholder="0,00"
                 />
               </div>
 
               {/* Data */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Data</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Data</label>
                 <div className="relative">
                   <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full py-2.5 pl-9 pr-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 transition-all"
+                    className="w-full py-2 pl-9 pr-4 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 transition-all"
                   />
                 </div>
               </div>
@@ -539,39 +554,39 @@ const QuickEditTransactionModal = ({
 
             {/* Descrição */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Descrição</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Descrição</label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 transition-all"
+                className="w-full py-2 px-3.5 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none text-xs font-semibold text-slate-800 transition-all"
                 placeholder="Ex: Aluguel, Salário..."
               />
             </div>
 
-            {/* Conta e Categoria lado a lado */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Conta, Categoria e Cliente lado a lado */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Conta */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Conta</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Conta</label>
                 <div ref={accountRef} className={`relative ${isAccountDropdownOpen ? 'z-40' : 'z-10'}`}>
                   <button 
                     type="button"
                     onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
-                    className="w-full px-4 py-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
+                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
                   >
                     {accountId ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <AccountIcon account={accounts.find(a => a.id === accountId)} />
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-700 text-xs leading-tight">{accounts.find(a => a.id === accountId)?.name}</span>
-                          <span className="text-[9px] text-slate-400 font-medium">{getAccountTypeLabel(accounts.find(a => a.id === accountId)?.type || '')}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-slate-700 text-xs leading-tight truncate">{accounts.find(a => a.id === accountId)?.name}</span>
+                          <span className="text-[8px] text-slate-400 font-medium leading-none">{getAccountTypeLabel(accounts.find(a => a.id === accountId)?.type || '')}</span>
                         </div>
                       </div>
                     ) : (
                       <span className="text-slate-400">Selecione a conta</span>
                     )}
-                    <ChevronDown size={14} className="text-slate-400" />
+                    <ChevronDown size={14} className="text-slate-400 shrink-0 ml-1" />
                   </button>
 
                   {isAccountDropdownOpen && (
@@ -588,12 +603,12 @@ const QuickEditTransactionModal = ({
                             setAccountId(a.id);
                             setIsAccountDropdownOpen(false);
                           }}
-                          className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                          className="flex items-center gap-2.5 w-full px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
                         >
                           <AccountIcon account={a} />
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-700 text-xs leading-tight">{a.name}</span>
-                            <span className="text-[10px] text-slate-400 font-medium">{getAccountTypeLabel(a.type)}</span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-slate-700 text-xs leading-tight truncate">{a.name}</span>
+                            <span className="text-[9px] text-slate-400 font-medium leading-none">{getAccountTypeLabel(a.type)}</span>
                           </div>
                         </button>
                       ))}
@@ -604,22 +619,22 @@ const QuickEditTransactionModal = ({
 
               {/* Categoria */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Categoria</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Categoria</label>
                 <div ref={categoryRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-10'}`}>
                   <button 
                     type="button"
                     onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                    className="w-full px-4 py-2.5 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
+                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs text-left flex items-center justify-between text-slate-700"
                   >
                     {categoryId ? (
-                      <div className="flex items-center gap-3">
-                        <span className="text-base">{categories.find(c => c.id === categoryId)?.icon || '📁'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm shrink-0">{categories.find(c => c.id === categoryId)?.icon || '📁'}</span>
                         <span className="font-bold text-slate-700 text-xs leading-tight truncate">{categories.find(c => c.id === categoryId)?.name}</span>
                       </div>
                     ) : (
-                      <span className="text-slate-400">Selecione uma categoria</span>
+                      <span className="text-slate-400">Selecione a categoria</span>
                     )}
-                    <ChevronDown size={14} className="text-slate-400" />
+                    <ChevronDown size={14} className="text-slate-400 shrink-0 ml-1" />
                   </button>
 
                   {isCategoryDropdownOpen && (
@@ -669,13 +684,13 @@ const QuickEditTransactionModal = ({
                                     setIsCategoryDropdownOpen(false); 
                                     setCategorySearch(''); 
                                   }}
-                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                                  className="flex items-center gap-2.5 w-full px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
                                 >
-                                  <span className="text-xl">{parent.icon || '📁'}</span>
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-slate-700 text-xs leading-tight">{parent.name}</span>
+                                  <span className="text-lg shrink-0">{parent.icon || '📁'}</span>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-bold text-slate-700 text-xs leading-tight truncate">{parent.name}</span>
                                     {children.length > 0 && (
-                                      <span className="text-[9px] text-slate-400 font-medium">Possui subcategorias</span>
+                                      <span className="text-[8px] text-slate-400 font-medium leading-none">Possui subcategorias</span>
                                     )}
                                   </div>
                                 </button>
@@ -689,10 +704,10 @@ const QuickEditTransactionModal = ({
                                       setIsCategoryDropdownOpen(false); 
                                       setCategorySearch(''); 
                                     }}
-                                    className="flex items-center gap-3 w-full pl-10 pr-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
+                                    className="flex items-center gap-2.5 w-full pl-8 pr-3 py-2 text-left hover:bg-slate-50 transition-colors border-t border-slate-50/50"
                                   >
-                                    <span className="text-lg opacity-80">{child.icon || '↘️'}</span>
-                                    <span className="text-xs font-bold text-slate-600">{child.name}</span>
+                                    <span className="text-md opacity-80 shrink-0">{child.icon || '↘️'}</span>
+                                    <span className="text-xs font-bold text-slate-600 truncate">{child.name}</span>
                                   </button>
                                 ))}
                               </div>
@@ -704,15 +719,36 @@ const QuickEditTransactionModal = ({
                   )}
                 </div>
               </div>
+
+              {/* Cliente */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Cliente (Opcional)</label>
+                <div className="relative group">
+                  <select
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-teal-500/20 text-xs !appearance-none bg-none cursor-pointer text-slate-700 font-bold"
+                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                  >
+                    <option value="">Nenhum cliente</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <ChevronDown size={14} />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Tags */}
             <div ref={tagRef} className="relative">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Tags</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Tags</label>
               <button
                 type="button"
                 onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                className="w-full py-2.5 px-3 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
+                className="w-full py-2 px-3.5 rounded-xl border border-slate-200 focus:border-teal-400 text-xs font-semibold text-slate-800 text-left flex items-center justify-between bg-white hover:bg-slate-50 transition-all"
               >
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <TagIcon size={12} className="text-slate-400 shrink-0" />
@@ -780,7 +816,7 @@ const QuickEditTransactionModal = ({
             </div>
 
             {/* Checkboxes de Status e Confirmação */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-2 gap-3 pt-2">
               {/* Checkbox Pago */}
               <div
                 onClick={() => {
@@ -788,23 +824,23 @@ const QuickEditTransactionModal = ({
                   setIsPaid(newPaid);
                   if (newPaid) setAutoConfirm(false);
                 }}
-                className={`flex items-center gap-2.5 p-2 rounded-xl border-2 cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-2 rounded-xl border-2 cursor-pointer transition-all ${
                   isPaid
                     ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
                     : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                 }`}
               >
                 {isPaid ? (
-                  <CheckSquare size={18} className="text-emerald-600 shrink-0" />
+                  <CheckSquare size={16} className="text-emerald-600 shrink-0" />
                 ) : (
-                  <Square size={18} className="text-slate-400 shrink-0" />
+                  <Square size={16} className="text-slate-400 shrink-0" />
                 )}
-                <div>
-                  <p className={`text-xs font-black ${isPaid ? 'text-emerald-700' : 'text-slate-600'}`}>
-                    {isPaid ? 'Pago / Confirmado' : 'Pendente'}
+                <div className="min-w-0">
+                  <p className={`text-xs font-black ${isPaid ? 'text-emerald-700' : 'text-slate-600'} leading-tight`}>
+                    {isPaid ? 'Pago' : 'Pendente'}
                   </p>
-                  <p className="text-[9px] text-slate-400 font-medium">
-                    {isPaid ? 'Lançamento marcado como pago.' : 'Clique para marcar pago.'}
+                  <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">
+                    {isPaid ? 'Confirmado.' : 'Marcar pago.'}
                   </p>
                 </div>
               </div>
@@ -813,26 +849,26 @@ const QuickEditTransactionModal = ({
               {!isPaid && !isCreditCard && (date >= format(new Date(), 'yyyy-MM-dd')) && (
                 <div
                   onClick={() => setAutoConfirm(!autoConfirm)}
-                  className={`flex items-center gap-2.5 p-2 rounded-xl border-2 cursor-pointer transition-all ${
+                  className={`flex items-center gap-2 px-2 rounded-xl border-2 cursor-pointer transition-all ${
                     autoConfirm
                       ? 'bg-indigo-50 border-indigo-300 shadow-sm shadow-indigo-100'
                       : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   {autoConfirm ? (
-                    <CheckSquare size={18} className="text-indigo-600 shrink-0" />
+                    <CheckSquare size={16} className="text-indigo-600 shrink-0" />
                   ) : (
-                    <Square size={18} className="text-slate-400 shrink-0" />
+                    <Square size={16} className="text-slate-400 shrink-0" />
                   )}
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
-                      Confirmar Automaticamente
-                      <div className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
-                        <span className="text-[10px] font-black">?</span>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-bold text-slate-900 truncate leading-tight flex items-center gap-1">
+                      Auto Confirmar
+                      <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
+                        <span className="text-[9px] font-black">?</span>
                       </div>
                     </h3>
-                    <p className="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold truncate">
-                      No dia do vencimento
+                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold truncate leading-none mt-0.5">
+                      No vencimento
                     </p>
                   </div>
                 </div>
@@ -841,7 +877,7 @@ const QuickEditTransactionModal = ({
           </div>
 
           {/* Footer */}
-          <footer className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+          <footer className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
             <button
               type="button"
               onClick={() => handleDelete()}
