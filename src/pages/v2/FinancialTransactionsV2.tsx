@@ -699,6 +699,7 @@ const FinancialTransactionsV2 = () => {
         t.status !== 'cancelled'
       );
       const isPaid = billTransfer?.status === 'paid';
+      const autoConfirm = billTransfer?.auto_confirm || false;
 
       return {
         id: `invoice-${accountId}-${currentMonthStr}`,
@@ -711,6 +712,7 @@ const FinancialTransactionsV2 = () => {
         instanceDate,
         isVirtual: true,
         isInvoiceSummary: true,
+        auto_confirm: autoConfirm,
         invoiceData: {
           cardId: accountId,
           cardName: data.cardName,
@@ -718,6 +720,7 @@ const FinancialTransactionsV2 = () => {
           invoicePaymentAccountId: data.invoicePaymentAccountId,
           total: data.total,
           isPaid,
+          autoConfirm,
         },
       };
     });
@@ -768,7 +771,14 @@ const FinancialTransactionsV2 = () => {
   }, [accountsData, selectedAccountIds, monthInstances, creditCardAccounts, invoiceInstances]);
 
   const displayInstances = useMemo(() => {
+    const creditCardIds = new Set(creditCardAccounts.map(c => c.id));
+
     const filtered = monthInstances.filter(t => {
+      // Ocultar transferências que pagam a fatura de cartão de crédito para evitar duplicidade visual
+      if (t.type === 'transfer' && t.destination_account_id && creditCardIds.has(t.destination_account_id)) {
+        return false;
+      }
+
       const isSelected = (t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
       const matchesFilter = filter === 'all' || t.type === filter;
       const search = searchTerm.toLowerCase();
@@ -845,9 +855,9 @@ const FinancialTransactionsV2 = () => {
 
     const sortedList = combined.map(t => {
       if (t.isInvoiceSummary) {
-         if (!t.invoiceData?.isPaid) {
-            runningBalance -= t.amount;
-         }
+         // Fatura de cartão sempre diminui o saldo acumulado na visualização da listagem,
+         // já que a transferência correspondente é ocultada visualmente.
+         runningBalance -= t.amount;
       } else if (t.type === 'income') {
          runningBalance += t.amount;
       } else if (t.type === 'expense') {
@@ -880,7 +890,7 @@ const FinancialTransactionsV2 = () => {
     }
 
     return sortedList;
-  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances]);
+  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances, creditCardAccounts]);
 
   const toggleSelectTransaction = (key: string, e?: React.MouseEvent | React.ChangeEvent) => {
     if (e) e.stopPropagation();
@@ -1494,7 +1504,11 @@ const FinancialTransactionsV2 = () => {
 
               if (t.isInvoiceSummary) {
                 return (
-                  <div key={dropdownKey} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40">
+                  <div 
+                    key={dropdownKey} 
+                    onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
+                    className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40 cursor-pointer transition-colors"
+                  >
                     <div className="w-6 flex items-center justify-center shrink-0">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${t.invoiceData?.isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     </div>
@@ -1518,8 +1532,14 @@ const FinancialTransactionsV2 = () => {
 
                     <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
                       <div className={`flex items-center gap-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                        {layoutPreference === 'value_right_desc' && t.auto_confirm && (
+                          <Zap size={10} className="text-amber-500 fill-amber-500 shrink-0 mr-1" />
+                        )}
                         <CreditCard size={12} className="text-amber-600 shrink-0" />
                         <span className="font-black text-xs text-slate-800 truncate">{t.description}</span>
+                        {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
+                          <Zap size={10} className="text-amber-500 fill-amber-500 shrink-0 ml-1" />
+                        )}
                       </div>
                       {t.invoiceData?.linkedAccountName && (
                         <div className={`flex items-center gap-1.5 mt-0.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
@@ -1825,7 +1845,11 @@ const FinancialTransactionsV2 = () => {
 
                   if (t.isInvoiceSummary) {
                     return (
-                      <div key={dropdownKey} className="group flex items-center gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50">
+                      <div 
+                        key={dropdownKey} 
+                        onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
+                        className="group flex items-center gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50 transition-colors cursor-pointer"
+                      >
                         {/* Status dot de Fatura */}
                         <div className="w-6 flex items-center justify-center shrink-0">
                           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -1854,7 +1878,17 @@ const FinancialTransactionsV2 = () => {
 
                         <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
                           <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                            {layoutPreference === 'value_right_desc' && t.auto_confirm && (
+                              <div className="flex items-center gap-1.5 px-1 shrink-0 mr-1.5">
+                                <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
+                              </div>
+                            )}
                             <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
+                            {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
+                              <div className="flex items-center gap-1.5 px-2 shrink-0">
+                                <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
+                              </div>
+                            )}
                           </div>
                           <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                             <p className="text-[10px] font-bold text-slate-400">
