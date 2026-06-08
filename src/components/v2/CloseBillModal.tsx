@@ -35,15 +35,16 @@ export default function CloseBillModal({
   // Form states
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paymentAccountId, setPaymentAccountId] = useState('');
-  const [amount] = useState(totalAmount);
+  const [amount, setAmount] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
       setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
       setPaymentAccountId('');
+      setAmount(totalAmount);
       fetchAccounts();
     }
-  }, [isOpen]);
+  }, [isOpen, totalAmount]);
 
   const fetchAccounts = async () => {
     if (!user) return;
