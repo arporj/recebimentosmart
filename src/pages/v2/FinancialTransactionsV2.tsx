@@ -689,7 +689,7 @@ const FinancialTransactionsV2 = () => {
       const dueDay = data.dueDay || 1;
       const lastDay = new Date(year, month + 1, 0).getDate();
       const safeDay = Math.min(dueDay, lastDay);
-      const instanceDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+      const originalDueDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
 
       // Check if bill is paid (only when the transfer is actually confirmed as paid)
       const billTransfer = transactions.find(t => 
@@ -700,16 +700,17 @@ const FinancialTransactionsV2 = () => {
       );
       const isPaid = billTransfer?.status === 'paid';
       const autoConfirm = billTransfer?.auto_confirm || false;
+      const finalDate = billTransfer ? billTransfer.date : originalDueDate;
 
       return {
         id: `invoice-${accountId}-${currentMonthStr}`,
         type: 'expense' as const,
         amount: data.total,
-        date: instanceDate,
+        date: finalDate,
         description: `Fatura ${data.cardName}`,
         status: isPaid ? ('paid' as const) : ('pending' as const),
         account_id: accountId,
-        instanceDate,
+        instanceDate: finalDate,
         isVirtual: true,
         isInvoiceSummary: true,
         auto_confirm: autoConfirm,
@@ -721,6 +722,7 @@ const FinancialTransactionsV2 = () => {
           total: data.total,
           isPaid,
           autoConfirm,
+          originalDueDate,
         },
       };
     });
