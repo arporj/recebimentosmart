@@ -14,9 +14,9 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 
 ### 2.1. 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
 * **Status:** Planejado (Requer nova branch).
-* **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio (integral) da primeira mensalidade paga pelo seu indicado na sua carteira de cashback. O usuário indicado, ao assinar utilizando a indicação, recebe um desconto especial de 20% em seu primeiro pagamento de assinatura.
+* **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio (integral) da primeira mensalidade paga pelo seu indicado na sua carteira de cashback. 
 * **Regras de Negócio:**
-  * **Regra de Desconto e Indicação:** O usuário que entra por um link de indicação ganha automaticamente **20% de desconto no seu primeiro pagamento**. O usuário que indicou (afiliado) acumula o **valor cheio/integral da primeira mensalidade** paga pelo indicado.
+  * **Regra de Desconto e Indicação:** O usuário que indicou (afiliado) acumula o **valor cheio/integral da primeira mensalidade** paga pelo indicado.
   * O resgate/pagamento via PIX só será liberado após o indicador acumular o valor mínimo de R$ 100,00 de saldo.
   * **Painel Administrativo:** O admin precisa visualizar detalhadamente quais indicados efetuaram pagamentos, o valor acumulado por indicador e receber notificações automáticas quando um indicador ultrapassar os R$ 100,00 pendentes para resgate.
   * **Painel do Usuário (Afiliado):** Apresentação visual limpa e transparente mostrando a lista de indicados, pagamentos realizados por eles e o saldo acumulado atual disponível/retirado.
