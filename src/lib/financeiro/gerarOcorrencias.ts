@@ -55,6 +55,7 @@ export async function gerarOcorrencias(targetDate: Date = new Date()) {
         date: format(occurrenceDate, 'yyyy-MM-dd'),
         status: 'pending',
         due_day: parent.due_day,
+        auto_confirm: parent.auto_confirm ?? false,
       });
     }
   }

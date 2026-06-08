@@ -15,6 +15,8 @@ import {
   TrendingUp,
   CreditCard,
   Search,
+  Zap,
+  User,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -519,6 +521,27 @@ const QuickEditTransactionModal = ({
               </span>
             )}
           </header>
+
+          {/* Info badges: Cliente e Auto-Confirm */}
+          {(transaction?.client_id || transaction?.auto_confirm) && (
+            <div className="px-5 py-1.5 flex items-center gap-2 flex-wrap border-b border-slate-100 bg-slate-50/50">
+              {transaction?.client_id && (() => {
+                const clientName = clients.find(c => c.id === transaction.client_id)?.name;
+                return clientName ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg">
+                    <User size={10} className="text-slate-400" />
+                    {clientName}
+                  </span>
+                ) : null;
+              })()}
+              {transaction?.auto_confirm && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                  <Zap size={10} className="text-amber-500 fill-amber-500" />
+                  Auto-Confirmar
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar">

@@ -23,6 +23,7 @@ export interface TransactionInput {
   card_holder_name?: string | null;
   status?: 'pending' | 'paid' | 'partial';
   tags?: string[];
+  auto_confirm?: boolean;
 }
 
 /**
@@ -71,6 +72,7 @@ export async function criarTransacao(input: TransactionInput) {
     status: input.status || 'pending',
     invoice_month: input.invoice_month || null,
     card_holder_name: input.card_holder_name || null,
+    auto_confirm: input.auto_confirm ?? false,
   };
 
   if (input.modalidade === 'unica') {
