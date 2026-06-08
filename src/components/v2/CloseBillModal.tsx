@@ -82,6 +82,9 @@ export default function CloseBillModal({
 
     setLoading(true);
     try {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const isFutureDate = paymentDate > todayStr;
+
       const { error } = await supabase.from('financial_transactions').insert({
         user_id: user.id,
         type: 'transfer',
@@ -90,13 +93,15 @@ export default function CloseBillModal({
         description: `Pagamento Fatura - ${invoiceMonth}`,
         account_id: paymentAccountId, // Origin
         destination_account_id: cardId, // Destination (Credit Card)
-        status: 'pending', // Pagamento agendado
+        status: isFutureDate ? 'pending' : 'paid',
+        paid_date: isFutureDate ? null : paymentDate,
+        auto_confirm: isFutureDate,
         invoice_month: invoiceMonth
       });
 
       if (error) throw error;
 
-      toast.success('Fatura fechada e pagamento agendado!');
+      toast.success(isFutureDate ? 'Fatura fechada e pagamento agendado!' : 'Fatura fechada e confirmada!');
       onSuccess();
     } catch (err) {
       console.error('Erro ao fechar fatura:', err);
@@ -206,7 +211,7 @@ export default function CloseBillModal({
               disabled={loading}
               className={`flex-1 px-4 py-3 bg-[#14b8a6] hover:bg-teal-600 text-white rounded-xl font-bold shadow-lg shadow-teal-500/30 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {loading ? 'Fechando...' : 'Fechar e Agendar'}
+              {loading ? 'Fechando...' : (paymentDate <= format(new Date(), 'yyyy-MM-dd') ? 'Fechar e Confirmar' : 'Fechar e Agendar')}
             </button>
           </div>
         </div>

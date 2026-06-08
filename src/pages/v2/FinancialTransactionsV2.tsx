@@ -691,13 +691,14 @@ const FinancialTransactionsV2 = () => {
       const safeDay = Math.min(dueDay, lastDay);
       const instanceDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
 
-      // Check if bill is paid
-      const isPaid = transactions.some(t => 
+      // Check if bill is paid (only when the transfer is actually confirmed as paid)
+      const billTransfer = transactions.find(t => 
         t.destination_account_id === accountId && 
         t.type === 'transfer' && 
         t.invoice_month === currentMonthStr &&
         t.status !== 'cancelled'
       );
+      const isPaid = billTransfer?.status === 'paid';
 
       return {
         id: `invoice-${accountId}-${currentMonthStr}`,
