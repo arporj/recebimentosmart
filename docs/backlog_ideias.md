@@ -44,6 +44,14 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * Configurar a infraestrutura PWA básica no frontend.
   * Criar um trigger no banco (Supabase) e Edge Function de envio de Web Push para disparar uma notificação instantânea para o celular do Administrador sempre que qualquer usuário enviar um feedback no sistema.
 
+### 2.5. 🤝 Lançamentos Compartilhados (Adiado / Temporariamente Desativado)
+* **Status:** Adiado (Pendente de reavaliação de produto).
+* **Descrição:** A funcionalidade de compartilhar lançamentos e resumos financeiros com parceiros por e-mail, incluindo notificações de badge em tempo real no menu hambúrguer e barra lateral, e sinal sonoro de notificação via Web Audio API. 
+* **Regras de Negócio:**
+  * A funcionalidade foi ocultada temporariamente do menu em Jun/2026.
+  * A lógica e tabelas no banco de dados (`client_shares`, `financial_transactions.shared_by_user_id`, `shared_transaction_updates`) permanecem ativas e intactas.
+  * Ao retomar a funcionalidade, readequar a interface do menu e reintroduzir os sinalizadores de notificação visual e sonora (chime) de forma otimizada.
+
 ---
 
 ## 3. ✅ Histórico de Tarefas Concluídas

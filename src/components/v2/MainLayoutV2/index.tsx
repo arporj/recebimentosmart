@@ -34,7 +34,6 @@ const sidebarSections: SidebarSection[] = [
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
-            { label: 'Lançamentos Compartilhados', icon: Share2, href: '/v2/compartilhado' },
         ],
     },
     {
@@ -88,140 +87,6 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['Cadastros']); // Cadastro aberto por padrão
-    const [pendingCount, setPendingCount] = useState(0);
-    const [displayedCount, setDisplayedCount] = useState(0);
-    const [animationKey, setAnimationKey] = useState(0);
-
-    // Função para sintetizar um som de notificação sutil e harmônico via Web Audio API
-    const playNotificationChime = () => {
-        try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioContextClass) return;
-            
-            const ctx = new AudioContextClass();
-            
-            // Acorde consonante sutil: Sol5 (783.99 Hz) e Dó6 (1046.50 Hz)
-            const frequencies = [783.99, 1046.50];
-            const duration = 0.35; // 350ms
-            
-            frequencies.forEach((freq, idx) => {
-                const osc = ctx.createOscillator();
-                const gainNode = ctx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.value = freq;
-                
-                const now = ctx.currentTime;
-                // Envelope suave e rápido
-                gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(idx === 0 ? 0.12 : 0.08, now + 0.015);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-                
-                osc.connect(gainNode);
-                gainNode.connect(ctx.destination);
-                
-                osc.start(now);
-                osc.stop(now + duration);
-            });
-        } catch (e) {
-            console.warn('Web Audio API não inicializada ou bloqueada pelo navegador:', e);
-        }
-    };
-
-    // Função para contar notificações pendentes
-    const fetchPendingCount = async () => {
-        if (!user) return;
-        try {
-            // 1. Contar compartilhamentos de clientes pendentes (onde o e-mail do cliente é igual ao e-mail do usuário)
-            const { count: clientSharesCount } = await supabase
-                .from('client_shares')
-                .select('*', { count: 'exact', head: true })
-                .eq('receiver_email', user.email?.toLowerCase())
-                .eq('status', 'pending');
-
-            // 2. Contar lançamentos compartilhados pendentes de aceitação (onde user_id é o logado, shared_by_user_id não é nulo e status é pending)
-            const { count: newTransCount } = await supabase
-                .from('financial_transactions')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id)
-                .not('shared_by_user_id', 'is', null)
-                .eq('status', 'pending');
-
-            // 3. Contar atualizações de transações pendentes (onde receiver_id é o logado e status é pending)
-            const { count: updatesCount } = await supabase
-                .from('shared_transaction_updates')
-                .select('*', { count: 'exact', head: true })
-                .eq('receiver_id', user.id)
-                .eq('status', 'pending');
-
-            const total = (clientSharesCount || 0) + (newTransCount || 0) + (updatesCount || 0);
-            setPendingCount(total);
-        } catch (err) {
-            console.error('Erro ao buscar notificações pendentes:', err);
-        }
-    };
-
-    // Efeito para gerenciar a animação premium do badge ao mudar o contador
-    useEffect(() => {
-        if (pendingCount !== displayedCount) {
-            // Tocar som de chime de notificação se o número de pendentes aumentou
-            if (pendingCount > displayedCount) {
-                playNotificationChime();
-            }
-
-            if (displayedCount === 0) {
-                // Se o badge estava oculto, exibe imediatamente com a animação de explosão
-                setDisplayedCount(pendingCount);
-                setAnimationKey(prev => prev + 1);
-            } else if (pendingCount === 0) {
-                // Se zerou, dispara animação para encolher (scale-0) e depois oculta
-                setAnimationKey(prev => prev + 1);
-                const timer = setTimeout(() => {
-                    setDisplayedCount(0);
-                }, 500);
-                return () => clearTimeout(timer);
-            } else {
-                // Se alterou de um valor maior que zero para outro maior que zero:
-                // Dispara a animação (fazendo encolher)
-                setAnimationKey(prev => prev + 1);
-                // No momento em que está no scale-0 (100ms), troca o número silenciosamente
-                const timer = setTimeout(() => {
-                    setDisplayedCount(pendingCount);
-                }, 100);
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [pendingCount, displayedCount]);
-
-    // Subscrição em tempo real para as tabelas relevantes
-    useEffect(() => {
-        if (!user) return;
-
-        fetchPendingCount();
-
-        const channel = supabase
-            .channel('shared_notifications')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'client_shares' },
-                () => fetchPendingCount()
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'financial_transactions' },
-                () => fetchPendingCount()
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'shared_transaction_updates' },
-                () => fetchPendingCount()
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [user]);
 
     // Fechar a sidebar sempre que a rota mudar
     useEffect(() => {
@@ -270,8 +135,6 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             );
         }
 
-        const hasBadge = item.href === '/v2/compartilhado' && displayedCount > 0;
-
         return (
             <Link
                 key={item.href + item.label}
@@ -283,14 +146,6 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             >
                 <item.icon size={level === 1 ? 16 : 14} />
                 <span className={level === 1 ? 'flex-1' : 'text-[11px] flex-1 font-medium'}>{item.label}</span>
-                {hasBadge && (
-                    <span
-                        key={animationKey}
-                        className="animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px]"
-                    >
-                        {displayedCount}
-                    </span>
-                )}
             </Link>
         );
     };
@@ -390,17 +245,9 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                     {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
                     <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
+                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0"
                     >
                         <Menu size={24} />
-                        {displayedCount > 0 && (
-                            <span 
-                                key={animationKey}
-                                className="absolute -top-1.5 -right-1.5 animate-pop-badge bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm"
-                            >
-                                {displayedCount}
-                            </span>
-                        )}
                     </button>
                     <div className="flex items-center gap-2">
                         <div className="bg-[#0f172a] p-1.5 rounded-md">
