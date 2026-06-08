@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, DollarSign, Tag, Wallet, User, CheckCircle2, AlertTriangle, Clock, Pencil, ArrowRightLeft, Repeat, Layers } from 'lucide-react';
+import { X, Calendar, DollarSign, Tag, Wallet, User, CheckCircle2, AlertTriangle, Clock, Pencil, ArrowRightLeft, Repeat, Layers, Zap } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,6 +25,7 @@ interface TransactionInstance {
   destination_account?: { name: string };
   category?: { name: string };
   client?: { name: string };
+  auto_confirm?: boolean;
 }
 
 interface TransactionSummaryModalProps {
@@ -179,6 +180,17 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Cliente</span>
                 <span className="text-xs font-bold text-sky-600 block leading-tight">
                   {transaction.client?.name || 'Nenhum'}
+                </span>
+              </div>
+            </div>
+
+            {/* Auto Confirmar */}
+            <div className="flex items-center gap-2.5 p-2 bg-slate-50/50 rounded-xl border border-slate-100/50">
+              <Zap size={16} className={transaction.auto_confirm ? "text-amber-500 fill-amber-500 shrink-0 animate-pulse" : "text-slate-400 shrink-0"} />
+              <div className="min-w-0">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Auto Confirmar</span>
+                <span className="text-xs font-bold text-slate-700 block leading-tight">
+                  {transaction.auto_confirm ? 'Sim ⚡' : 'Não'}
                 </span>
               </div>
             </div>
