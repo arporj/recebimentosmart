@@ -1733,7 +1733,7 @@ const FinancialTransactionsV2 = () => {
       )}
 
       {/* ===== DESKTOP LAYOUT ===== */}
-      <div className="hidden xl:flex flex-1 max-w-[1700px] mx-auto w-full px-6 pt-3 pb-6 gap-6 items-start">
+      <div className="hidden xl:flex flex-1 max-w-[1700px] mx-auto w-full px-6 pt-0 -mt-4 pb-6 gap-6 items-start">
         {/* Sidebar - Fixa */}
         <aside className="w-[360px] flex-shrink-0 sticky top-[64px] max-h-[calc(100vh-90px)] overflow-y-auto no-scrollbar">
           <SidebarContent />
