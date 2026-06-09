@@ -1735,14 +1735,14 @@ const FinancialTransactionsV2 = () => {
       {/* ===== DESKTOP LAYOUT ===== */}
       <div className="hidden xl:flex flex-1 max-w-[1700px] mx-auto w-full p-6 gap-6 items-start">
         {/* Sidebar - Fixa */}
-        <aside className="w-[360px] flex-shrink-0 sticky top-[80px] max-h-[calc(100vh-120px)] overflow-y-auto no-scrollbar">
+        <aside className="w-[360px] flex-shrink-0 sticky top-[57px] max-h-[calc(100vh-90px)] overflow-y-auto no-scrollbar">
           <SidebarContent />
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col space-y-6 min-w-0">
           {/* Header da Lista (Sticky e Lado a Lado Compacto) */}
-          <div className="sticky top-[80px] z-20 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50">
+          <div className="sticky top-[57px] z-20 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50">
             {/* Primeira Linha: Busca e Ações */}
             <div className="flex flex-col lg:flex-row gap-3 items-center justify-between">
               {/* Busca */}
