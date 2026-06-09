@@ -1,6 +1,18 @@
 import { supabase } from '../supabase';
-import { gerarInstanciasRecorrentes } from './recorrenciaUtils';
+import { gerarInstanciasRecorrentes, addPeriod } from './recorrenciaUtils';
 import { format, subDays, parseISO } from 'date-fns';
+
+function ajustarDiaDaData(dateStr: string, diaAlvo: number): string {
+  const [year, month, _] = dateStr.split('-');
+  const anoNum = Number(year);
+  const mesNum = Number(month);
+  
+  // Obter o último dia do mês para não estourar (ex: dia 31 em fevereiro)
+  const ultimoDia = new Date(anoNum, mesNum, 0).getDate();
+  const diaSeguro = Math.min(diaAlvo, ultimoDia);
+  
+  return `${year}-${String(month).padStart(2, '0')}-${String(diaSeguro).padStart(2, '0')}`;
+}
 
 export type EditScope = 'this' | 'following' | 'all';
 
@@ -184,35 +196,71 @@ export async function editarTransacao(
     // Se for recorrente infinita, aplica a fragmentação elegante
     if (currentModalidade === 'recorrente') {
       const effectiveDate = cleanUpdate.date || currentDate;
-      const parsedEffectiveDate = parseISO(effectiveDate);
       
-      // 1. Finalizar a mãe atual definindo a data de término como o dia anterior à nova data de corte
-      const endDate = format(subDays(parsedEffectiveDate, 1), 'yyyy-MM-dd');
+      let newMotherStartDate = effectiveDate;
+      let endDateOfOldMother = '';
       
-      await supabase
-        .from('financial_transactions')
-        .update({ recurrence_end_date: endDate })
-        .eq('id', refId);
+      const isPaid = current.status === 'paid';
+      
+      if (isPaid) {
+        // Se a ocorrência atual já foi paga:
+        // 1. Ela mantém a sua data original (currentDate)
+        endDateOfOldMother = currentDate;
+        
+        // 2. A nova mãe (ciclo futuro) começa no ciclo seguinte com o novo dia
+        const nextCycleDate = addPeriod(parseISO(currentDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
+        const nextCycleDateStr = format(nextCycleDate, 'yyyy-MM-dd');
+        
+        const targetDay = parseISO(effectiveDate).getDate();
+        newMotherStartDate = ajustarDiaDaData(nextCycleDateStr, targetDay);
+        
+        // Finalizar a mãe atual definindo a data de término igual à data original da ocorrência editada
+        await supabase
+          .from('financial_transactions')
+          .update({ recurrence_end_date: endDateOfOldMother })
+          .eq('id', refId);
 
-      // Deletar filhas físicas futuras da mãe antiga que estejam na data de corte ou depois
-      await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('parent_id', refId)
-        .gte('date', effectiveDate);
+        // Deletar filhas físicas futuras (pendentes) maiores que a data original da ocorrência editada
+        await supabase
+          .from('financial_transactions')
+          .delete()
+          .eq('parent_id', refId)
+          .gt('date', currentDate)
+          .neq('status', 'paid');
+      } else {
+        // Se a ocorrência atual NÃO foi paga ainda:
+        // 1. Ela assume a nova data (effectiveDate)
+        // 2. A mãe antiga termina no dia anterior à data original da ocorrência editada
+        endDateOfOldMother = format(subDays(parseISO(currentDate), 1), 'yyyy-MM-dd');
+        
+        await supabase
+          .from('financial_transactions')
+          .update({ recurrence_end_date: endDateOfOldMother })
+          .eq('id', refId);
 
-      // 2. Criar a nova mãe com as novas regras começando a partir da data de corte
+        // Deletar filhas físicas futuras (pendentes) maiores ou iguais à data original da ocorrência editada
+        await supabase
+          .from('financial_transactions')
+          .delete()
+          .eq('parent_id', refId)
+          .gte('date', currentDate)
+          .neq('status', 'paid');
+      }
+
+      // 3. Criar a nova mãe com as novas regras começando a partir da data de início calculada
       const { id: _, created_at: __, recurrence_end_date: ___, ...parentFields } = current;
+      const targetDay = parseISO(effectiveDate).getDate();
       const newMotherPayload = {
         ...parentFields,
         ...safeBulkUpdate,
         ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
-        date: effectiveDate,
-        status: cleanUpdate.status || 'pending',
-        paid_date: cleanUpdate.paid_date || null,
+        date: newMotherStartDate,
+        due_day: targetDay,
+        status: isPaid ? 'pending' : (cleanUpdate.status || 'pending'),
+        paid_date: isPaid ? null : (cleanUpdate.paid_date || null),
         modalidade: 'recorrente',
         recurrence_enabled: true,
-        installment_current: 1, // Recomeça como ciclo 1 da nova série
+        installment_current: (current.installment_current || 1) + (isPaid ? 1 : 0),
       };
 
       const { data: newMother, error: createError } = await supabase
@@ -240,7 +288,7 @@ export async function editarTransacao(
     // Comportamento original para parcelas físicas
     const { data: futureTransactions, error: listError } = await supabase
       .from('financial_transactions')
-      .select('id, date')
+      .select('id, date, status')
       .or(`id.eq.${refId},parent_id.eq.${refId}`)
       .gte('date', currentDate)
       .neq('is_customized', true);
@@ -252,6 +300,13 @@ export async function editarTransacao(
       const targetDay = newDateObj.getDate();
 
       const dateUpdates = futureTransactions.map((t) => {
+        if (t.status === 'paid') {
+          return supabase
+            .from('financial_transactions')
+            .update(safeBulkUpdate)
+            .eq('id', t.id);
+        }
+
         const originalDateObj = new Date(t.date + 'T12:00:00');
         const year = originalDateObj.getFullYear();
         const month = originalDateObj.getMonth();
