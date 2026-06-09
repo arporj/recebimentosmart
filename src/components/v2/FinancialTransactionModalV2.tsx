@@ -923,11 +923,6 @@ const FinancialTransactionModalV2 = ({
                   </div>
                   <div 
                     className="relative group cursor-pointer"
-                    onClick={() => {
-                      if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
-                        setIsRecurrenceWarningOpen(true);
-                      }
-                    }}
                   >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
                       <CalendarIcon size={16} />
@@ -936,17 +931,9 @@ const FinancialTransactionModalV2 = ({
                       type="date"
                       value={date}
                       onChange={(e) => {
-                        if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
-                          return;
-                        }
                         setDate(e.target.value);
                       }}
-                      readOnly={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
-                      className={`w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm ${
-                        isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
-                          ? 'opacity-70 cursor-not-allowed select-none'
-                          : ''
-                      }`}
+                      className="w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                     />
                   </div>
                 </div>
