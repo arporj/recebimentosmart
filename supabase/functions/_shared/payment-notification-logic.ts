@@ -70,6 +70,28 @@ export async function processUserDuePayments(
     const creditCardTxs: any[] = [];
     const invoicePayments: any[] = [];
 
+    const isRecurrenceParentWithPaidOrCancelledChild = (tx: any, allTxs: any[]) => {
+        if (tx.recurrence_enabled !== true || tx.parent_id) return false;
+        
+        return allTxs.some((child: any) => {
+            if (child.parent_id !== tx.id) return false;
+            if (child.status !== 'paid' && child.status !== 'cancelled') return false;
+            
+            if (child.date === tx.date) return true;
+            
+            if (tx.installment_current !== undefined && tx.installment_current !== null && 
+                child.installment_current === tx.installment_current) {
+                return true;
+            }
+            
+            const [txYear, txMonth] = tx.date.split('-');
+            const [childYear, childMonth] = child.date.split('-');
+            if (txYear === childYear && txMonth === childMonth) return true;
+            
+            return false;
+        });
+    };
+
     txs.forEach((tx: any) => {
         const isCreditCard = tx.account?.type === 'credit_card';
         if (isCreditCard) {
@@ -82,10 +104,12 @@ export async function processUserDuePayments(
             if (isDestCreditCard) {
                 invoicePayments.push(tx);
             } else {
-                if (tx.status === 'pending') normalTxs.push(tx);
+                if (tx.status === 'pending' && !isRecurrenceParentWithPaidOrCancelledChild(tx, txs)) {
+                    normalTxs.push(tx);
+                }
             }
         } else {
-            if (tx.status === 'pending') {
+            if (tx.status === 'pending' && !isRecurrenceParentWithPaidOrCancelledChild(tx, txs)) {
                 normalTxs.push(tx);
             }
         }
