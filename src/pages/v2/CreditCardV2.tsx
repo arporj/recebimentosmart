@@ -78,7 +78,91 @@ interface TransactionInstance extends FinancialTransaction {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+// Compute smart "current month" for a card
+const getSmartCurrentMonth = (card: Account | null): Date => {
+  if (!card?.due_day) return startOfDay(new Date());
+  const now = startOfDay(new Date());
+  return now.getDate() >= card.due_day ? addMonths(now, 1) : now;
+};
 
+const getInvoicePeriodForMonth = (card: Account, month: Date) => {
+  if (!card.due_day || !card.closing_days_before) return null;
+  const dueDay = card.due_day;
+  const closingDaysBefore = card.closing_days_before;
+
+  const dueDate = startOfDay(setDate(month, Math.min(dueDay, 28)));
+  const closingDate = startOfDay(subDays(dueDate, closingDaysBefore));
+  const endDate = startOfDay(subDays(closingDate, 1));
+  
+  const prevDueDate = startOfDay(setDate(subMonths(month, 1), Math.min(dueDay, 28)));
+  const prevClosingDate = startOfDay(subDays(prevDueDate, closingDaysBefore));
+  const startDate = prevClosingDate;
+
+  return { startDate, endDate };
+};
+
+const hasExpensesForMonth = (card: Account, cursorDate: Date, allTransactions: FinancialTransaction[]) => {
+  const cursorMonthStr = format(cursorDate, 'yyyy-MM');
+  const period = getInvoicePeriodForMonth(card, cursorDate);
+  
+  return allTransactions.some(t => {
+    if (t.account_id !== card.id || t.type !== 'expense' || t.status === 'cancelled') return false;
+    
+    if (t.recurrence_enabled) {
+      const tDate = parseISO(t.date);
+      return !isAfter(tDate, period ? period.endDate : endOfMonth(cursorDate));
+    }
+    
+    if (t.invoice_month) {
+      return t.invoice_month === cursorMonthStr;
+    }
+    
+    if (period) {
+      const tDate = parseISO(t.date);
+      return !isBefore(tDate, period.startDate) && !isAfter(tDate, period.endDate);
+    }
+    
+    return isSameMonth(parseISO(t.date), cursorDate);
+  });
+};
+
+const isInvoiceClosedForMonth = (card: Account, cursorDate: Date, allTransactions: FinancialTransaction[]) => {
+  const cursorMonthStr = format(cursorDate, 'yyyy-MM');
+  return allTransactions.some(t => 
+    t.destination_account_id === card.id && 
+    t.type === 'transfer' && 
+    t.invoice_month === cursorMonthStr
+  );
+};
+
+const getFirstOpenInvoiceMonth = (card: Account | null, allTransactions: FinancialTransaction[]): Date => {
+  const defaultMonth = getSmartCurrentMonth(card);
+  if (!card) return defaultMonth;
+
+  // Procurar a partir de 6 meses atrás até 12 meses no futuro
+  for (let i = -6; i <= 12; i++) {
+    const cursorDate = addMonths(defaultMonth, i);
+
+    if (i < 0) {
+      // Para meses passados, só consideramos se tiver despesas cadastradas e não estiver fechada
+      const hasExpenses = hasExpensesForMonth(card, cursorDate, allTransactions);
+      if (hasExpenses) {
+        const isClosed = isInvoiceClosedForMonth(card, cursorDate, allTransactions);
+        if (!isClosed) {
+          return cursorDate;
+        }
+      }
+    } else {
+      // Para o mês atual ou futuro, o primeiro que não estiver pago é o primeiro em aberto
+      const isClosed = isInvoiceClosedForMonth(card, cursorDate, allTransactions);
+      if (!isClosed) {
+        return cursorDate;
+      }
+    }
+  }
+
+  return defaultMonth;
+};
 
 const CardIcon = ({ card, size = 20 }: { card: Account | null | undefined; size?: number }) => {
   if (!card) return <CreditCard size={size} className="text-purple-600 shrink-0" />;
@@ -153,13 +237,6 @@ const CreditCardV2 = () => {
   const today = new Date();
   const selectedCard = cards.find(c => c.id === selectedCardId) || null;
 
-  // Compute smart "current month" for a card
-  const getSmartCurrentMonth = (card: Account | null): Date => {
-    if (!card?.due_day) return startOfDay(new Date());
-    const now = startOfDay(new Date());
-    return now.getDate() >= card.due_day ? addMonths(now, 1) : now;
-  };
-
   // Fetch credit cards
   const fetchCards = async () => {
     if (!user) return;
@@ -172,26 +249,6 @@ const CreditCardV2 = () => {
       .order('name');
     const cardList = (data as Account[]) || [];
     setCards(cardList);
-    
-    if (!hasInitializedParams) {
-      const initialCardId = searchParams.get('cardId');
-      const initialMonth = searchParams.get('month'); // format: yyyy-MM
-      
-      const foundCard = cardList.find(c => c.id === initialCardId);
-      if (foundCard) {
-        setSelectedCardId(foundCard.id);
-        if (initialMonth) {
-          const [year, month] = initialMonth.split('-');
-          setCurrentMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
-        } else {
-          setCurrentMonth(getSmartCurrentMonth(foundCard));
-        }
-      } else if (cardList.length > 0 && !selectedCardId) {
-        setSelectedCardId(cardList[0].id);
-        setCurrentMonth(getSmartCurrentMonth(cardList[0]));
-      }
-      setHasInitializedParams(true);
-    }
   };
 
   // Fetch all transactions
@@ -223,6 +280,29 @@ const CreditCardV2 = () => {
 
   useEffect(() => { fetchCards(); fetchTransactions(); }, [user]);
 
+  // Inicialização inteligente do cartão e mês
+  useEffect(() => {
+    if (cards.length > 0 && !loading && !hasInitializedParams) {
+      const initialCardId = searchParams.get('cardId');
+      const initialMonth = searchParams.get('month'); // format: yyyy-MM
+      
+      const foundCard = cards.find(c => c.id === initialCardId);
+      if (foundCard) {
+        setSelectedCardId(foundCard.id);
+        if (initialMonth) {
+          const [year, month] = initialMonth.split('-');
+          setCurrentMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
+        } else {
+          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions));
+        }
+      } else if (cards.length > 0 && !selectedCardId) {
+        setSelectedCardId(cards[0].id);
+        setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions));
+      }
+      setHasInitializedParams(true);
+    }
+  }, [cards, loading, searchParams, hasInitializedParams, transactions]);
+
   // Sincroniza dinamicamente o cartão selecionado quando os parâmetros de busca da URL mudarem
   useEffect(() => {
     const cardId = searchParams.get('cardId');
@@ -235,28 +315,19 @@ const CreditCardV2 = () => {
           const [year, m] = month.split('-');
           setCurrentMonth(new Date(parseInt(year), parseInt(m) - 1, 1));
         } else {
-          setCurrentMonth(getSmartCurrentMonth(foundCard));
+          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions));
         }
       }
+    } else if (!cardId && cards.length > 0 && hasInitializedParams) {
+      setSelectedCardId(cards[0].id);
+      setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions));
     }
-  }, [searchParams, cards]);
-
-  // When card changes, update smart month
-  useEffect(() => {
-    if (selectedCard && hasInitializedParams) {
-      // Check if we are changing cards through user click vs initial load
-      // Since we only want to auto-change month when user selects a different card manually
-      // We can rely on the fact that initialCard is handled in fetchCards.
-      // But we need to make sure we don't override the month right after initial load.
-      // A safe way is to only update if it's not the initial mount.
-      // We can use a ref to track if it's the first render.
-    }
-  }, [selectedCardId]);
+  }, [searchParams, cards, hasInitializedParams, transactions]);
 
   // Handle manual card change via select
   const handleCardChange = (card: Account) => {
     setSelectedCardId(card.id);
-    setCurrentMonth(getSmartCurrentMonth(card));
+    setCurrentMonth(getFirstOpenInvoiceMonth(card, transactions));
     setIsCardDropdownOpen(false);
   };
 

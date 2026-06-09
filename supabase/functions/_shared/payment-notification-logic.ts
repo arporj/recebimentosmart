@@ -320,51 +320,69 @@ export async function processUserDuePayments(
     }
 
     let htmlContent = `
-  <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #334155; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+  <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #334155; line-height: 1.6; max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
     
-    <!-- Cabeçalho com Logo Premium -->
-    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
-        <img src="https://recebimentosmart.com.br/images/logo.svg" alt="Recebimento Smart" style="height: 32px; vertical-align: middle;" />
-        <span style="font-size: 20px; font-weight: 800; vertical-align: middle; color: #0f172a; font-family: 'Segoe UI', Arial, sans-serif;">
-            Recebimento <span style="color: #29a8a8;">$mart</span>
-        </span>
-    </div>
-    
-    <p style="margin-top: 0; font-size: 14px;">Olá <strong>${userName}</strong>,</p>
-    <p style="font-size: 13px;">Aqui está o resumo consolidado das suas contas pendentes em atraso e a vencer nos próximos 7 dias no sistema.</p>
-    
-    <!-- Indicadores de topo -->
-    <div style="margin-bottom: 24px; font-size: 12px;">
-        <table style="width: 100%; border-spacing: 12px 0; margin-left: -12px; margin-right: -12px;">
+    <!-- Header com Logo Lateral (Compacto) -->
+    <div style="background-color: #0f172a; padding: 16px 24px; border-bottom: 3px solid #0d9488;">
+        <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                ${overdueTxs.length > 0 ? `
-                <td style="width: 50%; background-color: #fef2f2; border: 1px solid #fee2e2; padding: 12px; border-radius: 12px; text-align: center;">
-                    <div style="font-weight: bold; color: #991b1b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">🔴 Contas em Atraso</div>
-                    <div style="font-size: 22px; font-weight: 800; color: #ef4444; margin-top: 4px;">${overdueTxs.length}</div>
+                <td style="vertical-align: middle; width: 36px; padding: 0;">
+                    <img src="https://recebimentosmart.com.br/images/logo.svg" alt="R$" style="height: 28px; width: 28px; border-radius: 6px; display: block;">
                 </td>
-                ` : ''}
-                ${upcomingTxs.length > 0 ? `
-                <td style="width: 50%; background-color: #fefbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 12px; text-align: center;">
-                    <div style="font-weight: bold; color: #92400e; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">🟡 Próximos 7 Dias</div>
-                    <div style="font-size: 22px; font-weight: 800; color: #f59e0b; margin-top: 4px;">${upcomingTxs.length}</div>
+                <td style="vertical-align: middle; padding: 0 0 0 8px;">
+                    <div style="font-size: 18px; font-weight: bold; color: #ffffff; letter-spacing: -0.5px; line-height: 1.2;">
+                        Recebimento <span style="color: #0d9488;">$mart</span>
+                    </div>
                 </td>
-                ` : ''}
+                <td style="vertical-align: middle; text-align: right; padding: 0;">
+                    <div style="font-size: 11px; font-weight: bold; color: #ffffff; letter-spacing: 0.5px; line-height: 1.2; text-transform: uppercase;">
+                        ${overdueTxs.length > 0 ? 'Contas em Atraso' : 'Resumo Semanal'}
+                    </div>
+                </td>
             </tr>
         </table>
     </div>
+    
+    <!-- Content -->
+    <div style="padding: 24px;">
+        <p style="margin-top: 0; font-size: 14px;">Olá <strong>${userName}</strong>,</p>
+        <p style="font-size: 13px;">Aqui está o resumo consolidado das suas contas pendentes em atraso e a vencer nos próximos 7 dias no sistema.</p>
+        
+        <!-- Indicadores de topo -->
+        <div style="margin-bottom: 24px; font-size: 12px;">
+            <table style="width: 100%; border-spacing: 12px 0; margin-left: -12px; margin-right: -12px;">
+                <tr>
+                    ${overdueTxs.length > 0 ? `
+                    <td style="width: 50%; background-color: #fef2f2; border: 1px solid #fee2e2; padding: 12px; border-radius: 12px; text-align: center;">
+                        <div style="font-weight: bold; color: #991b1b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">🔴 Contas em Atraso</div>
+                        <div style="font-size: 22px; font-weight: 800; color: #ef4444; margin-top: 4px;">${overdueTxs.length}</div>
+                    </td>
+                    ` : ''}
+                    ${upcomingTxs.length > 0 ? `
+                    <td style="width: 50%; background-color: #fefbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 12px; text-align: center;">
+                        <div style="font-weight: bold; color: #92400e; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">🟡 Próximos 7 Dias</div>
+                        <div style="font-size: 22px; font-weight: 800; color: #f59e0b; margin-top: 4px;">${upcomingTxs.length}</div>
+                    </td>
+                    ` : ''}
+                </tr>
+            </table>
+        </div>
 
-    <!-- Tabela de Lançamentos Customizada -->
-    ${tableHtml}
+        <!-- Tabela de Lançamentos Customizada -->
+        ${tableHtml}
 
-    <div style="text-align: center; margin: 30px 0;">
-        <a href="https://recebimentosmart.com.br" style="background-color: #29a8a8; color: white; padding: 12px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(41, 168, 168, 0.25);">
-            Acessar Painel Financeiro
-        </a>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://recebimentosmart.com.br" style="background-color: #0d9488; color: white; padding: 12px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.25);">
+                Acessar Painel Financeiro
+            </a>
+        </div>
     </div>
     
-    <p style="margin-top: 30px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center;">
-      Este é um e-mail automático do sistema Recebimento Smart.
-    </p>
+    <!-- Footer -->
+    <div style="text-align: center; padding: 20px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background-color: #f8fafc;">
+        <p style="margin: 0;">Recebimento $mart &copy; ${new Date().getFullYear()} • Todos os direitos reservados.</p>
+        <p style="font-size: 10px; margin-top: 5px;">Este é um e-mail automático do sistema Recebimento Smart.</p>
+    </div>
   </div>
 `;
 
