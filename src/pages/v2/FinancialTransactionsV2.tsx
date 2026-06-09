@@ -1742,7 +1742,7 @@ const FinancialTransactionsV2 = () => {
         {/* Main Content */}
         <main className="flex-1 flex flex-col space-y-6 min-w-0">
           {/* Header da Lista (Sticky e Lado a Lado Compacto) */}
-          <div className="sticky top-[80px] z-20 bg-slate-50/95 backdrop-blur-md pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50">
+          <div className="sticky top-[64px] z-20 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50 -mt-4">
             {/* Primeira Linha: Busca e Ações */}
             <div className="flex flex-col lg:flex-row gap-3 items-center justify-between">
               {/* Busca */}
