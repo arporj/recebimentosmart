@@ -102,6 +102,18 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         setSidebarDesktopCollapsed(collapsed);
     }, [user]);
 
+    // Ouvir alterações temporárias de layout (antes de salvar) vindas da tela de perfil
+    useEffect(() => {
+        const handleTempPref = (e: Event) => {
+            const customEvent = e as CustomEvent<boolean>;
+            setSidebarDesktopCollapsed(customEvent.detail);
+        };
+        window.addEventListener('temp_sidebar_preference', handleTempPref);
+        return () => {
+            window.removeEventListener('temp_sidebar_preference', handleTempPref);
+        };
+    }, []);
+
     const handleSignOut = async () => {
         await signOut();
     };

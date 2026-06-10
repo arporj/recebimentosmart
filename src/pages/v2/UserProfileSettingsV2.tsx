@@ -142,6 +142,12 @@ export default function UserProfileSettingsV2() {
         setShowNegativeSign(savedShowNegative !== 'false');
         setValueAlignment(savedValAlign || 'right');
         setSidebarDesktopCollapsed(savedSidebarCollapsed === 'true');
+
+        // Cleanup: Se sair da tela de configurações sem salvar, restaura o estado salvo no localStorage
+        return () => {
+            const savedSidebar = localStorage.getItem('sidebar_desktop_collapsed') === 'true';
+            window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: savedSidebar }));
+        };
     }, [user, fetchProfilePreferences]);
 
 
@@ -522,14 +528,20 @@ export default function UserProfileSettingsV2() {
                                     <div className="flex bg-slate-100/80 border border-slate-200 p-1.5 rounded-2xl gap-2 max-w-sm mb-6">
                                         <button
                                             type="button"
-                                            onClick={() => setSidebarDesktopCollapsed(false)}
+                                            onClick={() => {
+                                                setSidebarDesktopCollapsed(false);
+                                                window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: false }));
+                                            }}
                                             className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${!sidebarDesktopCollapsed ? 'bg-white text-custom shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
                                         >
                                             Sempre Aberto
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setSidebarDesktopCollapsed(true)}
+                                            onClick={() => {
+                                                setSidebarDesktopCollapsed(true);
+                                                window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: true }));
+                                            }}
                                             className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${sidebarDesktopCollapsed ? 'bg-white text-custom shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
                                         >
                                             Sempre Recuado
@@ -761,10 +773,12 @@ export default function UserProfileSettingsV2() {
                                         const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
                                         const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
                                         const savedSidebarCollapsed = localStorage.getItem('sidebar_desktop_collapsed');
+                                        const collapsed = savedSidebarCollapsed === 'true';
                                         setShowCurrencySymbol(savedShowCurrency !== 'false');
                                         setShowNegativeSign(savedShowNegative !== 'false');
                                         setValueAlignment(savedValAlign || 'right');
-                                        setSidebarDesktopCollapsed(savedSidebarCollapsed === 'true');
+                                        setSidebarDesktopCollapsed(collapsed);
+                                        window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: collapsed }));
                                     }
                                 }}
                                 disabled={saving}
