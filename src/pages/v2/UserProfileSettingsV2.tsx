@@ -16,6 +16,7 @@ export default function UserProfileSettingsV2() {
     const [showCurrencySymbol, setShowCurrencySymbol] = useState(true);
     const [showNegativeSign, setShowNegativeSign] = useState(true);
     const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
+    const [sidebarDesktopCollapsed, setSidebarDesktopCollapsed] = useState(false);
 
     // Email alert preferences
     const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(true);
@@ -58,7 +59,7 @@ export default function UserProfileSettingsV2() {
             // Tentativa de buscar o perfil completo
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, plano')
+                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, sidebar_desktop_collapsed, plano')
                 .eq('id', user.id)
                 .single();
             
@@ -67,7 +68,7 @@ export default function UserProfileSettingsV2() {
                 // Fallback para quando a coluna de notificação de fatura de cartão de crédito não existir na tabela profiles
                 const { data: fallbackProfile, error: fallbackError } = await supabase
                     .from('profiles')
-                    .select('due_email_notify_enabled, due_email_notify_day_of_week, plano')
+                    .select('due_email_notify_enabled, due_email_notify_day_of_week, sidebar_desktop_collapsed, plano')
                     .eq('id', user.id)
                     .single();
                 
@@ -82,6 +83,7 @@ export default function UserProfileSettingsV2() {
                 setDueEmailNotifyDayOfWeek(profileData.due_email_notify_day_of_week ?? 0);
                 // Define true se a coluna não vier ou vier true
                 setCardInvoiceEmailNotifyEnabled(profileData.card_invoice_email_notify_enabled !== false);
+                setSidebarDesktopCollapsed(profileData.sidebar_desktop_collapsed === true);
 
                 const planSlug = profileData.plano?.toLowerCase() || 'free';
                 const { data: plan, error: planError } = await supabase
@@ -135,9 +137,11 @@ export default function UserProfileSettingsV2() {
         const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
         const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
         const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
+        const savedSidebarCollapsed = localStorage.getItem('sidebar_desktop_collapsed');
         setShowCurrencySymbol(savedShowCurrency !== 'false');
         setShowNegativeSign(savedShowNegative !== 'false');
         setValueAlignment(savedValAlign || 'right');
+        setSidebarDesktopCollapsed(savedSidebarCollapsed === 'true');
     }, [user, fetchProfilePreferences]);
 
 
@@ -168,6 +172,7 @@ export default function UserProfileSettingsV2() {
             localStorage.setItem('transaction_show_currency_symbol', String(showCurrencySymbol));
             localStorage.setItem('transaction_show_negative_sign', String(showNegativeSign));
             localStorage.setItem('transaction_value_alignment', valueAlignment);
+            localStorage.setItem('sidebar_desktop_collapsed', String(sidebarDesktopCollapsed));
         }
 
         // Email Alert and Layout Preferences Update in Supabase
@@ -182,7 +187,8 @@ export default function UserProfileSettingsV2() {
                         layout_preference: layoutPreference,
                         show_currency_symbol: showCurrencySymbol,
                         show_negative_sign: showNegativeSign,
-                        value_alignment: valueAlignment
+                        value_alignment: valueAlignment,
+                        sidebar_desktop_collapsed: sidebarDesktopCollapsed
                     })
                     .eq('id', user.id);
 
@@ -511,6 +517,27 @@ export default function UserProfileSettingsV2() {
                                 </div>
 
                                 <div className="border-t border-slate-100 pt-6">
+                                    <h3 className="font-extrabold text-sm text-slate-900 mb-2">Comportamento do Menu Lateral (Desktop)</h3>
+                                    <p className="text-xs text-slate-500 mb-4 font-medium">Defina como o menu lateral se comporta ao abrir o sistema em computadores.</p>
+                                    <div className="flex bg-slate-100/80 border border-slate-200 p-1.5 rounded-2xl gap-2 max-w-sm mb-6">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSidebarDesktopCollapsed(false)}
+                                            className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${!sidebarDesktopCollapsed ? 'bg-white text-custom shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
+                                        >
+                                            Sempre Aberto
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSidebarDesktopCollapsed(true)}
+                                            className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${sidebarDesktopCollapsed ? 'bg-white text-custom shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
+                                        >
+                                            Sempre Recuado
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-100 pt-6">
                                     <h3 className="font-extrabold text-sm text-slate-900 mb-4">Disposição do Extrato</h3>
                                     {/* Painel de Opções Adicionais de Exibição */}
                                     <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-300 grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
@@ -733,9 +760,11 @@ export default function UserProfileSettingsV2() {
                                         const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
                                         const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
                                         const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
+                                        const savedSidebarCollapsed = localStorage.getItem('sidebar_desktop_collapsed');
                                         setShowCurrencySymbol(savedShowCurrency !== 'false');
                                         setShowNegativeSign(savedShowNegative !== 'false');
                                         setValueAlignment(savedValAlign || 'right');
+                                        setSidebarDesktopCollapsed(savedSidebarCollapsed === 'true');
                                     }
                                 }}
                                 disabled={saving}
