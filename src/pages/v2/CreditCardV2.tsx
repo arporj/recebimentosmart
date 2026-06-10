@@ -736,7 +736,11 @@ const CreditCardV2 = () => {
       {/* ===== DESKTOP LAYOUT ===== */}
       <div className="hidden lg:flex w-full gap-6 items-start">
         {/* Sidebar */}
-        <div className="w-[340px] shrink-0 bg-white border border-slate-100 flex flex-col sticky top-[65px] max-h-[calc(100vh-85px)] overflow-y-auto rounded-2xl shadow-sm">
+        <div className={`w-[340px] shrink-0 bg-white border border-slate-100 flex flex-col sticky overflow-y-auto rounded-2xl shadow-sm transition-all ${
+          localStorage.getItem('sidebar_desktop_collapsed') === 'true'
+            ? 'top-[65px] max-h-[calc(100vh-85px)]'
+            : 'top-[20px] max-h-[calc(100vh-40px)]'
+        }`}>
           {/* Card Selector */}
           <div className="p-4 border-b border-slate-100 space-y-3">
             <div className="flex items-center gap-2">
@@ -864,7 +868,11 @@ const CreditCardV2 = () => {
         {/* Main Panel */}
         <div className="flex-1 flex flex-col bg-white border border-slate-100 rounded-2xl shadow-sm">
           {/* Toolbar */}
-          <div className="sticky top-[65px] z-20 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4 rounded-t-2xl">
+          <div className={`sticky z-20 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4 rounded-t-2xl transition-all ${
+            localStorage.getItem('sidebar_desktop_collapsed') === 'true'
+              ? 'top-[65px]'
+              : 'top-[0px]'
+          }`}>
             <button
                onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                className="flex items-center gap-2 bg-[#0d9488] text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider shrink-0"
