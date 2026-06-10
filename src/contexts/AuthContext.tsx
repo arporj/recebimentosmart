@@ -256,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = error instanceof Error ? error.message : 'Erro ao cadastrar';
       toast.error(message);
       console.error(error);
+      throw error;
     } finally {
       setLoading(false);
     }
