@@ -22,6 +22,7 @@ export default function SignUpV2() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
         const urlParams = new URLSearchParams(location.search);
@@ -76,8 +77,9 @@ export default function SignUpV2() {
             return;
         }
         setErrors({});
+        setSubmitError(null);
         setLoading(true);
-
+ 
         try {
             await signUp(
                 formData.name,
@@ -86,7 +88,7 @@ export default function SignUpV2() {
                 referralCode || undefined,
                 '/v2/login'
             );
-
+ 
             // Email de notificação (silencioso)
             try {
                 const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
@@ -110,11 +112,14 @@ export default function SignUpV2() {
             } catch (emailError) {
                 console.error('Erro crítico ao tentar enviar e-mail:', emailError);
             }
-
+ 
             toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
             navigate('/v2/login');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro no processo de signUp:', error);
+            const errMsg = error?.message || error?.error_description || JSON.stringify(error) || 'Erro desconhecido ao processar cadastro';
+            setSubmitError(errMsg);
+            toast.error('Ocorreu um erro no cadastro. Veja os detalhes abaixo.');
         } finally {
             setLoading(false);
         }
@@ -151,6 +156,24 @@ export default function SignUpV2() {
                 <p className="text-slate-500 text-base font-normal leading-normal pb-6">
                     Acesso imediato a todas as ferramentas essenciais.
                 </p>
+ 
+                {/* ─── Erro no Cadastro ─── */}
+                {submitError && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-900 shadow-sm animate-in fade-in duration-200">
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl shrink-0 mt-0.5">⚠️</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-extrabold">Falha no Cadastro</p>
+                                <p className="text-xs font-semibold mt-1.5 bg-red-100/50 p-2.5 rounded-lg border border-red-200 font-mono text-red-800 break-all select-all">
+                                    {submitError}
+                                </p>
+                                <p className="text-[10px] text-red-600 mt-2 font-medium">
+                                    Dica: Clique duas vezes sobre o texto acima para selecionar e copie o erro para enviar ao suporte.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* ─── Banner de Indicação ─── */}
                 {referralCode && (
