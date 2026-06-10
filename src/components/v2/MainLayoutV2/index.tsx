@@ -183,7 +183,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
  
             {/* ─── Sidebar ─── */}
             <aside className={`bg-[#0f172a] text-slate-300 flex flex-col fixed inset-y-0 left-0 z-50 w-64 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out shadow-2xl ${
-                !sidebarDesktopCollapsed ? 'lg:static lg:translate-x-0 lg:shadow-none' : ''
+                !sidebarDesktopCollapsed ? 'lg:translate-x-0 lg:shadow-none' : ''
             }`}>
                 {/* Logo */}
                 <div className="p-6 flex items-center gap-3">
@@ -253,7 +253,9 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             </aside>
  
             {/* ─── Main Content ─── */}
-            <div className="flex-1 flex flex-col min-h-screen ml-0 w-full transition-all duration-300 animate-in fade-in duration-200">
+            <div className={`flex-1 flex flex-col min-h-screen ml-0 w-full transition-all duration-300 animate-in fade-in duration-200 ${
+                !sidebarDesktopCollapsed ? 'lg:pl-64' : ''
+            }`}>
  
                 {/* Header Superior (Sempre visível para permitir abrir o menu lateral colapsado) */}
                 <header className={`bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3 shadow-sm justify-start ${
