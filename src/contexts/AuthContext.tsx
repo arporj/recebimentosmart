@@ -115,6 +115,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('transaction_show_negative_sign', String(profile.show_negative_sign));
           }
           if (profile.value_alignment) localStorage.setItem('transaction_value_alignment', profile.value_alignment);
+          if (profile.sidebar_desktop_collapsed !== undefined && profile.sidebar_desktop_collapsed !== null) {
+            localStorage.setItem('sidebar_desktop_collapsed', String(profile.sidebar_desktop_collapsed));
+          }
         }
 
         // Verificação mais robusta de validade
