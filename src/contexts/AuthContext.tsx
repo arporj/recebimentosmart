@@ -250,8 +250,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }).catch(err => console.error('Erro ao enviar notificação de novo usuário:', err));
       }
 
-      toast.success('Cadastro realizado com sucesso! Verifique seu e-mail.');
-      navigate(redirectTo);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao cadastrar';
       toast.error(message);

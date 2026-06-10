@@ -80,8 +80,6 @@ export function SignUpPage() {
         console.error('Erro crítico ao tentar enviar e-mail de notificação:', emailError);
       }
 
-      // 3. Informa o usuário e redireciona
-      toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
       navigate('/login');
 
     } catch (error) {

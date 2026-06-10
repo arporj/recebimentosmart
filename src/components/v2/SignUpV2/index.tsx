@@ -113,7 +113,6 @@ export default function SignUpV2() {
                 console.error('Erro crítico ao tentar enviar e-mail:', emailError);
             }
  
-            toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
             navigate('/v2/login');
         } catch (error: any) {
             console.error('Erro no processo de signUp:', error);
