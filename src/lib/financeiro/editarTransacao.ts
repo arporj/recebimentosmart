@@ -247,6 +247,16 @@ export async function editarTransacao(
           .neq('status', 'paid');
       }
 
+      // Se a transação mãe antiga ficou com término anterior à sua própria data,
+      // significa que ela foi totalmente substituída pela nova mãe e deve ser removida.
+      if (!current.parent_id && endDateOfOldMother < current.date) {
+        await supabase
+          .from('financial_transactions')
+          .delete()
+          .eq('id', refId);
+      }
+
+
       // 3. Criar a nova mãe com as novas regras começando a partir da data de início calculada
       const { id: _, created_at: __, recurrence_end_date: ___, ...parentFields } = current;
       const targetDay = parseISO(effectiveDate).getDate();
