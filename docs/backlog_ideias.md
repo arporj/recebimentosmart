@@ -62,110 +62,95 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 
 ---
 
-## 3. 📈 Tendências de Mercado para Sistemas Financeiros Premium (2024-2026)
+## 3. 📈 Recomendações e Tendências de Mercado para o RecebimentoSmart Premium
 
-O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos está em constante evolução, impulsionado por novas tecnologias e demandas dos usuários. As seguintes tendências e funcionalidades são cruciais para um sistema ser considerado premium:
+O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos está em constante evolução, impulsionado por novas tecnologias e demandas dos usuários. Com base nas tendências de mercado para 2024-2026, as seguintes recomendações são propostas para elevar o RecebimentoSmart a um patamar premium:
 
-### 3.1. Open Finance e Conectividade Bancária
-A capacidade de se conectar a múltiplas instituições financeiras e consolidar dados é um pilar do Open Finance. Isso permite uma visão unificada das finanças, conciliação bancária automática e acesso a serviços financeiros personalizados. APIs como Belvo e Pluggy são exemplos de soluções que facilitam essa integração no Brasil.
-
-### 3.2. Inteligência Artificial (IA) e Automação
-A IA está revolucionando a gestão financeira, oferecendo automação de tarefas repetitivas, insights preditivos e personalização. Isso inclui conciliação bancária inteligente, categorização automática de despesas, previsão de fluxo de caixa, detecção de fraudes e assistentes virtuais para suporte.
-
-### 3.3. Canais de Comunicação Eficazes (WhatsApp Business API)
-No Brasil, o WhatsApp é um canal de comunicação dominante. A integração com a WhatsApp Business API para envio de notificações de cobrança, lembretes de vencimento, confirmações de pagamento e suporte ao cliente é significativamente mais eficaz do que o e-mail, melhorando as taxas de recebimento e a satisfação do cliente.
-
-### 3.4. Gestão de Documentos e Comprovantes
-A capacidade de anexar e organizar documentos financeiros, como notas fiscais, contratos, recibos e comprovantes de pagamento, diretamente às transações ou clientes, é fundamental para a organização e conformidade fiscal. Isso geralmente envolve integração com serviços de armazenamento em nuvem.
-
-### 3.5. Relatórios e Análises Avançadas
-Além dos relatórios básicos, sistemas premium oferecem dashboards personalizáveis, DRE (Demonstrativo de Resultado do Exercício) simplificado, fluxo de caixa projetado, análise de rentabilidade por cliente/serviço, e exportação flexível em formatos como PDF, Excel e CSV, com opções de agendamento de relatórios.
-
-### 3.6. Integração Contábil
-Facilitar a vida do contador é um grande diferencial. A integração com sistemas contábeis populares (como Domínio, Alterdata, Totvs, etc.) ou a capacidade de exportar dados em formatos específicos para importação direta agiliza o fechamento contábil e reduz erros.
-
-### 3.7. Multi-empresa/Multi-usuário e Permissões Granulares
-Para PMEs que crescem ou autônomos que gerenciam múltiplos negócios, a capacidade de gerenciar várias empresas sob uma única conta, com permissões de acesso granulares para diferentes usuários (funcionários, sócios, contadores), é essencial para segurança e organização.
-
----
-
-## 4. 💎 Recomendações para Tornar o RecebimentoSmart Premium
-
-Com base na análise do sistema atual e nas tendências de mercado, as seguintes recomendações são propostas para elevar o RecebimentoSmart a um patamar premium:
-
-### 4.1. Conectividade Bancária e Open Finance
-* **Integração com APIs de Open Finance:** Implementar integrações com provedores de API de Open Finance (e.g., Belvo, Pluggy) para permitir que os usuários conectem suas contas bancárias. Isso possibilitaria:
+### 3.1. Conectividade Bancária e Open Finance
+* **A Tendência:** A capacidade de se conectar a múltiplas instituições financeiras e consolidar dados é um pilar do Open Finance. Isso permite uma visão unificada das finanças, conciliação bancária automática e acesso a serviços financeiros personalizados. APIs como Belvo e Pluggy são referências dessa integração no Brasil.
+* **Recomendação Prática:** Implementar integrações com provedores de API de Open Finance para permitir que os usuários conectem suas contas bancárias. Isso possibilitaria:
   * **Conciliação Bancária Automática:** Importação e categorização automática de transações bancárias, comparando-as com os registros do sistema.
   * **Visão Consolidada:** Um dashboard que exibe saldos e movimentações de todas as contas conectadas.
-  * **Iniciação de Pagamentos:** No futuro, permitir a iniciação de pagamentos diretamente do sistema via Open Banking.
+  * **Iniciação de Pagamentos:** Permitir a iniciação de pagamentos diretamente do sistema via Open Banking.
 
-### 4.2. Inteligência Artificial para Automação e Insights
-* **Categorização Inteligente de Transações:** Utilizar modelos de IA (como o Gemini Pro já integrado para broadcasts) para sugerir ou categorizar automaticamente despesas e receitas com base em histórico e padrões.
-* **Previsão de Fluxo de Caixa:** Desenvolver um módulo que utilize dados históricos e pagamentos agendados para projetar o fluxo de caixa futuro, ajudando na tomada de decisões financeiras.
-* **Assistente Virtual:** Um chatbot integrado que responda a perguntas sobre as finanças do usuário ou sugira ações para otimização.
+### 3.2. Inteligência Artificial (IA) e Automação
+* **A Tendência:** A IA está revolucionando a gestão financeira, oferecendo automação de tarefas repetitivas, insights preditivos e personalização. Isso inclui conciliação bancária inteligente, categorização automática de despesas, previsão de fluxo de caixa, detecção de fraudes e assistentes virtuais para suporte.
+* **Recomendação Prática:**
+  * **Categorização Inteligente de Transações:** Utilizar modelos de IA (como o Gemini Pro já integrado para broadcasts) para sugerir ou categorizar automaticamente despesas e receitas com base no histórico e em padrões.
+  * **Previsão de Fluxo de Caixa:** Desenvolver um módulo que utilize dados históricos e pagamentos agendados para projetar o fluxo de caixa futuro, ajudando na tomada de decisões financeiras.
+  * **Assistente Virtual:** Um chatbot integrado que responda a perguntas sobre as finanças do usuário ou sugira ações para otimização.
 
-### 4.3. Notificações e Comunicação via WhatsApp Business API
-* **Integração Completa com WhatsApp Business API:** Além do compartilhamento de links, implementar o envio automatizado de:
-  * **Lembretes de Vencimento:** Mensagens personalizadas antes do vencimento.
+### 3.3. Comunicação Eficazes (WhatsApp Business API)
+* **A Tendência:** No Brasil, o WhatsApp é o canal de comunicação dominante. A integração com a WhatsApp Business API para envio de notificações é significativamente mais eficaz do que o e-mail, melhorando a satisfação do cliente e a velocidade de resposta/pagamento.
+* **Recomendação Prática:** Integrar completamente a WhatsApp Business API para o envio automatizado de:
+  * **Lembretes de Vencimento:** Mensagens personalizadas antes do vencimento da cobrança.
   * **Confirmações de Pagamento:** Notificações instantâneas após o recebimento.
   * **Alertas de Inadimplência:** Comunicação proativa com clientes em atraso.
   * **Suporte ao Cliente:** Canal direto para dúvidas e atendimento.
 
-### 4.4. Gestão de Documentos e Comprovantes
-* **Upload e Anexo de Documentos:** Permitir que os usuários anexem arquivos (PDFs, imagens) a transações, clientes ou projetos. Isso pode ser feito utilizando o Supabase Storage, que já é parte da stack.
-* **Organização e Busca:** Funcionalidades para organizar e buscar documentos anexados, facilitando a auditoria e a conformidade.
+### 3.4. Gestão de Documentos e Comprovantes
+* **A Tendência:** A capacidade de anexar e organizar documentos financeiros (como notas fiscais, contratos, recibos e comprovantes de pagamento) diretamente às transações ou clientes é fundamental para a organização e conformidade fiscal de PMEs e autônomos.
+* **Recomendação Prática:**
+  * **Upload e Anexo de Documentos:** Permitir que os usuários anexem arquivos (PDFs, imagens) a transações, clientes ou projetos utilizando o Supabase Storage.
+  * **Organização e Busca:** Funcionalidades para organizar, indexar e buscar documentos anexados, facilitando auditorias e a conformidade contábil.
 
-### 4.5. Relatórios e Análises Avançadas
-* **Dashboards Personalizáveis:** Oferecer a capacidade de criar e personalizar dashboards com diferentes widgets e métricas financeiras.
-* **Relatórios Financeiros Essenciais:** Gerar automaticamente DRE simplificado, Balanço Patrimonial (para PMEs), e relatórios de fluxo de caixa detalhados.
-* **Exportação Profissional:** Melhorar as opções de exportação para PDF e Excel, com layouts profissionais e dados estruturados para análise.
-* **Agendamento de Relatórios:** Permitir que os usuários agendem o envio automático de relatórios por e-mail.
+### 3.5. Relatórios e Análises Avançadas
+* **A Tendência:** Além dos relatórios básicos, sistemas premium oferecem dashboards personalizáveis, DRE (Demonstrativo de Resultado do Exercício) simplificado, fluxo de caixa projetado, análise de rentabilidade por cliente/serviço, e exportação flexível de dados com relatórios agendados.
+* **Recomendação Prática:**
+  * **Dashboards Personalizáveis:** Capacidade de criar e configurar dashboards com widgets e métricas financeiras customizadas.
+  * **Relatórios Financeiros Essenciais:** Geração automática de DRE simplificado, Balanço Patrimonial e relatórios de fluxo de caixa detalhados.
+  * **Exportação Profissional:** Layouts estruturados e profissionais para exportação em PDF e Excel.
+  * **Agendamento de Relatórios:** Opção de agendar o envio automático de relatórios periódicos por e-mail.
 
-### 4.6. Integração Contábil Simplificada
-* **Exportação para Sistemas Contábeis:** Desenvolver módulos de exportação de dados em formatos compatíveis com os principais softwares contábeis utilizados no Brasil (e.g., OFX, CSV com layout específico).
-* **API para Contadores:** Criar uma API dedicada para que contadores possam acessar os dados financeiros de seus clientes de forma segura e automatizada (com consentimento do cliente).
+### 3.6. Integração Contábil Simplificada
+* **A Tendência:** Facilitar a rotina do contador é um grande diferencial competitivo. A integração com sistemas contábeis populares (como Domínio, Alterdata, Totvs, etc.) ou a capacidade de exportar dados em formatos específicos para importação direta agiliza o fechamento mensal.
+* **Recomendação Prática:**
+  * **Exportação para Sistemas Contábeis:** Módulos de exportação de dados em formatos compatíveis com os principais softwares contábeis do mercado brasileiro (e.g., OFX, CSV com layouts específicos).
+  * **API para Contadores:** Uma API dedicada para que contadores possam extrair dados financeiros autorizados pelos clientes de forma segura e automatizada.
 
-### 4.7. Multi-empresa e Permissões Granulares
-* **Suporte Multi-empresa:** Permitir que um único usuário gerencie as finanças de múltiplas entidades (CNPJs ou atividades autônomas) de forma segregada.
-* **Gestão de Usuários e Permissões:** Implementar um sistema robusto de controle de acesso baseado em papéis (RBAC), permitindo que o administrador conceda permissões específicas a outros usuários (ex: acesso apenas a relatórios, acesso total a um cliente específico, etc.).
+### 3.7. Multi-empresa e Permissões Granulares
+* **A Tendência:** PMEs em crescimento e profissionais autônomos que gerenciam múltiplos negócios precisam operar várias empresas sob uma única conta, com controle estrito sobre as permissões de acesso de cada colaborador ou contador.
+* **Recomendação Prática:**
+  * **Suporte Multi-empresa:** Gestão segregada de múltiplas entidades (CNPJs ou atividades autônomas) a partir do mesmo perfil de usuário.
+  * **Gestão de Usuários e Permissões (RBAC):** Sistema robusto de controle de acesso baseado em papéis, permitindo a delegação de permissões de visualização ou edição específicas para cada módulo do sistema.
 
 ---
 
-## 5. ✅ Histórico de Tarefas Concluídas
+## 4. ✅ Histórico de Tarefas Concluídas
 
-### 5.1. 📱 Menu de Ações (3 Pontinhos) no Cartão de Crédito no Celular
+### 4.1. 📱 Menu de Ações (3 Pontinhos) no Cartão de Crédito no Celular
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Corrigida a propagação de eventos do clique e touch na div do dropdown da fatura de cartão de crédito, tanto em telas de computadores quanto em dispositivos celulares touch, resolvendo o bug visual onde o menu de ações não se mantinha aberto.
 
-### 5.2. 🔔 Notificação de Erro Duplicada
+### 4.2. 🔔 Notificação de Erro Duplicada
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Validado que a duplicação de Toasters nas páginas internas foi inteiramente resolvida em limpezas de refatoração, mantendo Toasters isolados apenas em telas externas públicas e layouts centrais.
 
-### 5.3. 🚀 Rota `/cadastro` Não Encontrada
+### 4.3. 🚀 Rota `/cadastro` Não Encontrada
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Resolvido o erro de race condition do roteador adicionando redirecionamento seguro da rota de cadastro de usuário já autenticado direto para a listagem financeira no App.tsx.
 
-### 5.4. 👤 Remoção de CPF/CNPJ de Cadastros e Perfis
+### 4.4. 👤 Remoção de CPF/CNPJ de Cadastros e Perfis
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Removido o campo `cpf_cnpj` do banco de dados (tabela `profiles`), triggers, formulários de cadastro legado e V2, e configurado fallback fictício para a API do Pagar.me a fim de manter integrações de PIX em funcionamento silencioso.
 
-### 5.5. 📊 Melhorias na Tela de Lançamentos (UI/UX)
+### 4.5. 📊 Melhorias na Tela de Lançamentos (UI/UX)
 * **Status:** Concluído em Abr/2026.
 * **Descrição:** Cores de valores previstos suaves (verde para positivo, vermelho para negativo), filtros fixos (sticky) no desktop e layout compactado lado a lado das buscas, filtros de mês e resumo em telas reduzidas.
 
-### 5.6. 🔗 Integração de Webhooks
+### 4.6. 🔗 Integração de Webhooks
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Corrigida a lógica de status de pagamento do cliente no backend. Inserção correta na tabela `subscriptions` validada.
 
-### 5.7. 👑 Aprimoramento da Impersonação
+### 4.7. 👑 Aprimoramento da Impersonação
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Corrigida a lógica de impersonação do Administrador no `AuthContext.tsx` para forçar a atualização completa do estado reativo.
 
-### 5.8. 💳 Migração de Gateway de Pagamento
+### 4.8. 💳 Migração de Gateway de Pagamento
 * **Status:** Concluído em Mar/2026.
 * **Descrição:** Substituição do Mercado Pago pelo Stripe concluída com sucesso.
 
-### 5.9. 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
+### 4.9. 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Implementação de cálculo dinâmico e reativo de pró-rata de assinatura quando usuários de planos ativos (ex: Básico) realizam upgrade para planos superiores (ex: Pró). O valor é calculado proporcionalmente aos dias restantes no ciclo mensal do usuário, abatendo créditos de indicação e atualizando a cobrança Pix do Banco Inter PJ de forma 100% dinâmica. Inclui banner informativo premium de total transparência financeira no checkout de assinaturas.
 
