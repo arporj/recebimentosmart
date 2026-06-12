@@ -52,6 +52,14 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * A lógica e tabelas no banco de dados (`client_shares`, `financial_transactions.shared_by_user_id`, `shared_transaction_updates`) permanecem ativas e intactas.
   * Ao retomar a funcionalidade, readequar a interface do menu e reintroduzir os sinalizadores de notificação visual e sonora (chime) de forma otimizada.
 
+### 2.6. 📱 Aplicativo Mobile do Sistema
+* **Status:** Roadmap de Produto (Longo Prazo).
+* **Descrição:** Desenvolvimento de um aplicativo móvel dedicado (híbrido via React Native/Capacitor ou PWA nativo aprimorado) para dispositivos iOS e Android. O aplicativo fornecerá acesso rápido e otimizado às funcionalidades do RecebimentoSmart na palma da mão do usuário.
+* **Principais Funcionalidades:**
+  * **Notificações Push Nativas:** Alertas imediatos de faturas geradas, confirmações de pagamento via PIX, lembretes de cobrança e novos feedbacks/mensagens de suporte.
+  * **Acesso Otimizado:** Login rápido via biometria (FaceID/TouchID).
+  * **Gestão e Lançamentos Rápidos:** Criação simplificada de clientes, emissão de cobranças rápidas e consulta a relatórios essenciais em layout Mobile-First premium.
+
 ---
 
 ## 3. 📈 Tendências de Mercado para Sistemas Financeiros Premium (2024-2026)
