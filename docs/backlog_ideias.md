@@ -66,7 +66,7 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 
 ### 2.8. ➕ Menu Suspenso no Botão de Criar Lançamento
 * **Status:** Planejado.
-* **Descrição:** Ao passar o cursor do mouse (hover) sobre o botão principal de criação de lançamento, exibir um menu flutuante/suspenso contendo as opções de "Receita", "Despesa" e "Transferência". Clicar em uma dessas opções deve abrir o modal de criação correspondente com o tipo de transação já pré-selecionado.
+* **Descrição:** Ao passar o cursor do mouse (hover) sobre o botão principal de criação de lançamento, ele deve se comportar por padrão como criação de **Despesa** (opção padrão ao clicar), e exibir um menu suspenso logo abaixo com mais duas opções de atalho rápido: **Receita** e **Transferência**. Clicar em qualquer uma das opções abrirá a tela correspondente pré-selecionada.
 
 ---
 
