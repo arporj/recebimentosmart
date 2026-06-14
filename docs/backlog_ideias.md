@@ -60,6 +60,14 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * **Acesso Otimizado:** Login rápido via biometria (FaceID/TouchID).
   * **Gestão e Lançamentos Rápidos:** Criação simplificada de clientes, emissão de cobranças rápidas e consulta a relatórios essenciais em layout Mobile-First premium.
 
+### 2.7. 💸 Edição de Tipo de Lançamento (Receita x Despesa)
+* **Status:** Planejado.
+* **Descrição:** Permitir que o usuário altere o tipo de um lançamento existente entre "receita" e "despesa" (e vice-versa) diretamente na tela/modal de edição, sem a necessidade de excluir o lançamento atual e criar um novo do zero.
+
+### 2.8. ➕ Menu Suspenso no Botão de Criar Lançamento
+* **Status:** Planejado.
+* **Descrição:** Ao passar o cursor do mouse (hover) sobre o botão principal de criação de lançamento, exibir um menu flutuante/suspenso contendo as opções de "Receita", "Despesa" e "Transferência". Clicar em uma dessas opções deve abrir o modal de criação correspondente com o tipo de transação já pré-selecionado.
+
 ---
 
 ## 3. 📈 Recomendações e Tendências de Mercado para o RecebimentoSmart Premium
