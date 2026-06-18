@@ -1,6 +1,7 @@
 -- Criar ou atualizar RPC para Importação Inteligente de Cliente V1 para a V2
 -- Garante que o usuário possua uma conta financeira cadastrada, vinculando as transações importadas a ela.
--- Define a descrição da transação diretamente como o nome do cliente, sem prefixos adicionais.
+-- Define a descrição da transação diretamente como o nome do cliente.
+-- Define recurrence_enabled = false para transações filhas importadas ou geradas (evitando duplicações).
 
 CREATE OR REPLACE FUNCTION public.import_client_history_v1_to_v2(p_client_id UUID)
 RETURNS JSONB
@@ -72,7 +73,7 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'message', 'Este cliente já possui uma recorrência configurada na V2.');
     END IF;
 
-    -- 2. Criar a Transação Mãe na V2
+    -- 2. Criar a Transação Mãe na V2 (Apenas a mãe tem recurrence_enabled = TRUE)
     INSERT INTO public.financial_transactions (
         user_id,
         client_id,
@@ -93,7 +94,7 @@ BEGIN
         'income',
         COALESCE(v_client.monthly_payment, 0),
         COALESCE(v_client.start_date, CURRENT_DATE),
-        v_client.name, -- Descrição simplificada: apenas o nome do cliente
+        v_client.name,
         'recorrente',
         NULL,
         TRUE,
@@ -104,6 +105,7 @@ BEGIN
     ) RETURNING id INTO v_parent_id;
 
     -- 3. Importar pagamentos efetuados históricos da V1 (tabela payments)
+    -- As transações filhas físicas recebem recurrence_enabled = FALSE
     FOR v_payment IN 
         SELECT payment_date::date, amount FROM public.payments WHERE client_id = p_client_id
     LOOP
@@ -131,10 +133,10 @@ BEGIN
             v_payment.payment_date,
             v_payment.amount,
             v_payment.payment_date,
-            v_client.name, -- Descrição simplificada: apenas o nome do cliente
+            v_client.name,
             'recorrente',
             v_parent_id,
-            TRUE,
+            FALSE, -- Filhas não são recorrências mães, logo recurrence_enabled = FALSE
             'monthly',
             COALESCE(v_client.payment_due_day, 10),
             'paid',
@@ -144,6 +146,7 @@ BEGIN
     END LOOP;
 
     -- 4. Gerar débitos em atraso apenas para os últimos 3 meses (Questao 2 - Opcao B)
+    -- As transações filhas físicas recebem recurrence_enabled = FALSE
     FOR v_months_back IN REVERSE 3..0 LOOP
         -- Calcular o inicio do mes analisado e sua data de vencimento
         v_month_start := date_trunc('month', v_current_date - (v_months_back || ' month')::interval);
@@ -183,10 +186,10 @@ BEGIN
                     'income',
                     COALESCE(v_client.monthly_payment, 0),
                     v_month_due_date,
-                    v_client.name, -- Descrição simplificada: apenas o nome do cliente
+                    v_client.name,
                     'recorrente',
                     v_parent_id,
-                    TRUE,
+                    FALSE, -- Filhas não são recorrências mães, logo recurrence_enabled = FALSE
                     'monthly',
                     COALESCE(v_client.payment_due_day, 10),
                     'pending',
@@ -209,12 +212,26 @@ $$;
 
 COMMENT ON FUNCTION public.import_client_history_v1_to_v2 IS 'Realiza a migracao assistida de dados financeiros do cliente da V1 para a V2 respeitando a janela retroativa de 3 meses.';
 
--- --- BACKFILL: Corrigir transações existentes sem account_id e simplificar descrição ---
+-- --- BACKFILL: Corrigir transações existentes (conta, descrição e recurrence_enabled nas filhas) ---
+DO $$
+DECLARE
+    r_tx RECORD;
+    v_user_acc_id UUID;
+END;
+$$;
+
+-- Usando blocos aninhados simples para evitar erros de compilação de DECLARE/BEGIN complexos
 DO $$
 DECLARE
     r_tx RECORD;
     v_user_acc_id UUID;
 BEGIN
+    -- 1. Corrigir recurrence_enabled = false para transações filhas físicas que já existem no banco
+    UPDATE public.financial_transactions
+    SET recurrence_enabled = false
+    WHERE parent_id IS NOT NULL;
+
+    -- 2. Garantir contas e descrições corretas
     FOR r_tx IN 
         SELECT DISTINCT user_id FROM public.financial_transactions WHERE user_id IS NOT NULL
     LOOP
