@@ -12,7 +12,16 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 
 ## 2. 💡 Planejamento de Ideias e Recursos Futuros
 
-### 2.1. 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
+### 2.1. 🔄 Refatoração de Recorrências para o Padrão Template/Contrato (Prioritário)
+* **Status:** Planejado (Prioridade Alta).
+* **Descrição:** Refatorar o modelo de recorrência do sistema para adotar o padrão de **Template de Recorrência** (ou assinatura), onde o registro principal criado no banco de dados funciona puramente como um configurador/gerador (contrato) que nunca entra diretamente no saldo nem aparece na listagem financeira.
+* **Principais Requisitos:**
+  * **Registro Template (Mãe Isolado):** A transação configuradora do ciclo recebe a flag `is_template = true` e fica oculta das consultas reativas de saldo e transações diárias.
+  * **Geração Automática do Primeiro Filho:** No momento da criação da recorrência, o backend gera imediatamente a primeira transação física filha associada a ela.
+  * **Edições Seguras:** Edições no escopo "Apenas este" atualizam a transação física filha correspondente, deixando o template mãe seguro contra edições acidentais que afetariam futuros períodos.
+  * **Migração de Dados (Backfill):** Criar script de migração para as transações recorrentes e parceladas existentes, adaptando-as para a nova modelagem de templates e filhos.
+
+### 2.2. 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
 * **Status:** Planejado (Requer nova branch).
 * **Descrição:** Substituir o desconto fixo de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio (integral) da primeira mensalidade paga pelo seu indicado na sua carteira de cashback. 
 * **Regras de Negócio:**
@@ -23,16 +32,16 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * **Solicitação de Saque:** O usuário deve possuir um campo direto na interface para cadastrar e gerenciar sua Chave PIX.
   * **Debitação:** Sempre que o administrador confirmar o pagamento do PIX, o sistema deve registrar a transação e abater o valor pago do saldo acumulado do usuário.
 
-### 2.2. 💬 Chat de Suporte Administrativo (AdminChatPageV2.tsx)
+### 2.3. 💬 Chat de Suporte Administrativo (AdminChatPageV2.tsx)
 * **Status:** Temporariamente removido em Mar/2026 para readequação da interface V2.
 * **Descrição:** O sistema possuía anteriormente um chat de suporte interno que permitia a comunicação direta em tempo real entre o usuário/cliente final e o administrador do sistema.
 * **Meta V2:** Reimplementar a interface do chat de suporte como `AdminChatPageV2.tsx` no painel do administrador e a interface correspondente no painel do cliente final, adotando os padrões visuais premium definidos na V2 (cantos arredondados, sombras suaves, bolhas de chat organizadas e um menu lateral limpo de canais/conversas ativas). Recomenda-se utilizar a tela de controle de feedbacks `FeedbackDetailsV2.tsx` como base e ponto de partida estético.
 
-### 2.3. 🌟 Implementação do Plano Premium
+### 2.4. 🌟 Implementação do Plano Premium
 * **Status:** Roadmap de Produto (Médio Prazo).
 * **Descrição:** Implementar o plano **Premium** como uma terceira camada de escalabilidade no sistema, somando-se aos planos "Básico" e "Pró" já operantes. Esse plano deve englobar funcionalidades exclusivas de **atendimento via WhatsApp** e suporte avançado.
 
-### 2.4. 🔔 Sistema de Notificações Mobile (Opção B Selecionada)
+### 2.5. 🔔 Sistema de Notificações Mobile (Opção B Selecionada)
 * **Status:** Planejado para Teste.
 * **Descrição:** Desenvolver o mecanismo para o administrador receber notificações de chat e de novos feedbacks em tempo real no celular.
 * **Opções Analisadas:**
@@ -44,7 +53,7 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * Configurar a infraestrutura PWA básica no frontend.
   * Criar um trigger no banco (Supabase) e Edge Function de envio de Web Push para disparar uma notificação instantânea para o celular do Administrador sempre que qualquer usuário enviar um feedback no sistema.
 
-### 2.5. 🤝 Lançamentos Compartilhados (Adiado / Temporariamente Desativado)
+### 2.6. 🤝 Lançamentos Compartilhados (Adiado / Temporariamente Desativado)
 * **Status:** Adiado (Pendente de reavaliação de produto).
 * **Descrição:** A funcionalidade de compartilhar lançamentos e resumos financeiros com parceiros por e-mail, incluindo notificações de badge em tempo real no menu hambúrguer e barra lateral, e sinal sonoro de notificação via Web Audio API. 
 * **Regras de Negócio:**
@@ -52,7 +61,7 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * A lógica e tabelas no banco de dados (`client_shares`, `financial_transactions.shared_by_user_id`, `shared_transaction_updates`) permanecem ativas e intactas.
   * Ao retomar a funcionalidade, readequar a interface do menu e reintroduzir os sinalizadores de notificação visual e sonora (chime) de forma otimizada.
 
-### 2.6. 📱 Aplicativo Mobile do Sistema
+### 2.7. 📱 Aplicativo Mobile do Sistema
 * **Status:** Roadmap de Produto (Longo Prazo).
 * **Descrição:** Desenvolvimento de um aplicativo móvel dedicado (híbrido via React Native/Capacitor ou PWA nativo aprimorado) para dispositivos iOS e Android. O aplicativo fornecerá acesso rápido e otimizado às funcionalidades do RecebimentoSmart na palma da mão do usuário.
 * **Principais Funcionalidades:**
@@ -60,11 +69,11 @@ Nenhum bug conhecido ou ativo no momento. 🎉
   * **Acesso Otimizado:** Login rápido via biometria (FaceID/TouchID).
   * **Gestão e Lançamentos Rápidos:** Criação simplificada de clientes, emissão de cobranças rápidas e consulta a relatórios essenciais em layout Mobile-First premium.
 
-### 2.7. 💸 Edição de Tipo de Lançamento (Receita x Despesa)
+### 2.8. 💸 Edição de Tipo de Lançamento (Receita x Despesa)
 * **Status:** Planejado.
 * **Descrição:** Permitir que o usuário altere o tipo de um lançamento existente entre "receita" e "despesa" (e vice-versa) diretamente na tela/modal de edição, sem a necessidade de excluir o lançamento atual e criar um novo do zero.
 
-### 2.8. ➕ Menu Suspenso no Botão de Criar Lançamento
+### 2.9. ➕ Menu Suspenso no Botão de Criar Lançamento
 * **Status:** Planejado.
 * **Descrição:** Ao passar o cursor do mouse (hover) sobre o botão principal de criação de lançamento, ele deve se comportar por padrão como criação de **Despesa** (opção padrão ao clicar), e exibir um menu suspenso logo abaixo com mais duas opções de atalho rápido: **Receita** e **Transferência**. Clicar em qualquer uma das opções abrirá a tela correspondente pré-selecionada.
 
