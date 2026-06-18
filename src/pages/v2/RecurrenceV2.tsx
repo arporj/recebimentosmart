@@ -126,6 +126,15 @@ export default function RecurrenceV2() {
   const [recipientName, setRecipientName] = useState<string | null>(null);
   const [isSearchingRecipient, setIsSearchingRecipient] = useState(false);
 
+  // Estados para Importação em Lote
+  const [importingAll, setImportingAll] = useState(false);
+  const [importAllProgress, setImportAllProgress] = useState({ current: 0, total: 0 });
+  const [importAllResultModal, setImportAllResultModal] = useState<{
+    show: boolean;
+    successCount: number;
+    failures: { clientName: string; reason: string }[];
+  }>({ show: false, successCount: 0, failures: [] });
+
   useEffect(() => {
     if (user) {
       fetchSummaries();
@@ -230,6 +239,74 @@ export default function RecurrenceV2() {
           console.error('Falha na chamada da importação:', err);
         } finally {
           setImportingClientId(null);
+        }
+      }
+    });
+  };
+
+  const handleImportAll = async () => {
+    // Apenas clientes ativos legados (sem recorrência)
+    const legacyClients = clientSummaries.filter(
+      c => !c.has_recurrence && c.client_status === 'active'
+    );
+
+    if (legacyClients.length === 0) {
+      toast.error('Nenhum cliente legado ativo pendente de migração.');
+      return;
+    }
+
+    setConfirmModal({
+      show: true,
+      title: 'Importar Todos para V2?',
+      description: `Deseja importar o histórico financeiro de TODOS os ${legacyClients.length} clientes legados ativos pendentes? Isso criará as recorrências e o histórico na V2 automaticamente.`,
+      confirmText: 'Importar Todos',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setImportingAll(true);
+          setImportAllProgress({ current: 0, total: legacyClients.length });
+          
+          let successCount = 0;
+          const failures: { clientName: string; reason: string }[] = [];
+
+          for (const client of legacyClients) {
+            setImportAllProgress(prev => ({ ...prev, current: prev.current + 1 }));
+            try {
+              const { data, error } = await supabase.rpc('import_client_history_v1_to_v2', {
+                p_client_id: client.client_id
+              });
+
+              if (error) {
+                failures.push({ clientName: client.client_name, reason: error.message });
+              } else {
+                const result = data as any;
+                if (result && !result.success) {
+                  failures.push({ clientName: client.client_name, reason: result.message || 'Erro desconhecido' });
+                } else {
+                  successCount++;
+                }
+              }
+            } catch (err: any) {
+              failures.push({
+                clientName: client.client_name,
+                reason: err?.message || 'Falha na comunicação com o servidor'
+              });
+            }
+          }
+
+          await fetchSummaries(); // Atualiza os dados na tela
+
+          setImportAllResultModal({
+            show: true,
+            successCount,
+            failures
+          });
+
+        } catch (err) {
+          console.error('Erro ao importar em lote:', err);
+          toast.error('Ocorreu um erro ao processar a importação em lote.');
+        } finally {
+          setImportingAll(false);
         }
       }
     });
@@ -666,14 +743,26 @@ export default function RecurrenceV2() {
           </p>
         </div>
         
-        <button
-          onClick={fetchSummaries}
-          disabled={loading}
-          className="self-start lg:self-center flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 border border-slate-200 rounded-xl text-xs font-black shadow-sm transition-all"
-        >
-          <RefreshCw size={14} className={`${loading ? 'animate-spin' : ''}`} />
-          Atualizar Dados
-        </button>
+        <div className="flex items-center gap-2 self-start lg:self-center">
+          {globalStats.pendingMigrationCount > 0 && (
+            <button
+              onClick={handleImportAll}
+              disabled={loading || importingAll}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-xs font-black shadow-sm transition-all disabled:opacity-50"
+            >
+              <DatabaseZap size={14} className={importingAll ? 'animate-pulse' : ''} />
+              Importar todos para V2
+            </button>
+          )}
+          <button
+            onClick={fetchSummaries}
+            disabled={loading || importingAll}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 border border-slate-200 rounded-xl text-xs font-black shadow-sm transition-all"
+          >
+            <RefreshCw size={14} className={`${loading ? 'animate-spin' : ''}`} />
+            Atualizar Dados
+          </button>
+        </div>
       </div>
 
       {/* Navegador Temporal Mensal */}
@@ -774,6 +863,19 @@ export default function RecurrenceV2() {
           <p className="text-[11px] text-indigo-100/80 font-bold leading-normal pt-2 border-t border-white/10 relative z-10">
             Clientes que ainda precisam ter a recorrência mãe criada e histórico migrado.
           </p>
+          {globalStats.pendingMigrationCount > 0 ? (
+            <button
+              onClick={handleImportAll}
+              className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/15 hover:bg-white/25 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-white/10 relative z-10"
+            >
+              <DatabaseZap size={11} />
+              Importar Todos Agora
+            </button>
+          ) : (
+            <p className="text-[11px] text-indigo-100/60 font-bold leading-normal pt-2 relative z-10">
+              Todos os clientes ativos já estão mapeados na nova versão (V2).
+            </p>
+          )}
           {/* Fundo com detalhe de design de gradiente circular */}
           <div className="absolute -bottom-8 -right-8 w-24 h-24 rounded-full bg-white/10 blur-2xl" />
         </div>
@@ -1366,6 +1468,128 @@ export default function RecurrenceV2() {
                 }`}
               >
                 {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay de Progresso para Importação em Lote */}
+      {importingAll && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white p-8 rounded-[2rem] shadow-2xl max-w-sm w-full mx-4 flex flex-col items-center text-center gap-5 border border-slate-100 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 border border-amber-100">
+              <DatabaseZap size={28} className="animate-bounce" />
+            </div>
+            <div>
+              <h4 className="text-base font-black text-slate-800">Importando Clientes...</h4>
+              <p className="text-xs text-slate-400 font-bold mt-1">
+                Processando {importAllProgress.current} de {importAllProgress.total} clientes
+              </p>
+            </div>
+            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200/50">
+              <div 
+                className="bg-amber-500 h-full rounded-full transition-all duration-300"
+                style={{ width: `${(importAllProgress.current / importAllProgress.total) * 100}%` }}
+              />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 animate-pulse bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
+              Não feche ou recarregue a página
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Relatório de Importação em Lote */}
+      {importAllResultModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setImportAllResultModal(prev => ({ ...prev, show: false }))}
+          />
+
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="bg-teal-50 border border-teal-100 p-2.5 rounded-2xl text-[#0d9488]">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800 leading-tight">
+                    Resultado da Importação
+                  </h3>
+                  <span className="text-xs font-bold text-slate-400 block mt-0.5">
+                    Lote concluído com sucesso para {importAllResultModal.successCount} cliente(s)
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setImportAllResultModal(prev => ({ ...prev, show: false }))}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 active:scale-95 rounded-lg transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="p-6 space-y-4 max-h-[350px] overflow-y-auto custom-scrollbar">
+              {importAllResultModal.failures.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex gap-3 text-rose-800">
+                    <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="text-xs font-black uppercase tracking-wider">Alguns clientes falharam</h5>
+                      <p className="text-[11px] font-bold text-rose-700/80 mt-0.5 leading-relaxed">
+                        {importAllResultModal.failures.length} cliente(s) não puderam ser importados automaticamente. Veja abaixo os motivos e o que fazer.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 border border-slate-200/70 rounded-2xl overflow-hidden bg-white">
+                    {importAllResultModal.failures.map((fail, index) => (
+                      <div key={index} className="p-3.5 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-black text-slate-700 truncate">{fail.clientName}</span>
+                          <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[8px] text-rose-700 font-extrabold uppercase tracking-wide rounded">Falhou</span>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-500 leading-normal">
+                          Motivo: <span className="text-rose-600 font-semibold">{fail.reason}</span>
+                        </p>
+                        
+                        <div className="bg-slate-50 border border-slate-100 p-2 rounded-lg mt-2 text-[10px] font-bold text-slate-600 leading-relaxed">
+                          {fail.reason.includes('já possui') ? (
+                            <span><strong>Ação recomendada:</strong> Este cliente já possui recorrência na V2. Verifique se ele já foi importado anteriormente ou se possui lançamentos manuais conflitantes criados na tela de lançamentos.</span>
+                          ) : (
+                            <span><strong>Ação recomendada:</strong> Verifique os dados cadastrais do cliente ou fale com o suporte do sistema se o erro persistir.</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl text-center flex flex-col items-center gap-3">
+                  <div className="bg-emerald-100 text-emerald-600 p-3 rounded-full">
+                    <CheckCircle2 size={32} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-emerald-800">Sucesso absoluto!</h4>
+                    <p className="text-xs font-bold text-emerald-700/80 max-w-xs mt-1 leading-relaxed">
+                      Todos os clientes legados ativos pendentes foram migrados com sucesso para a nova versão.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé */}
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setImportAllResultModal(prev => ({ ...prev, show: false }))}
+                className="px-4 py-2 bg-slate-800 text-white hover:bg-slate-900 active:scale-95 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm"
+              >
+                Fechar Relatório
               </button>
             </div>
           </div>

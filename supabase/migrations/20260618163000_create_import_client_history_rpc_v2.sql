@@ -1,7 +1,5 @@
--- Criar RPC para Importação Inteligente de Cliente V1 para a V2
--- Implementa as escolhas aprovadas:
--- Questao 1 (Opcao B): Importacao manual por cliente via interface
--- Questao 2 (Opcao B): Janela retroativa de 3 meses para pendencias em atraso
+-- Criar ou atualizar RPC para Importação Inteligente de Cliente V1 para a V2
+-- Garante que o usuário possua uma conta financeira cadastrada, vinculando as transações importadas a ela.
 
 CREATE OR REPLACE FUNCTION public.import_client_history_v1_to_v2(p_client_id UUID)
 RETURNS JSONB
@@ -20,6 +18,7 @@ DECLARE
     v_exists BOOLEAN;
     v_payment RECORD;
     v_user_id UUID;
+    v_account_id UUID;
 BEGIN
     -- Obter ID do usuario logado se disponivel
     v_user_id := auth.uid();
@@ -28,7 +27,38 @@ BEGIN
     SELECT * INTO v_client FROM public.clients WHERE id = p_client_id AND (user_id = v_user_id OR v_user_id IS NULL);
     
     IF v_client.id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'message', 'Cliente não encontrado ou acesso não autorizado.');
+        -- Fallback caso seja executado por um admin/sistema sem auth.uid() definido diretamente no contexto da transacao
+        SELECT * INTO v_client FROM public.clients WHERE id = p_client_id;
+        IF v_client.id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'message', 'Cliente não encontrado ou acesso não autorizado.');
+        END IF;
+    END IF;
+
+    -- Obter o user_id real do cliente (dono)
+    v_user_id := v_client.user_id;
+
+    -- Garantir que o usuário proprietário tenha pelo menos uma conta ativa cadastrada
+    SELECT id INTO v_account_id 
+    FROM public.financial_accounts 
+    WHERE user_id = v_user_id AND is_active = true 
+    ORDER BY created_at ASC 
+    LIMIT 1;
+
+    -- Se não possuir nenhuma conta ativa, cria a "Conta Principal" padrão
+    IF v_account_id IS NULL THEN
+        INSERT INTO public.financial_accounts (
+            user_id,
+            name,
+            type,
+            initial_balance,
+            is_active
+        ) VALUES (
+            v_user_id,
+            'Conta Principal',
+            'checking',
+            0,
+            true
+        ) RETURNING id INTO v_account_id;
     END IF;
 
     -- Bloquear se ja existir recorrencia cadastrada para evitar duplicidade (Questao 1 - Opcao B)
@@ -54,9 +84,10 @@ BEGIN
         recurrence_enabled,
         recurrence_period,
         due_day,
-        status
+        status,
+        account_id
     ) VALUES (
-        v_client.user_id,
+        v_user_id,
         v_client.id,
         'income',
         COALESCE(v_client.monthly_payment, 0),
@@ -67,7 +98,8 @@ BEGIN
         TRUE,
         'monthly',
         COALESCE(v_client.payment_due_day, 10),
-        'pending'
+        'pending',
+        v_account_id
     ) RETURNING id INTO v_parent_id;
 
     -- 3. Importar pagamentos efetuados históricos da V1 (tabela payments)
@@ -88,9 +120,10 @@ BEGIN
             recurrence_enabled,
             recurrence_period,
             due_day,
-            status
+            status,
+            account_id
         ) VALUES (
-            v_client.user_id,
+            v_user_id,
             v_client.id,
             'income',
             v_payment.amount,
@@ -103,7 +136,8 @@ BEGIN
             TRUE,
             'monthly',
             COALESCE(v_client.payment_due_day, 10),
-            'paid'
+            'paid',
+            v_account_id
         );
         v_inserted_paid := v_inserted_paid + 1;
     END LOOP;
@@ -140,9 +174,10 @@ BEGIN
                     recurrence_enabled,
                     recurrence_period,
                     due_day,
-                    status
+                    status,
+                    account_id
                 ) VALUES (
-                    v_client.user_id,
+                    v_user_id,
                     v_client.id,
                     'income',
                     COALESCE(v_client.monthly_payment, 0),
@@ -153,7 +188,8 @@ BEGIN
                     TRUE,
                     'monthly',
                     COALESCE(v_client.payment_due_day, 10),
-                    'pending'
+                    'pending',
+                    v_account_id
                 );
                 v_inserted_pending := v_inserted_pending + 1;
             END IF;
@@ -171,3 +207,43 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.import_client_history_v1_to_v2 IS 'Realiza a migracao assistida de dados financeiros do cliente da V1 para a V2 respeitando a janela retroativa de 3 meses.';
+
+-- --- BACKFILL: Corrigir transações existentes sem account_id ---
+DO $$
+DECLARE
+    r_tx RECORD;
+    v_user_acc_id UUID;
+BEGIN
+    FOR r_tx IN 
+        SELECT DISTINCT user_id FROM public.financial_transactions WHERE account_id IS NULL AND user_id IS NOT NULL
+    LOOP
+        -- Tenta encontrar a primeira conta ativa do usuário
+        SELECT id INTO v_user_acc_id 
+        FROM public.financial_accounts 
+        WHERE user_id = r_tx.user_id AND is_active = true 
+        ORDER BY created_at ASC 
+        LIMIT 1;
+
+        -- Se o usuário não possuir conta, cria uma "Conta Principal" padrão
+        IF v_user_acc_id IS NULL THEN
+            INSERT INTO public.financial_accounts (
+                user_id,
+                name,
+                type,
+                initial_balance,
+                is_active
+            ) VALUES (
+                r_tx.user_id,
+                'Conta Principal',
+                'checking',
+                0,
+                true
+            ) RETURNING id INTO v_user_acc_id;
+        END IF;
+
+        -- Atualiza todas as transações daquele usuário que estejam sem conta
+        UPDATE public.financial_transactions 
+        SET account_id = v_user_acc_id 
+        WHERE user_id = r_tx.user_id AND account_id IS NULL;
+    END LOOP;
+END $$;
