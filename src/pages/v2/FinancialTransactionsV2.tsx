@@ -1514,9 +1514,16 @@ const FinancialTransactionsV2 = () => {
                     <div className="w-6 flex items-center justify-center shrink-0">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${t.invoiceData?.isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
-                      {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                    </span>
+                    <div className="flex flex-col shrink-0 w-[52px] text-left leading-tight justify-center">
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                      </span>
+                      {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                        <span className="text-[9px] font-semibold text-rose-500">
+                          {format(parseISO(t.originalInstanceDate), 'dd/MM/yy')}
+                        </span>
+                      )}
+                    </div>
 
                     {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                     {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
@@ -1617,9 +1624,16 @@ const FinancialTransactionsV2 = () => {
                     </div>
                   </div>
                   {/* Data */}
-                  <span className="text-[10px] font-bold text-slate-400 shrink-0 w-[52px]">
-                    {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                  </span>
+                  <div className="flex flex-col shrink-0 w-[52px] text-left leading-tight justify-center">
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                    </span>
+                    {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                      <span className="text-[9px] font-semibold text-rose-500">
+                        {format(parseISO(t.originalInstanceDate), 'dd/MM/yy')}
+                      </span>
+                    )}
+                  </div>
 
                   {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                   {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
@@ -1872,9 +1886,16 @@ const FinancialTransactionsV2 = () => {
                         </div>
 
                         {/* Data antes da descrição */}
-                        <span className="text-[10px] font-medium text-slate-900 shrink-0 w-[56px] text-left">
-                          {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                        </span>
+                        <div className="flex flex-col shrink-0 w-[56px] text-left leading-tight justify-center">
+                          <span className="text-[10px] font-medium text-slate-900">
+                            {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                          </span>
+                          {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                            <span className="text-[9px] font-semibold text-rose-500">
+                              {format(parseISO(t.originalInstanceDate), 'dd/MM/yy')}
+                            </span>
+                          )}
+                        </div>
 
                         {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                         {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
@@ -1984,9 +2005,16 @@ const FinancialTransactionsV2 = () => {
                       </div>
 
                       {/* Data como coluna antes da descrição */}
-                      <span className="text-[10px] font-medium text-slate-900 shrink-0 w-[56px] text-left">
-                        {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                      </span>
+                      <div className="flex flex-col shrink-0 w-[56px] text-left leading-tight justify-center">
+                        <span className="text-[10px] font-medium text-slate-900">
+                          {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                        </span>
+                        {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                          <span className="text-[9px] font-semibold text-rose-500">
+                            {format(parseISO(t.originalInstanceDate), 'dd/MM/yy')}
+                          </span>
+                        )}
+                      </div>
 
                       {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                       {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
