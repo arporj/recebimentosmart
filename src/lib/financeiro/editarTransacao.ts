@@ -64,7 +64,7 @@ export async function editarTransacao(
     // Se for o registro mãe de uma recorrência e o escopo for 'somente este',
     // nós não atualizamos a mãe diretamente. Em vez disso, inserimos um novo filho físico
     // mantendo a mãe original intacta como geradora de recorrências futuras.
-    if (currentModalidade === 'recorrente' && !parent_id) {
+    if (currentModalidade === 'recorrente' && !parent_id && current.recurrence_enabled) {
       const { id: _, created_at: __, ...parentFields } = current;
       const newChildPayload = {
         ...parentFields,
