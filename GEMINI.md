@@ -92,27 +92,28 @@ O objetivo é atuar como um assistente proativo no desenvolvimento do projeto "r
 O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e clientes.
 
 **Tecnologias Principais:**
-- **Frontend:** React com TypeScript.
+- **Frontend:** React com TypeScript (Páginas e componentes migrados para a identidade visual premium V2).
 - **Estilização:** Tailwind CSS.
 - **Backend (BaaS):** Supabase (Autenticação, Database, Storage).
 - **Notificações:** `react-hot-toast`.
 - **Ícones:** `lucide-react`.
 - **Roteamento:** `react-router-dom`.
-- **Requisições HTTP:** `axios` (para chamadas a APIs externas como a do Mercado Pago).
+- **Integração de Pagamento:** **Stripe** (assinaturas, upgrades com cálculo proporcional pró-rata e cobrança Pix). O Mercado Pago foi totalmente descontinuado.
 - **Manipulação de Datas:** `date-fns`.
 
 **Estrutura e Padrões:**
 - O estado de autenticação é gerenciado pelo `AuthContext`.
 - O estado dos clientes é gerenciado pelo `ClientContext`.
 - Os componentes são funcionais e utilizam hooks do React.
-- A estrutura de arquivos parece seguir uma organização por funcionalidade (ex: `components`, `contexts`, `lib`).
+- A estrutura de arquivos segue uma organização por funcionalidade (ex: `components`, `contexts`, `lib`, telas principais organizadas na pasta `/v2/`).
 - O caminho raiz do projeto é `c:\Projetos\MEGAsync\Projetos\gemini-cli\recebimento-smart\`.
 
 **Regras de Negócio Implícitas:**
 - O sistema possui um modelo de assinatura com período de teste de 7 dias.
-- Existe um sistema de indicação que concede créditos ao usuário.
-- Os pagamentos são processados via PIX, com integração com o Mercado Pago.
-- Há um painel administrativo para gerenciamento de usuários.
+- Existe um sistema de indicação que concede créditos ao usuário (utilizados no abono de assinaturas) e um programa de afiliados/cashback integral em planejamento.
+- Os pagamentos de assinatura e cobranças são processados via **Stripe**.
+- O campo `cpf_cnpj` foi completamente removido dos cadastros de perfis no banco de dados e no frontend.
+- Há um painel administrativo para gerenciamento de usuários, incluindo controle de feedbacks e envio de e-mails em massa (`AdminBroadcastV2.tsx`).
 </CONTEXT>
 
 <OUTPUT_INSTRUCTION>
