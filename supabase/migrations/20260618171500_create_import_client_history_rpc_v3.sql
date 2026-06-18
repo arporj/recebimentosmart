@@ -1,5 +1,6 @@
 -- Criar ou atualizar RPC para Importação Inteligente de Cliente V1 para a V2
 -- Garante que o usuário possua uma conta financeira cadastrada, vinculando as transações importadas a ela.
+-- Define a descrição da transação diretamente como o nome do cliente, sem prefixos adicionais.
 
 CREATE OR REPLACE FUNCTION public.import_client_history_v1_to_v2(p_client_id UUID)
 RETURNS JSONB
@@ -92,7 +93,7 @@ BEGIN
         'income',
         COALESCE(v_client.monthly_payment, 0),
         COALESCE(v_client.start_date, CURRENT_DATE),
-        'Assinatura Mensal - ' || v_client.name,
+        v_client.name, -- Descrição simplificada: apenas o nome do cliente
         'recorrente',
         NULL,
         TRUE,
@@ -130,7 +131,7 @@ BEGIN
             v_payment.payment_date,
             v_payment.amount,
             v_payment.payment_date,
-            'Mensalidade Recebida (Migrada V1) - ' || v_client.name,
+            v_client.name, -- Descrição simplificada: apenas o nome do cliente
             'recorrente',
             v_parent_id,
             TRUE,
@@ -182,7 +183,7 @@ BEGIN
                     'income',
                     COALESCE(v_client.monthly_payment, 0),
                     v_month_due_date,
-                    'Mensalidade em Atraso (Migrada) - ' || v_client.name,
+                    v_client.name, -- Descrição simplificada: apenas o nome do cliente
                     'recorrente',
                     v_parent_id,
                     TRUE,
@@ -208,14 +209,14 @@ $$;
 
 COMMENT ON FUNCTION public.import_client_history_v1_to_v2 IS 'Realiza a migracao assistida de dados financeiros do cliente da V1 para a V2 respeitando a janela retroativa de 3 meses.';
 
--- --- BACKFILL: Corrigir transações existentes sem account_id ---
+-- --- BACKFILL: Corrigir transações existentes sem account_id e simplificar descrição ---
 DO $$
 DECLARE
     r_tx RECORD;
     v_user_acc_id UUID;
 BEGIN
     FOR r_tx IN 
-        SELECT DISTINCT user_id FROM public.financial_transactions WHERE account_id IS NULL AND user_id IS NOT NULL
+        SELECT DISTINCT user_id FROM public.financial_transactions WHERE user_id IS NOT NULL
     LOOP
         -- Tenta encontrar a primeira conta ativa do usuário
         SELECT id INTO v_user_acc_id 
@@ -245,5 +246,17 @@ BEGIN
         UPDATE public.financial_transactions 
         SET account_id = v_user_acc_id 
         WHERE user_id = r_tx.user_id AND account_id IS NULL;
+
+        -- Remove os prefixos das descrições das transações importadas anteriores
+        UPDATE public.financial_transactions ft
+        SET description = c.name
+        FROM public.clients c
+        WHERE ft.client_id = c.id
+          AND ft.user_id = r_tx.user_id
+          AND (
+            ft.description = 'Assinatura Mensal - ' || c.name OR
+            ft.description = 'Mensalidade Recebida (Migrada V1) - ' || c.name OR
+            ft.description = 'Mensalidade em Atraso (Migrada) - ' || c.name
+          );
     END LOOP;
 END $$;
