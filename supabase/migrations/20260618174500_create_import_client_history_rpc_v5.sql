@@ -217,14 +217,6 @@ DO $$
 DECLARE
     r_tx RECORD;
     v_user_acc_id UUID;
-END;
-$$;
-
--- Usando blocos aninhados simples para evitar erros de compilação de DECLARE/BEGIN complexos
-DO $$
-DECLARE
-    r_tx RECORD;
-    v_user_acc_id UUID;
 BEGIN
     -- 1. Corrigir recurrence_enabled = false para transações filhas físicas que já existem no banco
     UPDATE public.financial_transactions
