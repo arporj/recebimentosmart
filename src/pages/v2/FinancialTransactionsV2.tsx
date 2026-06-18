@@ -1834,7 +1834,7 @@ const FinancialTransactionsV2 = () => {
                           <Wallet size={20} />
                         </div>
                         {/* Data antes da descrição */}
-                        <span className="text-[10px] font-bold text-slate-700 shrink-0 w-[56px] text-left">
+                        <span className="text-[10px] font-medium text-slate-900 shrink-0 w-[56px] text-left">
                           {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                         </span>
                         <div className="flex-1 min-w-0">
@@ -1872,7 +1872,7 @@ const FinancialTransactionsV2 = () => {
                         </div>
 
                         {/* Data antes da descrição */}
-                        <span className="text-[10px] font-bold text-slate-700 shrink-0 w-[56px] text-left">
+                        <span className="text-[10px] font-medium text-slate-900 shrink-0 w-[56px] text-left">
                           {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                         </span>
 
@@ -1984,7 +1984,7 @@ const FinancialTransactionsV2 = () => {
                       </div>
 
                       {/* Data como coluna antes da descrição */}
-                      <span className="text-[10px] font-bold text-slate-700 shrink-0 w-[56px] text-left">
+                      <span className="text-[10px] font-medium text-slate-900 shrink-0 w-[56px] text-left">
                         {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
                       </span>
 
