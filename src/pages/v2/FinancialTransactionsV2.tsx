@@ -1833,14 +1833,13 @@ const FinancialTransactionsV2 = () => {
                         <div className="p-2 rounded-xl shrink-0 bg-slate-200 text-slate-600">
                           <Wallet size={20} />
                         </div>
+                        {/* Data antes da descrição */}
+                        <span className="text-[10px] font-bold text-slate-700 shrink-0 w-[56px] text-left">
+                          {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                        </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
                             <h4 className="font-black text-slate-700 text-sm">{t.description}</h4>
-                          </div>
-                          <div className="flex items-center gap-x-3 mt-1">
-                            <p className="text-[10px] font-bold text-slate-400">
-                              {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                            </p>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -1872,6 +1871,11 @@ const FinancialTransactionsV2 = () => {
                           <CreditCard size={20} />
                         </div>
 
+                        {/* Data antes da descrição */}
+                        <span className="text-[10px] font-bold text-slate-700 shrink-0 w-[56px] text-left">
+                          {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                        </span>
+
                         {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                         {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
                           <div className={`shrink-0 w-[130px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
@@ -1900,16 +1904,13 @@ const FinancialTransactionsV2 = () => {
                               </div>
                             )}
                           </div>
-                          <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                            <p className="text-[10px] font-bold text-slate-400">
-                              {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                            </p>
-                            {t.invoiceData?.linkedAccountName && (
+                          {t.invoiceData?.linkedAccountName && (
+                            <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                               <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
                                 <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
@@ -1982,6 +1983,11 @@ const FinancialTransactionsV2 = () => {
                         {t.type === 'income' ? <Plus size={16} /> : t.type === 'expense' ? <ArrowDownCircle size={16} /> : <ArrowRightLeft size={16} />}
                       </div>
 
+                      {/* Data como coluna antes da descrição */}
+                      <span className="text-[10px] font-bold text-slate-700 shrink-0 w-[56px] text-left">
+                        {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
+                      </span>
+
                       {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                       {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
                         <div className={`shrink-0 w-[130px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
@@ -2023,9 +2029,6 @@ const FinancialTransactionsV2 = () => {
 
                         {/* Metadados adicionais */}
                         <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                          <p className="text-[10px] font-bold text-slate-400">
-                            {t.instanceDate === format(new Date(), 'yyyy-MM-dd') ? 'Hoje' : format(parseISO(t.instanceDate), 'dd/MM/yy')}
-                          </p>
 
                           {t.account && (
                             <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
