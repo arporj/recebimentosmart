@@ -77,6 +77,10 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 * **Status:** Planejado.
 * **Descrição:** Ao passar o cursor do mouse (hover) sobre o botão principal de criação de lançamento, ele deve se comportar por padrão como criação de **Despesa** (opção padrão ao clicar), e exibir um menu suspenso logo abaixo com mais duas opções de atalho rápido: **Receita** e **Transferência**. Clicar em qualquer uma das opções abrirá a tela correspondente pré-selecionada.
 
+### 2.10. 💳 Integração de Cartão de Crédito para Assinaturas e Pagamentos
+* **Status:** Planejado.
+* **Descrição:** Incluir suporte a pagamentos e assinaturas via Cartão de Crédito no sistema. A ferramenta/gateway de pagamento a ser utilizada para a transação ainda será definida (ex: Stripe, Asaas, etc.).
+
 ---
 
 ## 3. 📈 Recomendações e Tendências de Mercado para o RecebimentoSmart Premium
@@ -165,7 +169,7 @@ O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos es
 
 ### 4.8. 💳 Migração de Gateway de Pagamento
 * **Status:** Concluído em Mar/2026.
-* **Descrição:** Substituição do Mercado Pago pelo Stripe concluída com sucesso.
+* **Descrição:** Substituição do Mercado Pago pela API do Banco Inter PJ concluída com sucesso.
 
 ### 4.9. 💳 Cálculo Proporcional (Pró-rata) para Upgrade de Planos
 * **Status:** Concluído em Mai/2026.

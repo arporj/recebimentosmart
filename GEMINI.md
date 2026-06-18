@@ -98,7 +98,7 @@ O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e client
 - **Notificações:** `react-hot-toast`.
 - **Ícones:** `lucide-react`.
 - **Roteamento:** `react-router-dom`.
-- **Integração de Pagamento:** **Stripe** (assinaturas, upgrades com cálculo proporcional pró-rata e cobrança Pix). O Mercado Pago foi totalmente descontinuado.
+- **Integração de Pagamento:** API do **Banco Inter PJ** (assinaturas, upgrades com cálculo proporcional pró-rata e cobrança Pix). O Mercado Pago foi totalmente descontinuado. Cartão de crédito planejado para o futuro (gateway a definir).
 - **Manipulação de Datas:** `date-fns`.
 
 **Estrutura e Padrões:**
@@ -111,7 +111,7 @@ O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e client
 **Regras de Negócio Implícitas:**
 - O sistema possui um modelo de assinatura com período de teste de 7 dias.
 - Existe um sistema de indicação que concede créditos ao usuário (utilizados no abono de assinaturas) e um programa de afiliados/cashback integral em planejamento.
-- Os pagamentos de assinatura e cobranças são processados via **Stripe**.
+- Os pagamentos de assinatura e cobranças são processados via API do **Banco Inter PJ**.
 - O campo `cpf_cnpj` foi completamente removido dos cadastros de perfis no banco de dados e no frontend.
 - Há um painel administrativo para gerenciamento de usuários, incluindo controle de feedbacks e envio de e-mails em massa (`AdminBroadcastV2.tsx`).
 </CONTEXT>
