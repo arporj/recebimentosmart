@@ -329,12 +329,21 @@ app.post('/api/lancamento-voz', async (req, res) => {
               }
             },
             {
-              text: `Analise o áudio e extraia os dados do lançamento financeiro mencionado.
+              text: `Analise o áudio e identifique a ação financeira desejada.
 A data de referência de hoje do servidor é: ${dateToday} (utilize esta data para resolver termos relativos como 'ontem', 'anteontem', 'terça passada', 'amanhã', etc.).
-Se nenhuma data for mencionada de forma alguma no áudio, assuma que a data do lançamento é hoje: ${dateToday}.
+Se nenhuma data for mencionada de forma alguma no áudio, assuma que a data é hoje: ${dateToday}.
 
-Extraia a descrição (item, serviço ou pessoa paga/recebida), o valor monetário exato e o tipo da transação ('income' para receitas, 'expense' para despesas/pagamentos/compras, 'transfer' para transferências entre contas).
-Extraia também o banco, carteira ou meio de pagamento citado (como 'Inter', 'Nubank', 'Itaú', 'Dinheiro', 'Pix') e a categoria aproximada (como 'Alimentação', 'Lazer', 'Transporte', 'Moradia').`
+Identifique a 'acao' desejada pelo usuário:
+- 'create': Se o usuário quer registrar, adicionar, criar, pagar, receber ou lançar algo novo.
+- 'delete': Se o usuário quer excluir, apagar, deletar, cancelar ou remover uma transação já existente.
+
+Para ambas as ações, extraia as seguintes informações:
+1. 'descricao': O que foi comprado, pago, recebido ou a transação a ser excluída (ex: Cerveja, Aluguel, Supermercado, Pizza, Salário, Cliente João).
+2. 'valor': O valor numérico decimal mencionado.
+3. 'tipo': O tipo da transação ('income' para receitas, 'expense' para despesas/pagamentos/compras, 'transfer' para transferências entre contas).
+4. 'data': A data em formato AAAA-MM-DD.
+5. 'banco_carteira': O banco, carteira ou meio de pagamento citado (como 'Inter', 'Nubank', 'Itaú', 'Dinheiro', 'Pix').
+6. 'categoria': A categoria aproximada sugerida (como 'Alimentação', 'Lazer', 'Transporte', 'Moradia').`
             }
           ]
         }
@@ -344,9 +353,14 @@ Extraia também o banco, carteira ou meio de pagamento citado (como 'Inter', 'Nu
         responseSchema: {
           type: 'OBJECT',
           properties: {
+            acao: {
+              type: 'STRING',
+              enum: ['create', 'delete'],
+              description: "Ação a ser executada: 'create' para criar um lançamento novo, ou 'delete' para apagar um lançamento existente."
+            },
             descricao: {
               type: 'STRING',
-              description: 'O que foi comprado, pago, ou recebido (ex: Cerveja, Aluguel, Supermercado, Pizza, Salário, Cliente Fulano)'
+              description: 'O que foi comprado, pago, recebido, ou o lançamento a ser deletado (ex: Cerveja, Aluguel, Supermercado, Pizza, Salário, Cliente João)'
             },
             valor: {
               type: 'NUMBER',
@@ -370,7 +384,7 @@ Extraia também o banco, carteira ou meio de pagamento citado (como 'Inter', 'Nu
               description: 'Categoria sugerida (ex: Alimentação, Lazer, Moradia, Transporte, Saúde, Educação, Receitas)'
             }
           },
-          required: ['descricao', 'valor', 'tipo', 'data']
+          required: ['acao', 'descricao', 'valor', 'tipo', 'data']
         }
       }
     };
