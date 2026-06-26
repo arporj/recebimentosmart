@@ -175,6 +175,19 @@ O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos es
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Implementação de cálculo dinâmico e reativo de pró-rata de assinatura quando usuários de planos ativos (ex: Básico) realizam upgrade para planos superiores (ex: Pró). O valor é calculado proporcionalmente aos dias restantes no ciclo mensal do usuário, abatendo créditos de indicação e atualizando a cobrança Pix do Banco Inter PJ de forma 100% dinâmica. Inclui banner informativo premium de total transparência financeira no checkout de assinaturas.
 
-### 5.10. 📧 Tela de Envio de E-mails em Massa (Admin)
+### 4.10. 📧 Tela de Envio de E-mails em Massa (Admin)
 * **Status:** Concluído em Mai/2026.
 * **Descrição:** Criada a página administrativa `AdminBroadcastV2.tsx` de alto nível para compor e realizar envios de e-mails em lote para toda a base de usuários ativos. A tela possui suporte nativo a tags HTML para estilização, inclusão de imagens coladas com upload direto ao Storage do Supabase, inserção de emojis e integração inteligente com o modelo Gemini Pro (API da Google) para otimização profissional de conteúdo.
+
+### 4.11. 📱 Otimização do Layout de Linha Fina no Mobile
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** O padding vertical das linhas no celular agora se ajusta dinamicamente baseando-se no `rowDensity` (reduzindo-se para `py-1` no modo compacto). Além disso, a coluna de previsto acumulado e os metadados secundários (conta, categoria, cliente) são estritamente ocultados nas listagens mobile de faturas e transações comuns quando o espaçamento Fino está ativo, garantindo visualização em linha única limpa.
+
+### 4.12. 💬 Saldo Previsto no Modal de Detalhes
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** Adicionada a exibição do saldo previsto pós-lançamento (`runningBalance`) no modal de detalhes (`TransactionSummaryModal`), disponível de forma idêntica tanto para celular quanto para computadores de mesa.
+
+### 4.13. ⚙️ Autosave das Preferências do Usuário
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** Implementação de salvamento automático (autosave) em tempo real de todas as preferências visuais e de layout (tema, densidade, predictedLayout, etc.) no Supabase e LocalStorage. O nome completo do usuário também é salvo automaticamente via evento `onBlur`. Como consequência, a barra de ações manual (botões "Salvar" e "Descartar") foi inteiramente removida da interface do formulário de configurações.
+
