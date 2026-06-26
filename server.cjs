@@ -293,7 +293,7 @@ app.post('/api/pix/simulate-webhook', async (req, res) => {
   }
 });
 
-// --- Rota de Processamento de Lançamento por Voz com Gemini 3.5 Flash ---
+// --- Rota de Processamento de Lançamento por Voz com Gemini 3.5 Flash (Assistente Art) ---
 app.post('/api/lancamento-voz', async (req, res) => {
   const { audioBase64, mimeType } = req.body;
 
@@ -315,7 +315,7 @@ app.post('/api/lancamento-voz', async (req, res) => {
     day: '2-digit'
   }).split('/').reverse().join('-');
 
-  console.log(`[IA] Processando áudio recebido. Data de referência de hoje: ${dateToday}`);
+  console.log(`[Art] Processando áudio recebido (${(audioBase64.length / 1024).toFixed(1)} KB base64). Data de referência: ${dateToday}`);
 
   try {
     const payload = {
@@ -329,26 +329,36 @@ app.post('/api/lancamento-voz', async (req, res) => {
               }
             },
             {
-              text: `Analise o áudio e identifique a ação financeira desejada.
-A data de referência de hoje do servidor é: ${dateToday} (utilize esta data para resolver termos relativos como 'ontem', 'anteontem', 'terça passada', 'amanhã', etc.).
-Se nenhuma data for mencionada de forma alguma no áudio, assuma que a data é hoje: ${dateToday}.
+              text: `Você é Art, um assistente financeiro inteligente. Sua ÚNICA tarefa é ouvir atentamente o áudio em português do Brasil e extrair EXATAMENTE as informações financeiras faladas pelo usuário.
 
-Identifique a 'acao' desejada pelo usuário:
-- 'create': Se o usuário quer registrar, adicionar, criar, pagar, receber ou lançar algo novo.
-- 'delete': Se o usuário quer excluir, apagar, deletar, cancelar ou remover uma transação já existente.
+## REGRAS ABSOLUTAS (NÃO VIOLE NENHUMA):
+1. Extraia APENAS o que foi REALMENTE DITO no áudio. NÃO invente, NÃO adivinhe, NÃO preencha com valores fictícios.
+2. Se o usuário disse "10 reais", o valor é 10.00. NÃO coloque 5000, 150, ou qualquer outro número.
+3. Se o usuário disse "cerveja", a descrição é "Cerveja". NÃO coloque "Salário", "Supermercado", ou qualquer outra palavra.
+4. Preste atenção MÁXIMA ao áudio. Se não entender algo com clareza, use o que mais se aproxima do som ouvido.
+5. NUNCA retorne dados padrão ou de exemplo. Cada resposta deve refletir 100% o que foi dito.
 
-Para ambas as ações, extraia as seguintes informações:
-1. 'descricao': O que foi comprado, pago, recebido ou a transação a ser excluída (ex: Cerveja, Aluguel, Supermercado, Pizza, Salário, Cliente João).
-2. 'valor': O valor numérico decimal mencionado.
-3. 'tipo': O tipo da transação ('income' para receitas, 'expense' para despesas/pagamentos/compras, 'transfer' para transferências entre contas).
-4. 'data': A data em formato AAAA-MM-DD.
-5. 'banco_carteira': O banco, carteira ou meio de pagamento citado (como 'Inter', 'Nubank', 'Itaú', 'Dinheiro', 'Pix').
-6. 'categoria': A categoria aproximada sugerida (como 'Alimentação', 'Lazer', 'Transporte', 'Moradia').`
+## Contexto:
+- Data de hoje no servidor: ${dateToday}
+- Se nenhuma data for mencionada no áudio, use: ${dateToday}
+- Para termos relativos ("ontem", "anteontem", "amanhã"), calcule a partir de ${dateToday}.
+
+## O que extrair do áudio:
+- 'acao': 'create' se quer registrar/adicionar/pagar/receber. 'delete' se quer excluir/apagar/remover.
+- 'descricao': O item, produto ou serviço EXATO mencionado (ex: "Cerveja", "Almoço", "Salário do João").
+- 'valor': O valor numérico EXATO dito pelo usuário.
+- 'tipo': 'expense' para gastos/pagamentos/compras, 'income' para recebimentos/receitas, 'transfer' para transferências.
+- 'data': Data no formato AAAA-MM-DD.
+- 'banco_carteira': Banco ou meio de pagamento mencionado ("Inter", "Nubank", "Pix", "Cartão", etc.). Se não mencionado, deixe vazio.
+- 'categoria': Categoria sugerida ("Alimentação", "Lazer", "Transporte", "Moradia", "Saúde", etc.).`
             }
           ]
         }
       ],
       generationConfig: {
+        temperature: 0,
+        topP: 1,
+        topK: 1,
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
@@ -356,32 +366,32 @@ Para ambas as ações, extraia as seguintes informações:
             acao: {
               type: 'STRING',
               enum: ['create', 'delete'],
-              description: "Ação a ser executada: 'create' para criar um lançamento novo, ou 'delete' para apagar um lançamento existente."
+              description: "Ação identificada no áudio: 'create' para novo lançamento, 'delete' para remover existente."
             },
             descricao: {
               type: 'STRING',
-              description: 'O que foi comprado, pago, recebido, ou o lançamento a ser deletado (ex: Cerveja, Aluguel, Supermercado, Pizza, Salário, Cliente João)'
+              description: 'Descrição EXATA do que foi dito no áudio (produto, serviço, item). NÃO invente.'
             },
             valor: {
               type: 'NUMBER',
-              description: 'O valor numérico decimal do lançamento'
+              description: 'Valor numérico EXATO mencionado no áudio. NÃO invente valores.'
             },
             tipo: {
               type: 'STRING',
               enum: ['income', 'expense', 'transfer'],
-              description: "Tipo de movimentação: 'income' para receitas/entradas, 'expense' para despesas/saídas, 'transfer' para transferências"
+              description: "Tipo baseado no contexto do áudio: 'expense' para gastos, 'income' para receitas, 'transfer' para transferências"
             },
             data: {
               type: 'STRING',
-              description: 'Data do lançamento em formato AAAA-MM-DD'
+              description: 'Data no formato AAAA-MM-DD conforme dito no áudio ou hoje se não mencionada'
             },
             banco_carteira: {
               type: 'STRING',
-              description: 'Nome do banco, carteira ou meio de pagamento (ex: Inter, Nubank, Itaú, Dinheiro, Carteira, Caixa)'
+              description: 'Banco ou meio de pagamento mencionado no áudio. Vazio se não mencionado.'
             },
             categoria: {
               type: 'STRING',
-              description: 'Categoria sugerida (ex: Alimentação, Lazer, Moradia, Transporte, Saúde, Educação, Receitas)'
+              description: 'Categoria sugerida com base na descrição (Alimentação, Lazer, Moradia, Transporte, Saúde, Educação, Receitas)'
             }
           },
           required: ['acao', 'descricao', 'valor', 'tipo', 'data']
@@ -391,7 +401,7 @@ Para ambas as ações, extraia as seguintes informações:
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`;
 
-    console.log(`[IA] Enviando requisição para o Gemini 3.5 Flash...`);
+    console.log(`[Art] Enviando requisição para o Gemini 3.5 Flash (temperature: 0, deterministic)...`);
     const response = await axios.post(geminiUrl, payload, {
       headers: {
         'Content-Type': 'application/json'
@@ -410,9 +420,11 @@ Para ambas as ações, extraia as seguintes informações:
     }
 
     const responseText = response.data.candidates[0].content.parts[0].text;
-    console.log(`[IA] Resposta do Gemini recebida com sucesso:`, responseText);
+    console.log(`[Art] Resposta bruta do Gemini:`, responseText);
 
     const parsedData = JSON.parse(responseText);
+
+    console.log(`[Art] Dados interpretados: ação=${parsedData.acao}, desc="${parsedData.descricao}", valor=${parsedData.valor}, tipo=${parsedData.tipo}, data=${parsedData.data}`);
 
     res.json({
       success: true,
@@ -420,7 +432,7 @@ Para ambas as ações, extraia as seguintes informações:
     });
 
   } catch (error) {
-    console.error('[IA] Erro ao processar lançamento com IA:', error.response?.data || error.message);
+    console.error('[Art] Erro ao processar lançamento com IA:', error.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: 'Erro interno ao processar o áudio com Inteligência Artificial.',

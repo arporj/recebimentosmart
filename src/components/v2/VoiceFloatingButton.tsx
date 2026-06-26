@@ -425,7 +425,7 @@ export function VoiceFloatingButton() {
             <div className="flex items-start justify-between">
               <span className="text-[9px] bg-slate-900 text-teal-400 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                Assistente de Voz IA
+                Assistente Art
               </span>
               <button 
                 onClick={handleCancel}
@@ -486,8 +486,8 @@ export function VoiceFloatingButton() {
               <div className="flex flex-col items-center justify-center py-8 gap-4">
                 <Loader2 size={36} className="animate-spin text-[#14b8a6]" />
                 <div className="text-center">
-                  <p className="text-xs font-bold text-slate-800">Entendendo áudio...</p>
-                  <p className="text-[10px] text-slate-400 font-medium mt-1">O Gemini 3.5 Flash está estruturando os dados</p>
+                  <p className="text-xs font-bold text-slate-800">Art está ouvindo...</p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Fale o que deseja lançar</p>
                 </div>
               </div>
             )}
@@ -658,7 +658,7 @@ export function VoiceFloatingButton() {
             onClick={startRecording}
             className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all hover:scale-105 shadow-teal-600/20 ring-4 ring-teal-600/0 hover:ring-teal-600/10 bg-teal-600 hover:bg-teal-500 select-none outline-none cursor-pointer border-0 z-50 animate-bounce duration-1000"
             style={{ animationDuration: '3s' }}
-            title="Lançamento rápido por voz (Gemini)"
+            title="Fale com Art — seu assistente financeiro por voz"
           >
             <Mic size={24} />
           </button>
