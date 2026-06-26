@@ -29,6 +29,12 @@ export function VoiceFloatingButton() {
   const [localAmount, setLocalAmount] = useState(0);
   const [localDate, setLocalDate] = useState('');
   
+  // Novos estados locais de recorrência/parcelas do Art
+  const [localModalidade, setLocalModalidade] = useState<'unica' | 'parcelada' | 'recorrente'>('unica');
+  const [localInstallmentTotal, setLocalInstallmentTotal] = useState(1);
+  const [localPeriodicidade, setLocalPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
+  const [localRecurrenceInterval, setLocalRecurrenceInterval] = useState(1);
+  
   // Seleções inteligentes
   const [matchedAccountId, setMatchedAccountId] = useState('');
   const [matchedCategoryId, setMatchedCategoryId] = useState('');
