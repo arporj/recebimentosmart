@@ -11,7 +11,7 @@ import type { Database } from '../../types/supabase';
 type Client = Database['public']['Tables']['clients']['Row'];
 
 const ClientsV2 = () => {
-  const { user } = useAuth();
+  const { user, rowDensity } = useAuth();
   const { checkLimit, refreshLimits } = usePlanLimits();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,7 +161,14 @@ const ClientsV2 = () => {
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-slate-800 truncate">{client.name}</p>
-                          <p className="text-slate-400 text-[10px] uppercase tracking-wider mt-0.5">ID V2</p>
+                          <p className="text-slate-400 text-[10px] uppercase tracking-wider mt-0.5">
+                            ID V2 {rowDensity === 'expanded' && client.status && ` · ATIVO`} {rowDensity === 'expanded' && !client.status && ` · INATIVO`}
+                          </p>
+                          {rowDensity === 'expanded' && (
+                            <p className="text-[10px] text-slate-500 mt-1">
+                              Status: {client.status ? 'Ativo no sistema' : 'Inativo no momento'} {client.phone ? `· Telefone: ${client.phone}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
