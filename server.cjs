@@ -432,11 +432,17 @@ app.post('/api/lancamento-voz', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Art] Erro ao processar lançamento com IA:', error.response?.data || error.message);
+    const errStatus = error.response?.status || 'N/A';
+    const errData = error.response?.data ? JSON.stringify(error.response.data) : 'sem dados';
+    const errMsg = error.message || 'erro desconhecido';
+    console.error(`[Art] ERRO ${errStatus} ao processar lançamento com IA:`);
+    console.error(`[Art]   Mensagem: ${errMsg}`);
+    console.error(`[Art]   Response data: ${errData}`);
+    console.error(`[Art]   Stack: ${error.stack?.split('\n').slice(0,3).join(' | ')}`);
     res.status(500).json({
       success: false,
-      message: 'Erro interno ao processar o áudio com Inteligência Artificial.',
-      details: error.response?.data || error.message
+      message: `Erro ao processar áudio (${errStatus}): ${errMsg}`,
+      details: error.response?.data || errMsg
     });
   }
 });
