@@ -55,14 +55,6 @@ export default function UserProfileSettingsV2() {
             : themePreference === 'dark' 
                 ? 'bg-[#111827] border-[#1f2937]' 
                 : 'bg-slate-100 border-slate-300';
-
-    const previewInnerBgClass = 
-        themePreference === 'light'
-            ? 'bg-[#f8fafc]'
-            : themePreference === 'dark'
-                ? 'bg-[#0f172a]'
-                : 'bg-slate-100';
-
     const previewRowClass = 
         `flex items-center justify-between px-2 rounded-lg border shadow-sm gap-2 transition-all ` +
         (rowDensity === 'compact' ? 'py-0.5 ' : rowDensity === 'expanded' ? 'py-3.5 ' : 'py-1.5 ') +
@@ -127,10 +119,10 @@ export default function UserProfileSettingsV2() {
                 setSidebarDesktopCollapsed(profileData.sidebar_desktop_collapsed === true);
                 
                 if (profileData.theme_preference) {
-                    setThemePreference(profileData.theme_preference as any);
+                    setThemePreference(profileData.theme_preference as 'original' | 'light' | 'dark');
                 }
                 if (profileData.row_density) {
-                    setRowDensity(profileData.row_density as any);
+                    setRowDensity(profileData.row_density as 'original' | 'compact' | 'expanded');
                 }
                 if (profileData.remove_bold_list !== undefined && profileData.remove_bold_list !== null) {
                     setRemoveBoldList(!!profileData.remove_bold_list);
