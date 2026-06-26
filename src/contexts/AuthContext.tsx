@@ -23,6 +23,12 @@ interface AuthContextType {
   originalUser: User | null;
   impersonateUser: (userId: string) => Promise<void>;
   stopImpersonating: () => Promise<void>;
+  themePreference: 'original' | 'light' | 'dark';
+  rowDensity: 'original' | 'compact' | 'expanded';
+  removeBoldList: boolean;
+  setThemePreference: (theme: 'original' | 'light' | 'dark') => void;
+  setRowDensity: (density: 'original' | 'compact' | 'expanded') => void;
+  setRemoveBoldList: (remove: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +44,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [pixKey, setPixKey] = useState<string | null>(null);
+
+  // Estados de preferências visuais
+  const [themePreference, setThemePreference] = useState<'original' | 'light' | 'dark'>(() => {
+    return (localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark') || 'original';
+  });
+  const [rowDensity, setRowDensity] = useState<'original' | 'compact' | 'expanded'>(() => {
+    return (localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded') || 'original';
+  });
+  const [removeBoldList, setRemoveBoldList] = useState<boolean>(() => {
+    return localStorage.getItem('remove_bold_list') === 'true';
+  });
+
+  // Effect para injetar as classes de tema, densidade e bold na tag html
+  useEffect(() => {
+    const htmlEl = document.documentElement;
+    htmlEl.classList.remove(
+      'theme-original', 'theme-light', 'theme-dark',
+      'density-original', 'density-compact', 'density-expanded',
+      'remove-list-bold'
+    );
+    
+    htmlEl.classList.add(`theme-${themePreference}`);
+    htmlEl.classList.add(`density-${rowDensity}`);
+    if (removeBoldList) {
+      htmlEl.classList.add('remove-list-bold');
+    }
+  }, [themePreference, rowDensity, removeBoldList]);
 
   // Effect for handling auth state changes from Supabase
   useEffect(() => {
@@ -106,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (profile) {
-          // Sincronizar preferências do banco de dados para o LocalStorage
+          // Sincronizar preferências do banco de dados para o LocalStorage e estados
           if (profile.layout_preference) localStorage.setItem('transaction_layout_preference', profile.layout_preference);
           if (profile.show_currency_symbol !== undefined && profile.show_currency_symbol !== null) {
             localStorage.setItem('transaction_show_currency_symbol', String(profile.show_currency_symbol));
@@ -117,6 +150,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.value_alignment) localStorage.setItem('transaction_value_alignment', profile.value_alignment);
           if (profile.sidebar_desktop_collapsed !== undefined && profile.sidebar_desktop_collapsed !== null) {
             localStorage.setItem('sidebar_desktop_collapsed', String(profile.sidebar_desktop_collapsed));
+          }
+          if (profile.theme_preference) {
+            localStorage.setItem('theme_preference', profile.theme_preference);
+            setThemePreference(profile.theme_preference as any);
+          }
+          if (profile.row_density) {
+            localStorage.setItem('row_density', profile.row_density);
+            setRowDensity(profile.row_density as any);
+          }
+          if (profile.remove_bold_list !== undefined && profile.remove_bold_list !== null) {
+            localStorage.setItem('remove_bold_list', String(profile.remove_bold_list));
+            setRemoveBoldList(!!profile.remove_bold_list);
           }
         }
 
@@ -437,6 +482,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatePixKey,
         impersonateUser,
         stopImpersonating,
+        themePreference,
+        rowDensity,
+        removeBoldList,
+        setThemePreference,
+        setRowDensity,
+        setRemoveBoldList,
       }}
     >
       {children}
