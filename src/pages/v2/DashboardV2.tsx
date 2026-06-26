@@ -160,6 +160,16 @@ const DashboardV2 = () => {
     fetchStats();
   }, [user, currentMonth]);
 
+  useEffect(() => {
+    const handleTransactionCreated = () => {
+      fetchStats();
+    };
+    window.addEventListener('transaction_created', handleTransactionCreated);
+    return () => {
+      window.removeEventListener('transaction_created', handleTransactionCreated);
+    };
+  }, [user, currentMonth]);
+
   // Encontrar valor máximo do gráfico para escala visual fluida
   const maxChartValue = Math.max(
     ...weeklyData.map(w => Math.max(w.income, w.expense)), 
