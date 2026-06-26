@@ -227,7 +227,7 @@ export function VoiceFloatingButton() {
 
       // Fuzzy matching na lista
       const match = (txList || []).find(tx => {
-        const valMatch = Math.abs(tx.amount - data.valor) < 0.05; // tolerância de centavos
+        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05; // Compara valores absolutos para tolerar sign
         const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = descClean.includes(searchClean) || searchClean.includes(descClean);
