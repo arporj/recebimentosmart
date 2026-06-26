@@ -26,6 +26,7 @@ interface TransactionInstance {
   category?: { name: string };
   client?: { name: string };
   auto_confirm?: boolean;
+  runningBalance?: number;
 }
 
 interface TransactionSummaryModalProps {
@@ -194,6 +195,19 @@ export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = (
                 </span>
               </div>
             </div>
+
+            {/* Saldo Previsto Pós-Lançamento */}
+            {transaction.runningBalance !== undefined && !isNaN(transaction.runningBalance) && (
+              <div className="flex items-center gap-2.5 p-2 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                <DollarSign size={16} className="text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block leading-none mb-0.5">Saldo Previsto</span>
+                  <span className={`text-xs font-bold block leading-tight ${transaction.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(transaction.runningBalance)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Recorrência / Parcelas info se houver */}
             {(transaction.recurrence_enabled || !!transaction.parent_id || (transaction.installment_total && transaction.installment_total > 1)) && (
