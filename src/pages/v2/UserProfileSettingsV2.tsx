@@ -15,7 +15,9 @@ export default function UserProfileSettingsV2() {
         rowDensity,
         setRowDensity,
         removeBoldList,
-        setRemoveBoldList
+        setRemoveBoldList,
+        predictedLayout,
+        setPredictedLayout
     } = useAuth();
 
     const [currentName, setCurrentName] = useState('');
@@ -27,6 +29,14 @@ export default function UserProfileSettingsV2() {
     const [showNegativeSign, setShowNegativeSign] = useState(true);
     const [valueAlignment, setValueAlignment] = useState<'left' | 'right'>('right');
     const [sidebarDesktopCollapsed, setSidebarDesktopCollapsed] = useState(false);
+    const [localPredictedLayout, setLocalPredictedLayout] = useState<'below' | 'column'>('below');
+
+    // Auto force column layout if row density is compact
+    useEffect(() => {
+        if (rowDensity === 'compact') {
+            setLocalPredictedLayout('column');
+        }
+    }, [rowDensity]);
 
     // Email alert preferences
     const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(true);
@@ -93,7 +103,7 @@ export default function UserProfileSettingsV2() {
             // Tentativa de buscar o perfil completo
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, sidebar_desktop_collapsed, plano, theme_preference, row_density, remove_bold_list')
+                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, sidebar_desktop_collapsed, plano, theme_preference, row_density, remove_bold_list, predicted_layout')
                 .eq('id', user.id)
                 .single();
             
@@ -126,6 +136,9 @@ export default function UserProfileSettingsV2() {
                 }
                 if (profileData.remove_bold_list !== undefined && profileData.remove_bold_list !== null) {
                     setRemoveBoldList(!!profileData.remove_bold_list);
+                }
+                if (profileData.predicted_layout) {
+                    setLocalPredictedLayout(profileData.predicted_layout as 'below' | 'column');
                 }
 
                 const planSlug = profileData.plano?.toLowerCase() || 'free';
@@ -162,7 +175,7 @@ export default function UserProfileSettingsV2() {
         } finally {
             setLoadingPreferences(false);
         }
-    }, [user, plano, setThemePreference, setRowDensity, setRemoveBoldList]);
+    }, [user, plano, setThemePreference, setRowDensity, setRemoveBoldList, setPredictedLayout]);
 
     useEffect(() => {
         if (user) {
@@ -190,6 +203,8 @@ export default function UserProfileSettingsV2() {
         if (savedDensity) setRowDensity(savedDensity);
         const savedRemoveBold = localStorage.getItem('remove_bold_list') === 'true';
         setRemoveBoldList(savedRemoveBold);
+        const savedPredicted = localStorage.getItem('predicted_layout') as 'below' | 'column';
+        if (savedPredicted) setLocalPredictedLayout(savedPredicted);
 
         // Cleanup: Se sair da tela de configurações sem salvar, restaura o estado salvo no localStorage
         return () => {
@@ -199,11 +214,13 @@ export default function UserProfileSettingsV2() {
             const savedThemeOld = (localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark') || 'original';
             const savedDensityOld = (localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded') || 'original';
             const savedRemoveBoldOld = localStorage.getItem('remove_bold_list') === 'true';
+            const savedPredictedOld = (localStorage.getItem('predicted_layout') as 'below' | 'column') || 'below';
             setThemePreference(savedThemeOld);
             setRowDensity(savedDensityOld);
             setRemoveBoldList(savedRemoveBoldOld);
+            setPredictedLayout(savedPredictedOld);
         };
-    }, [user, fetchProfilePreferences, setThemePreference, setRowDensity, setRemoveBoldList]);
+    }, [user, fetchProfilePreferences, setThemePreference, setRowDensity, setRemoveBoldList, setPredictedLayout]);
 
 
 
@@ -237,6 +254,8 @@ export default function UserProfileSettingsV2() {
             localStorage.setItem('theme_preference', themePreference);
             localStorage.setItem('row_density', rowDensity);
             localStorage.setItem('remove_bold_list', String(removeBoldList));
+            localStorage.setItem('predicted_layout', localPredictedLayout);
+            setPredictedLayout(localPredictedLayout);
         }
 
         // Email Alert and Layout Preferences Update in Supabase
@@ -255,7 +274,8 @@ export default function UserProfileSettingsV2() {
                         sidebar_desktop_collapsed: sidebarDesktopCollapsed,
                         theme_preference: themePreference,
                         row_density: rowDensity,
-                        remove_bold_list: removeBoldList
+                        remove_bold_list: removeBoldList,
+                        predicted_layout: localPredictedLayout
                     })
                     .eq('id', user.id);
 
@@ -682,23 +702,120 @@ export default function UserProfileSettingsV2() {
                                     <div className="mt-4 p-4 bg-slate-50/50 border border-slate-200 rounded-xl">
                                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Visualização do Extrato (Exemplo em Tempo Real)</p>
                                         <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                            {/* Item 1 (Despesa, Previsto Negativo) */}
                                             <div className={previewRowClass}>
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                    <span className={previewLabelClass}>Supermercado Mufato</span>
+                                                {/* Se valor principal vem na esquerda (Value First ou Value Right Desc) */}
+                                                {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                                                    <div className="flex flex-col text-left">
+                                                        <span className={previewValueClass(true)}>
+                                                            {formatMockValue(320.40, true)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(100.00, true)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex-1 min-w-0">
+                                                    {rowDensity === 'compact' ? (
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                            <span className={previewLabelClass}>Supermercado Mufato</span>
+                                                            <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1 py-0.5 rounded uppercase leading-none font-bold">Mercado</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                                <span className={previewLabelClass}>Supermercado Mufato</span>
+                                                            </div>
+                                                            <div className="mt-1">
+                                                                <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1.5 py-0.5 rounded uppercase leading-none font-bold">Mercado</span>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <span className={previewValueClass(true)}>
-                                                    {formatMockValue(320.40, true)}
-                                                </span>
+
+                                                {/* Coluna Separada do Valor Previsto (à direita) */}
+                                                {(localPredictedLayout === 'column' || rowDensity === 'compact') && (
+                                                    <span className="text-[10px] font-bold text-previsto-negativo shrink-0 w-[80px] text-right pr-2">
+                                                        {formatMockValue(100.00, true)}
+                                                    </span>
+                                                )}
+
+                                                {/* Se valor principal vem na direita (Default) */}
+                                                {layoutPreference === 'default' && (
+                                                    <div className="flex flex-col text-right">
+                                                        <span className={previewValueClass(true)}>
+                                                            {formatMockValue(320.40, true)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(100.00, true)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
+
+                                            {/* Item 2 (Receita, Previsto Positivo) */}
                                             <div className={previewRowClass}>
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                    <span className={previewLabelClass}>Prestação de Serviço</span>
+                                                {/* Se valor principal vem na esquerda */}
+                                                {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                                                    <div className="flex flex-col text-left">
+                                                        <span className={previewValueClass(false)}>
+                                                            {formatMockValue(1500.00, false)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(1400.00, false)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex-1 min-w-0">
+                                                    {rowDensity === 'compact' ? (
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                            <span className={previewLabelClass}>Prestação de Serviço</span>
+                                                            <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1 py-0.5 rounded uppercase leading-none font-bold">Serviço</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                                <span className={previewLabelClass}>Prestação de Serviço</span>
+                                                            </div>
+                                                            <div className="mt-1">
+                                                                <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1.5 py-0.5 rounded uppercase leading-none font-bold">Serviço</span>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <span className={previewValueClass(false)}>
-                                                    {formatMockValue(1500.00, false)}
-                                                </span>
+
+                                                {/* Coluna Separada do Valor Previsto (à direita) */}
+                                                {(localPredictedLayout === 'column' || rowDensity === 'compact') && (
+                                                    <span className="text-[10px] font-bold text-previsto-positivo shrink-0 w-[80px] text-right pr-2">
+                                                        {formatMockValue(1400.00, false)}
+                                                    </span>
+                                                )}
+
+                                                {/* Se valor principal vem na direita */}
+                                                {layoutPreference === 'default' && (
+                                                    <div className="flex flex-col text-right">
+                                                        <span className={previewValueClass(false)}>
+                                                            {formatMockValue(1500.00, false)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(1400.00, false)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -706,7 +823,7 @@ export default function UserProfileSettingsV2() {
 
                                 <div className="border-t border-slate-100 pt-6">
                                     <h3 className="font-extrabold text-sm text-slate-900 mb-4">Personalização Visual</h3>
-                                    <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-300 grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                    <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-300 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                                         {/* Opção Tema */}
                                         <div className="space-y-2">
                                             <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Tema de Cores</label>
@@ -772,7 +889,7 @@ export default function UserProfileSettingsV2() {
                                                     onClick={() => setRemoveBoldList(false)}
                                                     className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${!removeBoldList ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                                                 >
-                                                    Sim (Padrão)
+                                                    Sim
                                                 </button>
                                                 <button
                                                     type="button"
@@ -783,35 +900,166 @@ export default function UserProfileSettingsV2() {
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {/* Opção Posição do Valor Previsto */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Valor Previsto (Saldo)</label>
+                                            <div className="flex bg-slate-200 border border-slate-300/60 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    disabled={rowDensity === 'compact'}
+                                                    onClick={() => setLocalPredictedLayout('below')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${
+                                                        localPredictedLayout === 'below' && rowDensity !== 'compact'
+                                                            ? 'bg-white text-custom shadow-sm' 
+                                                            : rowDensity === 'compact'
+                                                                ? 'text-slate-400 cursor-not-allowed opacity-50'
+                                                                : 'text-slate-600 hover:text-slate-900'
+                                                    }`}
+                                                    title={rowDensity === 'compact' ? 'Forçado a Coluna Separada no layout Fino' : ''}
+                                                >
+                                                    Abaixo
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={rowDensity === 'compact'}
+                                                    onClick={() => setLocalPredictedLayout('column')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${
+                                                        localPredictedLayout === 'column' || rowDensity === 'compact'
+                                                            ? 'bg-white text-custom shadow-sm' 
+                                                            : 'text-slate-600 hover:text-slate-900'
+                                                    }`}
+                                                >
+                                                    Coluna
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     {/* Exemplo de visualização rápida da personalização visual */}
                                     <div className="mt-4 p-4 bg-slate-50/50 border border-slate-200 rounded-xl">
                                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Visualização do Layout (Exemplo em Tempo Real)</p>
                                         <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                            {/* Item 1 (Despesa, Previsto Negativo) */}
                                             <div className={previewRowClass}>
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                    <span className={previewLabelClass}>Aluguel Residencial</span>
-                                                    {rowDensity === 'expanded' && (
-                                                        <span className="text-[8px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium ml-2">Vence Hoje</span>
+                                                {/* Se valor principal vem na esquerda (Value First ou Value Right Desc) */}
+                                                {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                                                    <div className="flex flex-col text-left">
+                                                        <span className={previewValueClass(true)}>
+                                                            {formatMockValue(1200.00, true)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(350.00, true)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex-1 min-w-0">
+                                                    {rowDensity === 'compact' ? (
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                            <span className={previewLabelClass}>Aluguel Residencial</span>
+                                                            <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1 py-0.5 rounded uppercase leading-none font-bold">Moradia</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                                <span className={previewLabelClass}>Aluguel Residencial</span>
+                                                                {rowDensity === 'expanded' && (
+                                                                    <span className="text-[8px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium ml-2">Vence Hoje</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="mt-1">
+                                                                <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1.5 py-0.5 rounded uppercase leading-none font-bold">Moradia</span>
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </div>
-                                                <span className={previewValueClass(true)}>
-                                                    {formatMockValue(1200.00, true)}
-                                                </span>
+
+                                                {/* Coluna Separada do Valor Previsto (à direita) */}
+                                                {(localPredictedLayout === 'column' || rowDensity === 'compact') && (
+                                                    <span className="text-[10px] font-bold text-previsto-negativo shrink-0 w-[80px] text-right pr-2">
+                                                        {formatMockValue(350.00, true)}
+                                                    </span>
+                                                )}
+
+                                                {/* Se valor principal vem na direita (Default) */}
+                                                {layoutPreference === 'default' && (
+                                                    <div className="flex flex-col text-right">
+                                                        <span className={previewValueClass(true)}>
+                                                            {formatMockValue(1200.00, true)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(350.00, true)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
+
+                                            {/* Item 2 (Receita, Previsto Positivo) */}
                                             <div className={previewRowClass}>
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                    <span className={previewLabelClass}>Rendimento de Investimentos</span>
-                                                    {rowDensity === 'expanded' && (
-                                                        <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium ml-2">Recebido</span>
+                                                {/* Se valor principal vem na esquerda */}
+                                                {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
+                                                    <div className="flex flex-col text-left">
+                                                        <span className={previewValueClass(false)}>
+                                                            {formatMockValue(85.50, false)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(1500.00, false)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex-1 min-w-0">
+                                                    {rowDensity === 'compact' ? (
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                            <span className={previewLabelClass}>Rendimento de Investimentos</span>
+                                                            <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1 py-0.5 rounded uppercase leading-none font-bold">Invest.</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                                <span className={previewLabelClass}>Rendimento de Investimentos</span>
+                                                                {rowDensity === 'expanded' && (
+                                                                    <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium ml-2">Recebido</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="mt-1">
+                                                                <span className="text-[8px] bg-slate-200/60 text-slate-500 px-1.5 py-0.5 rounded uppercase leading-none font-bold">Invest.</span>
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </div>
-                                                <span className={previewValueClass(false)}>
-                                                    {formatMockValue(85.50, false)}
-                                                </span>
+
+                                                {/* Coluna Separada do Valor Previsto (à direita) */}
+                                                {(localPredictedLayout === 'column' || rowDensity === 'compact') && (
+                                                    <span className="text-[10px] font-bold text-previsto-positivo shrink-0 w-[80px] text-right pr-2">
+                                                        {formatMockValue(1500.00, false)}
+                                                    </span>
+                                                )}
+
+                                                {/* Se valor principal vem na direita */}
+                                                {layoutPreference === 'default' && (
+                                                    <div className="flex flex-col text-right">
+                                                        <span className={previewValueClass(false)}>
+                                                            {formatMockValue(85.50, false)}
+                                                        </span>
+                                                        {rowDensity !== 'compact' && localPredictedLayout === 'below' && (
+                                                            <span className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                                                {formatMockValue(1500.00, false)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
