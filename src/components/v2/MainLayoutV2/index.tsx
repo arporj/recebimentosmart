@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { AdBanner } from '../AdBanner';
 import { supabase } from '../../../lib/supabase';
+import { VoiceFloatingButton } from '../VoiceFloatingButton';
 import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
@@ -318,6 +319,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 </main>
             </div>
 
+            <VoiceFloatingButton />
             <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
