@@ -6,7 +6,17 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 export default function UserProfileSettingsV2() {
-    const { user, plano, updateUserName } = useAuth();
+    const { 
+        user, 
+        plano, 
+        updateUserName,
+        themePreference,
+        setThemePreference,
+        rowDensity,
+        setRowDensity,
+        removeBoldList,
+        setRemoveBoldList
+    } = useAuth();
 
     const [currentName, setCurrentName] = useState('');
 
@@ -38,6 +48,38 @@ export default function UserProfileSettingsV2() {
         return result;
     };
 
+    // Classes computadas dinamicamente para os mockups de preview em tempo real
+    const previewBgClass = 
+        themePreference === 'light' 
+            ? 'bg-white border-slate-300' 
+            : themePreference === 'dark' 
+                ? 'bg-[#111827] border-[#1f2937]' 
+                : 'bg-slate-100 border-slate-300';
+
+    const previewInnerBgClass = 
+        themePreference === 'light'
+            ? 'bg-[#f8fafc]'
+            : themePreference === 'dark'
+                ? 'bg-[#0f172a]'
+                : 'bg-slate-100';
+
+    const previewRowClass = 
+        `flex items-center justify-between px-2 rounded-lg border shadow-sm gap-2 transition-all ` +
+        (rowDensity === 'compact' ? 'py-0.5 ' : rowDensity === 'expanded' ? 'py-3.5 ' : 'py-1.5 ') +
+        (themePreference === 'light' ? 'bg-[#f8fafc] border-slate-200 text-[#0f172a] ' : themePreference === 'dark' ? 'bg-[#1f2937] border-[#374151] text-[#f9fafb] ' : 'bg-white border-slate-200 text-slate-700 ');
+
+    const previewLabelClass = 
+        `truncate text-[10px] ` +
+        (removeBoldList ? 'font-medium ' : 'font-extrabold ') +
+        (themePreference === 'light' ? 'text-[#1e293b]' : themePreference === 'dark' ? 'text-[#e5e7eb]' : 'text-slate-700');
+
+    const previewValueClass = (isExpense: boolean) => 
+        `shrink-0 w-[80px] text-[10px] ` +
+        (removeBoldList ? 'font-medium ' : 'font-extrabold ') +
+        (valueAlignment === 'left' ? 'text-left' : 'text-right') + ' ' +
+        (isExpense ? 'text-rose-600' : 'text-emerald-600');
+
+
     // Loading status form
     const [saving, setSaving] = useState(false);
     const navigate = useNavigate();
@@ -59,13 +101,13 @@ export default function UserProfileSettingsV2() {
             // Tentativa de buscar o perfil completo
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, sidebar_desktop_collapsed, plano')
+                .select('due_email_notify_enabled, due_email_notify_day_of_week, card_invoice_email_notify_enabled, sidebar_desktop_collapsed, plano, theme_preference, row_density, remove_bold_list')
                 .eq('id', user.id)
                 .single();
             
             if (profileError) {
-                console.warn('Erro ao buscar perfil com card_invoice_email_notify_enabled, tentando sem esta coluna...', profileError);
-                // Fallback para quando a coluna de notificação de fatura de cartão de crédito não existir na tabela profiles
+                console.warn('Erro ao buscar perfil com novas preferências, tentando fallback...', profileError);
+                // Fallback para quando as colunas novas ainda não estiverem no banco (antes da migração rodar)
                 const { data: fallbackProfile, error: fallbackError } = await supabase
                     .from('profiles')
                     .select('due_email_notify_enabled, due_email_notify_day_of_week, sidebar_desktop_collapsed, plano')
@@ -81,9 +123,18 @@ export default function UserProfileSettingsV2() {
             if (profileData) {
                 setDueEmailNotifyEnabled(profileData.due_email_notify_enabled !== false);
                 setDueEmailNotifyDayOfWeek(profileData.due_email_notify_day_of_week ?? 0);
-                // Define true se a coluna não vier ou vier true
                 setCardInvoiceEmailNotifyEnabled(profileData.card_invoice_email_notify_enabled !== false);
                 setSidebarDesktopCollapsed(profileData.sidebar_desktop_collapsed === true);
+                
+                if (profileData.theme_preference) {
+                    setThemePreference(profileData.theme_preference as any);
+                }
+                if (profileData.row_density) {
+                    setRowDensity(profileData.row_density as any);
+                }
+                if (profileData.remove_bold_list !== undefined && profileData.remove_bold_list !== null) {
+                    setRemoveBoldList(!!profileData.remove_bold_list);
+                }
 
                 const planSlug = profileData.plano?.toLowerCase() || 'free';
                 const { data: plan, error: planError } = await supabase
@@ -99,7 +150,6 @@ export default function UserProfileSettingsV2() {
                     isEnabled = plan.email_notification_enabled || false;
                     freq = (plan.email_notification_frequency || 'weekly') as 'daily' | 'weekly';
                 } else {
-                    // Fallback usando o plano do contexto do AuthContext
                     const currentPlanLower = plano?.toLowerCase() || planSlug;
                     if (['premium', 'pro', 'pró', 'basico', 'básico', 'trial'].includes(currentPlanLower)) {
                         isEnabled = true;
@@ -112,7 +162,6 @@ export default function UserProfileSettingsV2() {
             }
         } catch (error) {
             console.error('Erro ao buscar preferências de e-mail:', error);
-            // Último nível de fallback em caso de falha geral
             const currentPlanLower = plano?.toLowerCase() || 'free';
             if (['premium', 'pro', 'pró', 'basico', 'básico', 'trial'].includes(currentPlanLower)) {
                 setCanDueEmailNotify(true);
@@ -121,7 +170,7 @@ export default function UserProfileSettingsV2() {
         } finally {
             setLoadingPreferences(false);
         }
-    }, [user, plano]);
+    }, [user, plano, setThemePreference, setRowDensity, setRemoveBoldList]);
 
     useEffect(() => {
         if (user) {
@@ -143,12 +192,26 @@ export default function UserProfileSettingsV2() {
         setValueAlignment(savedValAlign || 'right');
         setSidebarDesktopCollapsed(savedSidebarCollapsed === 'true');
 
+        const savedTheme = localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark';
+        if (savedTheme) setThemePreference(savedTheme);
+        const savedDensity = localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded';
+        if (savedDensity) setRowDensity(savedDensity);
+        const savedRemoveBold = localStorage.getItem('remove_bold_list') === 'true';
+        setRemoveBoldList(savedRemoveBold);
+
         // Cleanup: Se sair da tela de configurações sem salvar, restaura o estado salvo no localStorage
         return () => {
             const savedSidebar = localStorage.getItem('sidebar_desktop_collapsed') === 'true';
             window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: savedSidebar }));
+            
+            const savedThemeOld = (localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark') || 'original';
+            const savedDensityOld = (localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded') || 'original';
+            const savedRemoveBoldOld = localStorage.getItem('remove_bold_list') === 'true';
+            setThemePreference(savedThemeOld);
+            setRowDensity(savedDensityOld);
+            setRemoveBoldList(savedRemoveBoldOld);
         };
-    }, [user, fetchProfilePreferences]);
+    }, [user, fetchProfilePreferences, setThemePreference, setRowDensity, setRemoveBoldList]);
 
 
 
@@ -179,6 +242,9 @@ export default function UserProfileSettingsV2() {
             localStorage.setItem('transaction_show_negative_sign', String(showNegativeSign));
             localStorage.setItem('transaction_value_alignment', valueAlignment);
             localStorage.setItem('sidebar_desktop_collapsed', String(sidebarDesktopCollapsed));
+            localStorage.setItem('theme_preference', themePreference);
+            localStorage.setItem('row_density', rowDensity);
+            localStorage.setItem('remove_bold_list', String(removeBoldList));
         }
 
         // Email Alert and Layout Preferences Update in Supabase
@@ -194,7 +260,10 @@ export default function UserProfileSettingsV2() {
                         show_currency_symbol: showCurrencySymbol,
                         show_negative_sign: showNegativeSign,
                         value_alignment: valueAlignment,
-                        sidebar_desktop_collapsed: sidebarDesktopCollapsed
+                        sidebar_desktop_collapsed: sidebarDesktopCollapsed,
+                        theme_preference: themePreference,
+                        row_density: rowDensity,
+                        remove_bold_list: removeBoldList
                     })
                     .eq('id', user.id);
 
@@ -616,7 +685,92 @@ export default function UserProfileSettingsV2() {
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
+                                <div className="border-t border-slate-100 pt-6">
+                                    <h3 className="font-extrabold text-sm text-slate-900 mb-4">Personalização Visual</h3>
+                                    <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-300 grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                        {/* Opção Tema */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Tema de Cores</label>
+                                            <div className="flex bg-slate-200 border border-slate-300/60 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setThemePreference('original')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${themePreference === 'original' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Original
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setThemePreference('light')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${themePreference === 'light' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Claro
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setThemePreference('dark')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${themePreference === 'dark' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Escuro
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Opção Espaçamento */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Espaçamento das Linhas</label>
+                                            <div className="flex bg-slate-200 border border-slate-300/60 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRowDensity('compact')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${rowDensity === 'compact' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Fino
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRowDensity('original')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${rowDensity === 'original' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Original
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRowDensity('expanded')}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${rowDensity === 'expanded' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Largo
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Opção Bold */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Textos em Negrito (Bold)</label>
+                                            <div className="flex bg-slate-200 border border-slate-300/60 p-1 rounded-xl gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRemoveBoldList(false)}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${!removeBoldList ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Sim (Padrão)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRemoveBoldList(true)}
+                                                    className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${removeBoldList ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                >
+                                                    Não
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-100 pt-6">
+                                    <h3 className="font-extrabold text-sm text-slate-900 mb-4">Disposição Visiva das Linhas</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         {/* CARD 1: Padrão */}
                                         <div 
@@ -638,26 +792,26 @@ export default function UserProfileSettingsV2() {
                                             </p>
                                             
                                             {/* Mockup visual premium */}
-                                            <div className="bg-slate-100 rounded-xl p-3 border border-slate-300 space-y-2 select-none pointer-events-none">
-                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm gap-2">
+                                            <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                                <div className={previewRowClass}>
                                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                        <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
+                                                        <span className={previewLabelClass}>Faxineira</span>
                                                         <div className="flex gap-0.5 shrink-0">
-                                                            <span className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-[8px]">🔄</span>
-                                                            <span className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center text-amber-600 font-bold text-[8px]">⚡</span>
+                                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold text-[8px] transition-all ${themePreference === 'dark' ? 'bg-[#1f2937] text-slate-300' : 'bg-slate-200 text-slate-700'}`}>🔄</span>
+                                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold text-[8px] transition-all ${themePreference === 'dark' ? 'bg-[#1f2937] text-slate-300' : 'bg-slate-200 text-slate-700'}`}>⚡</span>
                                                         </div>
                                                     </div>
-                                                    <span className={`font-extrabold text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    <span className={previewValueClass(false)}>
                                                         {formatMockValue(150, false)}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm gap-2">
+                                                <div className={previewRowClass}>
                                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                        <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
+                                                        <span className={previewLabelClass}>Supermercado</span>
                                                     </div>
-                                                    <span className={`font-extrabold text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    <span className={previewValueClass(true)}>
                                                         {formatMockValue(320.40, true)}
                                                     </span>
                                                 </div>
@@ -684,24 +838,24 @@ export default function UserProfileSettingsV2() {
                                             </p>
                                             
                                             {/* Mockup visual premium */}
-                                            <div className="bg-slate-100 rounded-xl p-3 border border-slate-300 space-y-2 select-none pointer-events-none">
-                                                <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                                            <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                                <div className={previewRowClass}>
                                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                    <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    <span className={previewValueClass(false)}>
                                                         {formatMockValue(150, false)}
                                                     </span>
-                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
+                                                    <span className={previewLabelClass}>Faxineira</span>
                                                     <div className="flex gap-0.5 shrink-0 ml-auto">
-                                                        <span className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-[8px]">🔄</span>
-                                                        <span className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center text-amber-600 font-bold text-[8px]">⚡</span>
+                                                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold text-[8px] transition-all ${themePreference === 'dark' ? 'bg-[#1f2937] text-slate-300' : 'bg-slate-200 text-slate-700'}`}>🔄</span>
+                                                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold text-[8px] transition-all ${themePreference === 'dark' ? 'bg-[#1f2937] text-slate-300' : 'bg-slate-200 text-slate-700'}`}>⚡</span>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center justify-start gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                                                <div className={previewRowClass}>
                                                     <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                    <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                    <span className={previewValueClass(true)}>
                                                         {formatMockValue(320.40, true)}
                                                     </span>
-                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate">Supermercado</span>
+                                                    <span className={previewLabelClass}>Supermercado</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -726,30 +880,30 @@ export default function UserProfileSettingsV2() {
                                             </p>
                                             
                                             {/* Mockup visual premium */}
-                                            <div className="bg-slate-100 rounded-xl p-3 border border-slate-300 space-y-2 select-none pointer-events-none">
-                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm gap-2">
+                                            <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                                <div className={previewRowClass}>
                                                     <div className="flex items-center gap-1.5 shrink-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                                        <span className={`font-black text-[10px] text-emerald-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        <span className={previewValueClass(false)}>
                                                             {formatMockValue(150, false)}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
                                                         <div className="flex gap-0.5 shrink-0">
-                                                            <span className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-[8px]">🔄</span>
-                                                            <span className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center text-amber-600 font-bold text-[8px]">⚡</span>
+                                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold text-[8px] transition-all ${themePreference === 'dark' ? 'bg-[#1f2937] text-slate-300' : 'bg-slate-200 text-slate-700'}`}>🔄</span>
+                                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold text-[8px] transition-all ${themePreference === 'dark' ? 'bg-[#1f2937] text-slate-300' : 'bg-slate-200 text-slate-700'}`}>⚡</span>
                                                         </div>
-                                                        <span className="font-extrabold text-[10px] text-slate-700 truncate">Faxineira</span>
+                                                        <span className={previewLabelClass}>Faxineira</span>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm gap-2">
+                                                <div className={previewRowClass}>
                                                     <div className="flex items-center gap-1.5 shrink-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                                        <span className={`font-black text-[10px] text-rose-600 shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'}`}>
+                                                        <span className={previewValueClass(true)}>
                                                             {formatMockValue(320.40, true)}
                                                         </span>
                                                     </div>
-                                                    <span className="font-extrabold text-[10px] text-slate-700 truncate text-right flex-1 min-w-0">Supermercado</span>
+                                                    <span className={`${previewLabelClass} text-right flex-1 min-w-0`}>Supermercado</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -779,6 +933,13 @@ export default function UserProfileSettingsV2() {
                                         setValueAlignment(savedValAlign || 'right');
                                         setSidebarDesktopCollapsed(collapsed);
                                         window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: collapsed }));
+                                        
+                                        const savedTheme = localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark';
+                                        setThemePreference(savedTheme || 'original');
+                                        const savedDensity = localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded';
+                                        setRowDensity(savedDensity || 'original');
+                                        const savedRemoveBold = localStorage.getItem('remove_bold_list') === 'true';
+                                        setRemoveBoldList(savedRemoveBold);
                                     }
                                 }}
                                 disabled={saving}
