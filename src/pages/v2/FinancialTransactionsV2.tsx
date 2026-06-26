@@ -79,6 +79,7 @@ interface TransactionInstance extends FinancialTransaction {
     invoicePaymentAccountId: string | null;
     total: number;
   };
+  runningBalance?: number;
 }
 
 const FinancialTransactionsV2 = () => {
@@ -1545,9 +1546,9 @@ const FinancialTransactionsV2 = () => {
                         <p className="font-extrabold text-xs text-amber-700">
                           {formatTransactionAmount(t.amount, 'expense')}
                         </p>
-                        {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                          <p className="text-[8px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                        {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                          <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                           </p>
                         )}
                       </div>
@@ -1577,9 +1578,9 @@ const FinancialTransactionsV2 = () => {
                         <p className="font-medium text-xs text-amber-700">
                           {formatTransactionAmount(t.amount, 'expense')}
                         </p>
-                        {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                          <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                        {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                          <p className="text-[9px] font-medium text-slate-400 mt-0.5">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                           </p>
                         )}
                       </div>
@@ -1655,9 +1656,9 @@ const FinancialTransactionsV2 = () => {
                       <p className={`font-extrabold text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                         {formatTransactionAmount(t.amount, t.type)}
                       </p>
-                      {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                        <p className="text-[8px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                      {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                        <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                         </p>
                       )}
                     </div>
@@ -1715,9 +1716,9 @@ const FinancialTransactionsV2 = () => {
                       <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                         {formatTransactionAmount(t.amount, t.type)}
                       </p>
-                      {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                        <p className="text-[9px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                      {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                        <p className="text-[9px] font-medium text-slate-400 mt-0.5">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                         </p>
                       )}
                     </div>
@@ -1917,9 +1918,9 @@ const FinancialTransactionsV2 = () => {
                             <p className="font-black text-sm text-amber-700">
                               {formatTransactionAmount(t.amount, 'expense')}
                             </p>
-                            {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                              <p className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                              <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                               </p>
                             )}
                           </div>
@@ -1954,9 +1955,9 @@ const FinancialTransactionsV2 = () => {
                             <p className="font-black text-sm text-amber-700">
                               {formatTransactionAmount(t.amount, 'expense')}
                             </p>
-                            {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                              <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                              <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                               </p>
                             )}
                           </div>
@@ -2036,9 +2037,9 @@ const FinancialTransactionsV2 = () => {
                           <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                             {formatTransactionAmount(t.amount, t.type)}
                           </p>
-                          {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                            <p className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 inline-block mt-0.5 leading-none">
-                              {formatRunningBalance((t as any).runningBalance)}
+                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                            <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                              {formatRunningBalance(t.runningBalance)}
                             </p>
                           )}
                         </div>
@@ -2130,9 +2131,9 @@ const FinancialTransactionsV2 = () => {
                           <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                             {formatTransactionAmount(t.amount, t.type)}
                           </p>
-                          {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                            <p className="text-[10px] font-medium text-slate-400 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 inline-block mt-0.5">
-                              {formatRunningBalance((t as any).runningBalance)}
+                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                            <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                              {formatRunningBalance(t.runningBalance)}
                             </p>
                           )}
                         </div>

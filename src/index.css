@@ -145,11 +145,24 @@
 .theme-dark .bg-slate-50 {
     background-color: #111827 !important;
 }
+.theme-dark .bg-slate-50\/95,
+.theme-dark .bg-slate-50\/90,
+.theme-dark .bg-slate-50\/80 {
+    background-color: #0b0f19 !important;
+}
 .theme-dark .bg-slate-50\/50,
 .theme-dark .bg-slate-100\/80 {
     background-color: #1f2937 !important;
 }
 .theme-dark .hover\:bg-slate-50:hover {
+    background-color: #1f2937 !important;
+}
+.theme-dark .bg-white\/95,
+.theme-dark .bg-white\/90,
+.theme-dark .bg-white\/80 {
+    background-color: #111827 !important;
+}
+.theme-dark .bg-slate-900 {
     background-color: #1f2937 !important;
 }
 
