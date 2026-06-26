@@ -216,18 +216,35 @@ export function VoiceFloatingButton() {
       const startDateStr = format(subDays(targetDate, 2), 'yyyy-MM-dd');
       const endDateStr = format(addDays(targetDate, 2), 'yyyy-MM-dd');
 
+      console.log(`[Art Debug] Buscando transações para exclusão:`);
+      console.log(`[Art Debug]   user_id: ${user.id}`);
+      console.log(`[Art Debug]   data alvo: ${data.data}, intervalo: ${startDateStr} a ${endDateStr}`);
+      console.log(`[Art Debug]   descricao IA: "${data.descricao}", valor IA: ${data.valor}`);
+
       const { data: txList, error } = await supabase
         .from('financial_transactions')
-        .select('id, description, amount, date, type, account_id, financial_accounts(name)')
+        .select('id, description, amount, date, type, account_id, financial_accounts!account_id(name)')
         .eq('user_id', user.id)
         .gte('date', startDateStr)
         .lte('date', endDateStr);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Art Debug] Erro na query:', error);
+        throw error;
+      }
+
+      console.log(`[Art Debug] Transações retornadas: ${(txList || []).length}`);
+      (txList || []).forEach((tx, i) => {
+        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descMatch = descClean.includes(searchClean) || searchClean.includes(descClean);
+        console.log(`[Art Debug]   [${i}] desc="${tx.description}" amount=${tx.amount} date=${tx.date} | valMatch=${valMatch} descMatch=${descMatch}`);
+      });
 
       // Fuzzy matching na lista
       const match = (txList || []).find(tx => {
-        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05; // Compara valores absolutos para tolerar sign
+        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = descClean.includes(searchClean) || searchClean.includes(descClean);
@@ -235,6 +252,7 @@ export function VoiceFloatingButton() {
       });
 
       if (match) {
+        console.log(`[Art Debug] Match encontrado! id=${match.id}`);
         setMatchedTransactionToDelete({
           id: match.id,
           description: match.description,
@@ -244,6 +262,7 @@ export function VoiceFloatingButton() {
           accountName: (match as any).financial_accounts?.name || 'Conta não especificada'
         });
       } else {
+        console.log('[Art Debug] Nenhum match encontrado.');
         setMatchedTransactionToDelete(null);
       }
 
