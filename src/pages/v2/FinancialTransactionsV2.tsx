@@ -1588,6 +1588,16 @@ const FinancialTransactionsV2 = () => {
                     {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                     {layoutPreference === 'default' && (
                       <>
+                        <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
+                          <p className="font-medium text-xs text-amber-700">
+                            {formatTransactionAmount(t.amount, 'expense')}
+                          </p>
+                          {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                            <p className="text-[9px] font-medium text-slate-400 mt-0.5">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                            </p>
+                          )}
+                        </div>
                         {rowDensity === 'compact' && (
                           <div className={`shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1`}>
                             {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
@@ -1599,16 +1609,6 @@ const FinancialTransactionsV2 = () => {
                             )}
                           </div>
                         )}
-                        <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
-                          <p className="font-medium text-xs text-amber-700">
-                            {formatTransactionAmount(t.amount, 'expense')}
-                          </p>
-                          {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                            <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                            </p>
-                          )}
-                        </div>
                       </>
                     )}
                     <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
@@ -1752,6 +1752,16 @@ const FinancialTransactionsV2 = () => {
                   {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                   {layoutPreference === 'default' && (
                     <>
+                      <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
+                        <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                          {formatTransactionAmount(t.amount, t.type)}
+                        </p>
+                        {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                          <p className="text-[9px] font-medium text-slate-400 mt-0.5">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                          </p>
+                        )}
+                      </div>
                       {rowDensity === 'compact' && (
                         <div className={`shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1`}>
                           {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
@@ -1763,16 +1773,6 @@ const FinancialTransactionsV2 = () => {
                           )}
                         </div>
                       )}
-                      <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
-                        <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                          {formatTransactionAmount(t.amount, t.type)}
-                        </p>
-                        {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                          <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                          </p>
-                        )}
-                      </div>
                     </>
                   )}
                   {/* Menu */}
@@ -2020,19 +2020,6 @@ const FinancialTransactionsV2 = () => {
                           )}
                         </div>
 
-                        {/* Coluna Separada do Valor Previsto (Sempre à direita se configurado ou compact) */}
-                        {(predictedLayout === 'column' || rowDensity === 'compact') && (
-                          <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
-                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                              <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-slate-400/50">-</span>
-                            )}
-                          </div>
-                        )}
-
                         {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                         {layoutPreference === 'default' && (
                           <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
@@ -2043,6 +2030,19 @@ const FinancialTransactionsV2 = () => {
                               <p className="text-[10px] font-medium text-slate-400 mt-0.5">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                               </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Coluna Separada do Valor Previsto (Sempre à direita se configurado ou compact) */}
+                        {(predictedLayout === 'column' || rowDensity === 'compact') && (
+                          <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
+                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
+                              <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-slate-400/50">-</span>
                             )}
                           </div>
                         )}
@@ -2255,19 +2255,6 @@ const FinancialTransactionsV2 = () => {
                         )}
                       </div>
 
-                      {/* Coluna Separada do Valor Previsto (Sempre à direita se configurado ou compact) */}
-                      {(predictedLayout === 'column' || rowDensity === 'compact') && (
-                        <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
-                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                            <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
-                              {formatRunningBalance(t.runningBalance)}
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-slate-400/50">-</span>
-                          )}
-                        </div>
-                      )}
-
                       {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                       {layoutPreference === 'default' && (
                         <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
@@ -2278,6 +2265,19 @@ const FinancialTransactionsV2 = () => {
                             <p className="text-[10px] font-medium text-slate-400 mt-0.5">
                               {formatRunningBalance(t.runningBalance)}
                             </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Coluna Separada do Valor Previsto (Sempre à direita se configurado ou compact) */}
+                      {(predictedLayout === 'column' || rowDensity === 'compact') && (
+                        <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
+                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
+                            <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                              {formatRunningBalance(t.runningBalance)}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400/50">-</span>
                           )}
                         </div>
                       )}
