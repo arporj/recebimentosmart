@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Save, User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout, Mail, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -19,6 +19,21 @@ export default function UserProfileSettingsV2() {
         predictedLayout,
         setPredictedLayout
     } = useAuth();
+
+    const lastSavedPrefs = useRef<{
+        themePreference?: string;
+        rowDensity?: string;
+        removeBoldList?: boolean;
+        localPredictedLayout?: string;
+        layoutPreference?: string;
+        showCurrencySymbol?: boolean;
+        showNegativeSign?: boolean;
+        valueAlignment?: string;
+        sidebarDesktopCollapsed?: boolean;
+        dueEmailNotifyEnabled?: boolean;
+        dueEmailNotifyDayOfWeek?: number;
+        cardInvoiceEmailNotifyEnabled?: boolean;
+    }>({});
 
     const [currentName, setCurrentName] = useState('');
 
@@ -82,8 +97,6 @@ export default function UserProfileSettingsV2() {
         (isExpense ? 'text-rose-600' : 'text-emerald-600');
 
 
-    // Loading status form
-    const [saving, setSaving] = useState(false);
     const navigate = useNavigate();
 
     // Password modal states
@@ -164,6 +177,27 @@ export default function UserProfileSettingsV2() {
 
                 setCanDueEmailNotify(isEnabled);
                 setPlanEmailFrequency(freq);
+
+                const savedPref = localStorage.getItem('transaction_layout_preference') as 'default' | 'value_first' | 'value_right_desc';
+                const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
+                const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
+                const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
+                const savedSidebarCollapsed = localStorage.getItem('sidebar_desktop_collapsed');
+
+                lastSavedPrefs.current = {
+                    themePreference: (profileData.theme_preference as any) || 'original',
+                    rowDensity: (profileData.row_density as any) || 'original',
+                    removeBoldList: !!profileData.remove_bold_list,
+                    localPredictedLayout: (profileData.predicted_layout as any) || 'below',
+                    layoutPreference: savedPref || 'default',
+                    showCurrencySymbol: savedShowCurrency !== 'false',
+                    showNegativeSign: savedShowNegative !== 'false',
+                    valueAlignment: savedValAlign || 'right',
+                    sidebarDesktopCollapsed: savedSidebarCollapsed === 'true',
+                    dueEmailNotifyEnabled: profileData.due_email_notify_enabled !== false,
+                    dueEmailNotifyDayOfWeek: profileData.due_email_notify_day_of_week ?? 0,
+                    cardInvoiceEmailNotifyEnabled: profileData.card_invoice_email_notify_enabled !== false,
+                };
             }
         } catch (error) {
             console.error('Erro ao buscar preferências de e-mail:', error);
@@ -206,62 +240,62 @@ export default function UserProfileSettingsV2() {
         const savedPredicted = localStorage.getItem('predicted_layout') as 'below' | 'column';
         if (savedPredicted) setLocalPredictedLayout(savedPredicted);
 
-        // Cleanup: Se sair da tela de configurações sem salvar, restaura o estado salvo no localStorage
+        // Cleanup: Se sair da tela de configurações, apenas sinaliza a preferência correta de sidebar
         return () => {
             const savedSidebar = localStorage.getItem('sidebar_desktop_collapsed') === 'true';
             window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: savedSidebar }));
-            
-            const savedThemeOld = (localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark') || 'original';
-            const savedDensityOld = (localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded') || 'original';
-            const savedRemoveBoldOld = localStorage.getItem('remove_bold_list') === 'true';
-            const savedPredictedOld = (localStorage.getItem('predicted_layout') as 'below' | 'column') || 'below';
-            setThemePreference(savedThemeOld);
-            setRowDensity(savedDensityOld);
-            setRemoveBoldList(savedRemoveBoldOld);
-            setPredictedLayout(savedPredictedOld);
         };
     }, [user, fetchProfilePreferences, setThemePreference, setRowDensity, setRemoveBoldList, setPredictedLayout]);
 
 
 
-    const handleSave = async () => {
-        setSaving(true);
-        let success = true;
+    useEffect(() => {
+        if (loadingPreferences || !user) return;
 
-        // Name Update
-        if (!currentName.trim()) {
-            toast.error('O nome não pode ficar em branco.');
-            success = false;
-        } else if (currentName.trim() !== user?.user_metadata?.name) {
+        const currentPrefs = {
+            themePreference,
+            rowDensity,
+            removeBoldList,
+            localPredictedLayout,
+            layoutPreference,
+            showCurrencySymbol,
+            showNegativeSign,
+            valueAlignment,
+            sidebarDesktopCollapsed,
+            dueEmailNotifyEnabled,
+            dueEmailNotifyDayOfWeek,
+            cardInvoiceEmailNotifyEnabled,
+        };
+
+        // Verifica se houve alguma alteração real em relação ao último estado salvo
+        const hasChanges = Object.keys(currentPrefs).some(key => {
+            const k = key as keyof typeof currentPrefs;
+            return currentPrefs[k] !== lastSavedPrefs.current[k];
+        });
+
+        if (!hasChanges) return;
+
+        // Atualiza a ref imediatamente para evitar disparos duplicados
+        lastSavedPrefs.current = currentPrefs;
+
+        // Salva no LocalStorage
+        localStorage.setItem('transaction_layout_preference', layoutPreference);
+        localStorage.setItem('transaction_show_currency_symbol', String(showCurrencySymbol));
+        localStorage.setItem('transaction_show_negative_sign', String(showNegativeSign));
+        localStorage.setItem('transaction_value_alignment', valueAlignment);
+        localStorage.setItem('sidebar_desktop_collapsed', String(sidebarDesktopCollapsed));
+        localStorage.setItem('theme_preference', themePreference);
+        localStorage.setItem('row_density', rowDensity);
+        localStorage.setItem('remove_bold_list', String(removeBoldList));
+        localStorage.setItem('predicted_layout', localPredictedLayout);
+        
+        // Sincroniza estados globais
+        setPredictedLayout(localPredictedLayout);
+
+        // Dispara o salvamento no Supabase
+        const autoSave = async () => {
             try {
-                await updateUserName(currentName.trim());
-            } catch (error) {
-                console.error('Erro ao atualizar o nome:', error);
-                success = false;
-                toast.error('Erro ao atualizar o nome.');
-            }
-        }
-
-
-
-        // Layout Preference and Custom Options
-        if (success) {
-            localStorage.setItem('transaction_layout_preference', layoutPreference);
-            localStorage.setItem('transaction_show_currency_symbol', String(showCurrencySymbol));
-            localStorage.setItem('transaction_show_negative_sign', String(showNegativeSign));
-            localStorage.setItem('transaction_value_alignment', valueAlignment);
-            localStorage.setItem('sidebar_desktop_collapsed', String(sidebarDesktopCollapsed));
-            localStorage.setItem('theme_preference', themePreference);
-            localStorage.setItem('row_density', rowDensity);
-            localStorage.setItem('remove_bold_list', String(removeBoldList));
-            localStorage.setItem('predicted_layout', localPredictedLayout);
-            setPredictedLayout(localPredictedLayout);
-        }
-
-        // Email Alert and Layout Preferences Update in Supabase
-        if (success && user) {
-            try {
-                const { error: profileUpdateError } = await supabase
+                const { error } = await supabase
                     .from('profiles')
                     .update({
                         due_email_notify_enabled: dueEmailNotifyEnabled,
@@ -279,19 +313,32 @@ export default function UserProfileSettingsV2() {
                     })
                     .eq('id', user.id);
 
-                if (profileUpdateError) throw profileUpdateError;
+                if (error) throw error;
+                toast.success('Preferências atualizadas!');
             } catch (error) {
-                success = false;
-                console.error('Erro ao salvar preferências de e-mail e layout:', error);
-                toast.error('Erro ao salvar preferências de e-mail e layout no servidor.');
+                console.error('Erro ao salvar preferências automaticamente:', error);
+                toast.error('Erro ao salvar preferências automaticamente no servidor.');
             }
-        }
+        };
 
-        if (success) {
-            toast.success('Informações salvas com sucesso!');
-        }
-        setSaving(false);
-    };
+        autoSave();
+    }, [
+        user,
+        loadingPreferences,
+        themePreference,
+        rowDensity,
+        removeBoldList,
+        localPredictedLayout,
+        layoutPreference,
+        showCurrencySymbol,
+        showNegativeSign,
+        valueAlignment,
+        sidebarDesktopCollapsed,
+        dueEmailNotifyEnabled,
+        dueEmailNotifyDayOfWeek,
+        cardInvoiceEmailNotifyEnabled,
+        setPredictedLayout
+    ]);
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -429,6 +476,17 @@ export default function UserProfileSettingsV2() {
                                             type="text"
                                             value={currentName}
                                             onChange={(e) => setCurrentName(e.target.value)}
+                                            onBlur={async () => {
+                                                if (currentName.trim() && currentName.trim() !== user?.user_metadata?.name) {
+                                                    try {
+                                                        await updateUserName(currentName.trim());
+                                                        toast.success('Nome atualizado com sucesso!');
+                                                    } catch (error) {
+                                                        console.error('Erro ao atualizar o nome:', error);
+                                                        toast.error('Erro ao atualizar o nome.');
+                                                    }
+                                                }
+                                            }}
                                         />
                                     </div>
                                     <div>
@@ -1209,50 +1267,7 @@ export default function UserProfileSettingsV2() {
                         </section>
                     )}
 
-                    {/* Action Bar */}
-                    {(activeTab === 'profile' || activeTab === 'preferences') && (
-                        <div className="flex items-center justify-end gap-4 pt-4 border-t border-slate-200 pb-10">
-                            <button
-                                onClick={() => {
-                                    if (activeTab === 'profile') {
-                                        setCurrentName(user?.user_metadata?.name || '');
-                                    } else {
-                                        const savedPref = localStorage.getItem('transaction_layout_preference') as 'default' | 'value_first' | 'value_right_desc';
-                                        setLayoutPreference(savedPref || 'default');
-                                        const savedShowCurrency = localStorage.getItem('transaction_show_currency_symbol');
-                                        const savedShowNegative = localStorage.getItem('transaction_show_negative_sign');
-                                        const savedValAlign = localStorage.getItem('transaction_value_alignment') as 'left' | 'right';
-                                        const savedSidebarCollapsed = localStorage.getItem('sidebar_desktop_collapsed');
-                                        const collapsed = savedSidebarCollapsed === 'true';
-                                        setShowCurrencySymbol(savedShowCurrency !== 'false');
-                                        setShowNegativeSign(savedShowNegative !== 'false');
-                                        setValueAlignment(savedValAlign || 'right');
-                                        setSidebarDesktopCollapsed(collapsed);
-                                        window.dispatchEvent(new CustomEvent('temp_sidebar_preference', { detail: collapsed }));
-                                        
-                                        const savedTheme = localStorage.getItem('theme_preference') as 'original' | 'light' | 'dark';
-                                        setThemePreference(savedTheme || 'original');
-                                        const savedDensity = localStorage.getItem('row_density') as 'original' | 'compact' | 'expanded';
-                                        setRowDensity(savedDensity || 'original');
-                                        const savedRemoveBold = localStorage.getItem('remove_bold_list') === 'true';
-                                        setRemoveBoldList(savedRemoveBold);
-                                    }
-                                }}
-                                disabled={saving}
-                                className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors disabled:opacity-50"
-                            >
-                                Descartar
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="px-8 py-3 bg-custom text-white rounded-xl text-sm font-bold shadow-lg shadow-custom/20 hover:brightness-105 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <Save className="w-5 h-5" />
-                                {saving ? 'Registrando...' : 'Salvar Alterações'}
-                            </button>
-                        </div>
-                    )}
+
 
                 </div>
             </div>
