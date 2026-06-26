@@ -84,7 +84,7 @@ interface TransactionData {
   card_holder_name?: string | null;
 }
 
-"interface FinancialTransactionModalProps {
+interface FinancialTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -118,7 +118,7 @@ const FinancialTransactionModalV2 = ({
   initialRecurrenceInterval = '1',
   transaction = null,
   isConfirming = false
-}: FinancialTransactionModalProps) => {"
+}: FinancialTransactionModalProps) => {
   const { user } = useAuth();
   const { checkLimit } = usePlanLimits();
   const isEditing = !!transaction;
