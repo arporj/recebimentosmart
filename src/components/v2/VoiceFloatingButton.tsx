@@ -216,11 +216,6 @@ export function VoiceFloatingButton() {
       const startDateStr = format(subDays(targetDate, 2), 'yyyy-MM-dd');
       const endDateStr = format(addDays(targetDate, 2), 'yyyy-MM-dd');
 
-      console.log(`[Art Debug] Buscando transações para exclusão:`);
-      console.log(`[Art Debug]   user_id: ${user.id}`);
-      console.log(`[Art Debug]   data alvo: ${data.data}, intervalo: ${startDateStr} a ${endDateStr}`);
-      console.log(`[Art Debug]   descricao IA: "${data.descricao}", valor IA: ${data.valor}`);
-
       const { data: txList, error } = await supabase
         .from('financial_transactions')
         .select('id, description, amount, date, type, account_id, financial_accounts!account_id(name)')
@@ -228,19 +223,7 @@ export function VoiceFloatingButton() {
         .gte('date', startDateStr)
         .lte('date', endDateStr);
 
-      if (error) {
-        console.error('[Art Debug] Erro na query:', error);
-        throw error;
-      }
-
-      console.log(`[Art Debug] Transações retornadas: ${(txList || []).length}`);
-      (txList || []).forEach((tx, i) => {
-        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
-        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const descMatch = descClean.includes(searchClean) || searchClean.includes(descClean);
-        console.log(`[Art Debug]   [${i}] desc="${tx.description}" amount=${tx.amount} date=${tx.date} | valMatch=${valMatch} descMatch=${descMatch}`);
-      });
+      if (error) throw error;
 
       // Fuzzy matching na lista
       const match = (txList || []).find(tx => {
@@ -252,7 +235,6 @@ export function VoiceFloatingButton() {
       });
 
       if (match) {
-        console.log(`[Art Debug] Match encontrado! id=${match.id}`);
         setMatchedTransactionToDelete({
           id: match.id,
           description: match.description,
@@ -262,7 +244,6 @@ export function VoiceFloatingButton() {
           accountName: (match as any).financial_accounts?.name || 'Conta não especificada'
         });
       } else {
-        console.log('[Art Debug] Nenhum match encontrado.');
         setMatchedTransactionToDelete(null);
       }
 
@@ -406,6 +387,7 @@ export function VoiceFloatingButton() {
   };
 
   const handleAdjust = () => {
+    setRecordingState('idle');
     setIsModalOpen(true);
   };
 
@@ -688,7 +670,11 @@ export function VoiceFloatingButton() {
       {isModalOpen && extractedData && (
         <FinancialTransactionModalV2
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setExtractedData(null);
+            setMatchedTransactionToDelete(null);
+          }}
           onSuccess={handleModalSuccess}
           initialType={extractedData.tipo}
           initialDescription={localDescription}
