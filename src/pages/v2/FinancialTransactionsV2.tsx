@@ -83,7 +83,7 @@ interface TransactionInstance extends FinancialTransaction {
 }
 
 const FinancialTransactionsV2 = () => {
-  const { user, rowDensity } = useAuth();
+  const { user, rowDensity, predictedLayout } = useAuth();
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -1966,79 +1966,85 @@ const FinancialTransactionsV2 = () => {
 
                         {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                         {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
-                          <>
-                            <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
-                              <p className="font-black text-sm text-amber-700">
-                                {formatTransactionAmount(t.amount, 'expense')}
+                          <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
+                            <p className="font-black text-sm text-amber-700">
+                              {formatTransactionAmount(t.amount, 'expense')}
+                            </p>
+                            {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                              <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                               </p>
-                              {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                                <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
-                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                                </p>
-                              )}
-                            </div>
-                            {rowDensity === 'compact' && (
-                              <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2`}>
-                                {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                                  <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] text-slate-400/50">-</span>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
-                          <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                            {layoutPreference === 'value_right_desc' && t.auto_confirm && (
-                              <div className="flex items-center gap-1.5 px-1 shrink-0 mr-1.5">
-                                <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
-                              </div>
-                            )}
-                            <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
-                            {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
-                              <div className="flex items-center gap-1.5 px-2 shrink-0">
-                                <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
-                              </div>
                             )}
                           </div>
-                          {t.invoiceData?.linkedAccountName && (
-                            <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
-                                <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
-                              </div>
+                        )}
+
+                        <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right' : ''}`}>
+                          {rowDensity === 'compact' ? (
+                            <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 ${layoutPreference === 'value_right_desc' ? 'justify-end' : 'justify-start'}`}>
+                              {layoutPreference === 'value_right_desc' && t.auto_confirm && (
+                                <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
+                              )}
+                              <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
+                              {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
+                                <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
+                              )}
+                              {t.invoiceData?.linkedAccountName && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md shrink-0">
+                                  <span className="text-[8px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
+                                </div>
+                              )}
                             </div>
+                          ) : (
+                            <>
+                              <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                                {layoutPreference === 'value_right_desc' && t.auto_confirm && (
+                                  <div className="flex items-center gap-1.5 px-1 shrink-0 mr-1.5">
+                                    <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
+                                  </div>
+                                )}
+                                <h4 className="font-black text-slate-800 text-sm">{t.description}</h4>
+                                {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
+                                  <div className="flex items-center gap-1.5 px-2 shrink-0">
+                                    <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
+                                  </div>
+                                )}
+                              </div>
+                              {t.invoiceData?.linkedAccountName && (
+                                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                    <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 
+                        {/* Coluna Separada do Valor Previsto (Sempre à direita se configurado ou compact) */}
+                        {(predictedLayout === 'column' || rowDensity === 'compact') && (
+                          <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
+                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
+                              <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-slate-400/50">-</span>
+                            )}
+                          </div>
+                        )}
+
                         {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                         {layoutPreference === 'default' && (
-                          <>
-                            {rowDensity === 'compact' && (
-                              <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
-                                {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                                  <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] text-slate-400/50">-</span>
-                                )}
-                              </div>
-                            )}
-                            <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
-                              <p className="font-black text-sm text-amber-700">
-                                {formatTransactionAmount(t.amount, 'expense')}
+                          <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
+                            <p className="font-black text-sm text-amber-700">
+                              {formatTransactionAmount(t.amount, 'expense')}
+                            </p>
+                            {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                              <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                               </p>
-                              {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                                <p className="text-[10px] font-medium text-slate-400 mt-0.5">
-                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                                </p>
-                              )}
-                            </div>
-                          </>
+                            )}
+                          </div>
                         )}
                         <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                           <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
@@ -2111,136 +2117,169 @@ const FinancialTransactionsV2 = () => {
 
                       {/* CASO: layoutPreference !== 'default' -> VALOR VEM PRIMEIRO (ESQUERDA) */}
                       {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
-                        <>
-                          <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
-                            <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                              {formatTransactionAmount(t.amount, t.type)}
+                        <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2.5`}>
+                          <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {formatTransactionAmount(t.amount, t.type)}
+                          </p>
+                          {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                            <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                              {formatRunningBalance(t.runningBalance)}
                             </p>
-                            {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                              <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
-                                {formatRunningBalance(t.runningBalance)}
-                              </p>
-                            )}
-                          </div>
-                          {rowDensity === 'compact' && (
-                            <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-2`}>
-                              {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                                <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                  {formatRunningBalance(t.runningBalance)}
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-slate-400/50">-</span>
-                              )}
-                            </div>
                           )}
-                        </>
+                        </div>
                       )}
 
                        {/* Descrição e Metadados (Flex-1) */}
-                      <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
-                        <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                          
-                          {/* Emblemas ANTES do nome no layout 3 */}
-                          {layoutPreference === 'value_right_desc' && (
-                            <div className="flex items-center gap-1.5 px-1 shrink-0 mr-1.5">
-                              {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
-                              {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
-                              {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
+                      <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right' : ''}`}>
+                        {rowDensity === 'compact' ? (
+                          <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : 'justify-start'}`}>
+                            {layoutPreference === 'value_right_desc' && (
+                              <div className="flex items-center gap-1 px-1 shrink-0">
+                                {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
+                                {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-600 stroke-[2]" />}
+                                {t.auto_confirm && <Zap size={10} className="text-amber-500 fill-amber-500" />}
+                              </div>
+                            )}
+                            <h4 className="font-extrabold text-slate-800 text-xs truncate max-w-[150px] sm:max-w-none">{t.description || 'S/ Descrição'}</h4>
+                            {layoutPreference !== 'value_right_desc' && (
+                              <div className="flex items-center gap-1 px-1 shrink-0">
+                                {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
+                                {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={10} className="text-slate-600 stroke-[2]" />}
+                                {t.auto_confirm && <Zap size={10} className="text-amber-500 fill-amber-500" />}
+                              </div>
+                            )}
+                            
+                            {/* Metadados inline compactos */}
+                            {t.account && (
+                              <div className="flex items-center gap-1 px-1 py-0.2 bg-slate-100 rounded shrink-0">
+                                <span className="text-[8px] font-black text-slate-500 uppercase">{t.account.name}</span>
+                              </div>
+                            )}
+                            {t.type === 'transfer' && (
+                              <>
+                                {t.destination_account && (
+                                  <>
+                                    <ArrowRight size={8} className="text-slate-300 shrink-0" />
+                                    <div className="flex items-center gap-1 px-1 py-0.2 bg-indigo-50 rounded shrink-0">
+                                      <span className="text-[8px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            )}
+                            {t.category && (
+                              <span className="text-[8px] font-bold text-slate-400 shrink-0 bg-slate-50 border border-slate-200/50 px-1 py-0.2 rounded">
+                                {t.category.name}
+                              </span>
+                            )}
+                            {t.client && (
+                              <div className="flex items-center gap-0.5 px-1 py-0.2 bg-sky-50/50 text-sky-600 border border-sky-100/50 rounded shrink-0">
+                                <User size={8} />
+                                <span className="text-[8px] font-bold uppercase">{t.client.name}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className={layoutPreference === 'value_right_desc' ? 'flex flex-col items-end' : ''}>
+                            <div className={`flex items-center gap-3 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                              {layoutPreference === 'value_right_desc' && (
+                                <div className="flex items-center gap-1.5 px-1 shrink-0 mr-1.5">
+                                  {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                                  {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
+                                  {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
+                                </div>
+                              )}
+
+                              <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
+
+                              {layoutPreference !== 'value_right_desc' && (
+                                <div className="flex items-center gap-1.5 px-2 shrink-0">
+                                  {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                                  {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
+                                  {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
+                                </div>
+                              )}
                             </div>
-                          )}
 
-                          <h4 className="font-extrabold text-slate-800 truncate text-sm">{t.description || 'S/ Descrição'}</h4>
+                            <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                              {t.account && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                  <span className="text-[9px] font-black text-slate-500 uppercase">{t.account.name}</span>
+                                </div>
+                              )}
 
-                          {/* Emblemas DEPOIS do nome nos layouts 1 e 2 */}
-                          {layoutPreference !== 'value_right_desc' && (
-                            <div className="flex items-center gap-1.5 px-2 shrink-0">
-                              {t.status === 'paid' && <CheckCircle2 size={12} className="text-emerald-500" />}
-                              {(t.recurrence_enabled || !!t.parent_id) && t.modalidade !== 'parcelada' && <Repeat size={12} className="text-slate-600 stroke-[2.5]" />}
-                              {t.auto_confirm && <Zap size={12} className="text-amber-500 fill-amber-500" />}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Metadados adicionais */}
-                        <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-
-                          {t.account && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
-                              <span className="text-[9px] font-black text-slate-500 uppercase">{t.account.name}</span>
-                            </div>
-                          )}
-
-                          {t.type === 'transfer' && (
-                            <>
-                              {t.destination_account && (
+                              {t.type === 'transfer' && (
                                 <>
-                                  <ArrowRight size={10} className="text-slate-300" />
-                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
-                                    <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                                  {t.destination_account && (
+                                    <>
+                                      <ArrowRight size={10} className="text-slate-300" />
+                                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 rounded-md">
+                                        <span className="text-[9px] font-black text-indigo-500 uppercase">{t.destination_account.name}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-100/50 text-blue-600 rounded-md">
+                                    <ArrowRightLeft size={10} />
+                                    <span className="text-[9px] font-black uppercase">Transferência</span>
                                   </div>
                                 </>
                               )}
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-100/50 text-blue-600 rounded-md">
-                                <ArrowRightLeft size={10} />
-                                <span className="text-[9px] font-black uppercase">Transferência</span>
-                              </div>
-                            </>
-                          )}
 
-                          {t.category && <span className="text-[10px] font-bold text-slate-300">· {t.category.name}</span>}
-                          {t.client && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 text-sky-600 border border-sky-100 rounded-md">
-                              <User size={10} />
-                              <span className="text-[9px] font-bold uppercase">{t.client.name}</span>
-                            </div>
-                          )}
+                              {t.category && <span className="text-[10px] font-bold text-slate-300">· {t.category.name}</span>}
+                              {t.client && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 text-sky-600 border border-sky-100 rounded-md">
+                                  <User size={10} />
+                                  <span className="text-[9px] font-bold uppercase">{t.client.name}</span>
+                                </div>
+                              )}
 
-                          {/* Metadados adicionais específicos para o modo expandido */}
-                          {rowDensity === 'expanded' && t.installment_total && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-md text-[9px] font-black uppercase">
-                              Parcela {t.installment_current} de {t.installment_total}
-                            </div>
-                          )}
+                              {rowDensity === 'expanded' && t.installment_total && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-md text-[9px] font-black uppercase">
+                                  Parcela {t.installment_current} de {t.installment_total}
+                                </div>
+                              )}
 
-                          {rowDensity === 'expanded' && t.recurrence_enabled && t.recurrence_period && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[9px] font-black uppercase">
-                              Recorrência: {t.recurrence_period === 'monthly' ? 'Mensal' : t.recurrence_period === 'weekly' ? 'Semanal' : t.recurrence_period}
-                            </div>
-                          )}
+                              {rowDensity === 'expanded' && t.recurrence_enabled && t.recurrence_period && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[9px] font-black uppercase">
+                                  Recorrência: {t.recurrence_period === 'monthly' ? 'Mensal' : t.recurrence_period === 'weekly' ? 'Semanal' : t.recurrence_period}
+                                </div>
+                              )}
 
-                          {rowDensity === 'expanded' && t.status === 'paid' && t.paid_date && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase font-mono">
-                              Pago em: {format(parseISO(t.paid_date), 'dd/MM/yyyy')}
+                              {rowDensity === 'expanded' && t.status === 'paid' && t.paid_date && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase font-mono">
+                                  Pago em: {format(parseISO(t.paid_date), 'dd/MM/yyyy')}
+                                </div>
+                              )}
                             </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Coluna Separada do Valor Previsto (Sempre à direita se configurado ou compact) */}
+                      {(predictedLayout === 'column' || rowDensity === 'compact') && (
+                        <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
+                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
+                            <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                              {formatRunningBalance(t.runningBalance)}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400/50">-</span>
                           )}
                         </div>
-                      </div>
+                      )}
 
                       {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                       {layoutPreference === 'default' && (
-                        <>
-                          {rowDensity === 'compact' && (
-                            <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
-                              {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                                <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                  {formatRunningBalance(t.runningBalance)}
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-slate-400/50">-</span>
-                              )}
-                            </div>
-                          )}
-                          <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
-                            <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                              {formatTransactionAmount(t.amount, t.type)}
+                        <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[110px]' : 'w-[130px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2.5`}>
+                          <p className={`font-black text-sm ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {formatTransactionAmount(t.amount, t.type)}
+                          </p>
+                          {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                            <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                              {formatRunningBalance(t.runningBalance)}
                             </p>
-                            {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                              <p className="text-[10px] font-medium text-slate-400 mt-0.5">
-                                {formatRunningBalance(t.runningBalance)}
-                              </p>
-                            )}
-                          </div>
-                        </>
+                          )}
+                        </div>
                       )}
 
 
