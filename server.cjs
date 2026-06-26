@@ -27,7 +27,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // --- Middlewares ---
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // --- Setup do Handshake mTLS com Banco Inter ---
 const interEnv = process.env.INTER_ENV || 'sandbox';
@@ -289,6 +290,128 @@ app.post('/api/pix/simulate-webhook', async (req, res) => {
   } catch (error) {
     console.error('[Simulação] Erro ao disparar o webhook de simulação:', error.message);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// --- Rota de Processamento de Lançamento por Voz com Gemini 3.5 Flash ---
+app.post('/api/lancamento-voz', async (req, res) => {
+  const { audioBase64, mimeType } = req.body;
+
+  if (!audioBase64) {
+    return res.status(400).json({ success: false, message: 'Dados de áudio ausentes (audioBase64).' });
+  }
+
+  const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    console.error('[IA] Chave VITE_GEMINI_API_KEY não configurada no arquivo .env');
+    return res.status(500).json({ success: false, message: 'Serviço de IA temporariamente indisponível (configuração ausente).' });
+  }
+
+  // Obter data de hoje no fuso horário do Brasil para passar ao Gemini (ex: "2026-06-26")
+  const dateToday = new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).split('/').reverse().join('-');
+
+  console.log(`[IA] Processando áudio recebido. Data de referência de hoje: ${dateToday}`);
+
+  try {
+    const payload = {
+      contents: [
+        {
+          parts: [
+            {
+              inlineData: {
+                mimeType: mimeType || 'audio/webm',
+                data: audioBase64
+              }
+            },
+            {
+              text: `Analise o áudio e extraia os dados do lançamento financeiro mencionado.
+A data de referência de hoje do servidor é: ${dateToday} (utilize esta data para resolver termos relativos como 'ontem', 'anteontem', 'terça passada', 'amanhã', etc.).
+Se nenhuma data for mencionada de forma alguma no áudio, assuma que a data do lançamento é hoje: ${dateToday}.
+
+Extraia a descrição (item, serviço ou pessoa paga/recebida), o valor monetário exato e o tipo da transação ('income' para receitas, 'expense' para despesas/pagamentos/compras, 'transfer' para transferências entre contas).
+Extraia também o banco, carteira ou meio de pagamento citado (como 'Inter', 'Nubank', 'Itaú', 'Dinheiro', 'Pix') e a categoria aproximada (como 'Alimentação', 'Lazer', 'Transporte', 'Moradia').`
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            descricao: {
+              type: 'STRING',
+              description: 'O que foi comprado, pago, ou recebido (ex: Cerveja, Aluguel, Supermercado, Pizza, Salário, Cliente Fulano)'
+            },
+            valor: {
+              type: 'NUMBER',
+              description: 'O valor numérico decimal do lançamento'
+            },
+            tipo: {
+              type: 'STRING',
+              enum: ['income', 'expense', 'transfer'],
+              description: "Tipo de movimentação: 'income' para receitas/entradas, 'expense' para despesas/saídas, 'transfer' para transferências"
+            },
+            data: {
+              type: 'STRING',
+              description: 'Data do lançamento em formato AAAA-MM-DD'
+            },
+            banco_carteira: {
+              type: 'STRING',
+              description: 'Nome do banco, carteira ou meio de pagamento (ex: Inter, Nubank, Itaú, Dinheiro, Carteira, Caixa)'
+            },
+            categoria: {
+              type: 'STRING',
+              description: 'Categoria sugerida (ex: Alimentação, Lazer, Moradia, Transporte, Saúde, Educação, Receitas)'
+            }
+          },
+          required: ['descricao', 'valor', 'tipo', 'data']
+        }
+      }
+    };
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`;
+
+    console.log(`[IA] Enviando requisição para o Gemini 3.5 Flash...`);
+    const response = await axios.post(geminiUrl, payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (
+      !response.data ||
+      !response.data.candidates ||
+      response.data.candidates.length === 0 ||
+      !response.data.candidates[0].content ||
+      !response.data.candidates[0].content.parts ||
+      response.data.candidates[0].content.parts.length === 0
+    ) {
+      throw new Error('Retorno inválido ou vazio da API do Gemini.');
+    }
+
+    const responseText = response.data.candidates[0].content.parts[0].text;
+    console.log(`[IA] Resposta do Gemini recebida com sucesso:`, responseText);
+
+    const parsedData = JSON.parse(responseText);
+
+    res.json({
+      success: true,
+      data: parsedData
+    });
+
+  } catch (error) {
+    console.error('[IA] Erro ao processar lançamento com IA:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno ao processar o áudio com Inteligência Artificial.',
+      details: error.response?.data || error.message
+    });
   }
 });
 
