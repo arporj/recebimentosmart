@@ -11,3 +11,189 @@
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);
     }
 }
+
+/* ==========================================================================
+   PERSONALIZAÇÃO VISUAL E LAYOUTS ADICIONAIS (MODO CLARO, DARK E DENSIDADES)
+   ========================================================================== */
+
+/* ─── 1. MODO MAIS CLARO (THEME LIGHT) ─── */
+.theme-light {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+.theme-light body,
+.theme-light #root,
+.theme-light .bg-slate-50,
+.theme-light .bg-slate-100/60,
+.theme-light .bg-slate-100 {
+    background-color: #ffffff !important;
+}
+
+/* Sidebar clara no modo light */
+.theme-light aside.bg-\[\#0f172a\] {
+    background-color: #f8fafc !important;
+    border-right: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .text-white {
+    color: #0f172a !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .text-slate-300 {
+    color: #1e293b !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .text-slate-400 {
+    color: #475569 !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .hover\:bg-slate-800:hover {
+    background-color: #e2e8f0 !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .hover\:text-white:hover {
+    color: #0f172a !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .bg-slate-800\/50 {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+.theme-light aside.bg-\[\#0f172a\] .border-slate-800 {
+    border-color: #cbd5e1 !important;
+}
+
+/* Sobrescreve fundos escuros/pretos para claro com bordas */
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-800 {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+.theme-light .bg-slate-900 .text-white,
+.theme-light .bg-slate-800 .text-white,
+.theme-light .bg-slate-900 .text-slate-200,
+.theme-light .bg-slate-800 .text-slate-200 {
+    color: #0f172a !important;
+}
+
+/* Modais, cards e tabelas no Modo Claro */
+.theme-light .bg-white {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+.theme-light .border-slate-200,
+.theme-light .border-slate-100 {
+    border-color: #cbd5e1 !important;
+}
+.theme-light .bg-slate-50\/50,
+.theme-light .bg-slate-100\/80 {
+    background-color: #f8fafc !important;
+}
+
+/* ─── 2. MODO ESCURO (THEME DARK) ─── */
+.theme-dark {
+    background-color: #0b0f19 !important;
+    color: #f1f5f9 !important;
+}
+
+.theme-dark body,
+.theme-dark #root,
+.theme-dark .bg-slate-50,
+.theme-dark .bg-slate-100/60,
+.theme-dark .bg-slate-100 {
+    background-color: #0b0f19 !important;
+}
+
+.theme-dark aside.bg-\[\#0f172a\] {
+    background-color: #070a13 !important;
+    border-right: 1px solid #1e293b !important;
+}
+
+.theme-dark .bg-white {
+    background-color: #111827 !important; /* gray-900 */
+    border-color: #1f2937 !important;
+}
+
+.theme-dark .text-slate-900,
+.theme-dark .text-slate-800 {
+    color: #f3f4f6 !important;
+}
+.theme-dark .text-slate-700,
+.theme-dark .text-slate-600 {
+    color: #e5e7eb !important;
+}
+.theme-dark .text-slate-500 {
+    color: #9ca3af !important;
+}
+.theme-dark .text-slate-400 {
+    color: #9ca3af !important;
+}
+
+.theme-dark .border-slate-100,
+.theme-dark .border-slate-200,
+.theme-dark .border-slate-300,
+.theme-dark .border-slate-300\/60,
+.theme-dark .border-slate-200\/50 {
+    border-color: #1f2937 !important;
+}
+
+.theme-dark input,
+.theme-dark select,
+.theme-dark textarea {
+    background-color: #1f2937 !important;
+    color: #ffffff !important;
+    border-color: #374151 !important;
+}
+
+.theme-dark .bg-slate-50 {
+    background-color: #111827 !important;
+}
+.theme-dark .bg-slate-50\/50,
+.theme-dark .bg-slate-100\/80 {
+    background-color: #1f2937 !important;
+}
+.theme-dark .hover\:bg-slate-50:hover {
+    background-color: #1f2937 !important;
+}
+
+/* ─── 3. DENSIDADE DAS LISTAGENS (ROW DENSITY) ─── */
+
+/* Densidade Fina (Compacta) */
+.density-compact .px-6.py-4,
+.density-compact tr td,
+.density-compact .px-4.py-2.5 {
+    padding-top: 0.25rem !important; /* py-1 */
+    padding-bottom: 0.25rem !important;
+}
+.density-compact .group {
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+    border-radius: 0.75rem !important; /* rounded-xl */
+}
+.density-compact .gap-4 {
+    gap: 0.5rem !important; /* gap-2 */
+}
+.density-compact .gap-3 {
+    gap: 0.375rem !important;
+}
+.density-compact .mt-1.5 {
+    margin-top: 0.125rem !important;
+}
+
+/* Densidade Larga (Expandida) */
+.density-expanded .px-6.py-4,
+.density-expanded tr td,
+.density-expanded .px-4.py-2.5 {
+    padding-top: 1.25rem !important; /* py-5 */
+    padding-bottom: 1.25rem !important;
+}
+.density-expanded .group {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+    border-radius: 2rem !important; /* rounded-[2rem] */
+}
+
+/* ─── 4. REMOÇÃO DE NEGRITO (REMOVE BOLD) ─── */
+.remove-list-bold .font-bold,
+.remove-list-bold .font-semibold,
+.remove-list-bold .font-extrabold,
+.remove-list-bold .font-black {
+    font-weight: 500 !important;
+}
