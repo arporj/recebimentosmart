@@ -506,6 +506,30 @@ export function VoiceFloatingButton() {
 
                     {/* Inputs Rápidos Editáveis e Dropdowns */}
                     <div className="grid grid-cols-1 gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                      
+                      {/* Seletor do Tipo de Transação */}
+                      <div>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Tipo</label>
+                        <div className="grid grid-cols-3 gap-1 bg-white border border-slate-200 p-0.5 rounded-lg">
+                          {(['income', 'expense', 'transfer'] as const).map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => {
+                                setExtractedData(prev => prev ? { ...prev, tipo: t } : null);
+                              }}
+                              className={`py-1 text-[10px] font-bold rounded-md border-0 transition-all cursor-pointer ${
+                                extractedData.tipo === t 
+                                  ? t === 'income' ? 'bg-teal-600 text-white shadow-sm' : t === 'expense' ? 'bg-rose-600 text-white shadow-sm' : 'bg-indigo-600 text-white shadow-sm'
+                                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {t === 'income' ? 'Receita' : t === 'expense' ? 'Despesa' : 'Transf.'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div>
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Descrição</label>
                         <input
@@ -528,7 +552,9 @@ export function VoiceFloatingButton() {
                           />
                         </div>
                         <div>
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Data</label>
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                            {localModalidade !== 'unica' ? 'Data Início' : 'Data'}
+                          </label>
                           <input
                             type="date"
                             value={localDate}
@@ -537,6 +563,78 @@ export function VoiceFloatingButton() {
                           />
                         </div>
                       </div>
+
+                      {/* Seletor de Modalidade */}
+                      <div>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Modalidade</label>
+                        <select
+                          value={localModalidade}
+                          onChange={(e) => setLocalModalidade(e.target.value as any)}
+                          className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:border-[#14b8a6] outline-none"
+                        >
+                          <option value="unica">📅 Única</option>
+                          <option value="parcelada">💳 Parcelada</option>
+                          <option value="recorrente">🔄 Recorrente</option>
+                        </select>
+                      </div>
+
+                      {/* Se for Parcelada */}
+                      {localModalidade === 'parcelada' && (
+                        <div className="grid grid-cols-2 gap-2 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Total Parcelas</label>
+                            <input
+                              type="number"
+                              min="2"
+                              value={localInstallmentTotal}
+                              onChange={(e) => setLocalInstallmentTotal(Math.max(2, parseInt(e.target.value) || 2))}
+                              className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1 focus:border-[#14b8a6] outline-none"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-end text-[10px] text-slate-500 font-bold leading-tight pb-1.5">
+                            <span>Gerará: 1 de {localInstallmentTotal}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Se for Recorrente */}
+                      {localModalidade === 'recorrente' && (
+                        <div className="grid grid-cols-2 gap-2 bg-teal-50/30 p-2.5 rounded-xl border border-teal-100/20 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Frequência</label>
+                            <select
+                              value={localPeriodicidade}
+                              onChange={(e) => setLocalPeriodicidade(e.target.value as any)}
+                              className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-1.5 py-1 focus:border-[#14b8a6] outline-none"
+                            >
+                              <option value="diaria">Diária</option>
+                              <option value="semanal">Semanal</option>
+                              <option value="mensal">Mensal</option>
+                              <option value="anual">Anual</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Repetir a cada</label>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="1"
+                                value={localRecurrenceInterval}
+                                onChange={(e) => setLocalRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 focus:border-[#14b8a6] outline-none"
+                              />
+                              <span className="text-[10px] text-slate-500 font-bold shrink-0">
+                                {localPeriodicidade === 'diaria' ? (localRecurrenceInterval === 1 ? 'dia' : 'dias') :
+                                 localPeriodicidade === 'semanal' ? (localRecurrenceInterval === 1 ? 'sem.' : 'semanas') :
+                                 localPeriodicidade === 'anual' ? (localRecurrenceInterval === 1 ? 'ano' : 'anos') :
+                                 (localRecurrenceInterval === 1 ? 'mês' :
+                                  localRecurrenceInterval === 2 ? 'bimestre' :
+                                  localRecurrenceInterval === 3 ? 'trimestre' : 'meses')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Dropdown de Conta */}
                       <div>

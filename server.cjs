@@ -350,7 +350,11 @@ app.post('/api/lancamento-voz', async (req, res) => {
 - 'tipo': 'expense' para gastos/pagamentos/compras, 'income' para recebimentos/receitas, 'transfer' para transferências.
 - 'data': Data no formato AAAA-MM-DD.
 - 'banco_carteira': Banco ou meio de pagamento mencionado ("Inter", "Nubank", "Pix", "Cartão", etc.). Se não mencionado, deixe vazio.
-- 'categoria': Categoria sugerida ("Alimentação", "Lazer", "Transporte", "Moradia", "Saúde", etc.).`
+- 'categoria': Categoria sugerida ("Alimentação", "Lazer", "Transporte", "Moradia", "Saúde", etc.).
+- 'modalidade': 'unica' se for pagamento comum, 'parcelada' se o usuário disser que foi parcelado (ex: "em 3 vezes", "3 parcelas", "12x"), ou 'recorrente' se o usuário disser que se repete mensalmente, semanalmente, etc. (ex: "recorrente todo mês", "mensal", "todo ano"). O padrão é 'unica'.
+- 'parcelas_total': Se a modalidade for 'parcelada', o número total de parcelas (ex: "em 10x" -> 10). Senão, retorne 1.
+- 'periodicidade': Se for parcelado ou recorrente, retorne o período: 'daily' para diário, 'weekly' para semanal, 'monthly' para mensal, 'yearly' para anual. Padrão para parcelado e recorrente é 'monthly'.
+- 'recorrencia_intervalo': Se for recorrente, de quanto em quanto tempo se repete. Exemplo: "a cada 2 meses" -> periodicidade = 'monthly' e recorrencia_intervalo = 2. Senão, retorne 1.`
             }
           ]
         }
@@ -392,9 +396,27 @@ app.post('/api/lancamento-voz', async (req, res) => {
             categoria: {
               type: 'STRING',
               description: 'Categoria sugerida com base na descrição (Alimentação, Lazer, Moradia, Transporte, Saúde, Educação, Receitas)'
+            },
+            modalidade: {
+              type: 'STRING',
+              enum: ['unica', 'parcelada', 'recorrente'],
+              description: 'Modalidade do lançamento: unica para único, parcelada para parcelamento, recorrente para assinaturas ou repetições'
+            },
+            parcelas_total: {
+              type: 'INTEGER',
+              description: 'Se modalidade for parcelada, o número total de parcelas. Senão, 1.'
+            },
+            periodicidade: {
+              type: 'STRING',
+              enum: ['daily', 'weekly', 'monthly', 'yearly'],
+              description: 'Se modalidade for recorrente ou parcelada, o período: daily, weekly, monthly, yearly'
+            },
+            recorrencia_intervalo: {
+              type: 'INTEGER',
+              description: 'Se modalidade for recorrente, de quanto em quanto tempo se repete. Senão, 1.'
             }
           },
-          required: ['acao', 'descricao', 'valor', 'tipo', 'data']
+          required: ['acao', 'descricao', 'valor', 'tipo', 'data', 'modalidade']
         }
       }
     };

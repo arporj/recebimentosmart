@@ -84,7 +84,7 @@ interface TransactionData {
   card_holder_name?: string | null;
 }
 
-interface FinancialTransactionModalProps {
+"interface FinancialTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -94,6 +94,10 @@ interface FinancialTransactionModalProps {
   initialDescription?: string;
   initialAmount?: string | number;
   initialDate?: string;
+  initialModalidade?: 'unica' | 'parcelada' | 'recorrente';
+  initialInstallmentTotal?: string | number;
+  initialPeriodicidade?: 'diaria' | 'semanal' | 'mensal' | 'anual';
+  initialRecurrenceInterval?: string | number;
   transaction?: TransactionData | null;
   isConfirming?: boolean;
 }
@@ -108,9 +112,13 @@ const FinancialTransactionModalV2 = ({
   initialDescription = '',
   initialAmount = '',
   initialDate,
+  initialModalidade = 'unica',
+  initialInstallmentTotal = '1',
+  initialPeriodicidade = 'mensal',
+  initialRecurrenceInterval = '1',
   transaction = null,
   isConfirming = false
-}: FinancialTransactionModalProps) => {
+}: FinancialTransactionModalProps) => {"
   const { user } = useAuth();
   const { checkLimit } = usePlanLimits();
   const isEditing = !!transaction;
@@ -381,7 +389,7 @@ const FinancialTransactionModalV2 = ({
       setDate(initialDate || format(new Date(), 'yyyy-MM-dd'));
       setInvoiceMonth(format(new Date(), 'yyyy-MM'));
       setCardHolderName('');
-      setInstallmentTotal('1');
+      setInstallmentTotal(String(initialInstallmentTotal || '1'));
       setAutoConfirm(false);
       setStatus('pending');
       setClientId('');
@@ -391,14 +399,14 @@ const FinancialTransactionModalV2 = ({
       setSelectedTags([]);
       
       // Novos campos
-      setModalidade('unica');
+      setModalidade(initialModalidade);
       setDueDay(new Date().getDate());
-      setPeriodicidade('mensal');
+      setPeriodicidade(initialPeriodicidade);
       setStartInstallment('1');
       setIsTotalValue(false);
-      setRecurrenceInterval('1');
+      setRecurrenceInterval(String(initialRecurrenceInterval || '1'));
     }
-  }, [isOpen, transaction, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate]);
+  }, [isOpen, transaction, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate, initialModalidade, initialInstallmentTotal, initialPeriodicidade, initialRecurrenceInterval]);
 
 
   useEffect(() => {
