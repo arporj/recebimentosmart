@@ -8,6 +8,7 @@ import {
 import UserDetailsModalV2 from '../../components/v2/UserDetailsModalV2';
 import { UserProfile } from '../../components/admin/UserTable';
 import ConfirmModal from '../../components/v2/ConfirmModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface KpiData {
     monthlyRevenue: number;
@@ -48,6 +49,7 @@ const StatusBadge: React.FC<{ status: string | null, isAdmin: boolean }> = ({ st
 };
 
 export default function AdminUserManagementV2() {
+    const { rowDensity } = useAuth();
     const [kpiData, setKpiData] = useState<KpiData | null>(null);
     const [loadingKpis, setLoadingKpis] = useState(true);
 
@@ -293,6 +295,11 @@ export default function AdminUserManagementV2() {
                                                 <div>
                                                     <p className="font-bold text-sm text-slate-900">{user.name || 'Sem Nome'}</p>
                                                     <p className="text-xs text-slate-500 font-medium">{user.email}</p>
+                                                    {rowDensity === 'expanded' && (
+                                                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                            Cadastrado em: {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
