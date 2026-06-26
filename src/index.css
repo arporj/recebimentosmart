@@ -146,7 +146,7 @@
     background-color: #111827 !important;
 }
 .theme-dark .bg-slate-50\/95 {
-    background-color: #111827 !important;
+    background-color: #0b0f19 !important;
 }
 .theme-dark .bg-slate-50\/90,
 .theme-dark .bg-slate-50\/80 {
@@ -155,7 +155,7 @@
 .theme-dark .bg-slate-50\/50,
 .theme-dark .bg-slate-100\/80,
 .theme-dark .bg-slate-100\/40 {
-    background-color: #1c2536 !important;
+    background-color: #141b2d !important;
 }
 .theme-dark .hover\:bg-slate-50:hover,
 .theme-dark .hover\:bg-slate-50\/50:hover,
@@ -247,4 +247,24 @@
 .remove-list-bold .font-extrabold,
 .remove-list-bold .font-black {
     font-weight: 500 !important;
+}
+
+/* Filtro sticky no tema claro */
+.theme-light .bg-slate-50\/95 {
+    background-color: #ffffff !important;
+}
+
+/* Cores do valor previsto (saldo acumulado) */
+.text-previsto-positivo {
+    color: #10b981 !important;
+}
+.text-previsto-negativo {
+    color: #f43f5e !important;
+}
+
+.theme-dark .text-previsto-positivo {
+    color: #34d399 !important;
+}
+.theme-dark .text-previsto-negativo {
+    color: #fb7185 !important;
 }
