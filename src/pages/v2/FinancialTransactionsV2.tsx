@@ -332,6 +332,16 @@ const FinancialTransactionsV2 = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const handleTransactionCreated = () => {
+      fetchTransactions();
+    };
+    window.addEventListener('transaction_created', handleTransactionCreated);
+    return () => {
+      window.removeEventListener('transaction_created', handleTransactionCreated);
+    };
+  }, [user]);
+
   const allInstancesUpToMonth = useMemo((): TransactionInstance[] => {
     const instances: TransactionInstance[] = [];
 
