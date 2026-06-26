@@ -204,6 +204,76 @@
     color: #ffffff !important;
 }
 
+/* Correção de Contraste e Visibilidade dos Badges no Modo Escuro (Theme Dark) */
+
+/* 1. Badge de Conta e Neutro (bg-slate-100, bg-slate-200, bg-slate-200/60) */
+.theme-dark .bg-slate-100,
+.theme-dark .bg-slate-200\/60,
+.theme-dark .bg-slate-200 {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+.theme-dark .bg-slate-100 span,
+.theme-dark .bg-slate-100 .text-slate-500,
+.theme-dark .bg-slate-200\/60,
+.theme-dark .bg-slate-200 .text-slate-600,
+.theme-dark .text-slate-500 {
+    color: #cbd5e1 !important;
+}
+
+/* 2. Badge de Categoria (bg-slate-50, bg-slate-50/50, border-slate-200/50, text-slate-400) */
+.theme-dark .bg-slate-50 border-slate-200\/50,
+.theme-dark span.bg-slate-50,
+.theme-dark span.text-slate-400 {
+    color: #cbd5e1 !important;
+}
+.theme-dark span.bg-slate-50 {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* 3. Badges em Tons Azuis/Frios (bg-sky-50, bg-indigo-50, bg-blue-50 e seus textos) */
+.theme-dark .bg-sky-50,
+.theme-dark .bg-sky-50\/50,
+.theme-dark .bg-indigo-50,
+.theme-dark .bg-blue-50 {
+    background-color: rgba(30, 64, 175, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+.theme-dark .bg-sky-50 span,
+.theme-dark .bg-sky-50\/50 span,
+.theme-dark .bg-sky-50 .text-sky-600,
+.theme-dark .bg-indigo-50 span,
+.theme-dark .bg-indigo-50 .text-indigo-500,
+.theme-dark .bg-indigo-50 .text-indigo-700,
+.theme-dark .bg-blue-50 span,
+.theme-dark .bg-blue-50 .text-blue-600 {
+    color: #93c5fd !important;
+}
+
+/* 4. Badges em Tons Amarelos/Alertas (bg-amber-50 e seus textos) */
+.theme-dark .bg-amber-50 {
+    background-color: rgba(180, 83, 9, 0.25) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.theme-dark .bg-amber-50 span,
+.theme-dark .bg-amber-50 .text-amber-700,
+.theme-dark .bg-amber-50 .text-amber-800 {
+    color: #fcd34d !important;
+}
+
+/* 5. Badges em Tons Verdes/Sucesso (bg-emerald-50 e seus textos) */
+.theme-dark .bg-emerald-50 {
+    background-color: rgba(6, 95, 70, 0.25) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.theme-dark .bg-emerald-50 span,
+.theme-dark .bg-emerald-50 .text-emerald-700 {
+    color: #34d399 !important;
+}
+
+
+
 /* ─── 3. DENSIDADE DAS LISTAGENS (ROW DENSITY) ─── */
 
 /* Densidade Fina (Compacta) */
