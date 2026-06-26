@@ -677,6 +677,31 @@ export default function UserProfileSettingsV2() {
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    {/* Exemplo de visualização rápida da disposição do extrato */}
+                                    <div className="mt-4 p-4 bg-slate-50/50 border border-slate-200 rounded-xl">
+                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Visualização do Extrato (Exemplo em Tempo Real)</p>
+                                        <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                            <div className={previewRowClass}>
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                    <span className={previewLabelClass}>Supermercado Mufato</span>
+                                                </div>
+                                                <span className={previewValueClass(true)}>
+                                                    {formatMockValue(320.40, true)}
+                                                </span>
+                                            </div>
+                                            <div className={previewRowClass}>
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                    <span className={previewLabelClass}>Prestação de Serviço</span>
+                                                </div>
+                                                <span className={previewValueClass(false)}>
+                                                    {formatMockValue(1500.00, false)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="border-t border-slate-100 pt-6">
@@ -756,6 +781,37 @@ export default function UserProfileSettingsV2() {
                                                 >
                                                     Não
                                                 </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Exemplo de visualização rápida da personalização visual */}
+                                    <div className="mt-4 p-4 bg-slate-50/50 border border-slate-200 rounded-xl">
+                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Visualização do Layout (Exemplo em Tempo Real)</p>
+                                        <div className={`rounded-xl p-3 border space-y-2 select-none pointer-events-none transition-all ${previewBgClass}`}>
+                                            <div className={previewRowClass}>
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                    <span className={previewLabelClass}>Aluguel Residencial</span>
+                                                    {rowDensity === 'expanded' && (
+                                                        <span className="text-[8px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium ml-2">Vence Hoje</span>
+                                                    )}
+                                                </div>
+                                                <span className={previewValueClass(true)}>
+                                                    {formatMockValue(1200.00, true)}
+                                                </span>
+                                            </div>
+                                            <div className={previewRowClass}>
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                    <span className={previewLabelClass}>Rendimento de Investimentos</span>
+                                                    {rowDensity === 'expanded' && (
+                                                        <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium ml-2">Recebido</span>
+                                                    )}
+                                                </div>
+                                                <span className={previewValueClass(false)}>
+                                                    {formatMockValue(85.50, false)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

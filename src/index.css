@@ -25,7 +25,7 @@
 .theme-light body,
 .theme-light #root,
 .theme-light .bg-slate-50,
-.theme-light .bg-slate-100/60,
+.theme-light .bg-slate-100\/60,
 .theme-light .bg-slate-100 {
     background-color: #ffffff !important;
 }
@@ -96,7 +96,7 @@
 .theme-dark body,
 .theme-dark #root,
 .theme-dark .bg-slate-50,
-.theme-dark .bg-slate-100/60,
+.theme-dark .bg-slate-100\/60,
 .theme-dark .bg-slate-100 {
     background-color: #0b0f19 !important;
 }
@@ -151,6 +151,17 @@
 }
 .theme-dark .hover\:bg-slate-50:hover {
     background-color: #1f2937 !important;
+}
+
+.theme-dark .bg-slate-200 {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+}
+.theme-dark .bg-slate-200 .text-slate-600 {
+    color: #9ca3af !important;
+}
+.theme-dark .bg-slate-200 .text-slate-600:hover {
+    color: #ffffff !important;
 }
 
 /* ─── 3. DENSIDADE DAS LISTAGENS (ROW DENSITY) ─── */
