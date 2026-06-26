@@ -193,7 +193,7 @@ const CardIcon = ({ card, size = 20 }: { card: Account | null | undefined; size?
 };
 
 const CreditCardV2 = () => {
-  const { user } = useAuth();
+  const { user, rowDensity } = useAuth();
   const [cards, setCards] = useState<Account[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
@@ -616,6 +616,11 @@ const CreditCardV2 = () => {
         )}
         {t.recurrence_enabled && t.modalidade === 'recorrente' && (
           <Repeat size={12} className="text-indigo-400 shrink-0" />
+        )}
+        {rowDensity === 'expanded' && t.recurrence_enabled && t.recurrence_period && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold shrink-0">
+            Recorrente: {t.recurrence_period === 'monthly' ? 'Mensal' : t.recurrence_period === 'weekly' ? 'Semanal' : t.recurrence_period}
+          </span>
         )}
         <span className={`text-sm font-bold tabular-nums shrink-0 ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
           {t.type === 'expense' ? '-' : '+'}{formatCurrency(t.amount)}
