@@ -82,7 +82,7 @@ interface TransactionInstance extends FinancialTransaction {
 }
 
 const FinancialTransactionsV2 = () => {
-  const { user } = useAuth();
+  const { user, rowDensity } = useAuth();
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -133,6 +133,20 @@ const FinancialTransactionsV2 = () => {
       result += 'R$ ';
     }
     result += amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return result;
+  };
+
+  const formatRunningBalance = (amount: number) => {
+    let result = '';
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    if (isNegative && showNegativeSign) {
+      result += '-';
+    }
+    if (showCurrencySymbol) {
+      result += 'R$ ';
+    }
+    result += absAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return result;
   };
 
@@ -2023,8 +2037,8 @@ const FinancialTransactionsV2 = () => {
                             {formatTransactionAmount(t.amount, t.type)}
                           </p>
                           {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                            <p className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5 leading-none">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                            <p className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 inline-block mt-0.5 leading-none">
+                              {formatRunningBalance((t as any).runningBalance)}
                             </p>
                           )}
                         </div>
@@ -2088,6 +2102,25 @@ const FinancialTransactionsV2 = () => {
                               <span className="text-[9px] font-bold uppercase">{t.client.name}</span>
                             </div>
                           )}
+
+                          {/* Metadados adicionais específicos para o modo expandido */}
+                          {rowDensity === 'expanded' && t.installment_total && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-md text-[9px] font-black uppercase">
+                              Parcela {t.installment_current} de {t.installment_total}
+                            </div>
+                          )}
+
+                          {rowDensity === 'expanded' && t.recurrence_enabled && t.recurrence_period && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[9px] font-black uppercase">
+                              Recorrência: {t.recurrence_period === 'monthly' ? 'Mensal' : t.recurrence_period === 'weekly' ? 'Semanal' : t.recurrence_period}
+                            </div>
+                          )}
+
+                          {rowDensity === 'expanded' && t.status === 'paid' && t.paid_date && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase font-mono">
+                              Pago em: {format(parseISO(t.paid_date), 'dd/MM/yyyy')}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -2098,12 +2131,13 @@ const FinancialTransactionsV2 = () => {
                             {formatTransactionAmount(t.amount, t.type)}
                           </p>
                           {(t as any).runningBalance && !isNaN((t as any).runningBalance) && (
-                            <p className="text-[10px] font-medium text-slate-900 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/50 inline-block mt-0.5">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((t as any).runningBalance)}
+                            <p className="text-[10px] font-medium text-slate-400 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 inline-block mt-0.5">
+                              {formatRunningBalance((t as any).runningBalance)}
                             </p>
                           )}
                         </div>
                       )}
+
 
                       <div className="relative" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                         <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-2 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={20} /></button>
