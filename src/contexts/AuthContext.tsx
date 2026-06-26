@@ -26,9 +26,11 @@ interface AuthContextType {
   themePreference: 'original' | 'light' | 'dark';
   rowDensity: 'original' | 'compact' | 'expanded';
   removeBoldList: boolean;
+  predictedLayout: 'below' | 'column';
   setThemePreference: (theme: 'original' | 'light' | 'dark') => void;
   setRowDensity: (density: 'original' | 'compact' | 'expanded') => void;
   setRemoveBoldList: (remove: boolean) => void;
+  setPredictedLayout: (layout: 'below' | 'column') => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,6 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [removeBoldList, setRemoveBoldList] = useState<boolean>(() => {
     return localStorage.getItem('remove_bold_list') === 'true';
   });
+  const [predictedLayout, setPredictedLayout] = useState<'below' | 'column'>(() => {
+    return (localStorage.getItem('predicted_layout') as 'below' | 'column') || 'below';
+  });
 
   // Effect para injetar as classes de tema, densidade e bold na tag html
   useEffect(() => {
@@ -62,15 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     htmlEl.classList.remove(
       'theme-original', 'theme-light', 'theme-dark',
       'density-original', 'density-compact', 'density-expanded',
-      'remove-list-bold'
+      'remove-list-bold', 'predicted-layout-below', 'predicted-layout-column'
     );
     
     htmlEl.classList.add(`theme-${themePreference}`);
     htmlEl.classList.add(`density-${rowDensity}`);
+    htmlEl.classList.add(`predicted-layout-${predictedLayout}`);
     if (removeBoldList) {
       htmlEl.classList.add('remove-list-bold');
     }
-  }, [themePreference, rowDensity, removeBoldList]);
+  }, [themePreference, rowDensity, removeBoldList, predictedLayout]);
 
   // Effect for handling auth state changes from Supabase
   useEffect(() => {
@@ -162,6 +168,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.remove_bold_list !== undefined && profile.remove_bold_list !== null) {
             localStorage.setItem('remove_bold_list', String(profile.remove_bold_list));
             setRemoveBoldList(!!profile.remove_bold_list);
+          }
+          if (profile.predicted_layout) {
+            localStorage.setItem('predicted_layout', profile.predicted_layout);
+            setPredictedLayout(profile.predicted_layout as any);
           }
         }
 
@@ -485,9 +495,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         themePreference,
         rowDensity,
         removeBoldList,
+        predictedLayout,
         setThemePreference,
         setRowDensity,
         setRemoveBoldList,
+        setPredictedLayout,
       }}
     >
       {children}
