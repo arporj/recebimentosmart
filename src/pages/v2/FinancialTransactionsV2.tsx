@@ -1524,7 +1524,9 @@ const FinancialTransactionsV2 = () => {
                   <div 
                     key={dropdownKey} 
                     onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                    className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
+                    className={`flex items-center gap-2 px-3 ${
+                      rowDensity === 'compact' ? 'py-1' : rowDensity === 'expanded' ? 'py-3' : 'py-2'
+                    } border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                   >
                     <div className="w-6 flex items-center justify-center shrink-0">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${t.invoiceData?.isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -1542,29 +1544,16 @@ const FinancialTransactionsV2 = () => {
 
                     {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                     {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
-                      <>
-                        <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
-                          <p className="font-extrabold text-xs text-amber-700">
-                            {formatTransactionAmount(t.amount, 'expense')}
+                      <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
+                        <p className="font-extrabold text-xs text-amber-700">
+                          {formatTransactionAmount(t.amount, 'expense')}
+                        </p>
+                        {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                          <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                           </p>
-                          {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                            <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                            </p>
-                          )}
-                        </div>
-                        {rowDensity === 'compact' && (
-                          <div className={`shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1`}>
-                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                              <span className={`text-[10px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400/50">-</span>
-                            )}
-                          </div>
                         )}
-                      </>
+                      </div>
                     )}
 
                     <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right flex flex-col items-end' : ''}`}>
@@ -1578,7 +1567,7 @@ const FinancialTransactionsV2 = () => {
                           <Zap size={10} className="text-amber-500 fill-amber-500 shrink-0 ml-1" />
                         )}
                       </div>
-                      {t.invoiceData?.linkedAccountName && (
+                      {t.invoiceData?.linkedAccountName && rowDensity !== 'compact' && (
                         <div className={`flex items-center gap-1.5 mt-0.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                           <span className="text-[8px] font-black text-slate-400 uppercase">{t.invoiceData.linkedAccountName}</span>
                         </div>
@@ -1587,29 +1576,16 @@ const FinancialTransactionsV2 = () => {
 
                     {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                     {layoutPreference === 'default' && (
-                      <>
-                        <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
-                          <p className="font-medium text-xs text-amber-700">
-                            {formatTransactionAmount(t.amount, 'expense')}
+                      <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
+                        <p className="font-medium text-xs text-amber-700">
+                          {formatTransactionAmount(t.amount, 'expense')}
+                        </p>
+                        {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                          <p className="text-[9px] font-medium text-slate-400 mt-0.5">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                           </p>
-                          {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                            <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                            </p>
-                          )}
-                        </div>
-                        {rowDensity === 'compact' && (
-                          <div className={`shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1`}>
-                            {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                              <span className={`text-[10px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400/50">-</span>
-                            )}
-                          </div>
                         )}
-                      </>
+                      </div>
                     )}
                     <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                       <button onClick={(e) => handleDropdownClick(e, dropdownKey)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><MoreVertical size={16} /></button>
@@ -1643,7 +1619,9 @@ const FinancialTransactionsV2 = () => {
                       setIsSummaryModalOpen(true);
                     }
                   }}
-                  className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
+                  className={`flex items-center gap-2 px-3 ${
+                    rowDensity === 'compact' ? 'py-1' : rowDensity === 'expanded' ? 'py-3' : 'py-2'
+                  } border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                 >
                   {/* Indicador de Status ou Checkbox */}
                   <div className="w-6 flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1678,29 +1656,16 @@ const FinancialTransactionsV2 = () => {
 
                   {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                   {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
-                    <>
-                      <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
-                        <p className={`font-extrabold text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                          {formatTransactionAmount(t.amount, t.type)}
+                    <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
+                      <p className={`font-extrabold text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                        {formatTransactionAmount(t.amount, t.type)}
+                      </p>
+                      {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                        <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                         </p>
-                        {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                          <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                          </p>
-                        )}
-                      </div>
-                      {rowDensity === 'compact' && (
-                        <div className={`shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1`}>
-                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                            <span className={`text-[10px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400/50">-</span>
-                          )}
-                        </div>
                       )}
-                    </>
+                    </div>
                   )}
 
                   {/* Descrição + badges */}
@@ -1724,7 +1689,7 @@ const FinancialTransactionsV2 = () => {
                         </div>
                       )}
                     </div>
-                    {(t.account || t.category || t.client || t.type === 'transfer') && (
+                    {(t.account || t.category || t.client || t.type === 'transfer') && rowDensity !== 'compact' && (
                       <div className={`flex items-center gap-1.5 mt-0.5 flex-wrap ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
                         {t.account && <span className="text-[8px] font-black text-slate-400 uppercase">{t.account.name}</span>}
                         {t.type === 'transfer' && (
@@ -1751,29 +1716,16 @@ const FinancialTransactionsV2 = () => {
                   </div>
                   {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                   {layoutPreference === 'default' && (
-                    <>
-                      <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
-                        <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                          {formatTransactionAmount(t.amount, t.type)}
+                    <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
+                      <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                        {formatTransactionAmount(t.amount, t.type)}
+                      </p>
+                      {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
+                        <p className="text-[9px] font-medium text-slate-400 mt-0.5">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
                         </p>
-                        {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                          <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                          </p>
-                        )}
-                      </div>
-                      {rowDensity === 'compact' && (
-                        <div className={`shrink-0 w-[80px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1`}>
-                          {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                            <span className={`text-[10px] font-bold ${t.runningBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400/50">-</span>
-                          )}
-                        </div>
                       )}
-                    </>
+                    </div>
                   )}
                   {/* Menu */}
                   <div className="relative shrink-0" ref={openDropdown === dropdownKey ? dropdownRef : null} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
