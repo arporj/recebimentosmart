@@ -1524,7 +1524,7 @@ const FinancialTransactionsV2 = () => {
                   <div 
                     key={dropdownKey} 
                     onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                    className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/60 to-orange-50/40 cursor-pointer transition-colors"
+                    className={`flex items-center gap-2 px-3 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                   >
                     <div className="w-6 flex items-center justify-center shrink-0">
                       <div className={`w-2 h-2 rounded-full shrink-0 ${t.invoiceData?.isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -1827,7 +1827,7 @@ const FinancialTransactionsV2 = () => {
         {/* Main Content */}
         <main className="flex-1 flex flex-col space-y-6 min-w-0">
           {/* Header da Lista (Sticky e Lado a Lado Compacto) */}
-          <div className={`sticky z-20 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50 -mt-4 transition-all ${
+          <div className={`sticky z-20 bg-white/95 backdrop-blur-md pt-4 pb-2 flex flex-col gap-3 shrink-0 border-b border-slate-200/50 -mt-4 transition-all ${
             localStorage.getItem('sidebar_desktop_collapsed') === 'true'
               ? 'top-[64px]'
               : 'top-[0px]'
@@ -1938,7 +1938,7 @@ const FinancialTransactionsV2 = () => {
                       <div 
                         key={dropdownKey} 
                         onClick={() => { setSelectedSummaryTransaction(t); setIsSummaryModalOpen(true); }}
-                        className="group flex items-center gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-b border-amber-100/50 transition-colors cursor-pointer"
+                        className={`group flex items-center gap-4 px-4 py-2.5 transition-colors cursor-pointer border-b border-slate-100 ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                       >
                         {/* Status dot de Fatura */}
                         <div className="w-6 flex items-center justify-center shrink-0">
