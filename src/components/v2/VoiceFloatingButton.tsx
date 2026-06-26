@@ -415,7 +415,8 @@ export function VoiceFloatingButton() {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-55 flex flex-col items-end">
+      {/* Contêiner com z-index altíssimo para ficar por cima de tudo na tela */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
         {/* Janela de Interface de Voz (Mini Modal) */}
         {recordingState !== 'idle' && (
           <div className="mb-4 w-85 max-w-[90vw] bg-white/95 border border-slate-200 backdrop-blur-md shadow-2xl rounded-2xl p-5 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-4 font-['Inter',sans-serif]">
@@ -460,13 +461,23 @@ export function VoiceFloatingButton() {
                   </ul>
                 </div>
                 
-                <button
-                  onClick={stopRecording}
-                  className="w-full py-3 bg-rose-600 hover:bg-rose-500 border-0 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Square size={14} className="fill-white" />
-                  Concluir e Enviar
-                </button>
+                {/* Botões Lado a Lado: Cancelar (Vermelho) e Enviar (Verde) */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={handleCancel}
+                    className="py-3 bg-rose-600 hover:bg-rose-500 border-0 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <X size={14} />
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={stopRecording}
+                    className="py-3 bg-emerald-600 hover:bg-emerald-500 border-0 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Square size={14} className="fill-white shrink-0" />
+                    Enviar
+                  </button>
+                </div>
               </div>
             )}
 
