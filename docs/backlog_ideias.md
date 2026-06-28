@@ -6,7 +6,7 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## 1. 🐛 Bugs Conhecidos
 
-Nenhum bug conhecido ou ativo no momento. 🎉
+* **Comportamento Inesperado no Cartão de Crédito:** Na tela de cartão de crédito, ao clicar nos 3 pontinhos (ações) de um lançamento, a tela é direcionada para o topo (scroll top) e o menu flutuante de opções não abre.
 
 ---
 
@@ -80,6 +80,14 @@ Nenhum bug conhecido ou ativo no momento. 🎉
 ### 2.10. 💳 Integração de Cartão de Crédito para Assinaturas e Pagamentos
 * **Status:** Planejado.
 * **Descrição:** Incluir suporte a pagamentos e assinaturas via Cartão de Crédito no sistema. A ferramenta/gateway de pagamento a ser utilizada para a transação ainda será definida (ex: Stripe, Asaas, etc.).
+
+### 2.11. 📊 Padronização do Saldo Previsto com Preferências
+* **Status:** Planejado.
+* **Descrição:** O saldo previsto, atualizado a cada lançamento na tela de lançamentos, deve seguir as configurações definidas na tela de Preferências. Além disso, a formatação de cores deve ser ajustada: se o saldo previsto for positivo, deve ficar verde (mas em um tom diferente do valor do lançamento e sem estar em negrito); se for negativo, deve ficar vermelho (também sem negrito).
+
+### 2.12. 📱 Otimização Mobile da Tela de Lançamentos
+* **Status:** Planejado.
+* **Descrição:** Melhorar a disposição e o aproveitamento de espaço dos lançamentos na tela de lançamentos em dispositivos móveis. Ajustar o tamanho da fonte da descrição e do valor para que fiquem no mesmo tamanho menor da fonte da data, aumentando a densidade de informações exibidas e permitindo visualizar mais itens na tela.
 
 ---
 
