@@ -69,27 +69,15 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
   * **Acesso Otimizado:** Login rápido via biometria (FaceID/TouchID).
   * **Gestão e Lançamentos Rápidos:** Criação simplificada de clientes, emissão de cobranças rápidas e consulta a relatórios essenciais em layout Mobile-First premium.
 
-### 2.8. 💸 Edição de Tipo de Lançamento (Receita x Despesa)
-* **Status:** Planejado.
-* **Descrição:** Permitir que o usuário altere o tipo de um lançamento existente entre "receita" e "despesa" (e vice-versa) diretamente na tela/modal de edição, sem a necessidade de excluir o lançamento atual e criar um novo do zero.
-
-### 2.9. ➕ Menu Suspenso no Botão de Criar Lançamento
-* **Status:** Planejado.
-* **Descrição:** Ao passar o cursor do mouse (hover) sobre o botão principal de criação de lançamento, ele deve se comportar por padrão como criação de **Despesa** (opção padrão ao clicar), e exibir um menu suspenso logo abaixo com mais duas opções de atalho rápido: **Receita** e **Transferência**. Clicar em qualquer uma das opções abrirá a tela correspondente pré-selecionada.
-
-### 2.10. 💳 Integração de Cartão de Crédito para Assinaturas e Pagamentos
+### 2.8. 💳 Integração de Cartão de Crédito para Assinaturas e Pagamentos
 * **Status:** Planejado.
 * **Descrição:** Incluir suporte a pagamentos e assinaturas via Cartão de Crédito no sistema. A ferramenta/gateway de pagamento a ser utilizada para a transação ainda será definida (ex: Stripe, Asaas, etc.).
 
-### 2.11. 📊 Padronização do Saldo Previsto com Preferências
-* **Status:** Planejado.
-* **Descrição:** O saldo previsto, atualizado a cada lançamento na tela de lançamentos, deve seguir as configurações definidas na tela de Preferências. Além disso, a formatação de cores deve ser ajustada: se o saldo previsto for positivo, deve ficar verde (mas em um tom diferente do valor do lançamento e sem estar em negrito); se for negativo, deve ficar vermelho (também sem negrito).
-
-### 2.12. 📱 Otimização Mobile da Tela de Lançamentos
+### 2.9. 📱 Otimização Mobile da Tela de Lançamentos
 * **Status:** Planejado.
 * **Descrição:** Melhorar a disposição e o aproveitamento de espaço dos lançamentos na tela de lançamentos em dispositivos móveis. Ajustar o tamanho da fonte da descrição e do valor para que fiquem no mesmo tamanho menor da fonte da data, aumentando a densidade de informações exibidas e permitindo visualizar mais itens na tela.
 
-### 2.13. 💬 IA Conversacional Ativa de Organização Financeira (Artie Premium)
+### 2.10. 💬 IA Conversacional Ativa de Organização Financeira (Artie Premium)
 * **Status:** Roadmap de Produto (Longo Prazo).
 * **Descrição:** Evoluir o Artie para se tornar uma IA financeira 100% conversacional e responsiva. O usuário poderá interagir com a IA por meio de uma conversa fluida e contínua (seja por voz ou por texto) para organizar suas finanças cotidianas.
 * **Principais Funcionalidades:**
@@ -219,4 +207,16 @@ O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos es
   * Execução silenciosa automática (sem abrir a mini modal) quando houver correspondência exata e sem ambiguidades no banco, reduzindo o atrito do usuário.
   * Interface premium de **Sucesso Silencioso** com barra de progresso linear, temporizador de 5 segundos, e botões de **Desfazer (Rollback)** e **Editar Lançamento**.
   * Guia de comandos falados completo exibido na mini modal de gravação de áudio com exemplos para cada ação.
+
+### 4.15. 📊 Padronização do Saldo Previsto com Preferências do Usuário (UI/UX)
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** Padronizada a exibição do saldo previsto dinâmico para respeitar as preferências do usuário (`predictedLayout` e `rowDensity`). O estilo visual foi otimizado para usar fontes normais (sem negrito) e cores suaves customizadas (`text-previsto-positivo` em verde suave e `text-previsto-negativo` em vermelho suave), distinguindo-o claramente do valor do lançamento individual.
+
+### 4.16. 💸 Edição de Tipo de Lançamento (Receita x Despesa)
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** Adicionado suporte à edição direta do tipo de lançamento (Despesa, Receita ou Transferência) na própria tela/modal de detalhes (`FinancialTransactionModalV2.tsx`) sem precisar apagar e recriar o lançamento do zero.
+
+### 4.17. ➕ Menu Suspenso no Botão de Criar Lançamento (UI/UX)
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** Implementado menu suspenso de hover (hover dropdown) no botão principal "Criar Lançamento" na listagem de transações. Por padrão, clicar no botão abre o modal configurado para **Despesa**, e ao passar o mouse ele exibe atalhos rápidos com marcadores visuais para criar **🟢 Receita** ou **🔵 Transferência**.
 
