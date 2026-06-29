@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { criarTransacao } from '../../lib/financeiro/criarTransacao';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
+import { editarTransacao } from '../../lib/financeiro/editarTransacao';
 import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from './FinancialTransactionModalV2';
 import { format, subDays, addDays, parseISO } from 'date-fns';
@@ -41,6 +42,7 @@ export function VoiceFloatingButton() {
   
   // Exclusão
   const [matchedTransactionToDelete, setMatchedTransactionToDelete] = useState<any | null>(null);
+  const [matchedTransactionToConfirm, setMatchedTransactionToConfirm] = useState<any | null>(null);
 
   // Listas locais de entidades
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -95,8 +97,11 @@ export function VoiceFloatingButton() {
   const startRecording = async () => {
     audioChunksRef.current = [];
     setTimer(0);
-    setExtractedData(null);
-    setMatchedTransactionToDelete(null);
+    if (recordingState !== 'confirming') {
+      setExtractedData(null);
+      setMatchedTransactionToDelete(null);
+      setMatchedTransactionToConfirm(null);
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -167,6 +172,9 @@ export function VoiceFloatingButton() {
   };
 
   const processAudio = async (audioBlob: Blob) => {
+    const wasConfirming = recordingState === 'confirming' || extractedData !== null;
+    const previousExtractedData = extractedData;
+
     setRecordingState('processing');
 
     try {
@@ -187,17 +195,68 @@ export function VoiceFloatingButton() {
         throw new Error(result.message || 'Erro ao processar áudio com Gemini.');
       }
 
-      const data: ExtractedData = result.data;
+      const data: ExtractedData & {
+        modalidade?: 'unica' | 'parcelada' | 'recorrente';
+        parcelas_total?: number;
+        periodicidade?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+        recorrencia_intervalo?: number;
+      } = result.data;
+
+      // Se for comando de confirmação por voz na tela de confirmação
+      if (wasConfirming && (data.acao as any) === 'confirm') {
+        if (previousExtractedData) {
+          if (previousExtractedData.acao === 'delete') {
+            setExtractedData(previousExtractedData);
+            await handleConfirmDelete();
+          } else if (previousExtractedData.acao === 'confirm') {
+            setExtractedData(previousExtractedData);
+            await handleConfirmPayment();
+          } else {
+            setExtractedData(previousExtractedData);
+            await handleConfirm();
+          }
+        }
+        return;
+      }
+
+      // Se for comando de cancelamento por voz
+      if (wasConfirming && (data.acao as any) === 'cancel') {
+        handleCancel();
+        return;
+      }
+
+      // Caso contrário, é um novo lançamento, busca de exclusão, busca de confirmação ou ajuste
       setExtractedData(data);
       
       // Inicializar variáveis locais para edição
-      setLocalDescription(data.descricao);
-      setLocalAmount(data.valor);
-      setLocalDate(data.data);
+      setLocalDescription(data.descricao || '');
+      setLocalAmount(data.valor || 0);
+      setLocalDate(data.data || '');
+
+      // Se veio modalidade no áudio, atualizar os estados locais
+      if (data.modalidade) {
+        setLocalModalidade(data.modalidade);
+      }
+      if (data.parcelas_total) {
+        setLocalInstallmentTotal(data.parcelas_total);
+      }
+      if (data.periodicidade) {
+        const mappedPeriodicidade = 
+          data.periodicidade === 'daily' ? 'diaria' : 
+          data.periodicidade === 'weekly' ? 'semanal' : 
+          data.periodicidade === 'yearly' ? 'anual' : 'mensal';
+        setLocalPeriodicidade(mappedPeriodicidade);
+      }
+      if (data.recorrencia_intervalo) {
+        setLocalRecurrenceInterval(data.recorrencia_intervalo);
+      }
 
       if (data.acao === 'delete') {
         // Fluxo de busca de transação para deletar
         await findAndSetTransactionToDelete(data);
+      } else if ((data.acao as any) === 'confirm') {
+        // Fluxo de busca de transação existente para confirmar/dar baixa
+        await findAndSetTransactionToConfirm(data);
       } else {
         // Fluxo de correspondência inteligente de criação
         runMatching(data);
@@ -208,7 +267,12 @@ export function VoiceFloatingButton() {
     } catch (err: any) {
       console.error('Erro no processamento da IA:', err);
       toast.error(err.message || 'Erro ao enviar ou interpretar o áudio.');
-      setRecordingState('idle');
+      if (wasConfirming) {
+        setExtractedData(previousExtractedData);
+        setRecordingState('confirming');
+      } else {
+        setRecordingState('idle');
+      }
     }
   };
 
@@ -256,6 +320,74 @@ export function VoiceFloatingButton() {
     } catch (err) {
       console.error('Erro ao buscar transação para exclusão:', err);
       setMatchedTransactionToDelete(null);
+    }
+  };
+
+  // Busca uma transação pendente existente no banco que dê match com os parâmetros para confirmação
+  const findAndSetTransactionToConfirm = async (data: ExtractedData) => {
+    if (!user) return;
+
+    try {
+      const targetDate = parseISO(data.data);
+      // Busca lançamentos no intervalo de +- 2 dias para tolerar fusos horários/limites de horário
+      const startDateStr = format(subDays(targetDate, 2), 'yyyy-MM-dd');
+      const endDateStr = format(addDays(targetDate, 2), 'yyyy-MM-dd');
+
+      const { data: txList, error } = await supabase
+        .from('financial_transactions')
+        .select('id, description, amount, date, type, account_id, status, financial_accounts!account_id(name)')
+        .eq('user_id', user.id)
+        .gte('date', startDateStr)
+        .lte('date', endDateStr);
+
+      if (error) throw error;
+
+      // Fuzzy matching na lista, priorizando pendentes
+      const isGenericDescription = (desc: string) => {
+        const d = desc.toLowerCase().trim();
+        return !d || 
+               d === 'lançamento' || d === 'lancamento' || 
+               d === 'despesa' || d === 'receita' || 
+               d === 'transferência' || d === 'transferencia' || 
+               d === 'pagamento' || d === 'compra' || 
+               d === 'transação' || d === 'transacao' || 
+               d === 'conta';
+      };
+
+      const pendingMatch = (txList || []).find(tx => {
+        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const isGeneric = isGenericDescription(data.descricao);
+        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descMatch = isGeneric || descClean.includes(searchClean) || searchClean.includes(descClean);
+        return valMatch && descMatch && tx.status === 'pending';
+      });
+
+      const match = pendingMatch || (txList || []).find(tx => {
+        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const isGeneric = isGenericDescription(data.descricao);
+        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descMatch = isGeneric || descClean.includes(searchClean) || searchClean.includes(descClean);
+        return valMatch && descMatch;
+      });
+
+      if (match) {
+        setMatchedTransactionToConfirm({
+          id: match.id,
+          description: match.description,
+          amount: match.amount,
+          date: match.date,
+          type: match.type,
+          accountName: (match as any).financial_accounts?.name || 'Conta não especificada'
+        });
+      } else {
+        setMatchedTransactionToConfirm(null);
+      }
+
+    } catch (err) {
+      console.error('Erro ao buscar transação para confirmação:', err);
+      setMatchedTransactionToConfirm(null);
     }
   };
 
@@ -337,8 +469,11 @@ export function VoiceFloatingButton() {
         date: localDate || extractedData.data,
         category_id: matchedCategoryId || undefined,
         account_id: matchedAccountId || undefined,
-        modalidade: 'unica' as const,
-        status: 'paid' as const // Marcar como pago por padrão no lançamento rápido
+        modalidade: localModalidade,
+        status: 'paid' as const, // Marcar como pago por padrão no lançamento rápido
+        installment_total: localModalidade === 'parcelada' ? localInstallmentTotal : undefined,
+        recurrence_period: localModalidade === 'recorrente' ? (localPeriodicidade === 'diaria' ? 'daily' : localPeriodicidade === 'semanal' ? 'weekly' : localPeriodicidade === 'anual' ? 'yearly' : 'monthly') : undefined,
+        recurrence_interval: localModalidade === 'recorrente' ? localRecurrenceInterval : undefined
       };
 
       const { error } = await criarTransacao(transacaoInput);
@@ -386,10 +521,39 @@ export function VoiceFloatingButton() {
     }
   };
 
+  const handleConfirmPayment = async () => {
+    if (!matchedTransactionToConfirm) return;
+
+    try {
+      setRecordingState('processing');
+
+      const { error } = await editarTransacao(matchedTransactionToConfirm.id, {
+        status: 'paid'
+      }, 'this');
+
+      if (error) throw error;
+
+      toast.success('Lançamento confirmado com sucesso! 💰');
+      
+      // Notificar telas abertas para atualizar
+      window.dispatchEvent(new CustomEvent('transaction_created'));
+      
+      setRecordingState('idle');
+      setExtractedData(null);
+      setMatchedTransactionToConfirm(null);
+
+    } catch (err: any) {
+      console.error('Erro ao confirmar transação via voz:', err);
+      toast.error('Erro ao confirmar o lançamento no banco.');
+      setRecordingState('confirming');
+    }
+  };
+
   const handleCancel = () => {
     setRecordingState('idle');
     setExtractedData(null);
     setMatchedTransactionToDelete(null);
+    setMatchedTransactionToConfirm(null);
   };
 
   const handleAdjust = () => {
@@ -752,13 +916,64 @@ export function VoiceFloatingButton() {
                     )}
                   </div>
                 )}
+
+                {/* AÇÃO: CONFIRM (Confirmação de transação existente no banco) */}
+                {extractedData.acao === 'confirm' && (
+                  <div className="flex flex-col gap-3">
+                    {matchedTransactionToConfirm ? (
+                      <>
+                        <p className="text-xs text-slate-700 leading-relaxed font-semibold">
+                          Deseja confirmar o pagamento da <strong className="text-teal-600 font-black">{getTransactionTypeLabel(matchedTransactionToConfirm.type)}</strong> de{' '}
+                          <strong className="text-teal-600 font-black">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(matchedTransactionToConfirm.amount)}
+                          </strong>
+                          , referente a <strong className="text-slate-900 font-bold">"{matchedTransactionToConfirm.description}"</strong> do dia{' '}
+                          <strong className="text-slate-900 font-bold">{formatExtractedDate(matchedTransactionToConfirm.date)}</strong> na conta <strong className="text-slate-900 font-bold">{matchedTransactionToConfirm.accountName}</strong>?
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <button
+                            onClick={handleCancel}
+                            className="py-2.5 px-4 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer text-center bg-white"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={handleConfirmPayment}
+                            className="py-2.5 px-4 bg-teal-600 hover:bg-teal-500 border-0 text-white rounded-xl text-[11px] font-bold shadow-lg shadow-teal-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Check size={12} />
+                            Confirmar Pagamento
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-slate-700 leading-relaxed font-semibold text-center py-2">
+                          Nenhum lançamento pendente <strong className="text-slate-900">"{extractedData.descricao || 'não especificado'}"</strong> no valor de{' '}
+                          <strong className="text-slate-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(extractedData.valor)}
+                          </strong>{' '}
+                          por volta de {formatExtractedDate(extractedData.data)} foi encontrado para confirmação.
+                        </p>
+
+                        <button
+                          onClick={handleCancel}
+                          className="w-full py-2.5 bg-slate-100 rounded-xl text-[11px] font-bold text-slate-700 hover:bg-slate-200 border-0 transition-colors cursor-pointer text-center"
+                        >
+                          Fechar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
         {/* Botão de Controle Flutuante Principal */}
-        {recordingState === 'idle' && (
+        {(recordingState === 'idle' || recordingState === 'confirming') && (
           <button
             onClick={startRecording}
             className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all hover:scale-105 shadow-teal-600/20 ring-4 ring-teal-600/0 hover:ring-teal-600/10 bg-teal-600 hover:bg-teal-500 select-none outline-none cursor-pointer border-0 z-50 animate-bounce duration-1000"
@@ -778,6 +993,7 @@ export function VoiceFloatingButton() {
             setIsModalOpen(false);
             setExtractedData(null);
             setMatchedTransactionToDelete(null);
+            setMatchedTransactionToConfirm(null);
           }}
           onSuccess={handleModalSuccess}
           initialType={extractedData.tipo}
@@ -785,6 +1001,10 @@ export function VoiceFloatingButton() {
           initialAmount={localAmount}
           initialDate={localDate}
           initialAccountId={matchedAccountId}
+          initialModalidade={localModalidade}
+          initialInstallmentTotal={localInstallmentTotal}
+          initialPeriodicidade={localPeriodicidade}
+          initialRecurrenceInterval={localRecurrenceInterval}
         />
       )}
     </>
