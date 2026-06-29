@@ -344,7 +344,7 @@ app.post('/api/lancamento-voz', async (req, res) => {
 - Para termos relativos ("ontem", "anteontem", "amanhã"), calcule a partir de ${dateToday}.
 
 ## O que extrair do áudio:
-- 'acao': 'create' se quer registrar/adicionar/pagar/receber. 'delete' se quer excluir/apagar/remover.
+- 'acao': 'create' se quer registrar/adicionar/pagar/receber um novo lançamento ou editar dados do lançamento atual. 'delete' se quer excluir/apagar/remover. 'confirm' se o usuário quer confirmar, dar baixa ou salvar um lançamento (ex: "confirme a despesa de ontem", "confirmar", "sim", "pode salvar", "confirmado"). 'cancel' se o usuário quer cancelar ou fechar a ação (ex: "cancelar", "não", "fecha").
 - 'descricao': O item, produto ou serviço EXATO mencionado (ex: "Cerveja", "Almoço", "Salário do João").
 - 'valor': O valor numérico EXATO dito pelo usuário.
 - 'tipo': 'expense' para gastos/pagamentos/compras, 'income' para recebimentos/receitas, 'transfer' para transferências.
@@ -369,8 +369,8 @@ app.post('/api/lancamento-voz', async (req, res) => {
           properties: {
             acao: {
               type: 'STRING',
-              enum: ['create', 'delete'],
-              description: "Ação identificada no áudio: 'create' para novo lançamento, 'delete' para remover existente."
+              enum: ['create', 'delete', 'confirm', 'cancel'],
+              description: "Ação identificada no áudio: 'create' para novo lançamento, 'delete' para remover existente, 'confirm' para confirmar ou dar baixa em lançamento pendente (ex: 'confirme a despesa de ontem', 'sim', 'confirmar'), 'cancel' para cancelar/fechar (ex: 'cancelar', 'não', 'fechar')."
             },
             descricao: {
               type: 'STRING',
