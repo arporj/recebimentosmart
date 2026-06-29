@@ -209,3 +209,14 @@ O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos es
 * **Status:** Concluído em Jun/2026.
 * **Descrição:** Implementação de salvamento automático (autosave) em tempo real de todas as preferências visuais e de layout (tema, densidade, predictedLayout, etc.) no Supabase e LocalStorage. O nome completo do usuário também é salvo automaticamente via evento `onBlur`. Como consequência, a barra de ações manual (botões "Salvar" e "Descartar") foi inteiramente removida da interface do formulário de configurações.
 
+### 4.14. 🎙️ Assistente Financeiro por Voz (Artie - Fase 1)
+* **Status:** Concluído em Jun/2026.
+* **Descrição:** Implementação do assistente inteligente de voz do sistema (Artie). O usuário pode interagir por comandos falados para:
+  * Criar lançamentos comuns, parcelados (ex: 10x) ou recorrentes (ex: mensal, anual) de forma dinâmica.
+  * Confirmar/dar baixa em lançamentos pendentes com match aproximado de valor, descrição e data.
+  * Excluir lançamentos existentes citando o nome, valor ou data.
+  * Alterar campos (valor, descrição, data, conta, categoria) de lançamentos existentes de forma silenciosa (ex: *"altere o valor do almoço de hoje para 15 reais"*).
+  * Execução silenciosa automática (sem abrir a mini modal) quando houver correspondência exata e sem ambiguidades no banco, reduzindo o atrito do usuário.
+  * Interface premium de **Sucesso Silencioso** com barra de progresso linear, temporizador de 5 segundos, e botões de **Desfazer (Rollback)** e **Editar Lançamento**.
+  * Guia de comandos falados completo exibido na mini modal de gravação de áudio com exemplos para cada ação.
+
