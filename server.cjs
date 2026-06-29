@@ -421,24 +421,46 @@ app.post('/api/lancamento-voz', async (req, res) => {
       }
     };
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+    const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    let response = null;
+    let lastError = null;
 
-    console.log(`[Art] Enviando requisição para o Gemini 1.5 Flash (temperature: 0, deterministic)...`);
-    const response = await axios.post(geminiUrl, payload, {
-      headers: {
-        'Content-Type': 'application/json'
+    for (const model of models) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+        console.log(`[Art] Tentando enviar requisição para o ${model} (temperature: 0, deterministic)...`);
+        
+        const resCall = await axios.post(geminiUrl, payload, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 12000
+        });
+
+        if (
+          resCall.data &&
+          resCall.data.candidates &&
+          resCall.data.candidates.length > 0 &&
+          resCall.data.candidates[0].content &&
+          resCall.data.candidates[0].content.parts &&
+          resCall.data.candidates[0].content.parts.length > 0
+        ) {
+          response = resCall;
+          console.log(`[Art] Requisição bem-sucedida usando o modelo ${model}!`);
+          break;
+        } else {
+          throw new Error(`Retorno inválido ou vazio da API do Gemini para o modelo ${model}.`);
+        }
+      } catch (error) {
+        const errStatus = error.response?.status || 'N/A';
+        const errMsg = error.message || 'erro desconhecido';
+        console.warn(`[Art] Falha ao tentar com o modelo ${model} (${errStatus}): ${errMsg}`);
+        lastError = error;
       }
-    });
+    }
 
-    if (
-      !response.data ||
-      !response.data.candidates ||
-      response.data.candidates.length === 0 ||
-      !response.data.candidates[0].content ||
-      !response.data.candidates[0].content.parts ||
-      response.data.candidates[0].content.parts.length === 0
-    ) {
-      throw new Error('Retorno inválido ou vazio da API do Gemini.');
+    if (!response) {
+      throw lastError || new Error('Todos os modelos do Gemini falharam no processamento do áudio.');
     }
 
     const responseText = response.data.candidates[0].content.parts[0].text;
