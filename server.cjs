@@ -421,9 +421,9 @@ app.post('/api/lancamento-voz', async (req, res) => {
       }
     };
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
-    console.log(`[Art] Enviando requisição para o Gemini 3.5 Flash (temperature: 0, deterministic)...`);
+    console.log(`[Art] Enviando requisição para o Gemini 1.5 Flash (temperature: 0, deterministic)...`);
     const response = await axios.post(geminiUrl, payload, {
       headers: {
         'Content-Type': 'application/json'
