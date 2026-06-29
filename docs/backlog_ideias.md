@@ -89,6 +89,16 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 * **Status:** Planejado.
 * **Descrição:** Melhorar a disposição e o aproveitamento de espaço dos lançamentos na tela de lançamentos em dispositivos móveis. Ajustar o tamanho da fonte da descrição e do valor para que fiquem no mesmo tamanho menor da fonte da data, aumentando a densidade de informações exibidas e permitindo visualizar mais itens na tela.
 
+### 2.13. 💬 IA Conversacional Ativa de Organização Financeira (Artie Premium)
+* **Status:** Roadmap de Produto (Longo Prazo).
+* **Descrição:** Evoluir o Artie para se tornar uma IA financeira 100% conversacional e responsiva. O usuário poderá interagir com a IA por meio de uma conversa fluida e contínua (seja por voz ou por texto) para organizar suas finanças cotidianas.
+* **Principais Funcionalidades:**
+  * **Tons de Conversa Customizáveis:** O usuário poderá escolher o tom de voz e estilo de resposta do Artie, variando entre:
+    * *Casual:* Um papo descontraído, amigável e informal, ideal para o dia a dia.
+    * *Normal:* Um tom profissional equilibrado, focado em clareza e praticidade.
+    * *Técnico:* Respostas detalhadas, análises profundas de métricas, termos contábeis e gráficos, ideal para quem busca precisão matemática e contábil.
+  * **Operações Inline Contextuais:** As ações financeiras (criar lançamentos, pagar faturas, alterar valores, agendar contas) serão extraídas e realizadas de forma inteligente e automática em segundo plano *à medida que a conversa se desenvolve*, eliminando a necessidade de comandos isolados ou formulários.
+
 ---
 
 ## 3. 📈 Recomendações e Tendências de Mercado para o RecebimentoSmart Premium
