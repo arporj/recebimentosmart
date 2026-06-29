@@ -54,6 +54,7 @@ const QuickEditTransactionModal = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isPaid, setIsPaid] = useState(false);
   const [autoConfirm, setAutoConfirm] = useState(false);
+  const [type, setType] = useState<'income' | 'expense' | 'transfer'>('expense');
 
   // Data lists
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -117,6 +118,7 @@ const QuickEditTransactionModal = ({
       setClientId(transaction.client_id || '');
       setIsPaid(isConfirming ? true : transaction.status === 'paid');
       setAutoConfirm(transaction.auto_confirm || false);
+      setType(transaction.type);
 
       // Format amount
       const amountCents = Math.round((transaction.amount || 0) * 100);
@@ -371,6 +373,7 @@ const QuickEditTransactionModal = ({
       const effectiveDate = date;
 
       const payload: any = {
+        type,
         date: effectiveDate,
         amount: parsedAmount,
         description,
@@ -403,7 +406,7 @@ const QuickEditTransactionModal = ({
           ...dbPayload,
           date: chosenDate, // Save the actual date chosen by the user
           user_id: user!.id,
-          type: transaction.type,
+          type: type,
           parent_id: transaction.parent_id || transaction.id,
           modalidade: 'unica',
           is_customized: true,
@@ -489,7 +492,7 @@ const QuickEditTransactionModal = ({
     expense: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', label: '🔴 Despesa' },
     transfer: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', label: '🔵 Transferência' },
   };
-  const tc = typeColors[transaction.type as keyof typeof typeColors] || typeColors.expense;
+  const tc = typeColors[type as keyof typeof typeColors] || typeColors.expense;
 
   return (
     <>
@@ -545,6 +548,46 @@ const QuickEditTransactionModal = ({
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar">
+            {/* Tipo de Transação Selector */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Tipo de Transação</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setType('expense')}
+                  className={`py-2 px-2.5 rounded-xl border text-[10px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                    type === 'expense'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-500/20'
+                      : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'
+                  }`}
+                >
+                  🔴 Despesa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('income')}
+                  className={`py-2 px-2.5 rounded-xl border text-[10px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                    type === 'income'
+                      ? 'bg-teal-50 text-teal-700 border-teal-200 ring-2 ring-teal-500/20'
+                      : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'
+                  }`}
+                >
+                  🟢 Receita
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('transfer')}
+                  className={`py-2 px-2.5 rounded-xl border text-[10px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                    type === 'transfer'
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-2 ring-indigo-500/20'
+                      : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'
+                  }`}
+                >
+                  🔵 Transf.
+                </button>
+              </div>
+            </div>
+
             {/* Valor e Data lado a lado */}
             <div className="grid grid-cols-2 gap-3">
               {/* Valor */}
