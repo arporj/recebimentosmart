@@ -329,7 +329,7 @@ app.post('/api/lancamento-voz', async (req, res) => {
               }
             },
             {
-              text: `Você é Art, um assistente financeiro inteligente. Sua ÚNICA tarefa é ouvir atentamente o áudio em português do Brasil e extrair EXATAMENTE as informações financeiras faladas pelo usuário.
+              text: `Você é Artie, um assistente financeiro inteligente. Sua ÚNICA tarefa é ouvir atentamente o áudio em português do Brasil e extrair EXATAMENTE as informações financeiras faladas pelo usuário.
 
 ## REGRAS ABSOLUTAS (NÃO VIOLE NENHUMA):
 1. Extraia APENAS o que foi REALMENTE DITO no áudio. NÃO invente, NÃO adivinhe, NÃO preencha com valores fictícios.
@@ -344,17 +344,28 @@ app.post('/api/lancamento-voz', async (req, res) => {
 - Para termos relativos ("ontem", "anteontem", "amanhã"), calcule a partir de ${dateToday}.
 
 ## O que extrair do áudio:
-- 'acao': 'create' se quer registrar/adicionar/pagar/receber um novo lançamento ou editar dados do lançamento atual. 'delete' se quer excluir/apagar/remover. 'confirm' se o usuário quer confirmar, dar baixa ou salvar um lançamento (ex: "confirme a despesa de ontem", "confirmar", "sim", "pode salvar", "confirmado"). 'cancel' se o usuário quer cancelar ou fechar a ação (ex: "cancelar", "não", "fecha").
-- 'descricao': O item, produto ou serviço EXATO mencionado (ex: "Cerveja", "Almoço", "Salário do João").
-- 'valor': O valor numérico EXATO dito pelo usuário.
+- 'acao': 
+  * 'create' se quer registrar/adicionar/pagar/receber um novo lançamento.
+  * 'delete' se quer excluir/apagar/remover.
+  * 'confirm' se o usuário quer confirmar, dar baixa ou pagar um lançamento pendente existente no banco (ex: "confirme a despesa de ontem", "sim, confirmar").
+  * 'cancel' se o usuário quer cancelar ou fechar a ação (ex: "cancelar", "não").
+  * 'update' se o usuário quer alterar, modificar ou editar uma transação existente (ex: "altere o valor do almoço de hoje para 15 reais", "mude o vencimento do IPTU para amanhã").
+- 'descricao': O item, produto ou serviço original mencionado para busca ou criação (ex: "Cerveja", "Almoço", "Salário do João").
+- 'valor': O valor numérico original mencionado para busca ou criação. Se for um comando de alteração/update e o valor original não for dito, retorne 0.
 - 'tipo': 'expense' para gastos/pagamentos/compras, 'income' para recebimentos/receitas, 'transfer' para transferências.
 - 'data': Data no formato AAAA-MM-DD.
 - 'banco_carteira': Banco ou meio de pagamento mencionado ("Inter", "Nubank", "Pix", "Cartão", etc.). Se não mencionado, deixe vazio.
 - 'categoria': Categoria sugerida ("Alimentação", "Lazer", "Transporte", "Moradia", "Saúde", etc.).
-- 'modalidade': 'unica' se for pagamento comum, 'parcelada' se o usuário disser que foi parcelado (ex: "em 3 vezes", "3 parcelas", "12x"), ou 'recorrente' se o usuário disser que se repete mensalmente, semanalmente, etc. (ex: "recorrente todo mês", "mensal", "todo ano"). O padrão é 'unica'.
-- 'parcelas_total': Se a modalidade for 'parcelada', o número total de parcelas (ex: "em 10x" -> 10). Senão, retorne 1.
-- 'periodicidade': Se for parcelado ou recorrente, retorne o período: 'daily' para diário, 'weekly' para semanal, 'monthly' para mensal, 'yearly' para anual. Padrão para parcelado e recorrente é 'monthly'.
-- 'recorrencia_intervalo': Se for recorrente, de quanto em quanto tempo se repete. Exemplo: "a cada 2 meses" -> periodicidade = 'monthly' e recorrencia_intervalo = 2. Senão, retorne 1.`
+- 'modalidade': 'unica' se for pagamento comum, 'parcelada' se for parcelado, ou 'recorrente' se for recorrente. Padrão é 'unica'.
+- 'parcelas_total': Se a modalidade for 'parcelada', o número total de parcelas. Senão, 1.
+- 'periodicidade': O período se for recorrente ou parcelado ('daily', 'weekly', 'monthly', 'yearly').
+- 'recorrencia_intervalo': Se for recorrente, de quanto em quanto tempo se repete. Senão, 1.
+- 'update_fields': Se acao for 'update', este objeto DEVE conter os novos valores dos campos alterados:
+  * 'descricao': Novo nome/item se o usuário pedir para renomear/mudar nome.
+  * 'valor': Novo valor numérico se o usuário pedir para alterar valor (ex: "mude para 15 reais" -> valor = 15.0).
+  * 'data': Nova data no formato AAAA-MM-DD se o usuário pedir para alterar data.
+  * 'banco_carteira': Novo banco/carteira se pedir para alterar banco.
+  * 'categoria': Nova categoria se pedir para alterar categoria.`
             }
           ]
         }
@@ -369,8 +380,8 @@ app.post('/api/lancamento-voz', async (req, res) => {
           properties: {
             acao: {
               type: 'STRING',
-              enum: ['create', 'delete', 'confirm', 'cancel'],
-              description: "Ação identificada no áudio: 'create' para novo lançamento, 'delete' para remover existente, 'confirm' para confirmar ou dar baixa em lançamento pendente (ex: 'confirme a despesa de ontem', 'sim', 'confirmar'), 'cancel' para cancelar/fechar (ex: 'cancelar', 'não', 'fechar')."
+              enum: ['create', 'delete', 'confirm', 'cancel', 'update'],
+              description: "Ação identificada no áudio: 'create' para novo lançamento, 'delete' para remover existente, 'confirm' para confirmar ou dar baixa em lançamento pendente, 'cancel' para cancelar/fechar, 'update' para alterar transação existente."
             },
             descricao: {
               type: 'STRING',
@@ -414,6 +425,17 @@ app.post('/api/lancamento-voz', async (req, res) => {
             recorrencia_intervalo: {
               type: 'INTEGER',
               description: 'Se modalidade for recorrente, de quanto em quanto tempo se repete. Senão, 1.'
+            },
+            update_fields: {
+              type: 'OBJECT',
+              description: 'Se a ação for update, especifique aqui os campos a serem alterados e seus novos valores.',
+              properties: {
+                descricao: { type: 'STRING', description: 'Nova descrição se o usuário pedir para alterar a descrição/nome' },
+                valor: { type: 'NUMBER', description: 'Novo valor numérico se o usuário pedir para alterar o valor' },
+                data: { type: 'STRING', description: 'Nova data no formato AAAA-MM-DD se o usuário pedir para alterar a data' },
+                banco_carteira: { type: 'STRING', description: 'Novo banco ou conta se o usuário pedir para alterar' },
+                categoria: { type: 'STRING', description: 'Nova categoria se o usuário pedir para alterar' }
+              }
             }
           },
           required: ['acao', 'descricao', 'valor', 'tipo', 'data', 'modalidade']
