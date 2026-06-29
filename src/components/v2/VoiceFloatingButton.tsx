@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, Square, Loader2, Check, X, Pencil } from 'lucide-react';
+import { Mic, Square, Loader2, Check, X, Pencil, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { criarTransacao } from '../../lib/financeiro/criarTransacao';
@@ -10,27 +10,52 @@ import FinancialTransactionModalV2 from './FinancialTransactionModalV2';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 
 interface ExtractedData {
-  acao: 'create' | 'delete';
+  acao: 'create' | 'delete' | 'confirm' | 'cancel' | 'update';
   descricao: string;
   valor: number;
   tipo: 'income' | 'expense' | 'transfer';
   data: string;
   banco_carteira?: string;
   categoria?: string;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente';
+  parcelas_total?: number;
+  periodicidade?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recorrencia_intervalo?: number;
+  update_fields?: {
+    descricao?: string;
+    valor?: number;
+    data?: string;
+    banco_carteira?: string;
+    categoria?: string;
+  };
+}
+
+interface SuccessDetails {
+  actionType: 'create' | 'delete' | 'confirm' | 'update';
+  message: string;
+  createdTransactionId?: string;
+  deletedTransactionBackup?: any;
+  confirmedTransactionBackup?: { id: string; originalStatus: string; originalDate: string };
+  updatedTransactionBackup?: { id: string; originalFields: any };
 }
 
 export function VoiceFloatingButton() {
   const { user } = useAuth();
-  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'processing' | 'confirming'>('idle');
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'processing' | 'confirming' | 'success_summary'>('idle');
   const [timer, setTimer] = useState(0);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   
+  // Detalhes do sucesso silencioso (para rollback e resumo da mensagem)
+  const [successDetails, setSuccessDetails] = useState<SuccessDetails | null>(null);
+  const [countdown, setCountdown] = useState(5);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Edição local das variáveis de criação
   const [localDescription, setLocalDescription] = useState('');
   const [localAmount, setLocalAmount] = useState(0);
   const [localDate, setLocalDate] = useState('');
   
-  // Novos estados locais de recorrência/parcelas do Art
+  // Novos estados locais de recorrência/parcelas do Artie
   const [localModalidade, setLocalModalidade] = useState<'unica' | 'parcelada' | 'recorrente'>('unica');
   const [localInstallmentTotal, setLocalInstallmentTotal] = useState(1);
   const [localPeriodicidade, setLocalPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
@@ -40,9 +65,10 @@ export function VoiceFloatingButton() {
   const [matchedAccountId, setMatchedAccountId] = useState('');
   const [matchedCategoryId, setMatchedCategoryId] = useState('');
   
-  // Exclusão
+  // Exclusão / Confirmação
   const [matchedTransactionToDelete, setMatchedTransactionToDelete] = useState<any | null>(null);
   const [matchedTransactionToConfirm, setMatchedTransactionToConfirm] = useState<any | null>(null);
+  const [matchedTransactionToUpdate, setMatchedTransactionToUpdate] = useState<any | null>(null);
 
   // Listas locais de entidades
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -93,6 +119,196 @@ export function VoiceFloatingButton() {
       }
     };
   }, []);
+
+  // Iniciar contador regressivo para o fechamento automático do sucesso silencioso
+  const startSuccessCountdown = () => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    
+    setCountdown(5);
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownIntervalRef.current!);
+          countdownIntervalRef.current = null;
+          setRecordingState('idle');
+          setExtractedData(null);
+          setSuccessDetails(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Reverte as ações de criação, exclusão, confirmação e alteração
+  const handleUndo = async () => {
+    if (!successDetails) return;
+
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
+    try {
+      setRecordingState('processing');
+
+      if (successDetails.actionType === 'create' && successDetails.createdTransactionId) {
+        const { error } = await supabase.from('financial_transactions').delete().eq('id', successDetails.createdTransactionId);
+        if (error) throw error;
+        toast.success('Criação desfeita com sucesso! ↩️');
+      } 
+      else if (successDetails.actionType === 'delete' && successDetails.deletedTransactionBackup) {
+        const { error } = await criarTransacao(successDetails.deletedTransactionBackup);
+        if (error) throw error;
+        toast.success('Exclusão desfeita com sucesso! ↩️');
+      }
+      else if (successDetails.actionType === 'confirm' && successDetails.confirmedTransactionBackup) {
+        const { error } = await editarTransacao(
+          successDetails.confirmedTransactionBackup.id, 
+          {
+            status: successDetails.confirmedTransactionBackup.originalStatus as any,
+            date: successDetails.confirmedTransactionBackup.originalDate
+          }, 
+          'this'
+        );
+        if (error) throw error;
+        toast.success('Confirmação desfeita! Lançamento pendente restaurado. ↩️');
+      }
+      else if (successDetails.actionType === 'update' && successDetails.updatedTransactionBackup) {
+        const { error } = await editarTransacao(
+          successDetails.updatedTransactionBackup.id,
+          successDetails.updatedTransactionBackup.originalFields,
+          'this'
+        );
+        if (error) throw error;
+        toast.success('Alteração desfeita com sucesso! ↩️');
+      }
+
+      window.dispatchEvent(new CustomEvent('transaction_created'));
+
+    } catch (err: any) {
+      console.error('Erro ao desfazer ação:', err);
+      toast.error('Não foi possível desfazer a ação.');
+    } finally {
+      setRecordingState('idle');
+      setExtractedData(null);
+      setSuccessDetails(null);
+    }
+  };
+
+  // Busca direta de transações para exclusão
+  const findTransactionToDeleteDirect = async (data: ExtractedData): Promise<any | null> => {
+    if (!user) return null;
+    try {
+      const targetDate = parseISO(data.data);
+      const startDateStr = format(subDays(targetDate, 2), 'yyyy-MM-dd');
+      const endDateStr = format(addDays(targetDate, 2), 'yyyy-MM-dd');
+
+      const { data: txList, error } = await supabase
+        .from('financial_transactions')
+        .select('id, description, amount, date, type, account_id, category_id, financial_accounts!account_id(name)')
+        .eq('user_id', user.id)
+        .gte('date', startDateStr)
+        .lte('date', endDateStr);
+
+      if (error) throw error;
+
+      const matches = (txList || []).filter(tx => {
+        const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return valMatch && (descClean.includes(searchClean) || searchClean.includes(descClean));
+      });
+
+      if (matches.length === 1) {
+        return {
+          id: matches[0].id,
+          description: matches[0].description,
+          amount: matches[0].amount,
+          date: matches[0].date,
+          type: matches[0].type,
+          account_id: matches[0].account_id,
+          category_id: matches[0].category_id,
+          accountName: (matches[0] as any).financial_accounts?.name || 'Conta não especificada'
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Busca direta de transações para confirmação / alteração
+  const findTransactionToConfirmDirect = async (data: ExtractedData): Promise<any | null> => {
+    if (!user) return null;
+    try {
+      const targetDate = parseISO(data.data);
+      const startDateStr = format(subDays(targetDate, 2), 'yyyy-MM-dd');
+      const endDateStr = format(addDays(targetDate, 2), 'yyyy-MM-dd');
+
+      const { data: txList, error } = await supabase
+        .from('financial_transactions')
+        .select('id, description, amount, date, type, account_id, category_id, status, financial_accounts!account_id(name)')
+        .eq('user_id', user.id)
+        .gte('date', startDateStr)
+        .lte('date', endDateStr);
+
+      if (error) throw error;
+
+      const isGenericDescription = (desc: string) => {
+        const d = desc.toLowerCase().trim();
+        return !d || 
+               d === 'lançamento' || d === 'lancamento' || 
+               d === 'despesa' || d === 'receita' || 
+               d === 'transferência' || d === 'transferencia' || 
+               d === 'pagamento' || d === 'compra' || 
+               d === 'transação' || d === 'transacao' || 
+               d === 'conta';
+      };
+
+      const matches = (txList || []).filter(tx => {
+        const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const isGeneric = isGenericDescription(data.descricao);
+        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descMatch = isGeneric || descClean.includes(searchClean) || searchClean.includes(descClean);
+        return valMatch && descMatch;
+      });
+
+      const pendingMatches = matches.filter(tx => tx.status === 'pending');
+      if (pendingMatches.length === 1) {
+        return {
+          id: pendingMatches[0].id,
+          description: pendingMatches[0].description,
+          amount: pendingMatches[0].amount,
+          date: pendingMatches[0].date,
+          type: pendingMatches[0].type,
+          account_id: pendingMatches[0].account_id,
+          category_id: pendingMatches[0].category_id,
+          status: pendingMatches[0].status,
+          accountName: (pendingMatches[0] as any).financial_accounts?.name || 'Conta não especificada'
+        };
+      }
+
+      if (matches.length === 1) {
+        return {
+          id: matches[0].id,
+          description: matches[0].description,
+          amount: matches[0].amount,
+          date: matches[0].date,
+          type: matches[0].type,
+          account_id: matches[0].account_id,
+          category_id: matches[0].category_id,
+          status: matches[0].status,
+          accountName: (matches[0] as any).financial_accounts?.name || 'Conta não especificada'
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
   const startRecording = async () => {
     audioChunksRef.current = [];
@@ -251,18 +467,192 @@ export function VoiceFloatingButton() {
         setLocalRecurrenceInterval(data.recorrencia_intervalo);
       }
 
+      // --- TOMADA DE DECISÃO INTELIGENTE: SUCESSO SILENCIOSO VS. INTERVENÇÃO ---
+      
       if (data.acao === 'delete') {
-        // Fluxo de busca de transação para deletar
+        const matched = await findTransactionToDeleteDirect(data);
+        if (matched) {
+          // Executa exclusão silenciosa!
+          try {
+            const backupInput = {
+              description: matched.description,
+              amount: matched.amount,
+              type: matched.type,
+              date: matched.date,
+              category_id: matched.category_id,
+              account_id: matched.account_id,
+              modalidade: 'unica' as const,
+              status: 'paid' as const
+            };
+
+            const { error } = await deletarTransacao(matched.id);
+            if (error) throw error;
+
+            setSuccessDetails({
+              actionType: 'delete',
+              message: `Lançamento "${matched.description}" excluído com sucesso!`,
+              deletedTransactionBackup: backupInput
+            });
+            window.dispatchEvent(new CustomEvent('transaction_created'));
+            setRecordingState('success_summary');
+            startSuccessCountdown();
+            return;
+          } catch (err) {
+            console.error('Falha na exclusão silenciosa:', err);
+          }
+        }
+        
+        // Ambiguidade ou não encontrado -> abre modal tradicional de exclusão
         await findAndSetTransactionToDelete(data);
-      } else if ((data.acao as any) === 'confirm') {
-        // Fluxo de busca de transação existente para confirmar/dar baixa
+        setRecordingState('confirming');
+
+      } else if (data.acao === 'confirm') {
+        const matched = await findTransactionToConfirmDirect(data);
+        if (matched) {
+          // Executa confirmação silenciosa!
+          try {
+            const { error } = await editarTransacao(matched.id, {
+              status: 'paid',
+              date: data.data || matched.date
+            }, 'this');
+            if (error) throw error;
+
+            setSuccessDetails({
+              actionType: 'confirm',
+              message: `Lançamento "${matched.description}" confirmado hoje!`,
+              confirmedTransactionBackup: { id: matched.id, originalStatus: 'pending', originalDate: matched.date }
+            });
+            window.dispatchEvent(new CustomEvent('transaction_created'));
+            setRecordingState('success_summary');
+            startSuccessCountdown();
+            return;
+          } catch (err) {
+            console.error('Falha na confirmação silenciosa:', err);
+          }
+        }
+
+        // Ambiguidade ou não encontrado -> abre modal tradicional de confirmação
         await findAndSetTransactionToConfirm(data);
+        setRecordingState('confirming');
+
+      } else if (data.acao === 'update') {
+        const matched = await findTransactionToConfirmDirect(data); // Reusa fuzzy match de busca
+        const newFields = data.update_fields;
+        
+        if (matched && newFields && (newFields.descricao || newFields.valor || newFields.data || newFields.banco_carteira || newFields.categoria)) {
+          // Executa alteração silenciosa!
+          try {
+            const updatePayload: any = {};
+            const originalFields: any = {};
+
+            if (newFields.descricao) {
+              updatePayload.description = newFields.descricao;
+              originalFields.description = matched.description;
+            }
+            if (newFields.valor) {
+              updatePayload.amount = newFields.valor;
+              originalFields.amount = matched.amount;
+            }
+            if (newFields.data) {
+              updatePayload.date = newFields.data;
+              originalFields.date = matched.date;
+            }
+            if (newFields.banco_carteira) {
+              const matchedAccId = matchAccount(newFields.banco_carteira, accounts);
+              if (matchedAccId) {
+                updatePayload.account_id = matchedAccId;
+                originalFields.account_id = matched.account_id;
+              }
+            }
+            if (newFields.categoria) {
+              const matchedCatId = matchCategory(newFields.categoria, categories);
+              if (matchedCatId) {
+                updatePayload.category_id = matchedCatId;
+                originalFields.category_id = matched.category_id;
+              }
+            }
+
+            if (Object.keys(updatePayload).length > 0) {
+              const { error } = await editarTransacao(matched.id, updatePayload, 'this');
+              if (error) throw error;
+
+              setSuccessDetails({
+                actionType: 'update',
+                message: `Lançamento "${matched.description}" alterado com sucesso!`,
+                updatedTransactionBackup: { id: matched.id, originalFields }
+              });
+              window.dispatchEvent(new CustomEvent('transaction_created'));
+              setRecordingState('success_summary');
+              startSuccessCountdown();
+              return;
+            }
+          } catch (err) {
+            console.error('Falha na alteração silenciosa:', err);
+          }
+        }
+
+        // Ambiguidade ou erro de busca -> abre modal tradicional no modo de confirmação de existente
+        await findAndSetTransactionToConfirm(data);
+        setRecordingState('confirming');
+
       } else {
         // Fluxo de correspondência inteligente de criação
-        runMatching(data);
+        const suggestedBank = data.banco_carteira || '';
+        const matchedAccId = suggestedBank ? matchAccount(suggestedBank, accounts) : '';
+        
+        const suggestedCat = data.categoria || '';
+        const matchedCatId = suggestedCat ? matchCategory(suggestedCat, categories) : '';
+
+        // Definindo se há dúvidas
+        // 1. Usuário citou banco mas não achamos match exato
+        const bankDoubt = suggestedBank && !matchedAccId;
+        // 2. Usuário citou categoria mas não achamos match exato
+        const categoryDoubt = suggestedCat && !matchedCatId;
+        // 3. Faltam dados críticos como descrição ou valor <= 0
+        const dataInvalid = !data.descricao || !data.valor || data.valor <= 0;
+
+        if (bankDoubt || categoryDoubt || dataInvalid) {
+          // Há dúvida! Abre o modal para preenchimento manual
+          setMatchedAccountId(matchedAccId);
+          setMatchedCategoryId(matchedCatId);
+          setRecordingState('confirming');
+        } else {
+          // Não há dúvidas! Executa criação silenciosa (aceitando conta/categoria como nulas se não mencionadas)
+          try {
+            const transacaoInput = {
+              description: data.descricao,
+              amount: data.valor,
+              type: data.tipo,
+              date: data.data,
+              category_id: matchedCatId || undefined,
+              account_id: matchedAccId || undefined,
+              modalidade: data.modalidade || 'unica',
+              status: 'paid' as const,
+              installment_total: data.modalidade === 'parcelada' ? data.parcelas_total : undefined,
+              recurrence_period: data.modalidade === 'recorrente' ? (data.periodicidade === 'daily' ? 'daily' : data.periodicidade === 'weekly' ? 'weekly' : data.periodicidade === 'yearly' ? 'yearly' : 'monthly') : undefined,
+              recurrence_interval: data.modalidade === 'recorrente' ? data.recorrencia_intervalo : undefined
+            };
+
+            const { data: createdTx, error } = await criarTransacao(transacaoInput);
+            if (error) throw error;
+
+            setSuccessDetails({
+              actionType: 'create',
+              message: `Lançamento "${data.descricao}" criado com sucesso!`,
+              createdTransactionId: createdTx?.id
+            });
+            window.dispatchEvent(new CustomEvent('transaction_created'));
+            setRecordingState('success_summary');
+            startSuccessCountdown();
+          } catch (err) {
+            console.error('Falha na criação silenciosa:', err);
+            // Fallback: abre o modal tradicional
+            setMatchedAccountId(matchedAccId);
+            setMatchedCategoryId(matchedCatId);
+            setRecordingState('confirming');
+          }
+        }
       }
-      
-      setRecordingState('confirming');
 
     } catch (err: any) {
       console.error('Erro no processamento da IA:', err);
@@ -597,7 +987,7 @@ export function VoiceFloatingButton() {
             <div className="flex items-start justify-between">
               <span className="text-[9px] bg-slate-900 text-teal-400 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                Assistente Art
+                Assistente Artie
               </span>
               <button 
                 onClick={handleCancel}
@@ -658,8 +1048,55 @@ export function VoiceFloatingButton() {
               <div className="flex flex-col items-center justify-center py-8 gap-4">
                 <Loader2 size={36} className="animate-spin text-[#14b8a6]" />
                 <div className="text-center">
-                  <p className="text-xs font-bold text-slate-800">Art está ouvindo...</p>
+                  <p className="text-xs font-bold text-slate-800">Artie está ouvindo...</p>
                   <p className="text-[10px] text-slate-400 font-medium mt-1">Fale o que deseja lançar</p>
+                </div>
+              </div>
+            )}
+
+            {/* ESTADO 4: Resumo de Sucesso Silencioso */}
+            {recordingState === 'success_summary' && successDetails && (
+              <div className="flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-start gap-3 bg-teal-50/50 border border-teal-100 p-3.5 rounded-2xl">
+                  <div className="bg-teal-600 text-white p-2 rounded-xl shrink-0 flex items-center justify-center">
+                    <Check size={16} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-extrabold text-slate-800 leading-tight">Sucesso Silencioso</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1 leading-relaxed">
+                      {successDetails.message}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Barra Visual de Contagem Regressiva */}
+                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-teal-600 h-1 transition-all duration-1000 ease-linear rounded-full" 
+                    style={{ width: `${(countdown / 5) * 100}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    onClick={handleUndo}
+                    className="py-2 px-3 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer bg-white"
+                  >
+                    <RotateCcw size={12} />
+                    Desfazer ({countdown}s)
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+                      // Abre o modal de detalhes para editar
+                      setRecordingState('idle');
+                      setIsModalOpen(true);
+                    }}
+                    className="py-2 px-3 bg-slate-100 rounded-xl text-[10px] font-bold text-slate-700 hover:bg-slate-200 border-0 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Pencil size={12} />
+                    Editar Lançamento
+                  </button>
                 </div>
               </div>
             )}
@@ -994,12 +1431,12 @@ export function VoiceFloatingButton() {
         )}
 
         {/* Botão de Controle Flutuante Principal */}
-        {(recordingState === 'idle' || recordingState === 'confirming') && (
+        {(recordingState === 'idle' || recordingState === 'confirming' || recordingState === 'success_summary') && (
           <button
             onClick={startRecording}
             className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all hover:scale-105 shadow-teal-600/20 ring-4 ring-teal-600/0 hover:ring-teal-600/10 bg-teal-600 hover:bg-teal-500 select-none outline-none cursor-pointer border-0 z-50 animate-bounce duration-1000"
             style={{ animationDuration: '3s' }}
-            title="Fale com Art — seu assistente financeiro por voz"
+            title="Fale com Artie — seu assistente financeiro por voz"
           >
             <Mic size={24} />
           </button>
