@@ -591,61 +591,7 @@ const CreditCardV2 = () => {
     return result;
   }, [displayInstances, selectedCard]);
 
-  // Transaction row component
-  const TransactionRow = ({ t }: { t: TransactionInstance }) => {
-    const visualStatus = isInvoiceOverdue ? 'overdue' : 'default';
-    return (
-      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
-        <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[visualStatus]}`} />
-        <span className="text-xs text-slate-400 font-mono w-[70px] shrink-0">
-          {format(parseISO(t.instanceDate), 'dd/MM/yy')}
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 truncate">{t.description}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {t.category && (
-              <span className="text-[10px] text-slate-400">{t.category.icon} {t.category.name}</span>
-            )}
-            {t.tags && t.tags.length > 0 && t.tags.map(({ tag }) => (
-              <span key={tag.id} className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white" style={{ backgroundColor: tag.color }}>{tag.name}</span>
-            ))}
-          </div>
-        </div>
-        {t.modalidade === 'parcelada' && t.installment_total && (
-          <span className="text-[10px] text-slate-400 font-mono shrink-0">{t.installment_current}/{t.installment_total}</span>
-        )}
-        {t.recurrence_enabled && t.modalidade === 'recorrente' && (
-          <Repeat size={12} className="text-indigo-400 shrink-0" />
-        )}
-        {rowDensity === 'expanded' && t.recurrence_enabled && t.recurrence_period && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold shrink-0">
-            Recorrente: {t.recurrence_period === 'monthly' ? 'Mensal' : t.recurrence_period === 'weekly' ? 'Semanal' : t.recurrence_period}
-          </span>
-        )}
-        <span className={`text-sm font-bold tabular-nums shrink-0 ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-          {t.type === 'expense' ? '-' : '+'}{formatCurrency(t.amount)}
-        </span>
-        <div className="relative" ref={openDropdown === t.id + t.instanceDate ? dropdownRef : null}>
-          <button
-            onClick={(e) => handleDropdownClick(e, t.id + t.instanceDate)}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <MoreVertical size={14} />
-          </button>
-          {openDropdown === t.id + t.instanceDate && (
-            <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-30 ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-              <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
-                <Pencil size={14} /> Editar
-              </button>
-              <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao({ transactionId: t.id, scope: 'this', instanceDate: t.instanceDate || t.date, installmentCurrent: t.installment_current }).then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
-                <Trash2 size={14} /> Excluir
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+
 
   if (cards.length === 0 && !loading) {
     return (
@@ -733,7 +679,25 @@ const CreditCardV2 = () => {
           ) : displayInstances.length === 0 ? (
             <div className="py-12 text-center text-slate-400 italic">Nenhum lançamento neste período.</div>
           ) : (
-            displayInstances.map(t => <TransactionRow key={t.id + t.instanceDate} t={t} />)
+            displayInstances.map(t => (
+              <TransactionRow 
+                key={t.id + t.instanceDate} 
+                t={t}
+                rowDensity={rowDensity}
+                isInvoiceOverdue={isInvoiceOverdue}
+                openDropdown={openDropdown}
+                dropdownDirection={dropdownDirection}
+                dropdownRef={dropdownRef}
+                handleDropdownClick={handleDropdownClick}
+                setEditingTransaction={setEditingTransaction}
+                setModalType={setModalType}
+                setIsModalOpen={setIsModalOpen}
+                setOpenDropdown={setOpenDropdown}
+                setItemToDelete={setItemToDelete}
+                setIsDeleteScopeModalOpen={setIsDeleteScopeModalOpen}
+                fetchTransactions={fetchTransactions}
+              />
+            ))
           )}
         </div>
       </div>
@@ -924,7 +888,25 @@ const CreditCardV2 = () => {
                       })()}
                     </div>
                   )}
-                  {group.items.map(t => <TransactionRow key={t.id + t.instanceDate} t={t} />)}
+                  {group.items.map(t => (
+                    <TransactionRow 
+                      key={t.id + t.instanceDate} 
+                      t={t}
+                      rowDensity={rowDensity}
+                      isInvoiceOverdue={isInvoiceOverdue}
+                      openDropdown={openDropdown}
+                      dropdownDirection={dropdownDirection}
+                      dropdownRef={dropdownRef}
+                      handleDropdownClick={handleDropdownClick}
+                      setEditingTransaction={setEditingTransaction}
+                      setModalType={setModalType}
+                      setIsModalOpen={setIsModalOpen}
+                      setOpenDropdown={setOpenDropdown}
+                      setItemToDelete={setItemToDelete}
+                      setIsDeleteScopeModalOpen={setIsDeleteScopeModalOpen}
+                      fetchTransactions={fetchTransactions}
+                    />
+                  ))}
                 </div>
               ))
             ) : (
@@ -982,6 +964,105 @@ const CreditCardV2 = () => {
         onClose={() => setIsReopenConfirmOpen(false)}
         confirmColor="blue"
       />
+    </div>
+  );
+};
+
+interface TransactionRowProps {
+  t: TransactionInstance;
+  rowDensity: 'compact' | 'expanded' | 'default';
+  isInvoiceOverdue: boolean;
+  openDropdown: string | null;
+  dropdownDirection: 'up' | 'down';
+  dropdownRef: React.RefObject<HTMLDivElement | null>;
+  handleDropdownClick: (e: React.MouseEvent<HTMLButtonElement>, dropdownKey: string) => void;
+  setEditingTransaction: (t: FinancialTransaction | null) => void;
+  setModalType: (type: 'income' | 'expense' | 'transfer') => void;
+  setIsModalOpen: (open: boolean) => void;
+  setOpenDropdown: (key: string | null) => void;
+  setItemToDelete: (t: FinancialTransaction | null) => void;
+  setIsDeleteScopeModalOpen: (open: boolean) => void;
+  fetchTransactions: () => void;
+}
+
+const statusDot: Record<string, string> = {
+  default: 'bg-slate-300',
+  overdue: 'bg-rose-500',
+};
+
+const TransactionRow = ({
+  t,
+  rowDensity,
+  isInvoiceOverdue,
+  openDropdown,
+  dropdownDirection,
+  dropdownRef,
+  handleDropdownClick,
+  setEditingTransaction,
+  setModalType,
+  setIsModalOpen,
+  setOpenDropdown,
+  setItemToDelete,
+  setIsDeleteScopeModalOpen,
+  fetchTransactions
+}: TransactionRowProps) => {
+  const visualStatus = isInvoiceOverdue ? 'overdue' : 'default';
+  const dropdownKey = t.id + t.instanceDate;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
+      <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot[visualStatus]}`} />
+      <span className="text-xs text-slate-400 font-mono w-[70px] shrink-0">
+        {format(parseISO(t.instanceDate), 'dd/MM/yy')}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-800 truncate">{t.description}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {t.category && (
+            <span className="text-[10px] text-slate-400">{t.category.icon} {t.category.name}</span>
+          )}
+          {t.tags && t.tags.length > 0 && t.tags.map(({ tag }) => (
+            <span key={tag.id} className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white" style={{ backgroundColor: tag.color }}>{tag.name}</span>
+          ))}
+        </div>
+      </div>
+      {t.modalidade === 'parcelada' && t.installment_total && (
+        <span className="text-[10px] text-slate-400 font-mono shrink-0">{t.installment_current}/{t.installment_total}</span>
+      )}
+      {t.recurrence_enabled && t.modalidade === 'recorrente' && (
+        <Repeat size={12} className="text-indigo-400 shrink-0" />
+      )}
+      {rowDensity === 'expanded' && t.recurrence_enabled && t.recurrence_period && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold shrink-0">
+          Recorrente: {t.recurrence_period === 'monthly' ? 'Mensal' : t.recurrence_period === 'weekly' ? 'Semanal' : t.recurrence_period}
+        </span>
+      )}
+      <span className={`text-sm font-bold tabular-nums shrink-0 ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+        {t.type === 'expense' ? '-' : '+'}{formatCurrency(t.amount)}
+      </span>
+      <div 
+        className="relative" 
+        ref={openDropdown === dropdownKey ? dropdownRef : null}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={(e) => handleDropdownClick(e, dropdownKey)}
+          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          <MoreVertical size={14} />
+        </button>
+        {openDropdown === dropdownKey && (
+          <div className={`absolute right-0 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-30 ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+            <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
+              <Pencil size={14} /> Editar
+            </button>
+            <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao({ transactionId: t.id, scope: 'this', instanceDate: t.instanceDate || t.date, installmentCurrent: t.installment_current }).then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
+              <Trash2 size={14} /> Excluir
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
