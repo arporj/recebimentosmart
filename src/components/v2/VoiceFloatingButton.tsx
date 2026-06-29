@@ -297,7 +297,7 @@ export function VoiceFloatingButton() {
 
       // Fuzzy matching na lista
       const match = (txList || []).find(tx => {
-        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = descClean.includes(searchClean) || searchClean.includes(descClean);
@@ -355,7 +355,7 @@ export function VoiceFloatingButton() {
       };
 
       const pendingMatch = (txList || []).find(tx => {
-        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const isGeneric = isGenericDescription(data.descricao);
         const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -364,7 +364,7 @@ export function VoiceFloatingButton() {
       });
 
       const match = pendingMatch || (txList || []).find(tx => {
-        const valMatch = Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
+        const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const isGeneric = isGenericDescription(data.descricao);
         const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -528,7 +528,8 @@ export function VoiceFloatingButton() {
       setRecordingState('processing');
 
       const { error } = await editarTransacao(matchedTransactionToConfirm.id, {
-        status: 'paid'
+        status: 'paid',
+        date: localDate || matchedTransactionToConfirm.date
       }, 'this');
 
       if (error) throw error;
@@ -927,9 +928,24 @@ export function VoiceFloatingButton() {
                           <strong className="text-teal-600 font-black">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(matchedTransactionToConfirm.amount)}
                           </strong>
-                          , referente a <strong className="text-slate-900 font-bold">"{matchedTransactionToConfirm.description}"</strong> do dia{' '}
-                          <strong className="text-slate-900 font-bold">{formatExtractedDate(matchedTransactionToConfirm.date)}</strong> na conta <strong className="text-slate-900 font-bold">{matchedTransactionToConfirm.accountName}</strong>?
+                          , referente a <strong className="text-slate-900 font-bold">"{matchedTransactionToConfirm.description}"</strong>?
                         </p>
+
+                        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100/50 flex flex-col gap-2.5">
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Data do Pagamento</label>
+                            <input
+                              type="date"
+                              value={localDate}
+                              onChange={(e) => setLocalDate(e.target.value)}
+                              className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:border-[#14b8a6] focus:ring-1 focus:ring-[#14b8a6] outline-none"
+                            />
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-bold leading-normal border-t border-slate-200/60 pt-2 flex flex-col gap-0.5">
+                            <span>Vencimento original: {formatExtractedDate(matchedTransactionToConfirm.date)}</span>
+                            <span>Conta: {matchedTransactionToConfirm.accountName}</span>
+                          </div>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           <button
@@ -950,10 +966,15 @@ export function VoiceFloatingButton() {
                     ) : (
                       <>
                         <p className="text-xs text-slate-700 leading-relaxed font-semibold text-center py-2">
-                          Nenhum lançamento pendente <strong className="text-slate-900">"{extractedData.descricao || 'não especificado'}"</strong> no valor de{' '}
-                          <strong className="text-slate-900">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(extractedData.valor)}
-                          </strong>{' '}
+                          Nenhum lançamento pendente <strong className="text-slate-900">"{extractedData.descricao || 'não especificado'}"</strong>{' '}
+                          {extractedData.valor > 0 && (
+                            <>
+                              no valor de{' '}
+                              <strong className="text-slate-900">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(extractedData.valor)}
+                              </strong>{' '}
+                            </>
+                          )}
                           por volta de {formatExtractedDate(extractedData.data)} foi encontrado para confirmação.
                         </p>
 
