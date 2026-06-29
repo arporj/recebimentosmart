@@ -1014,13 +1014,41 @@ export function VoiceFloatingButton() {
                   <div className="w-1.5 h-6 bg-slate-400 rounded-full animate-bounce duration-300" style={{ animationDelay: '0.5s' }} />
                 </div>
 
-                <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100/30 text-[11px] text-teal-800 leading-relaxed font-semibold">
-                  <p className="mb-1 text-[10px] font-black uppercase text-[#29a8a8] tracking-wider">Como falar:</p>
-                  <ul className="list-disc pl-3.5 space-y-1">
-                    <li>"Recebi 150 reais de João ontem no pix"</li>
-                    <li>"Paguei 10 reais de cerveja no cartão"</li>
-                    <li>"Exclua a despesa de 25 reais de almoço hoje"</li>
-                  </ul>
+                <div className="p-3.5 bg-teal-50/20 rounded-2xl border border-teal-100/40 text-[10px] text-slate-700 leading-relaxed font-semibold shadow-inner">
+                  <p className="mb-2 text-[9px] font-black uppercase text-[#14b8a6] tracking-wider flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-[#14b8a6]" />
+                    Guia de Comandos do Artie:
+                  </p>
+                  <div className="space-y-2 text-[10px] text-slate-600 font-bold">
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-[#14b8a6] text-[11px] select-none leading-none pt-0.5">📝</span>
+                      <div>
+                        <span className="font-extrabold text-slate-800">Lançar Novo: </span>
+                        <span className="text-slate-500 font-semibold italic">"Paguei 50 reais de gasolina na conta Inter"</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-[#14b8a6] text-[11px] select-none leading-none pt-0.5">✅</span>
+                      <div>
+                        <span className="font-extrabold text-slate-800">Dar Baixa: </span>
+                        <span className="text-slate-500 font-semibold italic">"Confirme para hoje o IPTU que tem para amanhã"</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-[#14b8a6] text-[11px] select-none leading-none pt-0.5">✏️</span>
+                      <div>
+                        <span className="font-extrabold text-slate-800">Alterar Registro: </span>
+                        <span className="text-slate-500 font-semibold italic">"Altere o almoço de hoje para 15 reais"</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-[#14b8a6] text-[11px] select-none leading-none pt-0.5">🗑️</span>
+                      <div>
+                        <span className="font-extrabold text-slate-800">Excluir Registro: </span>
+                        <span className="text-slate-500 font-semibold italic">"Exclua o churrasco de ontem de 80 reais"</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Botões Lado a Lado: Cancelar (Vermelho) e Enviar (Verde) */}
