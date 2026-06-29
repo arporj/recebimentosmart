@@ -71,7 +71,7 @@ export async function editarTransacao(
         ...dbUpdate,
         date: dbUpdate.date || currentDate,
         user_id: current.user_id,
-        type: type,
+        type: dbUpdate.type || type,
         parent_id: current.id,
         modalidade: 'unica', // o filho físico é isolado
         is_customized: true,
@@ -130,7 +130,7 @@ export async function editarTransacao(
         user_id: current.user_id,
         description: cleanUpdate.description || current.description,
         amount: cleanUpdate.amount || current.amount,
-        type: type,
+        type: cleanUpdate.type || type,
         category_id: cleanUpdate.category_id || current.category_id,
         account_id: cleanUpdate.account_id || current.account_id,
         destination_account_id: cleanUpdate.destination_account_id || current.destination_account_id,

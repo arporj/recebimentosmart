@@ -1520,8 +1520,8 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={`font-medium text-xs ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                      <p className={`font-normal text-xs ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                        {formatRunningBalance(t.runningBalance)}
                       </p>
                     </div>
                     <div className="relative shrink-0 w-6"></div>
@@ -1555,12 +1555,12 @@ const FinancialTransactionsV2 = () => {
                     {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                     {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
                       <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
-                        <p className="font-extrabold text-xs text-amber-700">
+                        <p className="font-extrabold text-[10px] text-amber-700">
                           {formatTransactionAmount(t.amount, 'expense')}
                         </p>
                         {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                          <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                          <p className={`text-[8px] font-normal mt-0.5 leading-none ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                            {formatRunningBalance(t.runningBalance)}
                           </p>
                         )}
                       </div>
@@ -1572,7 +1572,7 @@ const FinancialTransactionsV2 = () => {
                           <Zap size={10} className="text-amber-500 fill-amber-500 shrink-0 mr-1" />
                         )}
                         <CreditCard size={12} className="text-amber-600 shrink-0" />
-                        <span className="font-black text-xs text-slate-800 truncate">{t.description}</span>
+                        <span className="font-black text-[10px] text-slate-800 truncate">{t.description}</span>
                         {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
                           <Zap size={10} className="text-amber-500 fill-amber-500 shrink-0 ml-1" />
                         )}
@@ -1587,12 +1587,12 @@ const FinancialTransactionsV2 = () => {
                     {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                     {layoutPreference === 'default' && (
                       <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
-                        <p className="font-medium text-xs text-amber-700">
+                        <p className="font-medium text-[10px] text-amber-700">
                           {formatTransactionAmount(t.amount, 'expense')}
                         </p>
                         {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                          <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                          <p className={`text-[9px] font-normal mt-0.5 ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                            {formatRunningBalance(t.runningBalance)}
                           </p>
                         )}
                       </div>
@@ -1667,12 +1667,12 @@ const FinancialTransactionsV2 = () => {
                   {/* CASO: layoutPreference === 'value_first' OU 'value_right_desc' -> VALOR VEM PRIMEIRO À ESQUERDA */}
                   {(layoutPreference === 'value_first' || layoutPreference === 'value_right_desc') && (
                     <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pr-1.5`}>
-                      <p className={`font-extrabold text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                      <p className={`font-extrabold text-[10px] ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                         {formatTransactionAmount(t.amount, t.type)}
                       </p>
                       {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                        <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                        <p className={`text-[8px] font-normal mt-0.5 leading-none ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                          {formatRunningBalance(t.runningBalance)}
                         </p>
                       )}
                     </div>
@@ -1689,7 +1689,7 @@ const FinancialTransactionsV2 = () => {
                         </div>
                       )}
 
-                      <span className="font-bold text-xs text-slate-800 truncate">{t.description || 'S/ Descrição'}</span>
+                      <span className="font-bold text-[10px] text-slate-800 truncate">{t.description || 'S/ Descrição'}</span>
                       
                       {layoutPreference !== 'value_right_desc' && (
                         <div className="flex items-center gap-1 shrink-0 ml-1">
@@ -1727,12 +1727,12 @@ const FinancialTransactionsV2 = () => {
                   {/* CASO: layoutPreference === 'default' -> VALOR VEM POR ÚLTIMO (DIREITA) */}
                   {layoutPreference === 'default' && (
                     <div className={`shrink-0 ${rowDensity === 'compact' ? 'w-[75px]' : 'w-[90px]'} ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-1.5`}>
-                      <p className={`font-medium text-xs ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                      <p className={`font-medium text-[10px] ${t.type === 'expense' ? 'text-rose-600' : t.type === 'income' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                         {formatTransactionAmount(t.amount, t.type)}
                       </p>
                       {rowDensity !== 'compact' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                        <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                        <p className={`text-[9px] font-normal mt-0.5 ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                          {formatRunningBalance(t.runningBalance)}
                         </p>
                       )}
                     </div>
@@ -1838,14 +1838,36 @@ const FinancialTransactionsV2 = () => {
                     <span>{isAllSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
                   </button>
                 )}
-                <button
-                  onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
-                  className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
-                >
-                  <Plus size={14} />
-                  <span>Criar Lançamento</span>
-                  <ArrowRight size={14} className="ml-1 opacity-70" />
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
+                    className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
+                  >
+                    <Plus size={14} />
+                    <span>Criar Lançamento</span>
+                    <ArrowRight size={14} className="ml-1 opacity-70" />
+                  </button>
+                  <div className="absolute left-0 top-full pt-1.5 w-44 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="bg-white rounded-xl shadow-xl border border-slate-100 py-1">
+                      <button
+                        type="button"
+                        onClick={() => { setModalType('income'); setEditingTransaction(null); setIsModalOpen(true); }}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-[10px] font-bold text-teal-600 hover:bg-slate-50 transition-colors uppercase tracking-wider text-left"
+                      >
+                        <Plus size={12} className="text-teal-600" />
+                        <span>🟢 Receita</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setModalType('transfer'); setEditingTransaction(null); setIsModalOpen(true); }}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-[10px] font-bold text-indigo-600 hover:bg-slate-50 transition-colors uppercase tracking-wider text-left"
+                      >
+                        <Plus size={12} className="text-indigo-600" />
+                        <span>🔵 Transferência</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                 {['all', 'income', 'expense', 'transfer'].map(f => (
@@ -1886,8 +1908,8 @@ const FinancialTransactionsV2 = () => {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className={`font-medium text-base ${t.runningBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                          <p className={`font-normal text-base ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                            {formatRunningBalance(t.runningBalance)}
                           </p>
                         </div>
                         <div className="relative w-10"></div>
@@ -1933,8 +1955,8 @@ const FinancialTransactionsV2 = () => {
                               {formatTransactionAmount(t.amount, 'expense')}
                             </p>
                             {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                              <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                              <p className={`text-[9px] font-normal mt-0.5 leading-none ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                                {formatRunningBalance(t.runningBalance)}
                               </p>
                             )}
                           </div>
@@ -1989,8 +2011,8 @@ const FinancialTransactionsV2 = () => {
                               {formatTransactionAmount(t.amount, 'expense')}
                             </p>
                             {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                              <p className="text-[10px] font-medium text-slate-400 mt-0.5">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                              <p className={`text-[10px] font-normal mt-0.5 ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                                {formatRunningBalance(t.runningBalance)}
                               </p>
                             )}
                           </div>
@@ -2000,8 +2022,8 @@ const FinancialTransactionsV2 = () => {
                         {(predictedLayout === 'column' || rowDensity === 'compact') && (
                           <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
                             {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                              <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.runningBalance)}
+                              <span className={`text-[11px] font-normal ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                                {formatRunningBalance(t.runningBalance)}
                               </span>
                             ) : (
                               <span className="text-[11px] text-slate-400/50">-</span>
@@ -2084,7 +2106,7 @@ const FinancialTransactionsV2 = () => {
                             {formatTransactionAmount(t.amount, t.type)}
                           </p>
                           {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                            <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                            <p className={`text-[9px] font-normal mt-0.5 leading-none ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
                               {formatRunningBalance(t.runningBalance)}
                             </p>
                           )}
@@ -2224,7 +2246,7 @@ const FinancialTransactionsV2 = () => {
                             {formatTransactionAmount(t.amount, t.type)}
                           </p>
                           {rowDensity !== 'compact' && predictedLayout === 'below' && t.runningBalance !== undefined && !isNaN(t.runningBalance) && (
-                            <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                            <p className={`text-[10px] font-normal mt-0.5 ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
                               {formatRunningBalance(t.runningBalance)}
                             </p>
                           )}
@@ -2235,7 +2257,7 @@ const FinancialTransactionsV2 = () => {
                       {(predictedLayout === 'column' || rowDensity === 'compact') && (
                         <div className={`shrink-0 w-[115px] ${valueAlignment === 'left' ? 'text-left' : 'text-right'} pl-2`}>
                           {t.runningBalance !== undefined && !isNaN(t.runningBalance) ? (
-                            <span className={`text-[11px] font-bold ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                            <span className={`text-[11px] font-normal ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
                               {formatRunningBalance(t.runningBalance)}
                             </span>
                           ) : (
