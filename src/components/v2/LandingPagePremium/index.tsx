@@ -85,7 +85,7 @@ export const LandingPagePremium: React.FC = () => {
     ];
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#f6f8f8] text-slate-900 font-['Inter',sans-serif] transition-colors duration-300"
+        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#f6f8f8] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-['Inter',sans-serif] transition-colors duration-300"
             style={{
                 backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(41, 168, 168, 0.05) 1px, transparent 0)',
                 backgroundSize: '40px 40px',
@@ -94,19 +94,19 @@ export const LandingPagePremium: React.FC = () => {
             <div className="layout-container flex h-full grow flex-col">
 
                 {/* ─── Header ─── */}
-                <header className="sticky top-0 z-50 w-full border-b border-[#29a8a8]/10 bg-[#f6f8f8]/80 backdrop-blur-md px-4 md:px-20 py-4">
+                <header className="sticky top-0 z-50 w-full border-b border-[#29a8a8]/10 dark:border-slate-800 bg-[#f6f8f8]/80 dark:bg-slate-950/80 backdrop-blur-md px-4 md:px-20 py-4">
                     <div className="mx-auto flex max-w-7xl items-center justify-between">
                         <div className="flex items-center gap-2 md:gap-3">
                             <img src="/images/logo.svg" alt="Recebimento $mart" className="h-8 w-8 md:h-10 md:w-10 rounded-lg shadow-lg shadow-[#29a8a8]/20" />
-                            <h2 className="block text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
+                            <h2 className="block text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
                         </div>
                         <nav className="hidden md:flex items-center gap-10">
-                            <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#features">Funcionalidades</a>
-                            <a className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" href="#pricing">Planos</a>
-                            <Link className="text-sm font-semibold text-slate-600 hover:text-[#29a8a8] transition-colors" to="/faq">Perguntas Frequentes (FAQ)</Link>
+                            <a className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-[#29a8a8] transition-colors" href="#features">Funcionalidades</a>
+                            <a className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-[#29a8a8] transition-colors" href="#pricing">Planos</a>
+                            <Link className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-[#29a8a8] transition-colors" to="/faq">Perguntas Frequentes (FAQ)</Link>
                         </nav>
                         <div className="flex items-center gap-2 sm:gap-4">
-                            <Link className="rounded-lg bg-slate-200/50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 hover:text-[#29a8a8] transition-colors" to="/v2/login">
+                            <Link className="rounded-lg bg-slate-200/50 dark:bg-slate-800/80 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-[#29a8a8] transition-colors" to="/v2/login">
                                 Login
                             </Link>
                             <Link className="hidden sm:flex cursor-pointer items-center justify-center rounded-lg bg-[#29a8a8] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#29a8a8]/30 hover:scale-105 active:scale-95 transition-all" to="/v2/cadastro">
@@ -128,10 +128,10 @@ export const LandingPagePremium: React.FC = () => {
                                         <span className="material-symbols-outlined text-sm">auto_awesome</span>
                                         Inteligência Financeira
                                     </div>
-                                    <h1 className="text-slate-900 text-5xl font-black leading-[1.1] tracking-tight md:text-6xl lg:text-7xl">
+                                    <h1 className="text-slate-900 dark:text-white text-5xl font-black leading-[1.1] tracking-tight md:text-6xl lg:text-7xl">
                                         Controle seus recebimentos com <span className="text-[#29a8a8]">inteligência</span> e simplicidade
                                     </h1>
-                                    <p className="max-w-[540px] text-lg font-medium leading-relaxed text-slate-600 md:text-xl">
+                                    <p className="max-w-[540px] text-lg font-medium leading-relaxed text-slate-600 dark:text-slate-400 md:text-xl">
                                         Otimize sua gestão financeira com um sistema completo e fácil de usar, desenhado para organizar suas finanças pessoais ou impulsionar o seu negócio.
                                     </p>
                                     <div className="flex flex-wrap gap-4">
@@ -151,7 +151,7 @@ export const LandingPagePremium: React.FC = () => {
                                         ];
                                         return (
                                             <div className="relative">
-                                                <div className="relative rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl overflow-hidden">
+                                                <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-2xl overflow-hidden">
                                                     {screenshots.map((s, i) => (
                                                         <img
                                                             key={i}
@@ -167,7 +167,7 @@ export const LandingPagePremium: React.FC = () => {
                                                         <button
                                                             key={i}
                                                             onClick={() => setHeroSlide(i)}
-                                                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${i === heroSlide ? 'bg-[#29a8a8] text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                                            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${i === heroSlide ? 'bg-[#29a8a8] text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                                                         >
                                                             {s.label}
                                                         </button>
@@ -182,21 +182,21 @@ export const LandingPagePremium: React.FC = () => {
                     </section>
 
                     {/* ─── Features ─── */}
-                    <section className="bg-white px-6 py-24 md:px-20" id="features">
+                    <section className="bg-white dark:bg-slate-900 px-6 py-24 md:px-20" id="features">
                         <div className="mx-auto max-w-7xl">
                             <div className="mb-16 text-center">
                                 <h2 className="text-[#29a8a8] text-sm font-bold uppercase tracking-[0.2em] mb-3">Funcionalidades</h2>
-                                <h3 className="text-3xl font-black text-slate-900 md:text-4xl">Tudo o que você precisa para gerir suas finanças</h3>
+                                <h3 className="text-3xl font-black text-slate-900 dark:text-white md:text-4xl">Tudo o que você precisa para gerir suas finanças</h3>
                             </div>
                             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                                 {features.map((f, i) => (
-                                    <div key={i} className="group flex flex-col gap-6 rounded-2xl border border-slate-100 bg-[#f6f8f8] p-8 transition-all hover:-translate-y-2 hover:border-[#29a8a8]/20 hover:shadow-xl hover:shadow-[#29a8a8]/5">
-                                        <div className="flex size-14 items-center justify-center rounded-xl bg-white text-[#29a8a8] shadow-sm group-hover:bg-[#29a8a8] group-hover:text-white transition-colors">
+                                    <div key={i} className="group flex flex-col gap-6 rounded-2xl border border-slate-100 dark:border-slate-800 bg-[#f6f8f8] dark:bg-slate-950 p-8 transition-all hover:-translate-y-2 hover:border-[#29a8a8]/20 hover:shadow-xl hover:shadow-[#29a8a8]/5">
+                                        <div className="flex size-14 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#29a8a8] shadow-sm group-hover:bg-[#29a8a8] group-hover:text-white transition-colors">
                                             <span className="material-symbols-outlined text-3xl">{f.icon}</span>
                                         </div>
                                         <div className="flex flex-col gap-3">
-                                            <h4 className="text-xl font-bold text-slate-900">{f.title}</h4>
-                                            <p className="text-slate-600 leading-relaxed">{f.description}</p>
+                                            <h4 className="text-xl font-bold text-slate-900 dark:text-white">{f.title}</h4>
+                                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{f.description}</p>
                                         </div>
                                         <a className="mt-auto flex items-center gap-2 text-sm font-bold text-[#29a8a8] group-hover:gap-3 transition-all" href="#">
                                             Saiba mais <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -212,15 +212,15 @@ export const LandingPagePremium: React.FC = () => {
                         <div className="mx-auto max-w-7xl">
                             <div className="mb-16 text-center">
                                 <h2 className="text-[#29a8a8] text-sm font-bold uppercase tracking-[0.2em] mb-3">Preços</h2>
-                                <h3 className="text-3xl font-black text-slate-900 md:text-4xl">O plano ideal para cada fase do seu negócio</h3>
+                                <h3 className="text-3xl font-black text-slate-900 dark:text-white md:text-4xl">O plano ideal para cada fase do seu negócio</h3>
                             </div>
                             <div className="grid grid-cols-1 gap-8 lg:grid-cols-4 items-start">
                                 {pricingTiers.map((tier) => (
                                     <div
                                         key={tier.name}
                                         className={`relative flex flex-col gap-8 rounded-3xl p-8 transition-all ${tier.popular
-                                            ? 'border-2 border-[#29a8a8] bg-white shadow-2xl shadow-[#29a8a8]/10 scale-105 z-10'
-                                            : 'border border-slate-200 bg-white hover:border-[#29a8a8]/30'
+                                            ? 'border-2 border-[#29a8a8] bg-white dark:bg-slate-900 shadow-2xl shadow-[#29a8a8]/10 scale-105 z-10'
+                                            : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-[#29a8a8]/30'
                                             } ${tier.disabled ? 'opacity-60' : ''}`}
                                     >
                                         {tier.popular && (
@@ -229,21 +229,21 @@ export const LandingPagePremium: React.FC = () => {
                                             </div>
                                         )}
                                         {tier.disabled && (
-                                            <div className="absolute inset-0 bg-slate-100/70 flex items-center justify-center rounded-3xl z-20">
+                                            <div className="absolute inset-0 bg-slate-100/70 dark:bg-slate-900/70 flex items-center justify-center rounded-3xl z-20">
                                                 <span className="text-2xl font-bold text-slate-500 border-2 border-slate-300 px-6 py-2 rounded -rotate-12">Em breve</span>
                                             </div>
                                         )}
                                         <div>
-                                            <h5 className="text-lg font-bold text-slate-900">{tier.name}</h5>
-                                            <p className="mt-2 text-sm text-slate-500">{tier.description}</p>
+                                            <h5 className="text-lg font-bold text-slate-900 dark:text-white">{tier.name}</h5>
+                                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{tier.description}</p>
                                             <div className="mt-6 flex items-baseline gap-1">
-                                                <span className="text-4xl font-black text-slate-900">R$ {tier.price}</span>
-                                                <span className="text-slate-500 font-bold">/mês</span>
+                                                <span className="text-4xl font-black text-slate-900 dark:text-white">R$ {tier.price}</span>
+                                                <span className="text-slate-500 dark:text-slate-400 font-bold">/mês</span>
                                             </div>
                                         </div>
                                         {tier.disabled ? (
                                             <button
-                                                className="w-full text-center rounded-xl text-sm font-bold py-3 border-2 border-slate-200 text-slate-400 cursor-not-allowed"
+                                                className="w-full text-center rounded-xl text-sm font-bold py-3 border-2 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed"
                                                 disabled
                                             >
                                                 Indisponível
@@ -253,7 +253,7 @@ export const LandingPagePremium: React.FC = () => {
                                                 to={tier.ctaLink}
                                                 className={`w-full text-center rounded-xl text-sm font-bold transition-all ${tier.popular
                                                     ? 'bg-[#29a8a8] py-4 text-white shadow-lg shadow-[#29a8a8]/30 hover:bg-[#29a8a8]/90'
-                                                    : 'border-2 border-slate-100 py-3 text-slate-900 hover:bg-slate-50'
+                                                    : 'border-2 border-slate-100 dark:border-slate-800 py-3 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                     }`}
                                             >
                                                 {tier.cta}
@@ -261,7 +261,7 @@ export const LandingPagePremium: React.FC = () => {
                                         )}
                                         <ul className="flex flex-col gap-4">
                                             {tier.features.map((f) => (
-                                                <li key={f.text} className={`flex items-center gap-3 text-sm font-medium ${f.available ? 'text-slate-600' : 'text-slate-400 line-through'}`}>
+                                                <li key={f.text} className={`flex items-center gap-3 text-sm font-medium ${f.available ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500 line-through'}`}>
                                                     <span className={`material-symbols-outlined ${f.available ? 'text-[#29a8a8]' : ''}`}>
                                                         {f.available ? 'check_circle' : 'cancel'}
                                                     </span>
@@ -292,26 +292,26 @@ export const LandingPagePremium: React.FC = () => {
                 </main>
 
                 {/* ─── Footer ─── */}
-                <footer className="border-t border-slate-200 bg-white px-6 py-12 md:px-20">
+                <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-12 md:px-20">
                     <div className="mx-auto max-w-7xl">
                         <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
                             <div className="flex flex-col gap-6">
                                 <div className="flex items-center gap-3">
                                     <img src="/images/logo.svg" alt="Recebimento $mart" className="h-10 w-10 rounded-lg" />
-                                    <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
+                                    <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Recebimento <span className="text-[#29a8a8]">$mart</span></h2>
                                 </div>
-                                <p className="text-sm text-slate-500 leading-relaxed">A solução inteligente para o controle financeiro da sua pequena empresa.</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">A solução inteligente para o controle financeiro da sua pequena empresa.</p>
                             </div>
                             <div>
-                                <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Produto</h6>
-                                <ul className="flex flex-col gap-4 text-sm text-slate-600">
+                                <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Produto</h6>
+                                <ul className="flex flex-col gap-4 text-sm text-slate-600 dark:text-slate-400">
                                     <li><a className="hover:text-[#29a8a8] transition-colors" href="#features">Funcionalidades</a></li>
                                     <li><a className="hover:text-[#29a8a8] transition-colors" href="#pricing">Planos</a></li>
                                 </ul>
                             </div>
                             <div>
-                                <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Suporte</h6>
-                                <ul className="flex flex-col gap-4 text-sm text-slate-600">
+                                <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Suporte</h6>
+                                <ul className="flex flex-col gap-4 text-sm text-slate-600 dark:text-slate-400">
                                     <li><Link className="hover:text-[#29a8a8] transition-colors" to="/faq">FAQ / Ajuda</Link></li>
                                     <li><Link className="hover:text-[#29a8a8] transition-colors" to="/contato">Contato</Link></li>
                                     <li><a className="hover:text-[#29a8a8] transition-colors" href="mailto:contato@recebimentosmart.com.br">E-mail</a></li>
@@ -319,8 +319,8 @@ export const LandingPagePremium: React.FC = () => {
                                 </ul>
                             </div>
                             <div>
-                                <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900">Legal</h6>
-                                <ul className="flex flex-col gap-4 text-sm text-slate-600">
+                                <h6 className="mb-6 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Legal</h6>
+                                <ul className="flex flex-col gap-4 text-sm text-slate-600 dark:text-slate-400">
                                     <li><Link className="hover:text-[#29a8a8] transition-colors" to="/privacidade">Privacidade</Link></li>
                                     <li><Link className="hover:text-[#29a8a8] transition-colors" to="/termos">Termos de Uso</Link></li>
                                     <li><Link className="hover:text-[#29a8a8] transition-colors" to="/cookies">Cookies</Link></li>
