@@ -158,9 +158,12 @@ const DashboardV2 = () => {
       const fetchedAccounts = accountsData || [];
       setAccounts(fetchedAccounts);
 
-      // Preencher contas selecionadas padrão (todas se vazio)
+      // Preencher contas selecionadas padrão (apenas contas bancárias, ignorando cartões)
       if (selectedAccountIds.size === 0 && fetchedAccounts.length > 0) {
-        setSelectedAccountIds(new Set(fetchedAccounts.map(a => a.id)));
+        const defaultSelected = fetchedAccounts
+          .filter(a => a.type !== 'credit_card')
+          .map(a => a.id);
+        setSelectedAccountIds(new Set(defaultSelected));
       }
 
       // 2. Buscar TODAS as transações do usuário a partir da view para processamento consistente em memória
@@ -373,10 +376,14 @@ const DashboardV2 = () => {
     const selectedAccs = accounts.filter(a => selectedAccountIds.has(a.id));
     const initialBalanceSum = selectedAccs.reduce((sum, a) => sum + (Number(a.initial_balance) || 0), 0);
 
-    // Calcular o saldo inicial histórico antes de começar o mês atual (apenas transações de contas selecionadas)
+    // Calcular o saldo inicial histórico antes de começar o mês atual (apenas transações de contas correntes/investimentos selecionadas)
     const prevTransactions = expandedInstances.filter(t => {
       const tDate = parseISO(t.instanceDate);
       const isBeforeMonth = isBefore(tDate, startOfCurrent);
+      
+      // Ignorar transações em cartões de crédito para fins de saldo das contas correntes
+      if (t.account_type === 'credit_card') return false;
+
       const isSelectedAccount = (t.account_id && selectedAccountIds.has(t.account_id)) || 
                                 (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
       if (!isBeforeMonth || !isSelectedAccount) return false;
@@ -409,6 +416,7 @@ const DashboardV2 = () => {
       const dayStr = format(day, 'yyyy-MM-dd');
       const dayTransactions = currentMonthInstances.filter(t => 
         t.instanceDate === dayStr && 
+        t.account_type !== 'credit_card' && // Ignorar compras de cartão no saldo corrente
         ((t.account_id && selectedAccountIds.has(t.account_id)) || 
          (t.destination_account_id && selectedAccountIds.has(t.destination_account_id)))
       );
