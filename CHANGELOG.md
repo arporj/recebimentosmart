@@ -13,6 +13,9 @@ O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 - **Marcação Automática de Leitura**: Sistema otimizado de persistência de confirmação de leitura em lote por usuário no banco de dados para eliminar badges de novidades repetidos.
 - **Painel de Gestão Administrativa (`AdminChangelogV2`)**: Nova tela para administradores cadastrarem, editarem e removerem novidades e atualizações com área de pré-visualização reativa e integração direta com disparos de e-mail de Broadcast.
 
+### Corrigido
+- **Transações Silenciosas sem Conta**: Correção no carregamento e filtragem de lançamentos que não possuíam conta cadastrada (ex: criadas silenciosamente por comandos de voz do Artie). Agora, essas transações são associadas a uma conta virtual "Sem Conta" no frontend, permitindo que apareçam na listagem financeira normal para que o usuário possa identificá-las e associar uma conta real de forma simples.
+
 ---
 
 ## [2.1.0] - 2026-06-29
