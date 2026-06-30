@@ -201,8 +201,9 @@ const FinancialTransactionsV2 = () => {
       
       const mappedData = (data || []).map((t: any) => ({
         ...t,
-        account: t.account_name ? { name: t.account_name, type: t.account_type } : null,
-        account_type: t.account_type || null,
+        account_id: t.account_id || 'sem-conta',
+        account: t.account_name ? { name: t.account_name, type: t.account_type } : { name: 'Sem Conta', type: 'checking' },
+        account_type: t.account_type || 'checking',
         destination_account: t.destination_account_name ? { name: t.destination_account_name, type: t.destination_account_type } : null,
         client: t.client_name ? { name: t.client_name } : null,
         category: t.category_name ? { name: t.category_name, icon: t.category_icon, parent_id: t.category_parent_id } : null
@@ -230,15 +231,26 @@ const FinancialTransactionsV2 = () => {
       
       if (error) throw error;
       const fetchedAccounts = data || [];
-      setAccounts(fetchedAccounts);
+      
+      const semContaVirtual = {
+        id: 'sem-conta',
+        name: 'Sem Conta',
+        type: 'checking',
+        initial_balance: 0,
+        is_active: true,
+        user_id: user.id
+      };
+      
+      const accountsWithVirtual = [...fetchedAccounts, semContaVirtual];
+      setAccounts(accountsWithVirtual);
 
       const saved = localStorage.getItem(`recebimento_smart_selected_accounts_${user.id}`);
       let usedSaved = false;
       if (saved) {
         try {
           const ids = JSON.parse(saved);
-          // Garante que os IDs salvos pertencem ao usuário atual (essencial para o Impersonate)
-          const validAccountIds = new Set(fetchedAccounts.map(a => a.id));
+          // Garante que os IDs salvos pertencem ao usuário atual ou são a conta virtual
+          const validAccountIds = new Set([...fetchedAccounts.map(a => a.id), 'sem-conta']);
           const validSavedIds = ids.filter((id: string) => validAccountIds.has(id));
           
           if (validSavedIds.length > 0) {
@@ -251,7 +263,7 @@ const FinancialTransactionsV2 = () => {
       } 
       
       if (!usedSaved && fetchedAccounts.length > 0) {
-        setSelectedAccountIds(new Set(fetchedAccounts.map(a => a.id)));
+        setSelectedAccountIds(new Set([...fetchedAccounts.map(a => a.id), 'sem-conta']));
       }
     } catch (err) {
       console.error('Erro ao buscar contas:', err);
