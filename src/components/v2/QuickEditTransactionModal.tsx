@@ -924,6 +924,53 @@ const QuickEditTransactionModal = ({
               </div>
             </div>
 
+            {/* Conditional Credit Card Details */}
+            {isCreditCard && (
+              <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Fatura de</label>
+                  <input 
+                    type="month"
+                    value={invoiceMonth}
+                    onChange={(e) => setInvoiceMonth(e.target.value)}
+                    className="w-full py-2 px-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Titular</label>
+                  <div className="relative group">
+                    <select 
+                      value={cardHolderName || ''}
+                      onChange={(e) => setCardHolderName(e.target.value)}
+                      className="w-full py-2 px-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold !appearance-none bg-none cursor-pointer text-slate-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+                      style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                    >
+                      <option value="">Selecione o titular</option>
+                      {(() => {
+                        const account = accounts.find(a => a.id === accountId);
+                        if (!account) return null;
+                        const holders = [];
+                        if (account.main_card_name) holders.push(account.main_card_name);
+                        if (Array.isArray(account.secondary_cards)) {
+                          (account.secondary_cards as any[]).forEach((c) => {
+                            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+                            if (name) holders.push(name);
+                          });
+                        }
+                        return holders.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ));
+                      })()}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                      <ChevronDown size={12} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tags */}
             <div ref={tagRef} className="relative">
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 block">Tags</label>
