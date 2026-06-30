@@ -83,6 +83,11 @@ const FAQ_ITEMS: FAQItem[] = [
         category: 'funcionalidades',
         question: 'Como funciona a aceitação de lançamentos compartilhados?',
         answer: 'Ao aceitar um convite de lançamentos compartilhados, você tem total controle sobre como esses registros aparecem na sua conta. Você pode escolher associar os lançamentos a um cliente existente, criar automaticamente um novo cliente local (com o nome de quem está compartilhando para facilitar sua organização) ou aceitar os lançamentos sem vinculá-los a nenhum cliente específico, de forma totalmente flexível.'
+    },
+    {
+        category: 'funcionalidades',
+        question: 'O que é a conta "Sem Conta" e como ela funciona com o assistente de voz?',
+        answer: 'Quando você cria um lançamento financeiro utilizando o assistente de voz Artie e não menciona uma conta bancária de origem ou destino, o sistema cria o lançamento silenciosamente em um estado temporário "Sem Conta". Esse lançamento é listado sob a conta virtual "Sem Conta" na sua tela de Lançamentos para que você possa localizá-lo rapidamente, clicar para editar e associar à conta bancária definitiva desejada.'
     }
 ];
 
