@@ -209,10 +209,12 @@ const DashboardV2 = () => {
       
       if (!t.recurrence_enabled) {
         if (isBefore(tDate, maxFutureDate) || isSameDay(tDate, maxFutureDate)) {
+          const status = t.account_type === 'credit_card' ? 'paid' : t.status;
           instances.push({
             ...t,
             instanceDate: t.date,
             originalInstanceDate: t.date,
+            status,
             isVirtual: false
           });
         }
@@ -238,7 +240,9 @@ const DashboardV2 = () => {
         const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
         
         if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
-          const status = dateStr !== t.date ? 'pending' : t.status;
+          const status = t.account_type === 'credit_card' 
+            ? 'paid' 
+            : (dateStr !== t.date ? 'pending' : t.status);
           instances.push({
             ...t,
             instanceDate: dateStr,
@@ -854,9 +858,15 @@ const DashboardV2 = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-black text-slate-800 truncate group-hover:text-slate-900 capitalize">{t.description || 'Sem Descrição'}</p>
                         <p className="text-[10px] font-bold text-slate-400">
-                          {format(parseISO(t.instanceDate!), 'dd/MM/yyyy')} • <span className={t.status === 'paid' ? 'text-emerald-600' : 'text-amber-600 font-extrabold'}>
-                            {t.status === 'paid' ? 'Pago' : 'Pendente'}
-                          </span>
+                          {format(parseISO(t.instanceDate!), 'dd/MM/yyyy')}
+                          {t.account_type !== 'credit_card' && (
+                            <>
+                              {' • '}
+                              <span className={t.status === 'paid' ? 'text-emerald-600' : 'text-amber-600 font-extrabold'}>
+                                {t.status === 'paid' ? 'Pago' : 'Pendente'}
+                              </span>
+                            </>
+                          )}
                         </p>
                       </div>
                       <div className={`text-xs font-black ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -1377,10 +1387,14 @@ const DashboardV2 = () => {
                           <span>{format(parseISO(t.instanceDate!), 'dd/MM/yyyy')}</span>
                           <span>•</span>
                           <span className="text-slate-500 font-black">{t.account_name || 'Sem Conta'}</span>
-                          <span>•</span>
-                          <span className={t.status === 'paid' ? 'text-emerald-600' : 'text-amber-500'}>
-                            {t.status === 'paid' ? 'Pago' : 'Pendente'}
-                          </span>
+                          {t.account_type !== 'credit_card' && (
+                            <>
+                              <span>•</span>
+                              <span className={t.status === 'paid' ? 'text-emerald-600' : 'text-amber-500'}>
+                                {t.status === 'paid' ? 'Pago' : 'Pendente'}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className={`text-xs font-black shrink-0 ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
