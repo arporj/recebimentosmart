@@ -265,7 +265,7 @@ const QuickEditTransactionModal = ({
   const fetchAccounts = async () => {
     const { data } = await supabase
       .from('financial_accounts')
-      .select('id, name, type')
+      .select('id, name, type, secondary_cards, main_card_name, due_day, closing_days_before, bank_name, bank_icon')
       .eq('user_id', user?.id || '')
       .eq('is_active', true)
       .order('name');
@@ -396,9 +396,49 @@ const QuickEditTransactionModal = ({
 
     const bgColorClass = typeConfig[account.type] || 'bg-slate-50 text-slate-400 border-slate-200';
 
+    let bankIcon = account.bank_icon;
+    let bankName = account.bank_name;
+
+    if (!bankIcon && account.name) {
+      const accountNameLower = account.name.toLowerCase();
+      const matchedBank = BRAZILIAN_BANKS.find(b => {
+        if (b.name === 'Banco Inter' && accountNameLower.includes('inter')) return true;
+        if (b.name === 'Nubank' && (accountNameLower.includes('nu') || accountNameLower.includes('nubank'))) return true;
+        
+        const bankNameClean = b.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cleanAccountName = accountNameLower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        return cleanAccountName.includes(bankNameClean);
+      });
+      if (matchedBank) {
+        bankIcon = matchedBank.domain;
+        bankName = matchedBank.name;
+      }
+    }
+
     return (
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center border overflow-hidden shrink-0 ${bgColorClass}`}>
-        {getAccountTypeIcon(account.type)}
+        {bankIcon ? (
+          <div className="w-full h-full relative">
+            <img 
+              src={`https://www.google.com/s2/favicons?domain=${bankIcon}&sz=64`} 
+              alt={bankName || ''} 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.classList.add('hidden');
+                if (target.nextElementSibling) {
+                  target.nextElementSibling.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden absolute inset-0 flex items-center justify-center font-bold text-[10px] text-white" style={{ backgroundColor: BRAZILIAN_BANKS.find(b => b.domain === bankIcon)?.color || '#94a3b8' }}>
+              {bankName?.charAt(0) || getAccountTypeIcon(account.type)}
+            </div>
+          </div>
+        ) : (
+          <div className="text-current scale-[0.8] flex items-center justify-center">{getAccountTypeIcon(account.type)}</div>
+        )}
       </div>
     );
   };
