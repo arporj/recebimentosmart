@@ -80,7 +80,7 @@ const adminSection: SidebarSection = {
 };
 
 export function MainLayoutV2({ children }: MainLayoutV2Props) {
-    const { user, isAdmin, signOut, originalUser, stopImpersonating } = useAuth();
+    const { user, isAdmin, signOut, originalUser, stopImpersonating, plano } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -308,7 +308,12 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                                 {section.title}
                             </p>
                             <div className="space-y-0.5">
-                                {section.items.map(item => renderItem(item))}
+                                {section.items.map(item => {
+                                    if (item.label === 'Relatórios' && !isAdmin && plano !== 'pro' && plano !== 'premium') {
+                                        return null;
+                                    }
+                                    return renderItem(item);
+                                })}
                             </div>
                         </div>
                     ))}
