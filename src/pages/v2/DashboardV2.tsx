@@ -89,9 +89,16 @@ const DashboardV2 = () => {
   // Abas
   const [activeTab, setActiveTab] = useState<'overview' | 'reports'>('overview');
   
-  // Filtros Globais no Header
+  // Filtro Global no Header (Cards Superiores e Gráfico de Fluxo de 7 Meses)
   const [onlyConfirmed, setOnlyConfirmed] = useState<boolean>(false);
-  const [categoryChartType, setCategoryChartType] = useState<'pie' | 'bar'>('pie');
+
+  // Estados Independentes para Despesas por Categoria
+  const [expenseOnlyConfirmed, setExpenseOnlyConfirmed] = useState<boolean>(false);
+  const [expenseChartType, setExpenseChartType] = useState<'pie' | 'bar'>('pie');
+
+  // Estados Independentes para Receitas por Categoria
+  const [incomeOnlyConfirmed, setIncomeOnlyConfirmed] = useState<boolean>(false);
+  const [incomeChartType, setIncomeChartType] = useState<'pie' | 'bar'>('pie');
 
   // Modais e Lançamentos
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -283,7 +290,7 @@ const DashboardV2 = () => {
     return instances;
   }, [transactions, currentMonth]);
 
-  // Transações específicas do mês selecionado respeitando o filtro de Apenas Confirmados (Paid) ou Pago+Pendente
+  // Transações específicas do mês selecionado respeitando o filtro Global de Apenas Confirmados (Paid)
   const currentMonthInstances = useMemo(() => {
     return expandedInstances.filter(t => {
       const isCurrentMonth = isSameMonth(parseISO(t.instanceDate), currentMonth);
@@ -295,7 +302,7 @@ const DashboardV2 = () => {
     });
   }, [expandedInstances, currentMonth, onlyConfirmed]);
 
-  // 1. Cálculos dos Cartões Superiores (Exclui CANCELADOS, obedece toggle onlyConfirmed)
+  // 1. Cálculos dos Cartões Superiores (Exclui CANCELADOS, obedece toggle global onlyConfirmed)
   const stats = useMemo(() => {
     const income = currentMonthInstances
       .filter(t => t.type === 'income')
@@ -312,7 +319,7 @@ const DashboardV2 = () => {
     };
   }, [currentMonthInstances]);
 
-  // 2. Gráfico Mensal de Barras Duplas (7 meses: -3 a +3 meses, respeita onlyConfirmed)
+  // 2. Gráfico Mensal de Barras Duplas (7 meses: -3 a +3 meses, respeita global onlyConfirmed)
   const monthlyData = useMemo(() => {
     const dataRange: MonthlyStat[] = [];
     for (let i = -3; i <= 3; i++) {
@@ -532,16 +539,41 @@ const DashboardV2 = () => {
     };
   }, [expandedInstances, currentMonthInstances, accounts, currentMonth, onlyConfirmed]);
 
-  // 4. Receitas e Despesas por Categoria (Gráfico de Pizza/Barras)
+  // 4. Receitas e Despesas por Categoria (Filtros locais independentes por card)
   const categoryChartData = useMemo(() => {
     const expenseMap = new Map<string, number>();
     const incomeMap = new Map<string, number>();
 
-    currentMonthInstances.forEach(t => {
+    // Transações de despesas com filtro local
+    const expenseInstances = expandedInstances.filter(t => {
+      const isCurrentMonth = isSameMonth(parseISO(t.instanceDate), currentMonth);
+      if (!isCurrentMonth) return false;
+      if (expenseOnlyConfirmed) {
+        return t.status === 'paid';
+      }
+      return t.status === 'paid' || t.status === 'pending';
+    });
+
+    // Transações de receitas com filtro local
+    const incomeInstances = expandedInstances.filter(t => {
+      const isCurrentMonth = isSameMonth(parseISO(t.instanceDate), currentMonth);
+      if (!isCurrentMonth) return false;
+      if (incomeOnlyConfirmed) {
+        return t.status === 'paid';
+      }
+      return t.status === 'paid' || t.status === 'pending';
+    });
+
+    expenseInstances.forEach(t => {
       const catName = t.category_name || 'Sem Categoria';
       if (t.type === 'expense') {
         expenseMap.set(catName, (expenseMap.get(catName) || 0) + t.amount);
-      } else if (t.type === 'income') {
+      }
+    });
+
+    incomeInstances.forEach(t => {
+      const catName = t.category_name || 'Sem Categoria';
+      if (t.type === 'income') {
         incomeMap.set(catName, (incomeMap.get(catName) || 0) + t.amount);
       }
     });
@@ -584,25 +616,34 @@ const DashboardV2 = () => {
         total: totalIncomes
       }
     };
-  }, [currentMonthInstances]);
+  }, [expandedInstances, currentMonth, expenseOnlyConfirmed, incomeOnlyConfirmed]);
 
-  // Evento de clique na pizza ou barra
-  const handleSliceClick = (event: any) => {
+  // Evento de clique na pizza ou barra com especificação de tipo
+  const handleSliceClick = (event: any, type: 'income' | 'expense') => {
     let categoryName = '';
     if (event.points && event.points[0]) {
       const point = event.points[0];
       categoryName = point.label || point.x; 
     }
     if (categoryName) {
-      handleCategoryListClick(categoryName);
+      handleCategoryListClick(categoryName, type);
     }
   };
 
-  const handleCategoryListClick = (categoryName: string) => {
-    const filtered = currentMonthInstances.filter(t => 
-      t.category_name === categoryName && 
-      t.status !== 'cancelled'
-    );
+  const handleCategoryListClick = (categoryName: string, type: 'income' | 'expense') => {
+    const isOnlyConfirmed = type === 'expense' ? expenseOnlyConfirmed : incomeOnlyConfirmed;
+    const filtered = expandedInstances.filter(t => {
+      const isCurrentMonth = isSameMonth(parseISO(t.instanceDate), currentMonth);
+      if (!isCurrentMonth) return false;
+      const matchesCategory = t.category_name === categoryName && t.status !== 'cancelled';
+      if (!matchesCategory) return false;
+      if (t.type !== type) return false;
+
+      if (isOnlyConfirmed) {
+        return t.status === 'paid';
+      }
+      return t.status === 'paid' || t.status === 'pending';
+    });
     setSelectedCategoryName(categoryName);
     setSelectedCategoryTransactions(filtered);
     setIsCategoryModalOpen(true);
@@ -632,7 +673,7 @@ const DashboardV2 = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 self-start md:self-auto">
-          {/* Botão de Filtro Confirmados/Previsão */}
+          {/* Botão de Filtro Confirmados/Previsão Geral */}
           <button
             onClick={() => setOnlyConfirmed(prev => !prev)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all border cursor-pointer select-none ${
@@ -643,15 +684,6 @@ const DashboardV2 = () => {
           >
             {onlyConfirmed ? <CheckCircle2 size={13} /> : <Calendar size={13} />}
             {onlyConfirmed ? 'Apenas Confirmados' : 'Previsto + Pago'}
-          </button>
-
-          {/* Botão de Alternância de Pizza/Barras */}
-          <button
-            onClick={() => setCategoryChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
-            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-black transition-all cursor-pointer select-none"
-          >
-            {categoryChartType === 'pie' ? <BarChart2 size={13} /> : <PieChart size={13} />}
-            {categoryChartType === 'pie' ? 'Legenda em Barras' : 'Legenda em Pizza'}
           </button>
 
           <div className="h-6 w-px bg-slate-200 mx-1" />
@@ -906,16 +938,16 @@ const DashboardV2 = () => {
                     Despesas por Categoria
                   </h3>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                    {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
+                    {expenseOnlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
                   </p>
                 </div>
                 {/* Botões locais */}
                 <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/50">
                   <button
-                    onClick={() => setOnlyConfirmed(prev => !prev)}
-                    title={onlyConfirmed ? "Exibir previstos e pagos" : "Exibir apenas confirmados"}
+                    onClick={() => setExpenseOnlyConfirmed(prev => !prev)}
+                    title={expenseOnlyConfirmed ? "Exibir previstos e pagos" : "Exibir apenas confirmados"}
                     className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                      onlyConfirmed 
+                      expenseOnlyConfirmed 
                         ? 'bg-emerald-500 text-white shadow-sm' 
                         : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
@@ -923,11 +955,11 @@ const DashboardV2 = () => {
                     <CheckCircle2 size={14} />
                   </button>
                   <button
-                    onClick={() => setCategoryChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
-                    title={categoryChartType === 'pie' ? "Ver como Gráfico de Barras" : "Ver como Gráfico de Pizza"}
+                    onClick={() => setExpenseChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
+                    title={expenseChartType === 'pie' ? "Ver como Gráfico de Barras" : "Ver como Gráfico de Pizza"}
                     className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                   >
-                    {categoryChartType === 'pie' ? <BarChart2 size={14} /> : <PieChart size={14} />}
+                    {expenseChartType === 'pie' ? <BarChart2 size={14} /> : <PieChart size={14} />}
                   </button>
                 </div>
               </div>
@@ -935,7 +967,7 @@ const DashboardV2 = () => {
               {categoryChartData.expenses.values.length > 0 ? (
                 <div className="space-y-6">
                   <div className="h-[220px] w-full flex items-center justify-center">
-                    {categoryChartType === 'pie' ? (
+                    {expenseChartType === 'pie' ? (
                       <Plot
                         data={[{
                           values: categoryChartData.expenses.values,
@@ -957,7 +989,7 @@ const DashboardV2 = () => {
                           font: plotlyColors.font
                         }}
                         config={{ displayModeBar: false, responsive: true }}
-                        onClick={handleSliceClick}
+                        onClick={(e) => handleSliceClick(e, 'expense')}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -986,7 +1018,7 @@ const DashboardV2 = () => {
                           font: plotlyColors.font
                         }}
                         config={{ displayModeBar: false, responsive: true }}
-                        onClick={handleSliceClick}
+                        onClick={(e) => handleSliceClick(e, 'expense')}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -1003,7 +1035,7 @@ const DashboardV2 = () => {
                         return (
                           <div 
                             key={item.name} 
-                            onClick={() => handleCategoryListClick(item.name)}
+                            onClick={() => handleCategoryListClick(item.name, 'expense')}
                             className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 border border-transparent transition-all cursor-pointer group"
                           >
                             <div className="flex items-center gap-2.5">
@@ -1042,16 +1074,16 @@ const DashboardV2 = () => {
                     Receitas por Categoria
                   </h3>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                    {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
+                    {incomeOnlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
                   </p>
                 </div>
                 {/* Botões locais */}
                 <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/50">
                   <button
-                    onClick={() => setOnlyConfirmed(prev => !prev)}
-                    title={onlyConfirmed ? "Exibir previstos e pagos" : "Exibir apenas confirmados"}
+                    onClick={() => setIncomeOnlyConfirmed(prev => !prev)}
+                    title={incomeOnlyConfirmed ? "Exibir previstos e pagos" : "Exibir apenas confirmados"}
                     className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                      onlyConfirmed 
+                      incomeOnlyConfirmed 
                         ? 'bg-emerald-500 text-white shadow-sm' 
                         : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
@@ -1059,11 +1091,11 @@ const DashboardV2 = () => {
                     <CheckCircle2 size={14} />
                   </button>
                   <button
-                    onClick={() => setCategoryChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
-                    title={categoryChartType === 'pie' ? "Ver como Gráfico de Barras" : "Ver como Gráfico de Pizza"}
+                    onClick={() => setIncomeChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
+                    title={incomeChartType === 'pie' ? "Ver como Gráfico de Barras" : "Ver como Gráfico de Pizza"}
                     className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                   >
-                    {categoryChartType === 'pie' ? <BarChart2 size={14} /> : <PieChart size={14} />}
+                    {incomeChartType === 'pie' ? <BarChart2 size={14} /> : <PieChart size={14} />}
                   </button>
                 </div>
               </div>
@@ -1071,7 +1103,7 @@ const DashboardV2 = () => {
               {categoryChartData.incomes.values.length > 0 ? (
                 <div className="space-y-6">
                   <div className="h-[220px] w-full flex items-center justify-center">
-                    {categoryChartType === 'pie' ? (
+                    {incomeChartType === 'pie' ? (
                       <Plot
                         data={[{
                           values: categoryChartData.incomes.values,
@@ -1093,7 +1125,7 @@ const DashboardV2 = () => {
                           font: plotlyColors.font
                         }}
                         config={{ displayModeBar: false, responsive: true }}
-                        onClick={handleSliceClick}
+                        onClick={(e) => handleSliceClick(e, 'income')}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -1122,7 +1154,7 @@ const DashboardV2 = () => {
                           font: plotlyColors.font
                         }}
                         config={{ displayModeBar: false, responsive: true }}
-                        onClick={handleSliceClick}
+                        onClick={(e) => handleSliceClick(e, 'income')}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -1139,7 +1171,7 @@ const DashboardV2 = () => {
                         return (
                           <div 
                             key={item.name} 
-                            onClick={() => handleCategoryListClick(item.name)}
+                            onClick={() => handleCategoryListClick(item.name, 'income')}
                             className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 border border-transparent transition-all cursor-pointer group"
                           >
                             <div className="flex items-center gap-2.5">
