@@ -1045,64 +1045,68 @@ const QuickEditTransactionModal = ({
             </div>
 
             {/* Checkboxes de Status e Confirmação */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              {/* Checkbox Pago */}
-              <div
-                onClick={() => {
-                  const newPaid = !isPaid;
-                  setIsPaid(newPaid);
-                  if (newPaid) setAutoConfirm(false);
-                }}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  isPaid
-                    ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
-                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                {isPaid ? (
-                  <CheckSquare size={16} className="text-emerald-600 shrink-0" />
-                ) : (
-                  <Square size={16} className="text-slate-400 shrink-0" />
-                )}
-                <div className="min-w-0">
-                  <p className={`text-xs font-black ${isPaid ? 'text-emerald-700' : 'text-slate-600'} leading-tight`}>
-                    {isPaid ? 'Pago' : 'Pendente'}
-                  </p>
-                  <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">
-                    {isPaid ? 'Confirmado.' : 'Marcar pago.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Auto Confirm Toggle */}
-              {!isPaid && !isCreditCard && (date >= format(new Date(), 'yyyy-MM-dd')) && (
-                <div
-                  onClick={() => setAutoConfirm(!autoConfirm)}
-                  className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    autoConfirm
-                      ? 'bg-indigo-50 border-indigo-300 shadow-sm shadow-indigo-100'
-                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {autoConfirm ? (
-                    <CheckSquare size={16} className="text-indigo-600 shrink-0" />
-                  ) : (
-                    <Square size={16} className="text-slate-400 shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <h3 className="text-xs font-bold text-slate-900 truncate leading-tight flex items-center gap-1">
-                      Auto Confirmar
-                      <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
-                        <span className="text-[9px] font-black">?</span>
-                      </div>
-                    </h3>
-                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold truncate leading-none mt-0.5">
-                      NO DIA DO VENCIMENTO
-                    </p>
+            {!isCreditCard && (
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {/* Checkbox Pago */}
+                {(date <= format(new Date(), 'yyyy-MM-dd')) && (
+                  <div
+                    onClick={() => {
+                      const newPaid = !isPaid;
+                      setIsPaid(newPaid);
+                      if (newPaid) setAutoConfirm(false);
+                    }}
+                    className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      isPaid
+                        ? 'bg-emerald-50 border-emerald-300 shadow-sm shadow-emerald-100'
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {isPaid ? (
+                      <CheckSquare size={16} className="text-emerald-600 shrink-0" />
+                    ) : (
+                      <Square size={16} className="text-slate-400 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className={`text-xs font-black ${isPaid ? 'text-emerald-700' : 'text-slate-600'} leading-tight`}>
+                        {isPaid ? 'Pago' : 'Pendente'}
+                      </p>
+                      <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">
+                        {isPaid ? 'Confirmado.' : 'Marcar pago.'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+
+                {/* Auto Confirm Toggle */}
+                {!isPaid && (date > format(new Date(), 'yyyy-MM-dd')) && (
+                  <div
+                    onClick={() => setAutoConfirm(!autoConfirm)}
+                    className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      autoConfirm
+                        ? 'bg-indigo-50 border-indigo-300 shadow-sm shadow-indigo-100'
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {autoConfirm ? (
+                      <CheckSquare size={16} className="text-indigo-600 shrink-0" />
+                    ) : (
+                      <Square size={16} className="text-slate-400 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-bold text-slate-900 truncate leading-tight flex items-center gap-1">
+                        Auto Confirmar
+                        <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 cursor-help" title="Na data de vencimento, o sistema marcará esta transação como paga automaticamente durante a madrugada.">
+                          <span className="text-[9px] font-black">?</span>
+                        </div>
+                      </h3>
+                      <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold truncate leading-none mt-0.5">
+                        NO DIA DO VENCIMENTO
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
