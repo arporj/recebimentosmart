@@ -71,6 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     
     htmlEl.classList.add(`theme-${themePreference}`);
+    if (themePreference === 'dark') {
+      htmlEl.classList.add('dark');
+    } else {
+      htmlEl.classList.remove('dark');
+    }
     htmlEl.classList.add(`density-${rowDensity}`);
     htmlEl.classList.add(`predicted-layout-${predictedLayout}`);
     if (removeBoldList) {
@@ -198,7 +203,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isAtAllowedPages = location.pathname === '/payment' || 
                                  location.pathname === '/v2/assinatura' || 
                                  location.pathname === '/profile' || 
-                                 location.pathname === '/v2/perfil';
+                                 location.pathname === '/v2/perfil' ||
+                                 location.pathname === '/v2/dashboard' ||
+                                 location.pathname === '/dashboard';
 
         if (!currentHasFullAccess && !isSystemAdmin && !isAtAllowedPages) {
           // Redireciona apenas se não tiver acesso, não for admin e não estiver nas páginas permitidas
