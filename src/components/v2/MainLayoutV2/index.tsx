@@ -10,7 +10,7 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    UserCheck, Share2, Mail, Gift, RefreshCw
+    UserCheck, Share2, Mail, Bell, RefreshCw
 } from 'lucide-react';
 import { ChangelogDrawer } from '../ChangelogDrawer';
 
@@ -30,13 +30,11 @@ interface SidebarSection {
     items: SidebarItem[];
 }
 
-const sidebarSections: SidebarSection[] = [
     {
         title: 'Geral',
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
-            { label: 'Novidades', icon: Gift },
         ],
     },
     {
@@ -63,6 +61,7 @@ const sidebarSections: SidebarSection[] = [
             { label: 'Campos Personalizados', icon: FormInput, href: '/v2/campos-personalizados' },
             { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
+            { label: 'Novidades', icon: Bell },
         ],
     },
 ];
@@ -185,6 +184,11 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         await signOut();
     };
 
+    const handleOpenChangelog = () => {
+        setIsChangelogOpen(true);
+        setUnreadChangelogCount(0); // Zera o contador de forma otimista imediatamente
+    };
+
     const toggleExpand = (label: string) => {
         setExpandedItems(prev =>
             prev.includes(label)
@@ -227,7 +231,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             return (
                 <button
                     key={item.label}
-                    onClick={() => setIsChangelogOpen(true)}
+                    onClick={handleOpenChangelog}
                     className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors text-slate-400 hover:bg-slate-800 hover:text-white"
                 >
                     <item.icon size={16} className={unreadChangelogCount > 0 ? 'text-teal-400' : ''} />
@@ -378,12 +382,12 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             Recebimento <span className="text-[#14b8a6]">$mart</span>
                         </span>
                     </div>
-                    {/* Botão de novidades 🎁 no mobile alinhado à direita */}
+                    {/* Botão de novidades 🔔 no mobile alinhado à direita */}
                     <button
-                        onClick={() => setIsChangelogOpen(true)}
+                        onClick={handleOpenChangelog}
                         className="ml-auto p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
                     >
-                        <Gift size={20} className={unreadChangelogCount > 0 ? 'text-teal-600 animate-bounce' : ''} />
+                        <Bell size={20} className={unreadChangelogCount > 0 ? 'text-teal-600 animate-bounce' : ''} />
                         {unreadChangelogCount > 0 && (
                             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white animate-ping"></span>
                         )}
