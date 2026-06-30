@@ -139,8 +139,51 @@ const QuickEditTransactionModal = ({
       } else {
         setSelectedTags([]);
       }
+
+      if (transaction.invoice_month) {
+        setInvoiceMonth(transaction.invoice_month);
+      } else {
+        setInvoiceMonth(format(new Date(), 'yyyy-MM'));
+      }
+      setCardHolderName(transaction.card_holder_name || '');
     }
   }, [isOpen, transaction, isConfirming]);
+
+  // Calcular fatura correta ao mudar data ou cartao selecionado
+  useEffect(() => {
+    if (!accountId || !date || !accounts.length) return;
+    
+    const account = accounts.find(a => a.id === accountId);
+    if (account?.type === 'credit_card' && account.due_day && account.closing_days_before) {
+      const result = calcularMesFatura(date, {
+        type: account.type,
+        due_day: account.due_day,
+        closing_days_before: account.closing_days_before,
+      });
+      if (result) {
+        setInvoiceMonth(result);
+      }
+    }
+  }, [date, accountId, accounts]);
+
+  useEffect(() => {
+    if (isCreditCard && accountId && accounts.length > 0) {
+      const account = accounts.find(a => a.id === accountId);
+      if (account) {
+        const holders: string[] = [];
+        if (account.main_card_name) holders.push(account.main_card_name);
+        if (Array.isArray(account.secondary_cards)) {
+          (account.secondary_cards as any[]).forEach((c) => {
+            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+            if (name) holders.push(name);
+          });
+        }
+        if (holders.length === 1 && !cardHolderName) {
+          setCardHolderName(holders[0]);
+        }
+      }
+    }
+  }, [isCreditCard, accountId, accounts, cardHolderName]);
 
   // Fetch data
   useEffect(() => {
