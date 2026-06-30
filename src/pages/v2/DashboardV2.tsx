@@ -15,7 +15,8 @@ import {
   Wallet,
   ArrowRightLeft,
   Lock,
-  X
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   format, 
@@ -61,6 +62,7 @@ interface FinancialTransaction {
   category_name?: string;
   client_name?: string;
   account_name?: string;
+  destination_account_type?: string;
   destination_account_name?: string;
   recurrence_enabled?: boolean;
   recurrence_period?: string;
@@ -86,6 +88,10 @@ const DashboardV2 = () => {
   // Abas
   const [activeTab, setActiveTab] = useState<'overview' | 'reports'>('overview');
   
+  // Filtros Globais no Header
+  const [onlyConfirmed, setOnlyConfirmed] = useState<boolean>(false);
+  const [categoryChartType, setCategoryChartType] = useState<'pie' | 'bar'>('pie');
+
   // Modais e Lançamentos
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'income' | 'expense'>('income');
@@ -107,7 +113,6 @@ const DashboardV2 = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  // Determinar se o usuário tem acesso às análises premium
   const hasPremiumAccess = useMemo(() => {
     return isAdmin || plano === 'premium' || plano === 'trial';
   }, [plano, isAdmin]);
@@ -258,12 +263,19 @@ const DashboardV2 = () => {
     return instances;
   }, [transactions, currentMonth]);
 
-  // Transações específicas do mês selecionado
+  // Transações específicas do mês selecionado respeitando o filtro de Apenas Confirmados (Paid) ou Pago+Pendente
   const currentMonthInstances = useMemo(() => {
-    return expandedInstances.filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth));
-  }, [expandedInstances, currentMonth]);
+    return expandedInstances.filter(t => {
+      const isCurrentMonth = isSameMonth(parseISO(t.instanceDate), currentMonth);
+      if (!isCurrentMonth) return false;
+      if (onlyConfirmed) {
+        return t.status === 'paid';
+      }
+      return t.status === 'paid' || t.status === 'pending';
+    });
+  }, [expandedInstances, currentMonth, onlyConfirmed]);
 
-  // 1. Cálculos dos Cartões Superiores (Inclui PENDENTES, Exclui CANCELADOS)
+  // 1. Cálculos dos Cartões Superiores (Exclui CANCELADOS, obedece toggle onlyConfirmed)
   const stats = useMemo(() => {
     const income = currentMonthInstances
       .filter(t => t.type === 'income')
@@ -280,7 +292,7 @@ const DashboardV2 = () => {
     };
   }, [currentMonthInstances]);
 
-  // 2. Gráfico Mensal de Barras Duplas (7 meses: -3 a +3 meses)
+  // 2. Gráfico Mensal de Barras Duplas (7 meses: -3 a +3 meses, respeita onlyConfirmed)
   const monthlyData = useMemo(() => {
     const dataRange: MonthlyStat[] = [];
     for (let i = -3; i <= 3; i++) {
@@ -290,8 +302,13 @@ const DashboardV2 = () => {
 
       const monthInstances = expandedInstances.filter(t => {
         const tDate = parseISO(t.instanceDate);
-        return (isBefore(tDate, end) || isSameDay(tDate, end)) && 
-               (isAfter(tDate, start) || isSameDay(tDate, start));
+        const isInRange = (isBefore(tDate, end) || isSameDay(tDate, end)) && 
+                           (isAfter(tDate, start) || isSameDay(tDate, start));
+        if (!isInRange) return false;
+        if (onlyConfirmed) {
+          return t.status === 'paid';
+        }
+        return t.status === 'paid' || t.status === 'pending';
       });
 
       const income = monthInstances
@@ -309,7 +326,7 @@ const DashboardV2 = () => {
       });
     }
     return dataRange;
-  }, [expandedInstances, currentMonth]);
+  }, [expandedInstances, currentMonth, onlyConfirmed]);
 
   const maxChartValue = useMemo(() => {
     return Math.max(
@@ -329,13 +346,15 @@ const DashboardV2 = () => {
     const selectedAccs = accounts.filter(a => selectedAccountIds.has(a.id));
     const initialBalanceSum = selectedAccs.reduce((sum, a) => sum + (Number(a.initial_balance) || 0), 0);
 
-    // Calcular o saldo inicial histórico antes de começar o mês atual (apenas transações pagas/confirmadas de contas selecionadas)
+    // Calcular o saldo inicial histórico antes de começar o mês atual (apenas transações de contas selecionadas)
     const prevTransactions = expandedInstances.filter(t => {
       const tDate = parseISO(t.instanceDate);
       const isBeforeMonth = isBefore(tDate, startOfCurrent);
       const isSelectedAccount = (t.account_id && selectedAccountIds.has(t.account_id)) || 
                                 (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
-      return isBeforeMonth && isSelectedAccount;
+      if (!isBeforeMonth || !isSelectedAccount) return false;
+      if (onlyConfirmed) return t.status === 'paid';
+      return t.status === 'paid' || t.status === 'pending';
     });
 
     const historicalOffset = prevTransactions.reduce((sum, t) => {
@@ -389,7 +408,7 @@ const DashboardV2 = () => {
       x: xLabels,
       y: yValues
     };
-  }, [expandedInstances, currentMonthInstances, accounts, selectedAccountIds, currentMonth]);
+  }, [expandedInstances, currentMonthInstances, accounts, selectedAccountIds, currentMonth, onlyConfirmed]);
 
   // 2. Resultados de Caixa (Barras por Conta Selecionada)
   const accountBalancesData = useMemo(() => {
@@ -433,7 +452,6 @@ const DashboardV2 = () => {
 
   // 3. Balanço Patrimonial (Ativo vs Passivo)
   const balanceSheetData = useMemo(() => {
-    // Ativos: Saldo final projetado das contas do tipo checking, savings, investment
     const activeAccs = accounts.filter(a => a.type !== 'credit_card');
     let totalAssets = 0;
 
@@ -446,6 +464,7 @@ const DashboardV2 = () => {
 
       const netChange = history.reduce((sum, t) => {
         if (t.status === 'cancelled') return sum;
+        if (onlyConfirmed && t.status !== 'paid') return sum;
         const amt = t.amount;
         if (t.type === 'income') return sum + amt;
         if (t.type === 'expense') return sum - amt;
@@ -459,7 +478,6 @@ const DashboardV2 = () => {
       totalAssets += netChange;
     });
 
-    // Passivos: Faturas de cartões de crédito projetadas + despesas PENDENTES de Junho
     const cardAccs = accounts.filter(a => a.type === 'credit_card');
     let totalLiabilities = 0;
 
@@ -471,6 +489,7 @@ const DashboardV2 = () => {
 
       const balance = history.reduce((sum, t) => {
         if (t.status === 'cancelled') return sum;
+        if (onlyConfirmed && t.status !== 'paid') return sum;
         const amt = t.amount;
         if (t.type === 'expense') return sum + amt;
         if (t.type === 'income') return sum - amt;
@@ -480,7 +499,6 @@ const DashboardV2 = () => {
       totalLiabilities += balance;
     });
 
-    // Soma das despesas pendentes no mês atual (que ainda sairão do caixa)
     const unpaidExpenses = currentMonthInstances
       .filter(t => t.type === 'expense' && t.status === 'pending')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -492,9 +510,9 @@ const DashboardV2 = () => {
       liabilities: totalLiabilities,
       equity: totalAssets - totalLiabilities
     };
-  }, [expandedInstances, currentMonthInstances, accounts, currentMonth]);
+  }, [expandedInstances, currentMonthInstances, accounts, currentMonth, onlyConfirmed]);
 
-  // 4. Receitas e Despesas por Categoria (Gráfico de Pizza)
+  // 4. Receitas e Despesas por Categoria (Gráfico de Pizza/Barras)
   const categoryChartData = useMemo(() => {
     const expenseMap = new Map<string, number>();
     const incomeMap = new Map<string, number>();
@@ -508,30 +526,66 @@ const DashboardV2 = () => {
       }
     });
 
+    const expensesList = Array.from(expenseMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    const incomesList = Array.from(incomeMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    const totalExpenses = expensesList.reduce((sum, item) => sum + item.value, 0);
+    const totalIncomes = incomesList.reduce((sum, item) => sum + item.value, 0);
+
+    // Mapeia os textos da pizza ocultando se a fatia for menor que 5%
+    const expenseTexts = expensesList.map(item => {
+      const pct = totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0;
+      return pct >= 5 ? `${pct.toFixed(1)}%` : '';
+    });
+
+    const incomeTexts = incomesList.map(item => {
+      const pct = totalIncomes > 0 ? (item.value / totalIncomes) * 100 : 0;
+      return pct >= 5 ? `${pct.toFixed(1)}%` : '';
+    });
+
     return {
       expenses: {
-        labels: Array.from(expenseMap.keys()),
-        values: Array.from(expenseMap.values())
+        labels: expensesList.map(item => item.name),
+        values: expensesList.map(item => item.value),
+        texts: expenseTexts,
+        list: expensesList,
+        total: totalExpenses
       },
       incomes: {
-        labels: Array.from(incomeMap.keys()),
-        values: Array.from(incomeMap.values())
+        labels: incomesList.map(item => item.name),
+        values: incomesList.map(item => item.value),
+        texts: incomeTexts,
+        list: incomesList,
+        total: totalIncomes
       }
     };
   }, [currentMonthInstances]);
 
-  // Evento de clique na pizza
+  // Evento de clique na pizza ou barra
   const handleSliceClick = (event: any) => {
+    let categoryName = '';
     if (event.points && event.points[0]) {
-      const categoryName = event.points[0].label;
-      const filtered = currentMonthInstances.filter(t => 
-        t.category_name === categoryName && 
-        t.status !== 'cancelled'
-      );
-      setSelectedCategoryName(categoryName);
-      setSelectedCategoryTransactions(filtered);
-      setIsCategoryModalOpen(true);
+      const point = event.points[0];
+      categoryName = point.label || point.x; 
     }
+    if (categoryName) {
+      handleCategoryListClick(categoryName);
+    }
+  };
+
+  const handleCategoryListClick = (categoryName: string) => {
+    const filtered = currentMonthInstances.filter(t => 
+      t.category_name === categoryName && 
+      t.status !== 'cancelled'
+    );
+    setSelectedCategoryName(categoryName);
+    setSelectedCategoryTransactions(filtered);
+    setIsCategoryModalOpen(true);
   };
 
   const toggleAccountSelection = (id: string) => {
@@ -546,6 +600,9 @@ const DashboardV2 = () => {
     });
   };
 
+  // Cores fixas premium para as categorias nos gráficos
+  const chartColors = ['#20B2AA', '#1A9D94', '#22C55E', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#a855f7'];
+
   return (
     <div className="p-6 space-y-8 bg-slate-50 min-h-screen font-sans">
       {/* Header Dinâmico */}
@@ -555,26 +612,49 @@ const DashboardV2 = () => {
           <p className="text-slate-500 text-sm mt-1">Acompanhe e projete o fluxo de caixa consolidado do seu negócio.</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-3 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 self-start md:self-auto">
+          {/* Botão de Filtro Confirmados/Previsão */}
+          <button
+            onClick={() => setOnlyConfirmed(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all border cursor-pointer select-none ${
+              onlyConfirmed 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' 
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {onlyConfirmed ? <CheckCircle2 size={13} /> : <Calendar size={13} />}
+            {onlyConfirmed ? 'Apenas Confirmados' : 'Previsto + Pago'}
+          </button>
+
+          {/* Botão de Alternância de Pizza/Barras */}
+          <button
+            onClick={() => setCategoryChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
+            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-black transition-all cursor-pointer select-none"
+          >
+            {categoryChartType === 'pie' ? <BarChart2 size={13} /> : <PieChart size={13} />}
+            {categoryChartType === 'pie' ? 'Legenda em Barras' : 'Legenda em Pizza'}
+          </button>
+
+          <div className="h-6 w-px bg-slate-200 mx-1" />
+
           {/* Seletor Temporal Consistente */}
-          <div className="flex items-center bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-200/50">
+          <div className="flex items-center bg-white px-2.5 py-1.5 rounded-xl shadow-sm border border-slate-200/50">
             <button 
               onClick={handlePrevMonth}
-              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+              className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
             </button>
-            <div className="flex items-center gap-2 px-4 min-w-[160px] justify-center">
-              <Calendar size={16} className="text-teal-600" />
-              <span className="text-sm font-bold text-slate-800 capitalize select-none">
+            <div className="flex items-center gap-1.5 px-3 min-w-[130px] justify-center">
+              <span className="text-xs font-black text-slate-800 capitalize select-none">
                 {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
               </span>
             </div>
             <button 
               onClick={handleNextMonth}
-              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+              className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={16} />
             </button>
           </div>
 
@@ -583,10 +663,10 @@ const DashboardV2 = () => {
               setModalType('income');
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 bg-[#20B2AA] hover:bg-[#1A9D94] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20 active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-[#20B2AA] hover:bg-[#1A9D94] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-teal-600/20 active:scale-95 cursor-pointer"
           >
-            <Plus size={18} />
-            Novo Lançamento
+            <Plus size={16} />
+            Novo
           </button>
         </div>
       </div>
@@ -642,7 +722,8 @@ const DashboardV2 = () => {
                   {formatCurrency(stats.balance)}
                 </h3>
                 <p className="text-xs text-slate-400 flex items-center gap-1 font-bold">
-                  <ChevronRight size={12} className="text-[#20B2AA]" /> Previsto e Pago
+                  <ChevronRight size={12} className="text-[#20B2AA]" />
+                  {onlyConfirmed ? 'Apenas valores confirmados' : 'Projetado e Pago'}
                 </p>
               </div>
             </div>
@@ -659,7 +740,9 @@ const DashboardV2 = () => {
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                   {formatCurrency(stats.income)}
                 </h3>
-                <p className="text-xs text-emerald-600 font-bold tracking-tight">Total previsto e pago</p>
+                <p className="text-xs text-emerald-600 font-bold tracking-tight">
+                  {onlyConfirmed ? 'Total confirmado' : 'Total previsto e pago'}
+                </p>
               </div>
             </div>
 
@@ -675,7 +758,9 @@ const DashboardV2 = () => {
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                   {formatCurrency(stats.expenses)}
                 </h3>
-                <p className="text-xs text-rose-600 font-bold tracking-tight">Total previsto e pago</p>
+                <p className="text-xs text-rose-600 font-bold tracking-tight">
+                  {onlyConfirmed ? 'Total confirmado' : 'Total previsto e pago'}
+                </p>
               </div>
             </div>
           </div>
@@ -687,7 +772,9 @@ const DashboardV2 = () => {
               <div className="flex justify-between items-center mb-8">
                 <div>
                   <h2 className="text-lg font-black text-slate-900 tracking-tight">Fluxo de Caixa Mensal</h2>
-                  <p className="text-xs text-slate-400 font-bold mt-0.5">Distribuição mensal de receitas e despesas (-3 meses a +3 meses)</p>
+                  <p className="text-xs text-slate-400 font-bold mt-0.5">
+                    {onlyConfirmed ? 'Distribuição mensal de receitas e despesas confirmadas' : 'Distribuição mensal de receitas e despesas (-3 meses a +3 meses)'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4 bg-slate-50 px-3 py-1.5 rounded-xl text-[10px] font-black border border-slate-100 shadow-inner">
                   <div className="flex items-center gap-1.5 text-emerald-600">
@@ -704,12 +791,10 @@ const DashboardV2 = () => {
                   const incHeight = (m.income / maxChartValue) * 100;
                   const expHeight = (m.expense / maxChartValue) * 100;
                   
-                  // Destacar o mês central (Mês Selecionado no filtro)
                   const isCurrent = i === 3;
 
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center h-full justify-end">
-                      {/* Conjunto de Barras Duplas */}
                       <div className={`w-full flex items-end justify-center gap-1.5 h-full group relative p-1 rounded-lg ${isCurrent ? 'bg-teal-500/5 border border-dashed border-[#20B2AA]/30' : ''}`}>
                         {/* Barra de Receita */}
                         <div 
@@ -783,6 +868,208 @@ const DashboardV2 = () => {
               </div>
             </div>
           </div>
+
+          {/* NOVOS GRÁFICOS DE CATEGORIA (DESPESAS E RECEITAS NA ABA VISÃO GERAL) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* GRÁFICO 1: Despesas por Categoria */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+              <div className="mb-4">
+                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-rose-500" />
+                  Despesas por Categoria
+                </h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                  {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
+                </p>
+              </div>
+
+              {categoryChartData.expenses.values.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="h-[220px] w-full flex items-center justify-center">
+                    {categoryChartType === 'pie' ? (
+                      <Plot
+                        data={[{
+                          values: categoryChartData.expenses.values,
+                          labels: categoryChartData.expenses.labels,
+                          text: categoryChartData.expenses.texts,
+                          textinfo: 'text',
+                          textposition: 'inside',
+                          type: 'pie',
+                          hole: 0.4,
+                          marker: { colors: chartColors }
+                        }]}
+                        layout={{
+                          showlegend: false,
+                          margin: { l: 10, r: 10, t: 10, b: 10 },
+                          height: 220,
+                          autosize: true
+                        }}
+                        onClick={handleSliceClick}
+                        useResizeHandler={true}
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    ) : (
+                      <Plot
+                        data={[{
+                          x: categoryChartData.expenses.labels,
+                          y: categoryChartData.expenses.values,
+                          type: 'bar',
+                          marker: { color: chartColors }
+                        }]}
+                        layout={{
+                          margin: { l: 40, r: 10, t: 10, b: 45 },
+                          xaxis: { tickfont: { size: 9, font: 'bold' } },
+                          yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                          height: 220,
+                          autosize: true
+                        }}
+                        onClick={handleSliceClick}
+                        useResizeHandler={true}
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Listagem detalhada das categorias com percentuais e valores */}
+                  <div className="space-y-2.5 pt-4 border-t border-slate-100">
+                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Detalhamento das Despesas</span>
+                    <div className="max-h-[220px] overflow-y-auto pr-1 space-y-1.5">
+                      {categoryChartData.expenses.list.map((item, index) => {
+                        const pct = categoryChartData.expenses.total > 0 ? (item.value / categoryChartData.expenses.total) * 100 : 0;
+                        const colorIndex = index % chartColors.length;
+                        return (
+                          <div 
+                            key={item.name} 
+                            onClick={() => handleCategoryListClick(item.name)}
+                            className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 border border-transparent transition-all cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span 
+                                className="w-2.5 h-2.5 rounded-full shadow-inner shrink-0" 
+                                style={{ backgroundColor: chartColors[colorIndex] }}
+                              />
+                              <span className="text-xs font-extrabold text-slate-700 group-hover:text-slate-900 capitalize">{item.name}</span>
+                              <span className="text-[10px] font-black text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-full">{pct.toFixed(1)}%</span>
+                            </div>
+                            <span className="text-xs font-black text-rose-600">-{formatCurrency(item.value)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 text-xs font-black">
+                      <span className="text-slate-600 uppercase tracking-wider text-[10px]">Total Geral</span>
+                      <span className="text-rose-600 text-sm">-{formatCurrency(categoryChartData.expenses.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-[280px] flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl">
+                  <Inbox size={28} className="text-slate-400 mb-2" />
+                  <p className="text-xs font-black text-slate-600">Sem lançamentos de despesas neste mês</p>
+                </div>
+              )}
+            </div>
+
+            {/* GRÁFICO 2: Receitas por Categoria */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+              <div className="mb-4">
+                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                  Receitas por Categoria
+                </h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                  {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
+                </p>
+              </div>
+
+              {categoryChartData.incomes.values.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="h-[220px] w-full flex items-center justify-center">
+                    {categoryChartType === 'pie' ? (
+                      <Plot
+                        data={[{
+                          values: categoryChartData.incomes.values,
+                          labels: categoryChartData.incomes.labels,
+                          text: categoryChartData.incomes.texts,
+                          textinfo: 'text',
+                          textposition: 'inside',
+                          type: 'pie',
+                          hole: 0.4,
+                          marker: { colors: chartColors }
+                        }]}
+                        layout={{
+                          showlegend: false,
+                          margin: { l: 10, r: 10, t: 10, b: 10 },
+                          height: 220,
+                          autosize: true
+                        }}
+                        onClick={handleSliceClick}
+                        useResizeHandler={true}
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    ) : (
+                      <Plot
+                        data={[{
+                          x: categoryChartData.incomes.labels,
+                          y: categoryChartData.incomes.values,
+                          type: 'bar',
+                          marker: { color: chartColors }
+                        }]}
+                        layout={{
+                          margin: { l: 40, r: 10, t: 10, b: 45 },
+                          xaxis: { tickfont: { size: 9, font: 'bold' } },
+                          yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                          height: 220,
+                          autosize: true
+                        }}
+                        onClick={handleSliceClick}
+                        useResizeHandler={true}
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Listagem detalhada das categorias com percentuais e valores */}
+                  <div className="space-y-2.5 pt-4 border-t border-slate-100">
+                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Detalhamento das Receitas</span>
+                    <div className="max-h-[220px] overflow-y-auto pr-1 space-y-1.5">
+                      {categoryChartData.incomes.list.map((item, index) => {
+                        const pct = categoryChartData.incomes.total > 0 ? (item.value / categoryChartData.incomes.total) * 100 : 0;
+                        const colorIndex = index % chartColors.length;
+                        return (
+                          <div 
+                            key={item.name} 
+                            onClick={() => handleCategoryListClick(item.name)}
+                            className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 border border-transparent transition-all cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span 
+                                className="w-2.5 h-2.5 rounded-full shadow-inner shrink-0" 
+                                style={{ backgroundColor: chartColors[colorIndex] }}
+                              />
+                              <span className="text-xs font-extrabold text-slate-700 group-hover:text-slate-900 capitalize">{item.name}</span>
+                              <span className="text-[10px] font-black text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-full">{pct.toFixed(1)}%</span>
+                            </div>
+                            <span className="text-xs font-black text-emerald-600">+{formatCurrency(item.value)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 text-xs font-black">
+                      <span className="text-slate-600 uppercase tracking-wider text-[10px]">Total Geral</span>
+                      <span className="text-emerald-600 text-sm">+{formatCurrency(categoryChartData.incomes.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-[280px] flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl">
+                  <Inbox size={28} className="text-slate-400 mb-2" />
+                  <p className="text-xs font-black text-slate-600">Sem lançamentos de receitas neste mês</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-8 animate-fadeIn relative">
@@ -800,76 +1087,11 @@ const DashboardV2 = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            {/* WIDGET 4: Gráfico de Pizza por Categorias (Totalmente Aberto para Plano Free) */}
-            {dashboardWidgets.receitasCategoria !== false && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-                <div className="mb-4">
-                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                    <PieChart size={18} className="text-[#20B2AA]" />
-                    Distribuição por Categorias
-                  </h3>
-                  <p className="text-xs text-slate-400 font-medium">Clique em uma fatia do gráfico para ver a lista de lançamentos</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px] items-center">
-                  <div className="h-full w-full">
-                    {categoryChartData.expenses.values.length > 0 ? (
-                      <Plot
-                        data={[{
-                          values: categoryChartData.expenses.values,
-                          labels: categoryChartData.expenses.labels,
-                          type: 'pie',
-                          hole: 0.4,
-                          marker: { colors: ['#20B2AA', '#1A9D94', '#22C55E', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'] }
-                        }]}
-                        layout={{
-                          title: { text: 'Despesas', font: { size: 12, weight: 'bold' } },
-                          showlegend: false,
-                          margin: { l: 20, r: 20, t: 40, b: 20 },
-                          height: 260,
-                          autosize: true
-                        }}
-                        onClick={handleSliceClick}
-                        useResizeHandler={true}
-                        style={{ width: '100%', height: '100%' }}
-                      />
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-xs text-slate-400 font-bold">Sem despesas no mês</div>
-                    )}
-                  </div>
-                  <div className="h-full w-full">
-                    {categoryChartData.incomes.values.length > 0 ? (
-                      <Plot
-                        data={[{
-                          values: categoryChartData.incomes.values,
-                          labels: categoryChartData.incomes.labels,
-                          type: 'pie',
-                          hole: 0.4,
-                          marker: { colors: ['#22C55E', '#10b981', '#20B2AA', '#3b82f6', '#6366f1', '#a855f7'] }
-                        }]}
-                        layout={{
-                          title: { text: 'Receitas', font: { size: 12, weight: 'bold' } },
-                          showlegend: false,
-                          margin: { l: 20, r: 20, t: 40, b: 20 },
-                          height: 260,
-                          autosize: true
-                        }}
-                        onClick={handleSliceClick}
-                        useResizeHandler={true}
-                        style={{ width: '100%', height: '100%' }}
-                      />
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-xs text-slate-400 font-bold">Sem receitas no mês</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* WIDGETS PROTEGIDOS POR PAYWALL (APENAS PLANO PRO/PREMIUM) */}
+            {/* WIDGETS PROTEGIDOS POR PAYWALL (APENAS PLANO PREMIUM) */}
             
             {/* WIDGET 1: Fluxo de Caixa Acumulado (Projetado) */}
             {dashboardWidgets.fluxoCaixaAcumulado !== false && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col relative overflow-hidden">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col relative overflow-hidden lg:col-span-2">
                 <div className="mb-4">
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                     <TrendingUp size={18} className="text-[#20B2AA]" />
@@ -961,7 +1183,7 @@ const DashboardV2 = () => {
                               y: accountBalancesData.expenses,
                               name: 'Saídas',
                               type: 'bar',
-                              marker: { color: '#rose-500', color_src: '#ef4444' }
+                              marker: { color: '#ef4444' }
                             }
                           ]}
                           layout={{
@@ -1077,19 +1299,6 @@ const DashboardV2 = () => {
                 <label className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100/50 hover:border-slate-200 rounded-xl cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    checked={dashboardWidgets.receitasCategoria !== false}
-                    onChange={(e) => updateDashboardWidgets({ ...dashboardWidgets, receitasCategoria: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-[#20B2AA] focus:ring-[#20B2AA] cursor-pointer"
-                  />
-                  <div>
-                    <p className="text-xs font-black text-slate-800">Pizza por Categorias</p>
-                    <p className="text-[9px] text-slate-400 font-bold">Distribuição gráfica de despesas e receitas.</p>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100/50 hover:border-slate-200 rounded-xl cursor-pointer select-none">
-                  <input
-                    type="checkbox"
                     checked={dashboardWidgets.fluxoCaixaAcumulado !== false}
                     onChange={(e) => updateDashboardWidgets({ ...dashboardWidgets, fluxoCaixaAcumulado: e.target.checked })}
                     className="w-4 h-4 rounded border-slate-300 text-[#20B2AA] focus:ring-[#20B2AA] cursor-pointer"
@@ -1165,7 +1374,7 @@ const DashboardV2 = () => {
                       <div className="min-w-0 flex-1 pr-3">
                         <p className="text-xs font-black text-slate-800 truncate capitalize">{t.description || 'Sem Descrição'}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">
-                          <span>{format(parseISO(t.instanceDate), 'dd/MM/yyyy')}</span>
+                          <span>{format(parseISO(t.instanceDate!), 'dd/MM/yyyy')}</span>
                           <span>•</span>
                           <span className="text-slate-500 font-black">{t.account_name || 'Sem Conta'}</span>
                           <span>•</span>
