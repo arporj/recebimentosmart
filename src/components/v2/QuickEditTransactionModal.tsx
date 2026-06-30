@@ -113,7 +113,7 @@ const QuickEditTransactionModal = ({
       
       setDate(initialDate);
       setDescription(transaction.description || '');
-      setAccountId(transaction.account_id || '');
+      setAccountId(transaction.account_id || 'sem-conta');
       setCategoryId(transaction.category_id || '');
       setClientId(transaction.client_id || '');
       setIsPaid(isConfirming ? true : transaction.status === 'paid');
@@ -222,7 +222,13 @@ const QuickEditTransactionModal = ({
       .eq('user_id', user?.id || '')
       .eq('is_active', true)
       .order('name');
-    if (data) setAccounts(data);
+    
+    const semContaVirtual = {
+      id: 'sem-conta',
+      name: 'Sem Conta',
+      type: 'checking',
+    };
+    if (data) setAccounts([...data, semContaVirtual]);
   };
 
   const fetchClients = async () => {
