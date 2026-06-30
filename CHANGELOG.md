@@ -6,6 +6,15 @@ O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ---
 
+## [2.2.0] - 2026-06-30
+
+### Adicionado
+- **Módulo de Novidades In-App (Fase B)**: Integração de gaveta deslizante animada (slide-over) com suporte a renderização de Markdown regex leve, categorização colorida e badge reativo no painel de controle do usuário.
+- **Marcação Automática de Leitura**: Sistema otimizado de persistência de confirmação de leitura em lote por usuário no banco de dados para eliminar badges de novidades repetidos.
+- **Painel de Gestão Administrativa (`AdminChangelogV2`)**: Nova tela para administradores cadastrarem, editarem e removerem novidades e atualizações com área de pré-visualização reativa e integração direta com disparos de e-mail de Broadcast.
+
+---
+
 ## [2.1.0] - 2026-06-29
 
 ### Adicionado
