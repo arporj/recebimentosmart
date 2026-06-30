@@ -44,6 +44,7 @@ import SharedWithMeV2 from './pages/v2/SharedWithMeV2';
 import ClientsV2 from './pages/v2/ClientsV2';
 import AdminBroadcastV2 from './pages/v2/AdminBroadcastV2';
 import AdminSystemTestsV2 from './pages/v2/AdminSystemTestsV2';
+import AdminChangelogV2 from './pages/v2/AdminChangelogV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -132,6 +133,7 @@ function AppRoutes() {
           <Route path="/v2/admin/users" element={<AdminRoute><MainLayoutV2><AdminUserManagementV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/v2/admin/tests" element={<AdminRoute><MainLayoutV2><AdminSystemTestsV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/v2/admin/broadcast" element={<AdminRoute><MainLayoutV2><AdminBroadcastV2 /></MainLayoutV2></AdminRoute>} />
+          <Route path="/v2/admin/changelogs" element={<AdminRoute><MainLayoutV2><AdminChangelogV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/v2/admin/feedbacks" element={<AdminRoute><MainLayoutV2><AdminFeedbackPageV2 /></MainLayoutV2></AdminRoute>} />
           <Route path="/v2/admin/configuracoes" element={<AdminRoute><MainLayoutV2><AdminSettingsV2 /></MainLayoutV2></AdminRoute>} />
 
