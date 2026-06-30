@@ -1927,7 +1927,7 @@ const FinancialTransactionModalV2 = ({
                   )}
 
                   {/* Auto Confirm Toggle */}
-                  {(date >= format(new Date(), 'yyyy-MM-dd')) && (
+                  {(date > format(new Date(), 'yyyy-MM-dd')) && (
                     <div
                       onClick={() => setAutoConfirm(!autoConfirm)}
                       className={`flex items-center gap-3 py-3 px-4 rounded-2xl border-2 cursor-pointer transition-all ${
