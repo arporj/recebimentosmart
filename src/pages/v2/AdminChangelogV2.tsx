@@ -59,6 +59,7 @@ export default function AdminChangelogV2() {
     const [description, setDescription] = useState('');
     const [publishedAt, setPublishedAt] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchChangelogs();
@@ -115,10 +116,6 @@ export default function AdminChangelogV2() {
     };
 
     const handleDeleteChangelog = async (id: string) => {
-        if (!window.confirm('Tem certeza que deseja excluir esta versão permanentemente? Isso removerá as confirmações de leitura dos usuários.')) {
-            return;
-        }
-
         try {
             const { error } = await supabase
                 .from('changelogs')
@@ -298,21 +295,21 @@ ${parseMarkdownToHtml(changelog.description)}
                                                     <button
                                                         onClick={() => handleRedirectToBroadcast(changelog)}
                                                         title="Criar E-mail de Broadcast"
-                                                        className="p-2 border border-slate-100 hover:border-teal-100 rounded-lg text-slate-600 hover:text-teal-600 hover:bg-teal-50 transition-colors"
+                                                        className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:border-teal-200 dark:hover:border-teal-800/50 transition-colors"
                                                     >
                                                         <Mail size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleOpenEditModal(changelog)}
                                                         title="Editar versão"
-                                                        className="p-2 border border-slate-100 hover:border-blue-100 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                        className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-200 dark:hover:border-blue-800/50 transition-colors"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDeleteChangelog(changelog.id)}
+                                                        onClick={() => setDeleteConfirmId(changelog.id)}
                                                         title="Excluir versão"
-                                                        className="p-2 border border-slate-100 hover:border-red-100 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                        className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -472,6 +469,38 @@ ${parseMarkdownToHtml(changelog.description)}
                                     <Check size={16} />
                                 )}
                                 <span>Salvar Versão</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {/* Modal de Confirmação de Exclusão */}
+            {deleteConfirmId && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 text-left">
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                            <Trash2 className="text-rose-500" size={22} />
+                            Excluir Changelog
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                            Tem certeza que deseja excluir esta versão permanentemente? Isso removerá as confirmações de leitura dos usuários. Esta ação não pode ser desfeita.
+                        </p>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 font-bold transition-all text-xs"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handleDeleteChangelog(deleteConfirmId);
+                                    setDeleteConfirmId(null);
+                                }}
+                                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all text-xs shadow-md hover:shadow-lg"
+                            >
+                                Confirmar Exclusão
                             </button>
                         </div>
                     </div>
