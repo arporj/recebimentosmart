@@ -36,7 +36,7 @@ export default function LoginV2() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-gray-50 overflow-x-hidden">
+    <div className="relative flex min-h-screen w-full flex-col bg-gray-50 dark:bg-slate-950 overflow-x-hidden">
 
       {/* ─── Branding Banner ─── */}
       <div className="px-4 py-3">
@@ -52,20 +52,20 @@ export default function LoginV2() {
 
       {/* ─── Form ─── */}
       <form onSubmit={handleSubmit} className="flex flex-col px-6 pt-8 pb-4 max-w-md mx-auto w-full">
-        <h1 className="text-slate-900 tracking-tight text-3xl font-extrabold leading-tight text-left pb-2">
+        <h1 className="text-slate-900 dark:text-white tracking-tight text-3xl font-extrabold leading-tight text-left pb-2">
           Bem-vindo de volta
         </h1>
-        <p className="text-slate-500 text-base font-normal leading-normal pb-6">
+        <p className="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal pb-6">
           Entre na sua conta para gerenciar seu fluxo financeiro.
         </p>
 
         <div className="flex flex-col gap-5">
           {/* Email */}
           <label className="flex flex-col w-full">
-            <p className="text-slate-900 text-sm font-semibold leading-normal pb-2">E-mail</p>
+            <p className="text-slate-900 dark:text-white text-sm font-semibold leading-normal pb-2">E-mail</p>
             <div className="relative">
               <input
-                className="flex w-full rounded-lg text-slate-900 border border-slate-300 bg-white focus:ring-2 focus:ring-custom focus:border-custom h-14 placeholder:text-slate-400 p-[15px] pl-12 text-base font-normal transition-all"
+                className="flex w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-custom focus:border-custom h-14 placeholder:text-slate-400 p-[15px] pl-12 text-base font-normal transition-all"
                 placeholder="seu@email.com"
                 type="email"
                 required
@@ -79,14 +79,14 @@ export default function LoginV2() {
           {/* Senha */}
           <label className="flex flex-col w-full">
             <div className="flex justify-between items-center pb-2">
-              <p className="text-slate-900 text-sm font-semibold leading-normal">Senha</p>
+              <p className="text-slate-900 dark:text-white text-sm font-semibold leading-normal">Senha</p>
               <Link className="text-custom text-sm font-semibold hover:underline" to="/v2/forgot-password">
                 Esqueceu a senha?
               </Link>
             </div>
             <div className="relative">
               <input
-                className="flex w-full rounded-lg text-slate-900 border border-slate-300 bg-white focus:ring-2 focus:ring-custom focus:border-custom h-14 placeholder:text-slate-400 p-[15px] pl-12 pr-12 text-base font-normal transition-all"
+                className="flex w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-custom focus:border-custom h-14 placeholder:text-slate-400 p-[15px] pl-12 pr-12 text-base font-normal transition-all"
                 placeholder="••••••••"
                 type={showPassword ? 'text' : 'password'}
                 required
@@ -113,7 +113,7 @@ export default function LoginV2() {
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
             />
-            <label className="text-slate-700 text-sm font-medium cursor-pointer" htmlFor="remember">
+            <label className="text-slate-700 dark:text-slate-300 text-sm font-medium cursor-pointer" htmlFor="remember">
               Lembrar-me
             </label>
           </div>
@@ -133,7 +133,7 @@ export default function LoginV2() {
 
         {/* Footer */}
         <div className="mt-auto py-8 text-center">
-          <p className="text-slate-600 text-sm font-medium">
+          <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
             Não tem conta?{' '}
             <Link className="text-custom font-bold hover:underline" to="/v2/cadastro">
               Registre-se
