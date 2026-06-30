@@ -10,8 +10,9 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    UserCheck, Share2, Mail
+    UserCheck, Share2, Mail, Gift, RefreshCw
 } from 'lucide-react';
+import { ChangelogDrawer } from '../ChangelogDrawer';
 
 interface MainLayoutV2Props {
     children: React.ReactNode;
@@ -35,6 +36,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
             { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
+            { label: 'Novidades', icon: Gift },
         ],
     },
     {
@@ -71,6 +73,7 @@ const adminSection: SidebarSection = {
         { label: 'Gerenciar Usuários', icon: Shield, href: '/v2/admin/users' },
         { label: 'Testes do Sistema', icon: Shield, href: '/v2/admin/tests' },
         { label: 'Disparos de E-mail', icon: Mail, href: '/v2/admin/broadcast' },
+        { label: 'Gestão de Changelogs', icon: RefreshCw, href: '/v2/admin/changelogs' },
         { label: 'Gestão de Feedbacks', icon: MessageCircle, href: '/v2/admin/feedbacks' },
         { label: 'Configurações Globais', icon: Settings, href: '/v2/admin/configuracoes' },
     ],
@@ -91,6 +94,69 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const [sidebarDesktopCollapsed, setSidebarDesktopCollapsed] = useState(() => {
         return localStorage.getItem('sidebar_desktop_collapsed') === 'true';
     });
+
+    const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+    const [unreadChangelogCount, setUnreadChangelogCount] = useState(0);
+
+    const checkUnreadChangelogs = async () => {
+        if (!user) return;
+        try {
+            // Buscar todos os changelogs publicados
+            const { data: changelogsData } = await supabase
+                .from('changelogs')
+                .select('id')
+                .lte('published_at', new Date().toISOString());
+
+            const fetchedChangelogs = changelogsData || [];
+            if (fetchedChangelogs.length === 0) {
+                setUnreadChangelogCount(0);
+                return;
+            }
+
+            // Buscar leituras do usuário
+            const { data: readData } = await supabase
+                .from('user_changelog_reads')
+                .select('changelog_id')
+                .eq('user_id', user.id);
+
+            const readIds = (readData || []).map(r => r.changelog_id);
+
+            // Contar os não lidos
+            const unread = fetchedChangelogs.filter(cl => !readIds.includes(cl.id));
+            setUnreadChangelogCount(unread.length);
+        } catch (error) {
+            console.error('Erro ao verificar novidades não lidas:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            checkUnreadChangelogs();
+            
+            // Ouvir inserções/alterações na tabela changelogs em tempo real
+            const channel = supabase
+                .channel('public_changelogs_changes_layout')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'changelogs' 
+                }, () => {
+                    checkUnreadChangelogs();
+                })
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'user_changelog_reads' 
+                }, () => {
+                    checkUnreadChangelogs();
+                })
+                .subscribe();
+
+            return () => {
+                channel.unsubscribe();
+            };
+        }
+    }, [user]);
 
     // Fechar a sidebar sempre que a rota mudar
     useEffect(() => {
@@ -154,6 +220,24 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                         </div>
                     )}
                 </div>
+            );
+        }
+
+        if (item.label === 'Novidades') {
+            return (
+                <button
+                    key={item.label}
+                    onClick={() => setIsChangelogOpen(true)}
+                    className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                    <item.icon size={16} className={unreadChangelogCount > 0 ? 'text-teal-400' : ''} />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {unreadChangelogCount > 0 && (
+                        <span className="bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center justify-center animate-pulse">
+                            {unreadChangelogCount}
+                        </span>
+                    )}
+                </button>
             );
         }
 
@@ -289,6 +373,19 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             Recebimento <span className="text-[#14b8a6]">$mart</span>
                         </span>
                     </div>
+                    {/* Botão de novidades 🎁 no mobile alinhado à direita */}
+                    <button
+                        onClick={() => setIsChangelogOpen(true)}
+                        className="ml-auto p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0 relative"
+                    >
+                        <Gift size={20} className={unreadChangelogCount > 0 ? 'text-teal-600 animate-bounce' : ''} />
+                        {unreadChangelogCount > 0 && (
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white animate-ping"></span>
+                        )}
+                        {unreadChangelogCount > 0 && (
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                        )}
+                    </button>
                 </header>
  
                 <main className="flex-1 flex flex-col">
@@ -320,6 +417,13 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             </div>
 
             <VoiceFloatingButton />
+            <ChangelogDrawer
+                isOpen={isChangelogOpen}
+                onClose={() => setIsChangelogOpen(false)}
+                user={user}
+                isAdmin={!!isAdmin}
+                onReadComplete={checkUnreadChangelogs}
+            />
             <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
