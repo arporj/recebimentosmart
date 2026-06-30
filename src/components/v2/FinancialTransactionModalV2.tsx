@@ -324,7 +324,7 @@ const FinancialTransactionModalV2 = ({
       setDescription(transaction.description || '');
       setDate(transaction.date);
       setClientId(transaction.client_id || '');
-      setAccountId(transaction.account_id || '');
+      setAccountId(transaction.account_id || 'sem-conta');
       setDestinationAccountId(transaction.destination_account_id || '');
       setCategoryId(transaction.category_id || '');
       setAutoConfirm(transaction.auto_confirm || false);
@@ -488,6 +488,12 @@ const FinancialTransactionModalV2 = ({
       .eq('is_active', true)
       .order('name');
     
+    const semContaVirtual = {
+      id: 'sem-conta',
+      name: 'Sem Conta',
+      type: 'checking',
+    } as Account;
+
     // Fallback if columns don't exist yet (migration not run)
     if (error) {
       const { data: fallbackData } = await supabase
@@ -497,13 +503,13 @@ const FinancialTransactionModalV2 = ({
         .eq('is_active', true)
         .order('name');
       if (fallbackData) {
-        setAccounts(fallbackData as unknown as Account[]);
+        setAccounts([...(fallbackData as unknown as Account[]), semContaVirtual]);
         if (fallbackData.length === 1 && !transaction && !initialAccountId) {
           setAccountId(fallbackData[0].id);
         }
       }
     } else if (data) {
-      setAccounts(data as unknown as Account[]);
+      setAccounts([...(data as unknown as Account[]), semContaVirtual]);
       if (data.length === 1 && !transaction && !initialAccountId) {
         setAccountId(data[0].id);
       }
