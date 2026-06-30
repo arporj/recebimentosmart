@@ -449,6 +449,27 @@ const QuickEditTransactionModal = ({
       toast.error('Informe um valor válido');
       return;
     }
+    if (!accountId) {
+      toast.error('Informe a conta de origem do lançamento');
+      return;
+    }
+    if (isCreditCard) {
+      const account = accounts.find(a => a.id === accountId);
+      const holders: string[] = [];
+      if (account) {
+        if (account.main_card_name) holders.push(account.main_card_name);
+        if (Array.isArray(account.secondary_cards)) {
+          (account.secondary_cards as any[]).forEach((c) => {
+            const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
+            if (name) holders.push(name);
+          });
+        }
+      }
+      if (holders.length > 0 && (!cardHolderName || cardHolderName.trim() === '')) {
+        toast.error('Selecione o titular do cartão');
+        return;
+      }
+    }
 
     try {
       setLoading(true);
@@ -477,6 +498,8 @@ const QuickEditTransactionModal = ({
         paid_date: paidDate,
         tags: selectedTags,
         auto_confirm: isCreditCard ? false : autoConfirm,
+        invoice_month: isCreditCard ? invoiceMonth : undefined,
+        card_holder_name: isCreditCard ? cardHolderName : undefined,
       };
 
       // If recurrent and no scope selected yet, ask (unless we are just confirming, which is always 'this')
