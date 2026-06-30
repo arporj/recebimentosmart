@@ -418,6 +418,14 @@ export function VoiceFloatingButton() {
         recorrencia_intervalo?: number;
       } = result.data;
 
+      // Capitalizar descrição de forma inteligente (respeitando nomes próprios)
+      if (data.descricao) {
+        data.descricao = capitalizeDescription(data.descricao);
+      }
+      if (data.update_fields && data.update_fields.descricao) {
+        data.update_fields.descricao = capitalizeDescription(data.update_fields.descricao);
+      }
+
       // Se for comando de confirmação por voz na tela de confirmação
       if (wasConfirming && (data.acao as any) === 'confirm') {
         if (previousExtractedData) {
@@ -794,6 +802,23 @@ export function VoiceFloatingButton() {
     setMatchedCategoryId(matchedCatId);
   };
 
+  const capitalizeDescription = (desc: string): string => {
+    if (!desc) return '';
+    const lowercasePrepositions = ['de', 'do', 'da', 'dos', 'das', 'e', 'em', 'para', 'com', 'o', 'a', 'um', 'uma'];
+    return desc
+      .split(' ')
+      .map((word, index) => {
+        if (!word) return '';
+        const wordLower = word.toLowerCase();
+        // Sempre capitaliza a primeira palavra. As outras apenas se não forem preposições/artigos curtos.
+        if (index === 0 || !lowercasePrepositions.includes(wordLower)) {
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return wordLower;
+      })
+      .join(' ');
+  };
+
   const matchAccount = (suggestedBank: string, accountsList: any[]): string => {
     if (accountsList.length === 0) return '';
 
@@ -804,17 +829,38 @@ export function VoiceFloatingButton() {
     const isMentioningCard = textLower.includes('cartao') || textLower.includes('cartão') || textLower.includes('credito') || textLower.includes('crédito');
     const isMentioningCashOrChecking = textLower.includes('pix') || textLower.includes('debito') || textLower.includes('débito') || textLower.includes('dinheiro') || textLower.includes('carteira') || textLower.includes('conta') || textLower.includes('poupança') || textLower.includes('poupanca') || textLower.includes('transferência') || textLower.includes('transferencia');
 
-    // Regra: "Se eu falo em PIX, só pode ser uma conta corrente. Se eu só tiver uma, deve assumir essa única."
-    if (isMentioningCashOrChecking && checkings.length === 1) {
-      return checkings[0].id;
-    }
-
     // Regra para cartão
-    if (isMentioningCard && creditCards.length === 1) {
-      return creditCards[0].id;
+    if (isMentioningCard) {
+      if (creditCards.length === 1) {
+        return creditCards[0].id;
+      }
+      if (creditCards.length > 1) {
+        // Tenta dar match aproximado apenas nos cartões
+        const bankClean = suggestedBank.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const matchedCard = creditCards.find(acc => {
+          const accNameClean = acc.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return accNameClean.includes(bankClean) || bankClean.includes(accNameClean);
+        });
+        if (matchedCard) return matchedCard.id;
+      }
     }
 
-    // Fuzzy matching por nome aproximado
+    // Regra para conta corrente/checking
+    if (isMentioningCashOrChecking) {
+      if (checkings.length === 1) {
+        return checkings[0].id;
+      }
+      if (checkings.length > 1) {
+        const bankClean = suggestedBank.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const matchedChecking = checkings.find(acc => {
+          const accNameClean = acc.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return accNameClean.includes(bankClean) || bankClean.includes(accNameClean);
+        });
+        if (matchedChecking) return matchedChecking.id;
+      }
+    }
+
+    // Fuzzy matching por nome aproximado geral
     if (suggestedBank) {
       const bankClean = suggestedBank.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const matched = accountsList.find(acc => {
