@@ -57,7 +57,9 @@ export async function criarTransacao(input: TransactionInput) {
     : input.amount;
 
   // Fetch account config for credit card invoice calculation
-  const accountConfig = await fetchAccountConfig(input.account_id);
+  const accountConfig = input.account_id && input.account_id !== 'sem-conta'
+    ? await fetchAccountConfig(input.account_id)
+    : null;
 
   const baseTransaction = {
     user_id: userData.user.id,
@@ -65,8 +67,8 @@ export async function criarTransacao(input: TransactionInput) {
     amount: finalAmount,
     type: input.type,
     category_id: input.category_id,
-    account_id: input.account_id,
-    destination_account_id: input.destination_account_id || null,
+    account_id: input.account_id === 'sem-conta' ? null : (input.account_id || null),
+    destination_account_id: input.destination_account_id === 'sem-conta' ? null : (input.destination_account_id || null),
     client_id: input.client_id,
     modalidade: input.modalidade,
     status: input.status || 'pending',
