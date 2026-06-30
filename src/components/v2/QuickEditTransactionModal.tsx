@@ -26,6 +26,8 @@ import { editarTransacao as editarTransacaoFinanceira } from '../../lib/financei
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { ModalOpcaoRecorrente } from '../financeiro/ModalOpcaoRecorrente';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { BRAZILIAN_BANKS } from '../../constants/banks';
+import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
 
 interface QuickEditTransactionModalProps {
   isOpen: boolean;
@@ -55,6 +57,8 @@ const QuickEditTransactionModal = ({
   const [isPaid, setIsPaid] = useState(false);
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [type, setType] = useState<'income' | 'expense' | 'transfer'>('expense');
+  const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [cardHolderName, setCardHolderName] = useState('');
 
   // Data lists
   const [accounts, setAccounts] = useState<any[]>([]);
