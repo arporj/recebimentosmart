@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-    Plus, Edit2, Trash2, Calendar, Tag, RefreshCw, 
-    Mail, ArrowLeft, Eye, MessageCircle, AlertCircle, 
-    Check, X, FileText
+    Plus, Edit2, Trash2, Calendar, RefreshCw, 
+    Mail, Eye, Check, X, FileText
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatToSP } from '../../lib/dates';
@@ -75,7 +74,7 @@ export default function AdminChangelogV2() {
 
             if (error) throw error;
             setChangelogs(data || []);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao buscar changelogs:', error);
             toast.error('Erro ao carregar os changelogs');
         } finally {
@@ -130,9 +129,10 @@ export default function AdminChangelogV2() {
 
             toast.success('Changelog excluído com sucesso!');
             fetchChangelogs();
-        } catch (error: any) {
-            console.error('Erro ao deletar changelog:', error);
-            toast.error(error.message || 'Erro ao deletar changelog');
+        } catch (error: unknown) {
+            const err = error as Error;
+            console.error('Erro ao deletar changelog:', err);
+            toast.error(err.message || 'Erro ao deletar changelog');
         }
     };
 
@@ -175,9 +175,10 @@ export default function AdminChangelogV2() {
 
             setIsModalOpen(false);
             fetchChangelogs();
-        } catch (error: any) {
-            console.error('Erro ao salvar changelog:', error);
-            toast.error(error.message || 'Erro ao salvar changelog');
+        } catch (error: unknown) {
+            const err = error as Error;
+            console.error('Erro ao salvar changelog:', err);
+            toast.error(err.message || 'Erro ao salvar changelog');
         } finally {
             setSubmitting(false);
         }
@@ -363,7 +364,7 @@ ${parseMarkdownToHtml(changelog.description)}
                                         <label className="text-xs font-bold text-slate-500 uppercase">Categoria *</label>
                                         <select
                                             value={category}
-                                            onChange={e => setCategory(e.target.value as any)}
+                                            onChange={e => setCategory(e.target.value as 'feature' | 'bugfix' | 'improvement')}
                                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-slate-800 text-sm font-semibold"
                                         >
                                             <option value="feature">Novidade (Feature)</option>
