@@ -15,6 +15,8 @@ O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ### Corrigido
 - **Transações Silenciosas sem Conta**: Correção no carregamento e filtragem de lançamentos que não possuíam conta cadastrada (ex: criadas silenciosamente por comandos de voz do Artie). Agora, essas transações são associadas a uma conta virtual "Sem Conta" no frontend, permitindo que apareçam na listagem financeira normal para que o usuário possa identificá-las e associar uma conta real de forma simples.
+- **Campos e Ícones de Cartão de Crédito no Modal de Edição Rápida**: Correção da renderização e validações dos campos condicionais de cartão de crédito ("Fatura de" e "Titular") no modal de edição rápida (`QuickEditTransactionModal.tsx`), que antes ficavam ocultos ao selecionar um cartão como "Inter Crédito".
+- **Logotipos e Ícones de Bancos Consistentes**: Atualização dos componentes de ícones de conta (`AccountIcon`) no modal rápido e no modal completo para renderizar os favicons e cores reais das instituições bancárias de forma dinâmica e automatizada, inclusive inferindo o logotipo com base no nome do cartão/conta para registros cujos metadados de banco sejam nulos.
 
 ---
 
