@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Calendar, Gift, Mail, ArrowRight, RefreshCw } from 'lucide-react';
+import { X, Calendar, Gift, Mail, ArrowRight } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { formatToSP } from '../../../lib/dates';
-import { toast } from 'react-hot-toast';
 
 interface Changelog {
     id: string;
@@ -17,7 +16,7 @@ interface Changelog {
 interface ChangelogDrawerProps {
     isOpen: boolean;
     onClose: () => void;
-    user: any;
+    user: { id: string; email?: string } | null | undefined;
     isAdmin: boolean;
     onReadComplete?: () => void;
 }
@@ -55,27 +54,7 @@ export function ChangelogDrawer({ isOpen, onClose, user, isAdmin, onReadComplete
     const [loading, setLoading] = useState(false);
     const drawerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchChangelogsAndMarkAsRead();
-        }
-    }, [isOpen]);
-
-    // Fechar ao clicar fora
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (isOpen && drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
-                onClose();
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isOpen, onClose]);
-
-    const fetchChangelogsAndMarkAsRead = async () => {
+    const fetchChangelogsAndMarkAsRead = useCallback(async () => {
         if (!user) return;
         
         try {
@@ -131,12 +110,33 @@ export function ChangelogDrawer({ isOpen, onClose, user, isAdmin, onReadComplete
                     }
                 }
             }
-        } catch (error: any) {
-            console.error('Erro ao gerenciar changelogs do usuário:', error);
+        } catch (error: unknown) {
+            const err = error as Error;
+            console.error('Erro ao gerenciar changelogs do usuário:', err.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, onReadComplete]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchChangelogsAndMarkAsRead();
+        }
+    }, [isOpen, fetchChangelogsAndMarkAsRead]);
+
+    // Fechar ao clicar fora
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isOpen && drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen, onClose]);
 
     const handleRedirectToBroadcast = (changelog: Changelog) => {
         onClose();
