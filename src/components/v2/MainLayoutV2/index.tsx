@@ -30,6 +30,7 @@ interface SidebarSection {
     items: SidebarItem[];
 }
 
+const sidebarSections: SidebarSection[] = [
     {
         title: 'Geral',
         items: [
