@@ -443,7 +443,7 @@ app.post('/api/lancamento-voz', async (req, res) => {
       }
     };
 
-    const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     let response = null;
     let lastError = null;
 
