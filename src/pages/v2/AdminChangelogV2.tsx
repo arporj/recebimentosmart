@@ -45,6 +45,50 @@ function parseMarkdownToHtml(markdown: string): string {
         }).join('\n');
 }
 
+interface Badge {
+    label: string;
+    className: string;
+}
+
+function getDynamicBadges(description: string): Badge[] {
+    const badges: Badge[] = [];
+    const descLower = (description || '').toLowerCase();
+    
+    // Verifica se contém termos de novidades/novidade/added
+    if (descLower.includes('### novidades') || descLower.includes('### novidade') || descLower.includes('### added')) {
+        badges.push({ 
+            label: 'Novidade', 
+            className: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
+        });
+    }
+    
+    // Verifica se contém melhorias/melhoria/improvements
+    if (descLower.includes('### melhorias') || descLower.includes('### melhoria') || descLower.includes('### improvements')) {
+        badges.push({ 
+            label: 'Melhoria', 
+            className: 'bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800/50' 
+        });
+    }
+
+    // Verifica se contém alterações/alteração/changed/mudanças
+    if (descLower.includes('### alteracoes') || descLower.includes('### alteracões') || descLower.includes('### alteração') || descLower.includes('### mudancas') || descLower.includes('### mudanças') || descLower.includes('### changed') || descLower.includes('### alteracoe')) {
+        badges.push({ 
+            label: 'Alteração', 
+            className: 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800/50' 
+        });
+    }
+    
+    // Verifica se contém correções/correção/bugfix/fixed/correções
+    if (descLower.includes('### correcoes') || descLower.includes('### correcões') || descLower.includes('### descrição') || descLower.includes('### fixed') || descLower.includes('### correções') || descLower.includes('### bugfix') || descLower.includes('### correção')) {
+        badges.push({ 
+            label: 'Correção', 
+            className: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+        });
+    }
+    
+    return badges;
+}
+
 export default function AdminChangelogV2() {
     const navigate = useNavigate();
     const [changelogs, setChangelogs] = useState<Changelog[]>([]);
@@ -262,7 +306,7 @@ ${parseMarkdownToHtml(changelog.description)}
                                 <tr className="border-b border-slate-100 bg-slate-50/50">
                                     <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Versão</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Título</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Categoria</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Categorias</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Data de Publicação</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-right">Ações</th>
                                 </tr>
@@ -275,9 +319,16 @@ ${parseMarkdownToHtml(changelog.description)}
                                             <td className="px-6 py-4 font-bold text-slate-900 text-sm">{changelog.version}</td>
                                             <td className="px-6 py-4 font-semibold text-slate-800 text-sm">{changelog.title}</td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border ${getCategoryStyles(changelog.category)}`}>
-                                                    {getCategoryLabel(changelog.category)}
-                                                </span>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {getDynamicBadges(changelog.description).map((badge, idx) => (
+                                                        <span key={idx} className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${badge.className}`}>
+                                                            {badge.label}
+                                                        </span>
+                                                    ))}
+                                                    {getDynamicBadges(changelog.description).length === 0 && (
+                                                        <span className="text-xs font-semibold text-slate-400 italic">Nenhuma</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-slate-500 text-sm">
                                                 <div className="flex items-center gap-1.5">
@@ -345,30 +396,16 @@ ${parseMarkdownToHtml(changelog.description)}
                         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col lg:flex-row gap-6">
                             {/* Inputs à Esquerda */}
                             <div className="flex-1 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Versão *</label>
-                                        <input
-                                            type="text"
-                                            value={version}
-                                            onChange={e => setVersion(e.target.value)}
-                                            placeholder="Ex: v2.1.0"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-slate-800 text-sm font-semibold"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Categoria *</label>
-                                        <select
-                                            value={category}
-                                            onChange={e => setCategory(e.target.value as 'feature' | 'bugfix' | 'improvement')}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-slate-800 text-sm font-semibold"
-                                        >
-                                            <option value="feature">Novidade (Feature)</option>
-                                            <option value="improvement">Melhoria</option>
-                                            <option value="bugfix">Correção de Bug</option>
-                                        </select>
-                                    </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">Versão *</label>
+                                    <input
+                                        type="text"
+                                        value={version}
+                                        onChange={e => setVersion(e.target.value)}
+                                        placeholder="Ex: v2.1.0"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-slate-800 text-sm font-semibold"
+                                        required
+                                    />
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -420,9 +457,21 @@ ${parseMarkdownToHtml(changelog.description)}
                                     {/* Simula a Gaveta Slide-over */}
                                     <div className="space-y-4">
                                         <div className="flex items-start justify-between">
-                                            <span className="text-[10px] uppercase font-extrabold tracking-wider bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded border border-teal-500/20">
-                                                {getCategoryLabel(category)}
-                                            </span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {getDynamicBadges(description).map((badge, idx) => (
+                                                    <span 
+                                                        key={idx}
+                                                        className={`text-[9px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded border ${badge.className}`}
+                                                    >
+                                                        {badge.label}
+                                                    </span>
+                                                ))}
+                                                {getDynamicBadges(description).length === 0 && (
+                                                    <span className="text-[9px] uppercase font-extrabold tracking-wider bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">
+                                                        Sem Categoria
+                                                    </span>
+                                                )}
+                                            </div>
                                             <span className="text-xs text-slate-400 font-bold">{version || 'vX.Y.Z'}</span>
                                         </div>
                                         
@@ -473,6 +522,7 @@ ${parseMarkdownToHtml(changelog.description)}
                         </div>
                     </div>
                 </div>
+            )}
             {/* Modal de Confirmação de Exclusão */}
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

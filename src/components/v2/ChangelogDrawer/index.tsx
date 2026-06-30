@@ -48,6 +48,50 @@ function parseMarkdownToHtml(markdown: string): string {
         }).join('\n');
 }
 
+interface Badge {
+    label: string;
+    className: string;
+}
+
+function getDynamicBadges(description: string): Badge[] {
+    const badges: Badge[] = [];
+    const descLower = (description || '').toLowerCase();
+    
+    // Verifica se contém termos de novidades/novidade/added
+    if (descLower.includes('### novidades') || descLower.includes('### novidade') || descLower.includes('### added')) {
+        badges.push({ 
+            label: 'Novidade', 
+            className: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
+        });
+    }
+    
+    // Verifica se contém melhorias/melhoria/improvements
+    if (descLower.includes('### melhorias') || descLower.includes('### melhoria') || descLower.includes('### improvements')) {
+        badges.push({ 
+            label: 'Melhoria', 
+            className: 'bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800/50' 
+        });
+    }
+
+    // Verifica se contém alterações/alteração/changed/mudanças
+    if (descLower.includes('### alteracoes') || descLower.includes('### alteracões') || descLower.includes('### alteração') || descLower.includes('### mudancas') || descLower.includes('### mudanças') || descLower.includes('### changed') || descLower.includes('### alteracoe')) {
+        badges.push({ 
+            label: 'Alteração', 
+            className: 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800/50' 
+        });
+    }
+    
+    // Verifica se contém correções/correção/bugfix/fixed/correções
+    if (descLower.includes('### correcoes') || descLower.includes('### correcões') || descLower.includes('### descrição') || descLower.includes('### fixed') || descLower.includes('### correções') || descLower.includes('### bugfix') || descLower.includes('### correção')) {
+        badges.push({ 
+            label: 'Correção', 
+            className: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+        });
+    }
+    
+    return badges;
+}
+
 export function ChangelogDrawer({ isOpen, onClose, user, isAdmin, onReadComplete }: ChangelogDrawerProps) {
     const navigate = useNavigate();
     const [changelogs, setChangelogs] = useState<Changelog[]>([]);
@@ -160,28 +204,6 @@ ${parseMarkdownToHtml(changelog.description)}
         });
     };
 
-    const getCategoryBadge = (cat: string) => {
-        switch (cat) {
-            case 'feature':
-                return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-            case 'bugfix':
-                return 'bg-amber-50 text-amber-700 border-amber-100';
-            case 'improvement':
-                return 'bg-sky-50 text-sky-700 border-sky-100';
-            default:
-                return 'bg-slate-50 text-slate-700 border-slate-100';
-        }
-    };
-
-    const getCategoryLabel = (cat: string) => {
-        switch (cat) {
-            case 'feature': return 'Novidade';
-            case 'bugfix': return 'Correção';
-            case 'improvement': return 'Melhoria';
-            default: return cat;
-        }
-    };
-
     return (
         <div 
             className={`fixed inset-0 z-[100] flex justify-end transition-opacity duration-300 ${
@@ -235,9 +257,14 @@ ${parseMarkdownToHtml(changelog.description)}
                             <div key={changelog.id} className="space-y-3 group">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${getCategoryBadge(changelog.category)}`}>
-                                            {getCategoryLabel(changelog.category)}
-                                        </span>
+                                        {getDynamicBadges(changelog.description).map((badge, idx) => (
+                                            <span 
+                                                key={idx} 
+                                                className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${badge.className}`}
+                                            >
+                                                {badge.label}
+                                            </span>
+                                        ))}
                                         <span className="text-xs font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
                                             {changelog.version}
                                         </span>
