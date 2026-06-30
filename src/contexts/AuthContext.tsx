@@ -31,6 +31,8 @@ interface AuthContextType {
   setRowDensity: (density: 'original' | 'compact' | 'expanded') => void;
   setRemoveBoldList: (remove: boolean) => void;
   setPredictedLayout: (layout: 'below' | 'column') => void;
+  dashboardWidgets: Record<string, boolean>;
+  updateDashboardWidgets: (widgets: Record<string, boolean>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [predictedLayout, setPredictedLayout] = useState<'below' | 'column'>(() => {
     return (localStorage.getItem('predicted_layout') as 'below' | 'column') || 'below';
+  });
+  const [dashboardWidgets, setDashboardWidgets] = useState<Record<string, boolean>>({
+    fluxoCaixaAcumulado: true,
+    resultadosCaixa: true,
+    balancoPatrimonial: true,
+    receitasCategoria: true,
+    despesasCategoria: true,
   });
 
   // Effect para injetar as classes de tema, densidade e bold na tag html
@@ -177,6 +186,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.predicted_layout) {
             localStorage.setItem('predicted_layout', profile.predicted_layout);
             setPredictedLayout(profile.predicted_layout as any);
+          }
+          if (profile.dashboard_widgets) {
+            setDashboardWidgets(profile.dashboard_widgets);
           }
         }
 
@@ -412,6 +424,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateDashboardWidgets = async (widgets: Record<string, boolean>) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ dashboard_widgets: widgets })
+        .eq('id', user.id);
+      if (error) throw error;
+      setDashboardWidgets(widgets);
+    } catch (error) {
+      console.error('Erro ao atualizar widgets:', error);
+      toast.error('Erro ao salvar preferências de visualização');
+    }
+  };
+
   const updateUserName = async (name: string) => {
     if (!user) return;
     try {
@@ -507,6 +534,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRowDensity,
         setRemoveBoldList,
         setPredictedLayout,
+        dashboardWidgets,
+        updateDashboardWidgets,
       }}
     >
       {children}
