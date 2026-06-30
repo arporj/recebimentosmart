@@ -62,6 +62,7 @@ interface FinancialTransaction {
   category_name?: string;
   client_name?: string;
   account_name?: string;
+  account_type?: string;
   destination_account_type?: string;
   destination_account_name?: string;
   recurrence_enabled?: boolean;
@@ -81,7 +82,7 @@ interface MonthlyStat {
 }
 
 const DashboardV2 = () => {
-  const { user, plano, isAdmin, dashboardWidgets, updateDashboardWidgets } = useAuth();
+  const { user, plano, isAdmin, dashboardWidgets, updateDashboardWidgets, themePreference } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
@@ -112,6 +113,21 @@ const DashboardV2 = () => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
+
+  // Cores dinâmicas para os gráficos Plotly de acordo com o tema selecionado
+  const plotlyColors = useMemo(() => {
+    const isLight = themePreference === 'light';
+    return {
+      paper_bgcolor: 'rgba(0,0,0,0)', // Transparente para herdar o background do card
+      plot_bgcolor: 'rgba(0,0,0,0)',  // Transparente para a área interna
+      font: {
+        color: isLight ? '#475569' : '#f1f5f9',
+        family: 'Inter, system-ui, sans-serif',
+        size: 11
+      },
+      gridColor: isLight ? '#f1f5f9' : '#1f2937'
+    };
+  }, [themePreference]);
 
   const hasPremiumAccess = useMemo(() => {
     return isAdmin || plano === 'premium' || plano === 'trial';
@@ -604,7 +620,6 @@ const DashboardV2 = () => {
     });
   };
 
-  // Cores fixas premium para as categorias nos gráficos
   const chartColors = ['#20B2AA', '#1A9D94', '#22C55E', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#a855f7'];
 
   return (
@@ -879,19 +894,42 @@ const DashboardV2 = () => {
             </div>
           </div>
 
-          {/* NOVOS GRÁFICOS DE CATEGORIA (DESPESAS E RECEITAS NA ABA VISÃO GERAL) */}
+          {/* GRÁFICOS DE CATEGORIA (DESPESAS E RECEITAS NA ABA VISÃO GERAL) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* GRÁFICO 1: Despesas por Categoria */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-              <div className="mb-4">
-                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-rose-500" />
-                  Despesas por Categoria
-                </h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                  {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
-                </p>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-rose-500" />
+                    Despesas por Categoria
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
+                  </p>
+                </div>
+                {/* Botões locais */}
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/50">
+                  <button
+                    onClick={() => setOnlyConfirmed(prev => !prev)}
+                    title={onlyConfirmed ? "Exibir previstos e pagos" : "Exibir apenas confirmados"}
+                    className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                      onlyConfirmed 
+                        ? 'bg-emerald-500 text-white shadow-sm' 
+                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <CheckCircle2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => setCategoryChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
+                    title={categoryChartType === 'pie' ? "Ver como Gráfico de Barras" : "Ver como Gráfico de Pizza"}
+                    className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+                  >
+                    {categoryChartType === 'pie' ? <BarChart2 size={14} /> : <PieChart size={14} />}
+                  </button>
+                </div>
               </div>
 
               {categoryChartData.expenses.values.length > 0 ? (
@@ -913,8 +951,12 @@ const DashboardV2 = () => {
                           showlegend: false,
                           margin: { l: 10, r: 10, t: 10, b: 10 },
                           height: 220,
-                          autosize: true
+                          autosize: true,
+                          paper_bgcolor: plotlyColors.paper_bgcolor,
+                          plot_bgcolor: plotlyColors.plot_bgcolor,
+                          font: plotlyColors.font
                         }}
+                        config={{ displayModeBar: false, responsive: true }}
                         onClick={handleSliceClick}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
@@ -929,11 +971,21 @@ const DashboardV2 = () => {
                         }]}
                         layout={{
                           margin: { l: 40, r: 10, t: 10, b: 45 },
-                          xaxis: { tickfont: { size: 9, font: 'bold' } },
-                          yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                          xaxis: { 
+                            tickfont: { size: 9, font: 'bold' },
+                            gridcolor: plotlyColors.gridColor
+                          },
+                          yaxis: { 
+                            gridcolor: plotlyColors.gridColor, 
+                            tickfont: { size: 9, font: 'bold' } 
+                          },
                           height: 220,
-                          autosize: true
+                          autosize: true,
+                          paper_bgcolor: plotlyColors.paper_bgcolor,
+                          plot_bgcolor: plotlyColors.plot_bgcolor,
+                          font: plotlyColors.font
                         }}
+                        config={{ displayModeBar: false, responsive: true }}
                         onClick={handleSliceClick}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
@@ -983,14 +1035,37 @@ const DashboardV2 = () => {
 
             {/* GRÁFICO 2: Receitas por Categoria */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-              <div className="mb-4">
-                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                  Receitas por Categoria
-                </h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                  {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
-                </p>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                    Receitas por Categoria
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    {onlyConfirmed ? 'Situação Realizada (Confirmado)' : 'Situação Projetada'}
+                  </p>
+                </div>
+                {/* Botões locais */}
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/50">
+                  <button
+                    onClick={() => setOnlyConfirmed(prev => !prev)}
+                    title={onlyConfirmed ? "Exibir previstos e pagos" : "Exibir apenas confirmados"}
+                    className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                      onlyConfirmed 
+                        ? 'bg-emerald-500 text-white shadow-sm' 
+                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <CheckCircle2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => setCategoryChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
+                    title={categoryChartType === 'pie' ? "Ver como Gráfico de Barras" : "Ver como Gráfico de Pizza"}
+                    className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+                  >
+                    {categoryChartType === 'pie' ? <BarChart2 size={14} /> : <PieChart size={14} />}
+                  </button>
+                </div>
               </div>
 
               {categoryChartData.incomes.values.length > 0 ? (
@@ -1012,8 +1087,12 @@ const DashboardV2 = () => {
                           showlegend: false,
                           margin: { l: 10, r: 10, t: 10, b: 10 },
                           height: 220,
-                          autosize: true
+                          autosize: true,
+                          paper_bgcolor: plotlyColors.paper_bgcolor,
+                          plot_bgcolor: plotlyColors.plot_bgcolor,
+                          font: plotlyColors.font
                         }}
+                        config={{ displayModeBar: false, responsive: true }}
                         onClick={handleSliceClick}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
@@ -1028,11 +1107,21 @@ const DashboardV2 = () => {
                         }]}
                         layout={{
                           margin: { l: 40, r: 10, t: 10, b: 45 },
-                          xaxis: { tickfont: { size: 9, font: 'bold' } },
-                          yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                          xaxis: { 
+                            tickfont: { size: 9, font: 'bold' },
+                            gridcolor: plotlyColors.gridColor
+                          },
+                          yaxis: { 
+                            gridcolor: plotlyColors.gridColor, 
+                            tickfont: { size: 9, font: 'bold' } 
+                          },
                           height: 220,
-                          autosize: true
+                          autosize: true,
+                          paper_bgcolor: plotlyColors.paper_bgcolor,
+                          plot_bgcolor: plotlyColors.plot_bgcolor,
+                          font: plotlyColors.font
                         }}
+                        config={{ displayModeBar: false, responsive: true }}
                         onClick={handleSliceClick}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
@@ -1125,11 +1214,15 @@ const DashboardV2 = () => {
                         }]}
                         layout={{
                           margin: { l: 50, r: 20, t: 10, b: 30 },
-                          xaxis: { gridcolor: '#f8fafc', tickfont: { size: 9, font: 'bold' } },
-                          yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                          xaxis: { gridcolor: plotlyColors.gridColor, tickfont: { size: 9, font: 'bold' } },
+                          yaxis: { gridcolor: plotlyColors.gridColor, tickfont: { size: 9, font: 'bold' } },
                           height: 240,
-                          autosize: true
+                          autosize: true,
+                          paper_bgcolor: plotlyColors.paper_bgcolor,
+                          plot_bgcolor: plotlyColors.plot_bgcolor,
+                          font: plotlyColors.font
                         }}
+                        config={{ displayModeBar: false, responsive: true }}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -1198,13 +1291,23 @@ const DashboardV2 = () => {
                           ]}
                           layout={{
                             margin: { l: 50, r: 20, t: 10, b: 30 },
-                            xaxis: { tickfont: { size: 9, font: 'bold' } },
-                            yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                            xaxis: { 
+                              tickfont: { size: 9, font: 'bold' },
+                              gridcolor: plotlyColors.gridColor
+                            },
+                            yaxis: { 
+                              gridcolor: plotlyColors.gridColor, 
+                              tickfont: { size: 9, font: 'bold' } 
+                            },
                             barmode: 'group',
                             height: 240,
                             autosize: true,
-                            showlegend: false
+                            showlegend: false,
+                            paper_bgcolor: plotlyColors.paper_bgcolor,
+                            plot_bgcolor: plotlyColors.plot_bgcolor,
+                            font: plotlyColors.font
                           }}
+                          config={{ displayModeBar: false, responsive: true }}
                           useResizeHandler={true}
                           style={{ width: '100%', height: '100%' }}
                         />
@@ -1247,10 +1350,15 @@ const DashboardV2 = () => {
                         }]}
                         layout={{
                           margin: { l: 50, r: 20, t: 20, b: 30 },
-                          yaxis: { gridcolor: '#f1f5f9', tickfont: { size: 9, font: 'bold' } },
+                          yaxis: { gridcolor: plotlyColors.gridColor, tickfont: { size: 9, font: 'bold' } },
+                          xaxis: { gridcolor: plotlyColors.gridColor, tickfont: { size: 9, font: 'bold' } },
                           height: 220,
-                          autosize: true
+                          autosize: true,
+                          paper_bgcolor: plotlyColors.paper_bgcolor,
+                          plot_bgcolor: plotlyColors.plot_bgcolor,
+                          font: plotlyColors.font
                         }}
+                        config={{ displayModeBar: false, responsive: true }}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                       />
