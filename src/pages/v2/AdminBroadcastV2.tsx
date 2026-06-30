@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Mail, Send, Sparkles, RefreshCw, AlertTriangle, CheckCircle, Clock, AlertCircle, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -20,8 +21,23 @@ interface Broadcast {
 
 export default function AdminBroadcastV2() {
     const { user } = useAuth();
+    const location = useLocation();
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
+
+    useEffect(() => {
+        if (location.state) {
+            const state = location.state as { subject?: string; message?: string };
+            if (state.subject) {
+                setSubject(state.subject);
+            }
+            if (state.message) {
+                setBody(state.message);
+            }
+            // Limpa o estado para evitar preenchimento duplicado ao recarregar a página
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
     const [targetLevel, setTargetLevel] = useState('all');
     const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
     const [loading, setLoading] = useState(false);
