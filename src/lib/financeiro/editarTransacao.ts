@@ -45,6 +45,13 @@ export async function editarTransacao(
 ) {
   // Higienizar payload removendo propriedades exclusivas de criação de parcelas que não existem na tabela
   const { start_installment, is_total_value, ...cleanUpdate } = update as any;
+
+  if (cleanUpdate.account_id === 'sem-conta') {
+    cleanUpdate.account_id = null;
+  }
+  if (cleanUpdate.destination_account_id === 'sem-conta') {
+    cleanUpdate.destination_account_id = null;
+  }
   // 1. Buscar a transação atual para saber o contexto
   const { data: current, error: fetchError } = await supabase
     .from('financial_transactions')
