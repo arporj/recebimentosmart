@@ -96,6 +96,7 @@ interface TransactionInstance extends FinancialTransaction {
 const FinancialTransactionsV2 = () => {
   const { user, rowDensity, predictedLayout } = useAuth();
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [templates, setTemplates] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -221,6 +222,28 @@ const FinancialTransactionsV2 = () => {
       }));
 
       setTransactions(mappedData);
+
+      // 2. Buscar os templates de recorrência ativos do usuário (para projeção virtual futura)
+      const { data: templateData, error: templateError } = await supabase
+        .from('financial_transactions')
+        .select('*, client:client_id(name), category:category_id(name, icon, parent_id), account:account_id(name, type)')
+        .eq('user_id', user.id)
+        .eq('is_template', true)
+        .eq('recurrence_enabled', true);
+
+      if (templateError) throw templateError;
+
+      const mappedTemplates = (templateData || []).map((t: any) => ({
+        ...t,
+        account_id: t.account_id || 'sem-conta',
+        account: t.account ? { name: t.account.name, type: t.account.type } : { name: 'Sem Conta', type: 'checking' },
+        account_type: t.account?.type || 'checking',
+        destination_account: null,
+        client: t.client ? { name: t.client.name } : null,
+        category: t.category ? { name: t.category.name, icon: t.category.icon, parent_id: t.category.parent_id } : null
+      }));
+
+      setTemplates(mappedTemplates);
     } catch (err) {
       console.error('Erro ao buscar transações:', err);
       toast.error('Erro ao carregar transações');
@@ -392,51 +415,53 @@ const FinancialTransactionsV2 = () => {
     const maxDate = endOfMonth(currentMonth);
     const todayStr = format(today, 'yyyy-MM-dd');
 
+    // Fase 1: Adicionar transações físicas reais (de transactions)
     for (const t of transactions) {
-      // Skip cancelled records entirely — they are blockers, not displayable items
       if (t.status === 'cancelled') continue;
 
       const tDate = parseISO(t.date);
 
-      if (!t.recurrence_enabled) {
-        if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
-          let finalInstanceDate = t.date;
-          const isUnpaid = t.status !== 'paid';
-          
-          // Se estiver pendente e no passado (atrasado), empurra visualmente para hoje
-          if (isUnpaid && t.date < todayStr) {
-            finalInstanceDate = todayStr;
-          }
-          
-          instances.push({ ...t, instanceDate: finalInstanceDate, originalInstanceDate: t.date, isVirtual: false });
+      if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
+        let finalInstanceDate = t.date;
+        const isUnpaid = t.status !== 'paid';
+        
+        // Se estiver pendente e no passado (atrasado), empurra visualmente para hoje
+        if (isUnpaid && t.date < todayStr) {
+          finalInstanceDate = todayStr;
         }
-        continue;
+        
+        instances.push({ 
+          ...t, 
+          instanceDate: finalInstanceDate, 
+          originalInstanceDate: t.date, 
+          isVirtual: false 
+        });
       }
+    }
 
+    // Fase 2: Projetar ocorrências virtuais futuras dos templates de recorrência (de templates)
+    for (const t of templates) {
       const interval = t.recurrence_interval || 1;
       const period = t.recurrence_period || 'monthly';
       const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
+      const tDate = parseISO(t.date);
       
       let cursor = new Date(tDate);
-      const parentId = t.id; // Se tem recurrence_enabled é o pai
+      const parentId = t.id;
       let occurrenceIndex = 0;
       
       while (isBefore(cursor, maxDate) || isSameDay(cursor, maxDate)) {
-        // Respect recurrence_end_date: stop generating after this date
         if (recEndDate && isAfter(cursor, recEndDate)) break;
 
         const dateStr = format(cursor, 'yyyy-MM-dd');
         const currentInst = (t.installment_current || 1) + occurrenceIndex;
 
-        // Checar por índice sequencial e por data (fallback)
         const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
         const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
         const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
 
-        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
-        // ou uma virtual que não existe fisicamente.
-        if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
-          // Compute correct invoice_month for virtual credit card transactions
+        // Gerar apenas se não houver um filho físico real correspondente
+        if (!alreadyHasPhysical) {
           let newInvoiceMonth = t.invoice_month;
           if (t.account_type === 'credit_card' && t.invoice_month) {
              const [y, m] = t.invoice_month.split('-');
@@ -446,12 +471,10 @@ const FinancialTransactionsV2 = () => {
              newInvoiceMonth = format(newDate, 'yyyy-MM');
           }
 
-          const status = dateStr !== t.date ? 'pending' : t.status;
+          const status = 'pending';
           let finalInstanceDate = dateStr;
-          const isUnpaid = status !== 'paid';
           
-          // Se estiver pendente e no passado (atrasado), empurra visualmente para hoje
-          if (isUnpaid && dateStr < todayStr) {
+          if (dateStr < todayStr) {
              finalInstanceDate = todayStr;
           }
 
@@ -459,7 +482,7 @@ const FinancialTransactionsV2 = () => {
             ...t,
             instanceDate: finalInstanceDate,
             originalInstanceDate: dateStr,
-            isVirtual: dateStr !== t.date,
+            isVirtual: true,
             status,
             installment_current: currentInst,
             invoice_month: newInvoiceMonth,
@@ -482,7 +505,7 @@ const FinancialTransactionsV2 = () => {
       if (dateCompare !== 0) return dateCompare;
       return (a.id ?? '').localeCompare(b.id ?? '');
     });
-  }, [transactions, currentMonth]);
+  }, [transactions, templates, currentMonth]);
 
   const monthInstances = useMemo(() => {
     return allInstancesUpToMonth.filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth));
