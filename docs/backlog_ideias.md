@@ -87,6 +87,30 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
     * *Técnico:* Respostas detalhadas, análises profundas de métricas, termos contábeis e gráficos, ideal para quem busca precisão matemática e contábil.
   * **Operações Inline Contextuais:** As ações financeiras (criar lançamentos, pagar faturas, alterar valores, agendar contas) serão extraídas e realizadas de forma inteligente e automática em segundo plano *à medida que a conversa se desenvolve*, eliminando a necessidade de comandos isolados ou formulários.
 
+### 2.11. 🔔 Régua de Cobrança Automatizada e Multicanal (Clientes Finais)
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Permitir que o usuário configure disparos automatizados de mensagens de cobrança para seus clientes finais por WhatsApp, E-mail e SMS. Inclui lembretes pré-vencimento, envio do Pix Copia e Cola no dia do vencimento, e alertas de inadimplência após o vencimento.
+
+### 2.12. 👤 Portal do Cliente Final (Autoatendimento)
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Criação de uma área de autoatendimento web segura e simplificada para o cliente do usuário. O cliente final acessa sem senha (via link mágico no e-mail ou código via WhatsApp/SMS) para visualizar faturas em aberto, realizar pagamentos Pix, baixar comprovantes e gerenciar assinaturas.
+
+### 2.13. ⚙️ Motor de Juros, Multa e Descontos por Pontualidade
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Cálculo dinâmico e atualização automática do valor da cobrança Pix após o vencimento (acrescentando juros diários e multa parametrizados pelo usuário), bem como concessão automática de descontos configurados para pagamentos realizados antes do vencimento.
+
+### 2.14. 💸 Split de Pagamentos (Divisão de Recebíveis)
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Divisão automatizada de pagamentos recebidos no Banco Inter PJ entre o usuário e parceiros de negócio/prestadores de serviços, registrando as comissões a pagar e efetuando transferências de forma transparente.
+
+### 2.15. 📊 Painel de Métricas de Assinaturas (SaaS Metrics)
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Fornecer aos usuários que operam sob modelo recorrente um dashboard avançado com métricas críticas de faturamento e crescimento, tais como MRR (Receita Recorrente Mensal), ARR, LTV, Churn Rate e análise de Coortes.
+
+### 2.16. 📈 Dashboard e Relatórios Financeiros Padrão Ouro
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Evoluir as telas de análise financeira do sistema para incorporar um painel de fluxo de caixa projetado a 30 dias (baseado em inteligência preditiva e templates de recorrência), DRE Simplificado interativo mensalizado, alternância entre Regime de Caixa e Regime de Competência, e geração de relatórios consolidados em formato PDF/Excel corporativos.
+
 ---
 
 ## 3. 📈 Recomendações e Tendências de Mercado para o RecebimentoSmart Premium
