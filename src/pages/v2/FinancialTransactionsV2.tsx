@@ -35,6 +35,8 @@ import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoReco
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { TransactionSummaryModal } from '../../components/v2/TransactionSummaryModal';
 import { ShareTransactionsModalV2 } from '../../components/v2/ShareTransactionsModalV2';
+import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
+
 
 const getDaysDifference = (original: string, current: string): number => {
   try {
@@ -1055,6 +1057,10 @@ const FinancialTransactionsV2 = () => {
         const targetDate = bulkConfirmDateMode === 'original' ? origDate : bulkConfirmSpecificDate;
         const paidDate = targetDate;
 
+        const cardConfig = t.account_id ? creditCardAccounts.find((c: any) => c.id === t.account_id) : null;
+        const isCreditCard = t.account_type === 'credit_card' || (cardConfig && cardConfig.type === 'credit_card');
+        const calculatedInvoiceMonth = cardConfig ? calcularMesFatura(targetDate, cardConfig) : null;
+
         if (t.isVirtual) {
           // Materializar transação virtual
           const newChildPayload = {
@@ -1073,7 +1079,8 @@ const FinancialTransactionsV2 = () => {
             is_customized: true,
             installment_current: t.installment_current || 1,
             recurrence_enabled: false,
-            auto_confirm: false
+            auto_confirm: false,
+            invoice_month: isCreditCard ? calculatedInvoiceMonth : null
           };
 
           const { data: newChild, error: insertError } = await supabase
@@ -1100,7 +1107,8 @@ const FinancialTransactionsV2 = () => {
           const updatePayload: any = {
             status: 'paid',
             paid_date: paidDate,
-            date: targetDate // AQUI: atualiza a data de cadastro para a data do pagamento!
+            date: targetDate, // AQUI: atualiza a data de cadastro para a data do pagamento!
+            invoice_month: isCreditCard ? calculatedInvoiceMonth : null
           };
           
           const { error: updateError } = await supabase
