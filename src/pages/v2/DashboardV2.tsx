@@ -376,6 +376,53 @@ const DashboardV2 = () => {
     const selectedAccs = accounts.filter(a => selectedAccountIds.has(a.id));
     const initialBalanceSum = selectedAccs.reduce((sum, a) => sum + (Number(a.initial_balance) || 0), 0);
 
+    const creditCardAccounts = accounts.filter(a => a.type === 'credit_card');
+    const creditCardIds = new Set(creditCardAccounts.map(c => c.id));
+
+    // Calcular faturas pendentes anteriores a este mês vinculadas a contas correntes selecionadas
+    let previousPendingInvoiceDeduction = 0;
+    const selectedAccountCards = creditCardAccounts.filter(c => 
+      c.invoice_payment_account_id && selectedAccountIds.has(c.invoice_payment_account_id)
+    );
+
+    for (const card of selectedAccountCards) {
+      // Filtrar todas as instâncias do cartão anteriores a este mês
+      const cardTrans = expandedInstances.filter(t => 
+        t.account_id === card.id && 
+        (t.type === 'expense' || t.type === 'income') && 
+        t.status !== 'cancelled' &&
+        isBefore(parseISO(t.instanceDate), startOfCurrent)
+      );
+      
+      const byMonth = new Map<string, number>();
+      for (const ct of cardTrans) {
+        const m = ct.invoice_month;
+        if (m) {
+          const amt = Number(ct.amount) || 0;
+          const adjustedVal = ct.type === 'expense' ? amt : -amt;
+          byMonth.set(m, (byMonth.get(m) || 0) + adjustedVal);
+        }
+      }
+
+      for (const [m, total] of byMonth.entries()) {
+        const isPaid = expandedInstances.some(t => 
+          t.destination_account_id === card.id && 
+          t.type === 'transfer' && 
+          t.invoice_month === m &&
+          t.status !== 'cancelled'
+        );
+        
+        if (!isPaid) {
+          const [y, mo] = m.split('-');
+          const dueDay = card.due_day || 1;
+          const invoiceDate = new Date(Number(y), Number(mo) - 1, dueDay, 12, 0, 0);
+          if (isBefore(invoiceDate, startOfCurrent)) {
+            previousPendingInvoiceDeduction += total;
+          }
+        }
+      }
+    }
+
     // Calcular o saldo inicial histórico antes de começar o mês atual (apenas transações de contas correntes/investimentos selecionadas)
     const prevTransactions = expandedInstances.filter(t => {
       const tDate = parseISO(t.instanceDate);
@@ -384,6 +431,11 @@ const DashboardV2 = () => {
       // Ignorar transações em cartões de crédito para fins de saldo das contas correntes
       if (t.account_type === 'credit_card') return false;
 
+      // Ignorar transferências que pagam fatura de cartão de crédito anteriores a este mês (já calculadas em previousPendingInvoiceDeduction se a fatura estiver aberta)
+      if (t.type === 'transfer' && t.destination_account_id && creditCardIds.has(t.destination_account_id)) {
+        return false;
+      }
+
       const isSelectedAccount = (t.account_id && selectedAccountIds.has(t.account_id)) || 
                                 (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
       if (!isBeforeMonth || !isSelectedAccount) return false;
@@ -391,7 +443,7 @@ const DashboardV2 = () => {
       return t.status === 'paid' || t.status === 'pending';
     });
 
-    const historicalOffset = prevTransactions.reduce((sum, t) => {
+    const rawOffset = prevTransactions.reduce((sum, t) => {
       if (t.status === 'cancelled') return sum;
       
       const amt = t.amount;
@@ -408,22 +460,96 @@ const DashboardV2 = () => {
       return sum;
     }, initialBalanceSum);
 
+    const historicalOffset = rawOffset - previousPendingInvoiceDeduction;
+
+    // Gerar faturas virtuais do mês corrente vinculadas a contas selecionadas
+    const currentMonthStr = format(currentMonth, 'yyyy-MM');
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const invoiceMap = new Map<string, { cardName: string; total: number; dueDay: number | null }>();
+
+    for (const t of expandedInstances) {
+      if (t.account_type !== 'credit_card' || t.invoice_month !== currentMonthStr || t.status === 'cancelled') continue;
+      
+      const card = creditCardAccounts.find(c => c.id === t.account_id);
+      if (!card || !card.invoice_payment_account_id || !selectedAccountIds.has(card.invoice_payment_account_id)) continue;
+
+      const existing = invoiceMap.get(t.account_id!);
+      const amount = Number(t.amount) || 0;
+      const adjustedAmount = t.type === 'expense' ? amount : -amount;
+      
+      if (existing) {
+        existing.total += adjustedAmount;
+      } else {
+        invoiceMap.set(t.account_id!, {
+          cardName: card.name || 'Cartão',
+          total: adjustedAmount,
+          dueDay: card.due_day || null,
+        });
+      }
+    }
+
+    const monthVirtualInvoices = Array.from(invoiceMap.entries()).map(([accountId, data]) => {
+      const dueDay = data.dueDay || 1;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const safeDay = Math.min(dueDay, lastDay);
+      const originalDueDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+      
+      const billTransfer = expandedInstances.find(t => 
+        t.destination_account_id === accountId && 
+        t.type === 'transfer' && 
+        t.invoice_month === currentMonthStr &&
+        t.status !== 'cancelled'
+      );
+      const isPaid = billTransfer?.status === 'paid';
+      const finalDate = billTransfer ? billTransfer.date : originalDueDate;
+
+      return {
+        id: `invoice-${accountId}-${currentMonthStr}`,
+        type: 'expense' as const,
+        amount: data.total,
+        date: finalDate,
+        description: `Fatura ${data.cardName}`,
+        status: isPaid ? ('paid' as const) : ('pending' as const),
+        account_id: accountId,
+        instanceDate: finalDate,
+        isVirtual: true,
+        isInvoiceSummary: true
+      };
+    });
+
+    // Filtrar lançamentos do mês corrente (ignora cartões e transferências para cartões)
+    const filteredMonthTrans = currentMonthInstances.filter(t => {
+      if (t.account_type === 'credit_card') return false;
+      if (t.type === 'transfer' && t.destination_account_id && creditCardIds.has(t.destination_account_id)) {
+        return false;
+      }
+      return ((t.account_id && selectedAccountIds.has(t.account_id)) || 
+              (t.destination_account_id && selectedAccountIds.has(t.destination_account_id)));
+    });
+
+    // Combinar instâncias do mês com faturas virtuais
+    const combinedMonthTrans = [
+      ...filteredMonthTrans,
+      ...monthVirtualInvoices
+    ];
+
     let runningBalance = historicalOffset;
     const xLabels: string[] = [];
     const yValues: number[] = [];
 
     daysInMonth.forEach(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
-      const dayTransactions = currentMonthInstances.filter(t => 
-        t.instanceDate === dayStr && 
-        t.account_type !== 'credit_card' && // Ignorar compras de cartão no saldo corrente
-        ((t.account_id && selectedAccountIds.has(t.account_id)) || 
-         (t.destination_account_id && selectedAccountIds.has(t.destination_account_id)))
-      );
+      const dayTransactions = combinedMonthTrans.filter(t => t.instanceDate === dayStr);
 
       dayTransactions.forEach(t => {
         const amt = t.amount;
-        if (t.type === 'income') {
+        if (t.isInvoiceSummary) {
+          // Descontar a fatura se ela estiver paga ou se não for o filtro de confirmados apenas
+          if (!onlyConfirmed || t.status === 'paid') {
+            runningBalance -= amt;
+          }
+        } else if (t.type === 'income') {
           runningBalance += amt;
         } else if (t.type === 'expense') {
           runningBalance -= amt;
