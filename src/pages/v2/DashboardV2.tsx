@@ -236,9 +236,14 @@ const DashboardV2 = () => {
       if (!t.recurrence_enabled) {
         if (isBefore(tDate, maxFutureDate) || isSameDay(tDate, maxFutureDate)) {
           const status = t.account_type === 'credit_card' ? 'paid' : t.status;
+          let finalInstanceDate = t.date;
+          const isUnpaid = status !== 'paid';
+          if (isUnpaid && t.date < todayStr && t.account_type !== 'credit_card') {
+            finalInstanceDate = todayStr;
+          }
           instances.push({
             ...t,
-            instanceDate: t.date,
+            instanceDate: finalInstanceDate,
             originalInstanceDate: t.date,
             status,
             isVirtual: false
@@ -269,9 +274,14 @@ const DashboardV2 = () => {
           const status = t.account_type === 'credit_card' 
             ? 'paid' 
             : (dateStr !== t.date ? 'pending' : t.status);
+          let finalInstanceDate = dateStr;
+          const isUnpaid = status !== 'paid';
+          if (isUnpaid && dateStr < todayStr && t.account_type !== 'credit_card') {
+            finalInstanceDate = todayStr;
+          }
           instances.push({
             ...t,
-            instanceDate: dateStr,
+            instanceDate: finalInstanceDate,
             originalInstanceDate: dateStr,
             isVirtual: dateStr !== t.date,
             status,
@@ -430,11 +440,6 @@ const DashboardV2 = () => {
       
       // Ignorar transações em cartões de crédito para fins de saldo das contas correntes
       if (t.account_type === 'credit_card') return false;
-
-      // Ignorar transferências que pagam fatura de cartão de crédito anteriores a este mês (já calculadas em previousPendingInvoiceDeduction se a fatura estiver aberta)
-      if (t.type === 'transfer' && t.destination_account_id && creditCardIds.has(t.destination_account_id)) {
-        return false;
-      }
 
       const isSelectedAccount = (t.account_id && selectedAccountIds.has(t.account_id)) || 
                                 (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
