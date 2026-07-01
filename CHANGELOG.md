@@ -6,6 +6,18 @@ O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ---
 
+## [2.3.0] - 2026-07-01
+
+### Adicionado
+- **Gráficos de Categorias na Visão Geral**: Integração de dois novos gráficos (Despesas por Categoria e Receitas por Categoria) na aba "Visão Geral" do Dashboard, incluindo listagem analítica com valores e percentuais logo abaixo do gráfico e ocultação inteligente de rótulos internos para fatias de pizza pequenas.
+- **Controles Interativos de Exibição**: Controles individuais nos cabeçalhos dos gráficos para alternar em tempo real entre visualização em Pizza ou Barra e aplicar filtro de apenas lançamentos confirmados (ocultando lançamentos com status *pending*).
+- **Consistência de Temas Visuais**: Adaptação automática e em tempo real do fundo e das cores dos textos dos gráficos conforme o tema global selecionado (Claro, Original, Escuro).
+
+### Corrigido
+- **Cálculo Consistente do Saldo Acumulado (Evolução)**: Integração da engine de faturas de cartão de crédito no Dashboard, deduzindo faturas passadas e futuras de cartões vinculados a contas correntes.
+- **Correção de Saldo de Abertura Inicial**: Correção da distorção visual de saldo inicial alto em Julho (`R$ 4.997,33`), permitindo que transferências físicas passadas que liquidaram faturas em Junho reduzam corretamente a abertura histórica do mês seguinte.
+- **Consolidação de Lançamentos Atrasados**: Implementação da regra de empurrão visual de transações pendentes e atrasadas do passado para hoje (`todayStr`) no gráfico, sincronizando o saldo acumulado centavo por centavo com a listagem de transações.
+
 ## [2.2.0] - 2026-06-30
 
 ### Adicionado
