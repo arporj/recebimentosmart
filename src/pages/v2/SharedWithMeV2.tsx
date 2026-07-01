@@ -264,7 +264,7 @@ export default function SharedWithMeV2() {
       fetchCategoriesAndAccounts();
       fetchClients();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchClients = async () => {
     if (!user) return;

@@ -218,7 +218,7 @@ const FinancialAccountsV2 = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAccounts(); }, [user]);
+  useEffect(() => { fetchAccounts(); }, [user?.id]);
 
   const resetForm = () => {
     setName(''); setType('checking'); setInitialBalance('0,00'); setBalanceType('debtor');

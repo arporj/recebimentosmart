@@ -59,7 +59,7 @@ export default function ReferralPageV2() {
         };
 
         fetchReferralStats();
-    }, [user]);
+    }, [user?.id]);
 
     const copyToClipboard = async () => {
         if (stats?.referralLink) {

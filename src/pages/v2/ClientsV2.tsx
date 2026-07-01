@@ -47,7 +47,7 @@ const ClientsV2 = () => {
 
   useEffect(() => {
     fetchClients();
-  }, [user]);
+  }, [user?.id]);
 
   const openNew = () => {
     if (!checkLimit('clients')) return;

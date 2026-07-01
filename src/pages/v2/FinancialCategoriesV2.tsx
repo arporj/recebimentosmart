@@ -45,7 +45,7 @@ const FinancialCategoriesV2 = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchCategories(); }, [user]);
+  useEffect(() => { fetchCategories(); }, [user?.id]);
 
   // Seed default categories if none exist
   useEffect(() => {
@@ -55,7 +55,7 @@ const FinancialCategoriesV2 = () => {
         await fetchCategories();
       })();
     }
-  }, [loading, categories.length, user]);
+  }, [loading, categories.length, user?.id]);
 
   const parentCategories = categories.filter(c => !c.parent_id);
   const getChildren = (parentId: string) => categories.filter(c => c.parent_id === parentId);

@@ -45,7 +45,7 @@ export function ReportsV2() {
             setLoading(false);
         }
         fetchData();
-    }, [user]);
+    }, [user?.id]);
 
     // Derived States for the dashboard calculation
     const reportData = useMemo(() => {

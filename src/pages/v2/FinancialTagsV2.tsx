@@ -53,7 +53,7 @@ const FinancialTagsV2 = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchTags(); }, [user]);
+  useEffect(() => { fetchTags(); }, [user?.id]);
 
   const resetForm = () => { setName(''); setColor(COLORS[0].value); setEditing(null); };
   const openNew = () => { 

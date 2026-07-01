@@ -33,7 +33,7 @@ export function FeedbackV2() {
                 subscription.unsubscribe();
             };
         }
-    }, [user]);
+    }, [user?.id]);
 
     const fetchFeedbacks = async () => {
         try {

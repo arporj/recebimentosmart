@@ -278,7 +278,7 @@ const CreditCardV2 = () => {
     }
   };
 
-  useEffect(() => { fetchCards(); fetchTransactions(); }, [user]);
+  useEffect(() => { fetchCards(); fetchTransactions(); }, [user?.id]);
 
   // Inicialização inteligente do cartão e mês
   useEffect(() => {

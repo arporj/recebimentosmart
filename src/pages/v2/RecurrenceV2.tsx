@@ -140,7 +140,7 @@ export default function RecurrenceV2() {
     if (user) {
       fetchSummaries();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchSummaries = async () => {
     if (!user) return;

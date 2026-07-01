@@ -362,13 +362,13 @@ const FinancialTransactionsV2 = () => {
     setShowCurrencySymbol(savedShowCurrency !== 'false');
     setShowNegativeSign(savedShowNegative !== 'false');
     setValueAlignment(savedValAlign || 'right');
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (user && (selectedAccountIds.size > 0 || accounts.length > 0)) {
       localStorage.setItem(`recebimento_smart_selected_accounts_${user.id}`, JSON.stringify(Array.from(selectedAccountIds)));
     }
-  }, [selectedAccountIds, accounts.length, user]);
+  }, [selectedAccountIds, accounts.length, user?.id]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -388,7 +388,7 @@ const FinancialTransactionsV2 = () => {
     return () => {
       window.removeEventListener('transaction_created', handleTransactionCreated);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const allInstancesUpToMonth = useMemo((): TransactionInstance[] => {
     const instances: TransactionInstance[] = [];
