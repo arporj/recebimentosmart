@@ -87,29 +87,36 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
     * *Técnico:* Respostas detalhadas, análises profundas de métricas, termos contábeis e gráficos, ideal para quem busca precisão matemática e contábil.
   * **Operações Inline Contextuais:** As ações financeiras (criar lançamentos, pagar faturas, alterar valores, agendar contas) serão extraídas e realizadas de forma inteligente e automática em segundo plano *à medida que a conversa se desenvolve*, eliminando a necessidade de comandos isolados ou formulários.
 
-### 2.11. 🔔 Régua de Cobrança Automatizada e Multicanal (Clientes Finais)
+### 2.11. 🔔 Régua de Cobrança de Reembolsos e Divisões (Amigos e Familiares)
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Permitir que o usuário configure disparos automatizados de mensagens de cobrança para seus clientes finais por WhatsApp, E-mail e SMS. Inclui lembretes pré-vencimento, envio do Pix Copia e Cola no dia do vencimento, e alertas de inadimplência após o vencimento.
+* **Descrição:** Permitir o envio automatizado e amigável de notificações (WhatsApp, E-mail ou SMS) para familiares ou amigos que compartilham contas com o usuário (ex: reembolso de plano de saúde, aluguel dividido), facilitando o envio do Pix Copia e Cola e lembretes de acerto de contas sem desgaste pessoal.
 
-### 2.12. 👤 Portal do Cliente Final (Autoatendimento)
+### 2.12. 👤 Portal de Reembolsos de Contas Compartilhadas (Autoatendimento)
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Criação de uma área de autoatendimento web segura e simplificada para o cliente do usuário. O cliente final acessa sem senha (via link mágico no e-mail ou código via WhatsApp/SMS) para visualizar faturas em aberto, realizar pagamentos Pix, baixar comprovantes e gerenciar assinaturas.
+* **Descrição:** Link de acesso rápido para amigos e familiares visualizarem o extrato de contas que possuem em comum com o usuário (gastos divididos, parcelas acumuladas), com facilidade de pagar e liquidar o saldo devedor via Pix de forma imediata.
 
-### 2.13. ⚙️ Motor de Juros, Multa e Descontos por Pontualidade
+### 2.13. ⚙️ Motor de Ajuste e Descontos de Pontualidade para Reembolsos
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Cálculo dinâmico e atualização automática do valor da cobrança Pix após o vencimento (acrescentando juros diários e multa parametrizados pelo usuário), bem como concessão automática de descontos configurados para pagamentos realizados antes do vencimento.
+* **Descrição:** Permitir configurar abatimentos ou juros amigáveis para acertos de contas tardios ou bonificações em reembolsos antecipados.
 
-### 2.14. 💸 Split de Pagamentos (Divisão de Recebíveis)
+### 2.14. 💸 Split Pessoal de Despesas (Viagens e Jantares)
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Divisão automatizada de pagamentos recebidos no Banco Inter PJ entre o usuário e parceiros de negócio/prestadores de serviços, registrando as comissões a pagar e efetuando transferências de forma transparente.
+* **Descrição:** Ferramenta integrada para lançamento de despesas coletivas (ex: jantares, viagens em grupo), dividindo automaticamente os custos entre as pessoas cadastradas ("clientes" familiares/amigos) e gerando o saldo devedor/credor de cada um de forma reativa.
 
-### 2.15. 📊 Painel de Métricas de Assinaturas (SaaS Metrics)
+### 2.15. 🍿 Painel de Controle de Assinaturas e Custos Fixos Pessoais (Streaming/SaaS)
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Fornecer aos usuários que operam sob modelo recorrente um dashboard avançado com métricas críticas de faturamento e crescimento, tais como MRR (Receita Recorrente Mensal), ARR, LTV, Churn Rate e análise de Coortes.
+* **Descrição:** Em vez de métricas corporativas, focar no rastreamento de custos recorrentes pessoais do usuário (Netflix, Spotify, plano de celular, academia). Exibir gráficos de impacto anual desses custos no orçamento, datas de renovação e alertas de reajuste.
 
-### 2.16. 📈 Dashboard e Relatórios Financeiros Padrão Ouro
+### 2.16. 📈 Dashboard Financeiro Pessoal Padrão Ouro
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Evoluir as telas de análise financeira do sistema para incorporar um painel de fluxo de caixa projetado a 30 dias (baseado em inteligência preditiva e templates de recorrência), DRE Simplificado interativo mensalizado, alternância entre Regime de Caixa e Regime de Competência, e geração de relatórios consolidados em formato PDF/Excel corporativos.
+* **Descrição:** Evoluir a tela inicial do sistema para focar em finanças pessoais: gráficos interativos de Entradas vs. Saídas, Gráfico de Rosca de gastos por Categoria, e Linha de Projeção de fluxo de caixa futuro para os próximos 30/60 dias (alertando sobre riscos de saldo negativo na conta corrente). Os cards KPI de "clientes" (faturamento comercial, inadimplência) serão estritamente isolados dentro da aba "Resumo por Clientes" para não poluir o controle pessoal.
+
+### 2.17. 📊 Relatórios Financeiros Pessoais e Familiares (DRE e Caixa vs. Competência)
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Módulo de relatórios profissionais adaptados para a vida pessoal:
+  * **DRE Pessoal mensalizado:** Receitas (salários, investimentos, reembolsos recebidos) -> Despesas Fixas -> Despesas Variáveis -> Margem de Sobra (lucro).
+  * **Regime de Caixa vs. Regime de Competência:** Exibição clara do impacto de compras parceladas no cartão de crédito. Competência mostra o valor total da compra no mês em que foi decidida; Caixa exibe o valor diluído das parcelas à medida que saem da conta bancária mensalmente.
+  * **Exportação Premium:** Geração de relatórios limpos em PDF e Excel para fins de arquivo ou planejamento anual.
 
 ---
 
