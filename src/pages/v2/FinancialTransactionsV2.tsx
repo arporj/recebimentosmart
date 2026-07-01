@@ -36,6 +36,17 @@ import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { TransactionSummaryModal } from '../../components/v2/TransactionSummaryModal';
 import { ShareTransactionsModalV2 } from '../../components/v2/ShareTransactionsModalV2';
 
+const getDaysDifference = (original: string, current: string): number => {
+  try {
+    const d1 = new Date(original + 'T00:00:00');
+    const d2 = new Date(current + 'T00:00:00');
+    const diff = d2.getTime() - d1.getTime();
+    return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
+  } catch {
+    return 0;
+  }
+};
+
 interface FinancialTransaction {
   id: string;
   type: 'income' | 'expense' | 'transfer';
@@ -1589,9 +1600,19 @@ const FinancialTransactionsV2 = () => {
                           <Zap size={10} className="text-amber-500 fill-amber-500 shrink-0 ml-1" />
                         )}
                       </div>
-                      {t.invoiceData?.linkedAccountName && rowDensity !== 'compact' && (
-                        <div className={`flex items-center gap-1.5 mt-0.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                          <span className="text-[8px] font-black text-slate-400 uppercase">{t.invoiceData.linkedAccountName}</span>
+                      {(t.invoiceData?.linkedAccountName || (t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate)) && rowDensity !== 'compact' && (
+                        <div className={`flex items-center gap-1.5 mt-0.5 flex-wrap ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                          {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                            <span 
+                              title="Dias em atraso"
+                              className="text-[8px] font-black text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase leading-none shrink-0"
+                            >
+                              {getDaysDifference(t.originalInstanceDate, t.instanceDate)}d
+                            </span>
+                          )}
+                          {t.invoiceData?.linkedAccountName && (
+                            <span className="text-[8px] font-black text-slate-400 uppercase">{t.invoiceData.linkedAccountName}</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1711,8 +1732,16 @@ const FinancialTransactionsV2 = () => {
                         </div>
                       )}
                     </div>
-                    {(t.account || t.category || t.client || t.type === 'transfer') && rowDensity !== 'compact' && (
+                    {(t.account || t.category || t.client || t.type === 'transfer' || (t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate)) && rowDensity !== 'compact' && (
                       <div className={`flex items-center gap-1.5 mt-0.5 flex-wrap ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                        {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                          <span 
+                            title="Dias em atraso"
+                            className="text-[8px] font-black text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase leading-none shrink-0"
+                          >
+                            {getDaysDifference(t.originalInstanceDate, t.instanceDate)}d
+                          </span>
+                        )}
                         {t.account && <span className="text-[8px] font-black text-slate-400 uppercase">{t.account.name}</span>}
                         {t.type === 'transfer' && (
                           <>
@@ -1984,6 +2013,14 @@ const FinancialTransactionsV2 = () => {
                               {layoutPreference !== 'value_right_desc' && t.auto_confirm && (
                                 <Zap size={12} className="text-amber-500 fill-amber-500 shrink-0" />
                               )}
+                              {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                                <span 
+                                  title="Dias em atraso"
+                                  className="text-[8px] font-black text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase leading-none shrink-0"
+                                >
+                                  {getDaysDifference(t.originalInstanceDate, t.instanceDate)}d
+                                </span>
+                              )}
                               {t.invoiceData?.linkedAccountName && (
                                 <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md shrink-0">
                                   <span className="text-[8px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
@@ -2005,11 +2042,21 @@ const FinancialTransactionsV2 = () => {
                                   </div>
                                 )}
                               </div>
-                              {t.invoiceData?.linkedAccountName && (
+                              {(t.invoiceData?.linkedAccountName || (t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate)) && (
                                 <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
-                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
-                                    <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
-                                  </div>
+                                  {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                                    <span 
+                                      title="Dias em atraso"
+                                      className="text-[8px] font-black text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase leading-none shrink-0"
+                                    >
+                                      {getDaysDifference(t.originalInstanceDate, t.instanceDate)}d
+                                    </span>
+                                  )}
+                                  {t.invoiceData?.linkedAccountName && (
+                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                      <span className="text-[9px] font-black text-slate-500 uppercase">{t.invoiceData.linkedAccountName}</span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </>
@@ -2129,6 +2176,14 @@ const FinancialTransactionsV2 = () => {
                       <div className={`flex-1 min-w-0 ${layoutPreference === 'value_right_desc' ? 'text-right' : ''}`}>
                         {rowDensity === 'compact' ? (
                           <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : 'justify-start'}`}>
+                            {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                              <span 
+                                title="Dias em atraso"
+                                className="text-[8px] font-black text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase leading-none shrink-0"
+                              >
+                                {getDaysDifference(t.originalInstanceDate, t.instanceDate)}d
+                              </span>
+                            )}
                             {layoutPreference === 'value_right_desc' && (
                               <div className="flex items-center gap-1 px-1 shrink-0">
                                 {t.status === 'paid' && <CheckCircle2 size={10} className="text-emerald-500" />}
@@ -2198,6 +2253,14 @@ const FinancialTransactionsV2 = () => {
                             </div>
 
                             <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 ${layoutPreference === 'value_right_desc' ? 'justify-end' : ''}`}>
+                              {t.instanceDate === format(new Date(), 'yyyy-MM-dd') && t.originalInstanceDate && t.originalInstanceDate < t.instanceDate && (
+                                <span 
+                                  title="Dias em atraso"
+                                  className="text-[8px] font-black text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase leading-none shrink-0"
+                                >
+                                  {getDaysDifference(t.originalInstanceDate, t.instanceDate)}d
+                                </span>
+                              )}
                               {t.account && (
                                 <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md">
                                   <span className="text-[9px] font-black text-slate-500 uppercase">{t.account.name}</span>
