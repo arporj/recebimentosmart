@@ -405,10 +405,17 @@ export function VoiceFloatingButton() {
         })
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (jsonErr) {
+        console.error('Resposta do servidor não é um JSON válido:', responseText);
+        throw new Error('O assistente de voz do Artie está temporariamente indisponível. Por favor, tente novamente.');
+      }
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Erro ao processar áudio com Gemini.');
+        throw new Error(result.message || 'Não foi possível processar o comando de voz do Artie.');
       }
 
       const data: ExtractedData & {

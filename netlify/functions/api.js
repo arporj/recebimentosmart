@@ -489,6 +489,224 @@ exports.handler = async (event, context) => {
         }
         break;
 
+    case 'lancamento-voz':
+      if (event.httpMethod === 'POST') {
+        try {
+          let bodyData = null;
+          let rawBody = event.body;
+          if (event.isBase64Encoded && rawBody) {
+            rawBody = Buffer.from(rawBody, 'base64').toString('utf8');
+          }
+          if (rawBody) {
+            bodyData = JSON.parse(rawBody);
+          }
+
+          const { audioBase64, mimeType } = bodyData || {};
+
+          if (!audioBase64) {
+            return {
+              statusCode: 400,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ success: false, message: 'Dados de áudio ausentes (audioBase64).' })
+            };
+          }
+
+          const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
+          if (!geminiApiKey) {
+            console.error('[IA] Chave VITE_GEMINI_API_KEY não configurada no arquivo .env');
+            return {
+              statusCode: 500,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({ success: false, message: 'Serviço de IA temporariamente indisponível (configuração ausente).' })
+            };
+          }
+
+          const dateToday = new Date().toLocaleDateString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).split('/').reverse().join('-');
+
+          const payload = {
+            contents: [
+              {
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: mimeType || 'audio/webm',
+                      data: audioBase64
+                    }
+                  },
+                  {
+                    text: `Você é Artie, um assistente financeiro inteligente. Sua ÚNICA tarefa é ouvir atentamente o áudio em português do Brasil e extrair EXATAMENTE as informações financeiras faladas pelo usuário.
+
+## REGRAS ABSOLUTAS (NÃO VIOLE NENHUMA):
+1. Extraia APENAS o que foi REALMENTE DITO no áudio. NÃO invente, NÃO adivinhe, NÃO preencha com valores fictícios.
+2. Se o usuário disse "10 reais", o valor é 10.00. NÃO coloque 5000, 150, ou qualquer outro número.
+3. Se o usuário disse "cerveja", a descrição é "Cerveja". NÃO coloque "Salário", "Supermercado", ou qualquer outra palavra.
+4. Preste atenção MÁXIMA ao áudio. Se não entender algo com clareza, use o que mais se aproxima do som ouvido.
+5. NUNCA retorne dados padrão ou de exemplo. Cada resposta deve refletir 100% o que foi dito.
+
+## Contexto:
+- Data de hoje no servidor: ${dateToday}
+- Se nenhuma data for mencionada no áudio, use: ${dateToday}
+- Para termos relativos ("ontem", "anteontem", "amanhã"), calcule a partir de ${dateToday}.
+
+## O que extrair do áudio:
+- 'acao': 
+  * 'create' se quer registrar/adicionar/pagar/receber um novo lançamento.
+  * 'delete' se quer excluir/apagar/remover.
+  * 'confirm' se o usuário quer confirmar, dar baixa ou pagar um lançamento pendente existente no banco (ex: "confirme a despesa de ontem", "sim, confirmar").
+  * 'cancel' se o usuário quer cancelar ou fechar a ação (ex: "cancelar", "não").
+  * 'update' se o usuário quer alterar, modificar ou editar uma transação existente (ex: "altere o valor do almoço de hoje para 15 reais", "mude o vencimento do IPTU para amanhã").
+- 'descricao': O item, produto ou serviço original mencionado para busca ou criação (ex: "Cerveja", "Almoço", "Salário do João").
+- 'valor': O valor numérico original mencionado para busca ou criação. Se for um comando de alteração/update e o valor original não for dito, retorne 0.
+- 'tipo': 'expense' para gastos/pagamentos/compras, 'income' para recebimentos/receitas, 'transfer' para transferências.
+- 'data': Data no formato AAAA-MM-DD.
+- 'banco_carteira': Banco ou meio de pagamento mencionado ("Inter", "Nubank", "Pix", "Cartão", etc.). Se não mencionado, deixe vazio.
+- 'categoria': Categoria sugerida ("Alimentação", "Lazer", "Transporte", "Moradia", "Saúde", etc.).
+- 'modalidade': 'unica' se for pagamento comum, 'parcelada' se for parcelado, ou 'recorrente' se for recorrente. Padrão é 'unica'.
+- 'parcelas_total': Se a modalidade for 'parcelada', o número total de parcelas. Senão, 1.
+- 'periodicidade': O período se for recorrente ou parcelado ('daily', 'weekly', 'monthly', 'yearly').
+- 'recorrencia_intervalo': Se for recorrente, de quanto em quanto tempo se repete. Senão, 1.
+- 'update_fields': Se acao for 'update', este objeto DEVE conter os novos valores dos campos alterados:
+  * 'descricao': Novo nome/item se o usuário pedir para renomear/mudar nome.
+  * 'valor': Novo valor numérico se o usuário pedir para alterar valor (ex: "mude para 15 reais" -> valor = 15.0).
+  * 'data': Nova data no formato AAAA-MM-DD se o usuário pedir para alterar data.
+  * 'banco_carteira': Novo banco/carteira se pedir para alterar banco.
+  * 'categoria': Nova categoria se pedir para alterar categoria.`
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0,
+              topP: 1,
+              topK: 1,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'OBJECT',
+                properties: {
+                  acao: {
+                    type: 'STRING',
+                    enum: ['create', 'delete', 'confirm', 'cancel', 'update'],
+                    description: "Ação identificada no áudio: 'create' para novo lançamento, 'delete' para remover existente, 'confirm' para confirmar ou dar baixa em lançamento pendente, 'cancel' para cancelar/fechar, 'update' para alterar transação existente."
+                  },
+                  descricao: {
+                    type: 'STRING',
+                    description: 'Descrição EXATA do que foi dito no áudio (produto, serviço, item). NÃO invente.'
+                  },
+                  valor: {
+                    type: 'NUMBER',
+                    description: 'Valor numérico EXATO mencionado no áudio. NÃO invente valores.'
+                  },
+                  tipo: {
+                    type: 'STRING',
+                    enum: ['income', 'expense', 'transfer'],
+                    description: "Tipo baseado no contexto do áudio: 'expense' para gastos, 'income' para receitas, 'transfer' para transferências"
+                  },
+                  data: {
+                    type: 'STRING',
+                    description: 'Data no formato AAAA-MM-DD conforme dito no áudio ou hoje se não mencionada'
+                  },
+                  banco_carteira: {
+                    type: 'STRING',
+                    description: 'Banco ou meio de pagamento mencionado no áudio. Vazio se não mencionado.'
+                  },
+                  categoria: {
+                    type: 'STRING',
+                    description: 'Categoria sugerida com base na descrição (Alimentação, Lazer, Moradia, Transporte, Saúde, Educação, Receitas)'
+                  },
+                  modalidade: {
+                    type: 'STRING',
+                    enum: ['unica', 'parcelada', 'recorrente'],
+                    description: 'Modalidade do lançamento: unica para único, parcelada para parcelamento, recorrente para assinaturas ou repetições'
+                  },
+                  parcelas_total: {
+                    type: 'INTEGER',
+                    description: 'Se modalidade for parcelada, o número total de parcelas. Senão, 1.'
+                  },
+                  periodicidade: {
+                    type: 'STRING',
+                    enum: ['daily', 'weekly', 'monthly', 'yearly'],
+                    description: 'Se modalidade for recorrente ou parcelada, o período: daily, weekly, monthly, yearly'
+                  },
+                  recorrencia_intervalo: {
+                    type: 'INTEGER',
+                    description: 'Se modalidade for recorrente, de quanto em quanto tempo se repete. Senão, 1.'
+                  },
+                  update_fields: {
+                    type: 'OBJECT',
+                    description: 'Se a ação for update, especifique aqui os campos a serem alterados e seus novos valores.',
+                    properties: {
+                      descricao: { type: 'STRING', description: 'Nova descrição se o usuário pedir para alterar a descrição/nome' },
+                      valor: { type: 'NUMBER', description: 'Novo valor numérico se o usuário pedir para alterar o valor' },
+                      data: { type: 'STRING', description: 'Nova data no formato AAAA-MM-DD se o usuário pedir para alterar a data' },
+                      banco_carteira: { type: 'STRING', description: 'Novo banco ou conta se o usuário pedir para alterar' },
+                      categoria: { type: 'STRING', description: 'Nova categoria se o usuário pedir para alterar' }
+                    }
+                  }
+                },
+                required: ['acao', 'descricao', 'valor', 'tipo', 'data', 'modalidade']
+              }
+            }
+          };
+
+          const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+          let response = null;
+          let lastError = null;
+
+          for (const model of models) {
+            try {
+              const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+              const resCall = await axios.post(geminiUrl, payload, {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 12000
+              });
+
+              if (
+                resCall.data &&
+                resCall.data.candidates &&
+                resCall.data.candidates.length > 0 &&
+                resCall.data.candidates[0].content &&
+                resCall.data.candidates[0].content.parts &&
+                resCall.data.candidates[0].content.parts.length > 0
+              ) {
+                response = resCall;
+                break;
+              } else {
+                throw new Error(`Retorno inválido do Gemini para o modelo ${model}.`);
+              }
+            } catch (error) {
+              lastError = error;
+            }
+          }
+
+          if (!response) {
+            throw lastError || new Error('Todos os modelos do Gemini falharam.');
+          }
+
+          const responseText = response.data.candidates[0].content.parts[0].text;
+          const parsedData = JSON.parse(responseText);
+
+          return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ success: true, data: parsedData })
+          };
+
+        } catch (err) {
+          console.error('[IA Error]', err.message);
+          return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ success: false, message: `Erro ao processar áudio: ${err.message}` })
+          };
+        }
+      }
+      break;
+
     case 'payment-details':
       if (event.httpMethod === 'GET' && segments[1]) {
         const userId = segments[1];
