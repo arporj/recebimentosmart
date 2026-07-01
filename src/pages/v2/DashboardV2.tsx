@@ -106,6 +106,7 @@ const DashboardV2 = () => {
   
   // Dados do Supabase
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [templates, setTemplates] = useState<FinancialTransaction[]>([]);
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   
   // Relatórios e Estados do Usuário
@@ -176,6 +177,17 @@ const DashboardV2 = () => {
       if (txError) throw txError;
       setTransactions((txData as any) || []);
 
+      // 3. Buscar os templates de recorrência ativos do usuário (para projeção virtual futura)
+      const { data: templateData, error: templateError } = await supabase
+        .from('financial_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_template', true)
+        .eq('recurrence_enabled', true);
+
+      if (templateError) throw templateError;
+      setTemplates((templateData as any) || []);
+
     } catch (err) {
       console.error('Erro ao carregar dados do dashboard:', err);
       toast.error('Erro ao carregar dados do painel.');
@@ -205,6 +217,7 @@ const DashboardV2 = () => {
   const expandedInstances = useMemo(() => {
     const maxFutureDate = endOfMonth(addMonths(currentMonth, 3));
     const txList = transactions || [];
+    const templateList = templates || [];
     const instances: any[] = [];
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     
@@ -228,34 +241,36 @@ const DashboardV2 = () => {
       }
     });
 
+    // 1. Processar todas as transações físicas normais (onde is_template != true)
     for (const t of txList) {
       if (t.status === 'cancelled') continue;
       
       const tDate = parseISO(t.date);
       
-      if (!t.recurrence_enabled) {
-        if (isBefore(tDate, maxFutureDate) || isSameDay(tDate, maxFutureDate)) {
-          const status = t.account_type === 'credit_card' ? 'paid' : t.status;
-          let finalInstanceDate = t.date;
-          const isUnpaid = status !== 'paid';
-          if (isUnpaid && t.date < todayStr && t.account_type !== 'credit_card') {
-            finalInstanceDate = todayStr;
-          }
-          instances.push({
-            ...t,
-            instanceDate: finalInstanceDate,
-            originalInstanceDate: t.date,
-            status,
-            isVirtual: false
-          });
+      if (isBefore(tDate, maxFutureDate) || isSameDay(tDate, maxFutureDate)) {
+        const status = t.account_type === 'credit_card' ? 'paid' : t.status;
+        let finalInstanceDate = t.date;
+        const isUnpaid = status !== 'paid';
+        if (isUnpaid && t.date < todayStr && t.account_type !== 'credit_card') {
+          finalInstanceDate = todayStr;
         }
-        continue;
+        instances.push({
+          ...t,
+          instanceDate: finalInstanceDate,
+          originalInstanceDate: t.date,
+          status,
+          isVirtual: false
+        });
       }
-      
+    }
+
+    // 2. Processar os templates recorrentes para gerar as ocorrências virtuais futuras
+    for (const t of templateList) {
       const interval = t.recurrence_interval || 1;
       const period = t.recurrence_period || 'monthly';
       const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
       
+      const tDate = parseISO(t.date);
       let cursor = new Date(tDate);
       const parentId = t.id;
       let occurrenceIndex = 0;
@@ -270,10 +285,10 @@ const DashboardV2 = () => {
         const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
         const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
         
-        if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
+        if (!alreadyHasPhysical) {
           const status = t.account_type === 'credit_card' 
             ? 'paid' 
-            : (dateStr !== t.date ? 'pending' : t.status);
+            : 'pending';
           let finalInstanceDate = dateStr;
           const isUnpaid = status !== 'paid';
           if (isUnpaid && dateStr < todayStr && t.account_type !== 'credit_card') {
@@ -281,9 +296,10 @@ const DashboardV2 = () => {
           }
           instances.push({
             ...t,
+            is_template: false,
             instanceDate: finalInstanceDate,
             originalInstanceDate: dateStr,
-            isVirtual: dateStr !== t.date,
+            isVirtual: true,
             status,
             installment_current: currentInst
           });
@@ -301,7 +317,7 @@ const DashboardV2 = () => {
     }
     
     return instances;
-  }, [transactions, currentMonth]);
+  }, [transactions, templates, currentMonth]);
 
   // Transações específicas do mês selecionado respeitando o filtro Global de Apenas Confirmados (Paid)
   const currentMonthInstances = useMemo(() => {

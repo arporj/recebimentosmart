@@ -71,7 +71,7 @@ export async function editarTransacao(
     // Se for o registro mãe de uma recorrência e o escopo for 'somente este',
     // nós não atualizamos a mãe diretamente. Em vez disso, inserimos um novo filho físico
     // mantendo a mãe original intacta como geradora de recorrências futuras.
-    if (currentModalidade === 'recorrente' && !parent_id && current.recurrence_enabled) {
+    if (currentModalidade === 'recorrente' && !parent_id && current.recurrence_enabled && !current.is_template) {
       const { id: _, created_at: __, ...parentFields } = current;
       const newChildPayload = {
         ...parentFields,
@@ -84,6 +84,7 @@ export async function editarTransacao(
         is_customized: true,
         installment_current: current.installment_current || 1,
         recurrence_enabled: false,
+        is_template: false,
       };
 
       const { data: newChild, error: insertError } = await supabase
@@ -131,8 +132,17 @@ export async function editarTransacao(
       }
     }
 
-    // LÓGICA ESPECIAL: Se mudou de única para recorrente, gera os filhos
+    // LÓGICA ESPECIAL: Se mudou de única para recorrente, configura o template e gera os filhos
     if (currentModalidade === 'unica' && cleanUpdate.modalidade === 'recorrente') {
+      // 1. Atualizar o registro original para se tornar template
+      await supabase.from('financial_transactions').update({ 
+        is_template: true,
+        recurrence_enabled: true,
+        recurrence_period: cleanUpdate.recurrence_period || 'monthly',
+        recurrence_interval: cleanUpdate.recurrence_interval || 1,
+        due_day: cleanUpdate.due_day || parseISO(currentDate).getDate(),
+      }).eq('id', data.id);
+
       const baseTransaction = {
         user_id: current.user_id,
         description: cleanUpdate.description || current.description,
@@ -145,9 +155,38 @@ export async function editarTransacao(
         status: 'pending',
       };
 
+      // 2. Criar o primeiro filho físico correspondente para a data original
+      const firstChildPayload = {
+        ...baseTransaction,
+        parent_id: data.id,
+        date: currentDate,
+        status: current.status || 'pending',
+        installment_current: 1,
+        installment_total: 1,
+        is_template: false,
+      };
+
+      const { data: firstChildData, error: firstChildError } = await supabase
+        .from('financial_transactions')
+        .insert(firstChildPayload)
+        .select()
+        .single();
+
+      if (firstChildError) {
+        console.error('Erro ao criar o primeiro filho na mudança de modalidade:', firstChildError);
+      } else if (inputTags && firstChildData) {
+        const junctionRows = inputTags.map(tagId => ({
+          transaction_id: firstChildData.id,
+          tag_id: tagId
+        }));
+        await supabase.from('transaction_tags').insert(junctionRows);
+      }
+
+      // 3. Gerar instâncias futuras
       try {
+        const parentData = (await supabase.from('financial_transactions').select('*').eq('id', data.id).single()).data;
         await gerarInstanciasRecorrentes(
-          data, // A própria transação atualizada (mãe)
+          parentData,
           baseTransaction,
           cleanUpdate.recurrence_period || 'monthly',
           cleanUpdate.recurrence_interval || 1,
@@ -155,12 +194,11 @@ export async function editarTransacao(
           null,
           inputTags || undefined
         );
-        
-        // Habilitar recorrência no registro principal se não foi feito
-        await supabase.from('financial_transactions').update({ recurrence_enabled: true }).eq('id', data.id);
       } catch (genError: any) {
         console.error('Erro ao gerar instâncias recorrentes:', genError);
       }
+
+      return { data: firstChildData || data, error: null };
     }
 
     return { data, error: null };
@@ -264,7 +302,7 @@ export async function editarTransacao(
       }
 
 
-      // 3. Criar a nova mãe com as novas regras começando a partir da data de início calculada
+      // 3. Criar a nova mãe (template) com as novas regras
       const { id: _, created_at: __, recurrence_end_date: ___, ...parentFields } = current;
       const targetDay = parseISO(effectiveDate).getDate();
       const newMotherPayload = {
@@ -277,18 +315,19 @@ export async function editarTransacao(
         paid_date: isPaid ? null : (cleanUpdate.paid_date || null),
         modalidade: 'recorrente',
         recurrence_enabled: true,
+        is_template: true,
         installment_current: (current.installment_current || 1) + (isPaid ? 1 : 0),
       };
 
       const { data: newMother, error: createError } = await supabase
         .from('financial_transactions')
         .insert(newMotherPayload)
-        .select('id')
+        .select()
         .single();
 
       if (createError) throw createError;
 
-      // Vincular as tags à nova transação mãe se fornecidas
+      // Vincular as tags ao template da nova mãe
       if (inputTags && newMother) {
         if (inputTags.length > 0) {
           const junctionRows = inputTags.map(tagId => ({
@@ -299,7 +338,59 @@ export async function editarTransacao(
         }
       }
 
-      return { data: [newMother], error: null };
+      // 4. Criar o primeiro filho físico real da nova série recorrente
+      const newFirstChildPayload = {
+        ...newMotherPayload,
+        is_template: false,
+        parent_id: newMother.id,
+      };
+
+      const { data: newFirstChild, error: createChildError } = await supabase
+        .from('financial_transactions')
+        .insert(newFirstChildPayload)
+        .select()
+        .single();
+
+      if (createChildError) {
+        console.error('Erro ao criar o primeiro filho do novo ciclo recorrente:', createChildError);
+      } else if (inputTags && newFirstChild) {
+        // Vincular tags ao primeiro filho físico
+        if (inputTags.length > 0) {
+          const junctionRows = inputTags.map(tagId => ({
+            transaction_id: newFirstChild.id,
+            tag_id: tagId
+          }));
+          await supabase.from('transaction_tags').insert(junctionRows);
+        }
+      }
+
+      // 5. Gerar as 12 próximas ocorrências físicas do novo template
+      try {
+        await gerarInstanciasRecorrentes(
+          newMother,
+          {
+            user_id: newMother.user_id,
+            description: newMother.description,
+            amount: newMother.amount,
+            type: newMother.type,
+            category_id: newMother.category_id,
+            account_id: newMother.account_id,
+            destination_account_id: newMother.destination_account_id,
+            client_id: newMother.client_id,
+            modalidade: 'recorrente',
+            status: 'pending',
+          },
+          current.recurrence_period || 'monthly',
+          current.recurrence_interval || 1,
+          12,
+          null,
+          inputTags || undefined
+        );
+      } catch (genError) {
+        console.error('Erro ao gerar as instâncias futuras da nova recorrência editada:', genError);
+      }
+
+      return { data: [newFirstChild || newMother], error: null };
     }
 
     // Comportamento original para parcelas físicas

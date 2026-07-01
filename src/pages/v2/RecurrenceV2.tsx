@@ -67,6 +67,7 @@ interface FinancialTransaction {
   installment_total: number | null;
   installment_current: number | null;
   parent_id: string | null;
+  is_template?: boolean | null;
 }
 
 interface ClientFinancialSummary {
@@ -174,7 +175,8 @@ export default function RecurrenceV2() {
           recurrence_end_date,
           installment_total,
           installment_current,
-          parent_id
+          parent_id,
+          is_template
         `)
         .eq('user_id', user.id)
         .not('client_id', 'is', null)
@@ -363,7 +365,9 @@ export default function RecurrenceV2() {
 
         // Adiciona a instância se for a primeira (mãe original) ou se já passou da primeira
         if (iteration === 0) {
-          allInstances.push(tx); // A mãe original carrega o status real do banco
+          if (!tx.is_template) {
+            allInstances.push(tx); // A mãe original carrega o status real do banco
+          }
         } else {
           const dateStr = format(instanceDate, 'yyyy-MM-dd');
           

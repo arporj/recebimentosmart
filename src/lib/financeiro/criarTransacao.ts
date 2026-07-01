@@ -176,6 +176,7 @@ export async function criarTransacao(input: TransactionInput) {
   if (input.modalidade === 'recorrente') {
     const recurrenceInterval = input.recurrence_interval || 1;
     
+    // 1. Inserir a transação mãe como template (is_template = true)
     const { data: parentData, error: parentError } = await supabase.from('financial_transactions').insert({
       ...baseTransaction,
       date: input.date,
@@ -184,20 +185,54 @@ export async function criarTransacao(input: TransactionInput) {
       recurrence_enabled: true,
       installment_current: 1,
       installment_total: 1,
+      is_template: true,
     }).select().single();
 
     if (parentError) return { data: null, error: parentError };
 
-    // Salvar tags para a transação recorrente mãe
+    // 2. Salvar tags para o template de recorrência mãe
     if (input.tags && input.tags.length > 0 && parentData) {
       const junctionRows = input.tags.map(tagId => ({
         transaction_id: parentData.id,
         tag_id: tagId
       }));
       const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
-      if (tagError) console.error('Erro ao salvar tags da transação recorrente mãe:', tagError);
+      if (tagError) console.error('Erro ao salvar tags do template de recorrência mãe:', tagError);
     }
 
+    // 3. Inserir imediatamente o primeiro lançamento físico real (Filho 1, com is_template = false)
+    const firstChildPayload = {
+      ...baseTransaction,
+      parent_id: parentData.id,
+      date: input.date,
+      status: input.status || 'pending',
+      installment_current: 1,
+      installment_total: 1,
+      is_template: false,
+    };
+
+    const { data: firstChildData, error: firstChildError } = await supabase
+      .from('financial_transactions')
+      .insert(firstChildPayload)
+      .select()
+      .single();
+
+    if (firstChildError) {
+      console.error('Erro ao criar primeiro lançamento físico da recorrência:', firstChildError);
+      return { data: parentData, error: firstChildError };
+    }
+
+    // Salvar tags para o primeiro lançamento físico
+    if (input.tags && input.tags.length > 0 && firstChildData) {
+      const junctionRows = input.tags.map(tagId => ({
+        transaction_id: firstChildData.id,
+        tag_id: tagId
+      }));
+      const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
+      if (tagError) console.error('Erro ao salvar tags do primeiro lançamento físico:', tagError);
+    }
+
+    // 4. Gerar as 12 ocorrências subsequentes físicas futuras
     try {
       await gerarInstanciasRecorrentes(
         parentData,
@@ -208,9 +243,9 @@ export async function criarTransacao(input: TransactionInput) {
         accountConfig,
         input.tags
       );
-      return { data: parentData, error: null };
+      return { data: firstChildData, error: null };
     } catch (error: any) {
-      return { data: parentData, error };
+      return { data: firstChildData, error };
     }
   }
 

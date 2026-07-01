@@ -56,6 +56,7 @@ export async function gerarOcorrencias(targetDate: Date = new Date()) {
         status: 'pending',
         due_day: parent.due_day,
         auto_confirm: parent.auto_confirm ?? false,
+        is_template: false,
       });
     }
   }
