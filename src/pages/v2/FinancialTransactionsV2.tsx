@@ -500,6 +500,7 @@ const FinancialTransactionsV2 = () => {
       }
     }
 
+
     return instances.sort((a, b) => {
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
@@ -963,7 +964,7 @@ const FinancialTransactionsV2 = () => {
     }
 
     return sortedList;
-  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, currentMonth, invoiceInstances, creditCardAccounts]);
+  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, totals.previousProjected, currentMonth, invoiceInstances, creditCardAccounts]);
 
   const toggleSelectTransaction = (key: string, e?: React.MouseEvent | React.ChangeEvent) => {
     if (e) e.stopPropagation();
