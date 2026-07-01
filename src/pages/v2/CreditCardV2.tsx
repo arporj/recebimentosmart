@@ -673,7 +673,7 @@ const CreditCardV2 = () => {
         </div>
 
         {/* Mobile List */}
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-100 pb-32">
           {loading ? (
             <div className="py-12 text-center text-slate-400 italic">Carregando...</div>
           ) : displayInstances.length === 0 ? (
@@ -864,7 +864,7 @@ const CreditCardV2 = () => {
           </div>
 
           {/* Transaction List */}
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 pb-32">
             {loading ? (
               <div className="py-12 text-center text-slate-400 italic">Carregando...</div>
             ) : displayInstances.length === 0 ? (

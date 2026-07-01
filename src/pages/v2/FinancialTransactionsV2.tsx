@@ -1508,7 +1508,7 @@ const FinancialTransactionsV2 = () => {
         </div>
 
         {/* Mobile Transaction List - Layout tabular compacto */}
-        <div className="flex-1 bg-white pb-20">
+        <div className="flex-1 bg-white pb-32">
           {displayInstances.length === 0 ? (
             <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
           ) : (
@@ -1894,7 +1894,7 @@ const FinancialTransactionsV2 = () => {
           {/* Listagem */}
           <div className="flex flex-col">
 
-            <div className="divide-y divide-slate-50 pb-20">
+            <div className="divide-y divide-slate-50 pb-32">
               {displayInstances.length === 0 ? (
                 <div className="py-20 text-center"><p className="text-slate-400 font-bold">Nenhum lançamento.</p></div>
               ) : (
