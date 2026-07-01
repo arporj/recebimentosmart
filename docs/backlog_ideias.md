@@ -1,6 +1,6 @@
 # 📋 Backlog — Ideias e Tarefas Futuras
 
-Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias pendentes do projeto **Recebimento $mart**.
+Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias pendentes do projeto **Recebimento $mart**, um sistema híbrido voltado para controle financeiro pessoal/familiar e gestão de clientes comerciais ou compartilhamento de contas/reembolsos com amigos e familiares.
 
 ---
 
