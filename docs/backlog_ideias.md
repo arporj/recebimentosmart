@@ -6,7 +6,7 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 
 ## 1. 🐛 Bugs Conhecidos
 
-* **Comportamento Inesperado no Cartão de Crédito:** Na tela de cartão de crédito, ao clicar nos 3 pontinhos (ações) de um lançamento, a tela é direcionada para o topo (scroll top) e o menu flutuante de opções não abre.
+* Nenhum bug conhecido registrado no momento.
 
 ---
 
@@ -219,4 +219,8 @@ O mercado de fintechs e sistemas de gestão financeira para PMEs e autônomos es
 ### 4.17. ➕ Menu Suspenso no Botão de Criar Lançamento (UI/UX)
 * **Status:** Concluído em Jun/2026.
 * **Descrição:** Implementado menu suspenso de hover (hover dropdown) no botão principal "Criar Lançamento" na listagem de transações. Por padrão, clicar no botão abre o modal configurado para **Despesa**, e ao passar o mouse ele exibe atalhos rápidos com marcadores visuais para criar **🟢 Receita** ou **🔵 Transferência**.
+
+### 4.18. 💳 Correção de Comportamento no Menu do Cartão de Crédito
+* **Status:** Concluído em Jul/2026.
+* **Descrição:** Corrigido o bug na tela de cartão de crédito onde clicar no menu de ações (3 pontinhos) de um lançamento executava um scroll indesejado para o topo e não mantinha o menu suspenso aberto.
 
