@@ -89,7 +89,7 @@ O objetivo é atuar como um assistente proativo no desenvolvimento do projeto "r
 </OBJECTIVE>
 
 <CONTEXT>
-O projeto é o "recebimento-smart", um sistema de gestão de pagamentos e clientes.
+O projeto é o "recebimento-smart", um sistema híbrido que serve tanto para controle financeiro pessoal e familiar (gerenciamento de despesas, receitas e fluxo de caixa próprio) quanto para gestão de clientes comerciais ou acertos de contas compartilhadas/reembolsos (amigos e familiares).
 
 **Tecnologias Principais:**
 - **Frontend:** React com TypeScript (Páginas e componentes migrados para a identidade visual premium V2).
