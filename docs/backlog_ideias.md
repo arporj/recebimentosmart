@@ -107,16 +107,26 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 * **Status:** Planejado (Roadmap).
 * **Descrição:** Em vez de métricas corporativas, focar no rastreamento de custos recorrentes pessoais do usuário (Netflix, Spotify, plano de celular, academia). Exibir gráficos de impacto anual desses custos no orçamento, datas de renovação e alertas de reajuste.
 
-### 2.16. 📈 Dashboard Financeiro Pessoal Padrão Ouro
+### 2.16. 📈 Dashboard Financeiro Híbrido e Inteligente (Pessoal + Reembolsos)
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Evoluir a tela inicial do sistema para focar em finanças pessoais: gráficos interativos de Entradas vs. Saídas, Gráfico de Rosca de gastos por Categoria, e Linha de Projeção de fluxo de caixa futuro para os próximos 30/60 dias (alertando sobre riscos de saldo negativo na conta corrente). Os cards KPI de "clientes" (faturamento comercial, inadimplência) serão estritamente isolados dentro da aba "Resumo por Clientes" para não poluir o controle pessoal.
+* **Descrição:** Evoluir a tela inicial (Dashboard) do sistema para atuar com inteligência sob o modelo híbrido (pessoal e reembolsos/clientes):
+  * **Proatividade e Conexão de Fluxos:** Manter a tela inicial focada em finanças pessoais (Saldo Real, Receitas/Despesas pessoais e Gráficos de categorias), mas incluindo um card dinâmico, discreto e inteligente de **"Reembolsos a Receber"** (ex: *"Você tem R$ 450,00 a receber de amigos/familiares este mês"*). Clicar no card redireciona o usuário para o "Resumo por Clientes". Os cards KPI puramente corporativos (inadimplência, faturamento comercial) continuam isolados na aba interna de Clientes para não poluir o dia a dia.
+  * **Segregação de Gráficos:** O gráfico de pizza/rosca de categorias deve separar visualmente o que é gasto pessoal real (custo de vida consumido) do que são valores adiantados de contas divididas com terceiros (valores a reembolsar). Isso evita distorcer a percepção do custo de vida real do usuário.
+  * **Projeção de Fluxo de Caixa:** Exibir linha do tempo de saldo previsto para os próximos 30/60 dias integrando os templates de despesas fixas e as datas de reembolso estimadas de amigos/familiares.
 
 ### 2.17. 📊 Relatórios Financeiros Pessoais e Familiares (DRE e Caixa vs. Competência)
 * **Status:** Planejado (Roadmap).
-* **Descrição:** Módulo de relatórios profissionais adaptados para a vida pessoal:
-  * **DRE Pessoal mensalizado:** Receitas (salários, investimentos, reembolsos recebidos) -> Despesas Fixas -> Despesas Variáveis -> Margem de Sobra (lucro).
-  * **Regime de Caixa vs. Regime de Competência:** Exibição clara do impacto de compras parceladas no cartão de crédito. Competência mostra o valor total da compra no mês em que foi decidida; Caixa exibe o valor diluído das parcelas à medida que saem da conta bancária mensalmente.
+* **Descrição:** Módulo de relatórios profissionais adaptados para a vida pessoal e familiar:
+  * **DRE Pessoal mensalizado:** Comparação mensal de colunas contendo Receitas (salários, investimentos, reembolsos recebidos) -> (-) Despesas Fixas -> (-) Despesas Variáveis -> (=) Margem de Sobra (lucro). Os reembolsos entram como amortização/ajuste de despesa, e não como receita bruta para não inflar a renda líquida real.
+  * **Regime de Caixa vs. Regime de Competência:** Exibição clara do impacto de compras parceladas no cartão de crédito. Competência mostra o valor total da compra no mês em que foi realizada (decisão de gasto); Caixa exibe o valor diluído das parcelas à medida que saem da conta bancária mensalmente.
   * **Exportação Premium:** Geração de relatórios limpos em PDF e Excel para fins de arquivo ou planejamento anual.
+
+### 2.18. 📑 Extrato Unificado com Filtros e Badges de Reembolso (UX Padrão Ouro)
+* **Status:** Planejado (Roadmap).
+* **Descrição:** Aprimorar a listagem de lançamentos diários (extrato geral) para manter a integridade com o extrato bancário real sem perder a clareza visual dos fluxos:
+  * **A "Verdade do Banco":** A lista de transações continua exibindo tudo junto por padrão (gastos pessoais e adiantamentos/reembolsos de amigos e familiares), garantindo que o saldo final bata centavo por centavo com a conta corrente real.
+  * **Badges Identificadores:** Cada linha de transação na listagem que estiver vinculada a um "cliente" (amigo/familiar) recebe uma tag visual discreta indicando o nome da pessoa (ex: "Pai", "Amigos"), deixando claro quem é o responsável pela liquidação ou reembolso.
+  * **Filtros Rápidos no Topo do Extrato:** Adicionar botões de alternância rápidos na barra de busca do extrato: `[Tudo] [Apenas Pessoal] [Apenas Reembolsos]`. Clicar em "Apenas Pessoal" limpa o extrato de adiantamentos/reembolsos temporariamente, permitindo analisar os gastos reais de vida em 1 segundo.
 
 ---
 
