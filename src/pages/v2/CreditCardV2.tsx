@@ -101,11 +101,11 @@ const getInvoicePeriodForMonth = (card: Account, month: Date) => {
   return { startDate, endDate };
 };
 
-const hasExpensesForMonth = (card: Account, cursorDate: Date, allTransactions: FinancialTransaction[]) => {
+const hasExpensesForMonth = (card: Account, cursorDate: Date, allTransactions: FinancialTransaction[], allTemplates: FinancialTransaction[] = []) => {
   const cursorMonthStr = format(cursorDate, 'yyyy-MM');
   const period = getInvoicePeriodForMonth(card, cursorDate);
   
-  return allTransactions.some(t => {
+  const hasPhysical = allTransactions.some(t => {
     if (t.account_id !== card.id || t.type !== 'expense' || t.status === 'cancelled') return false;
     
     if (t.recurrence_enabled) {
@@ -124,6 +124,14 @@ const hasExpensesForMonth = (card: Account, cursorDate: Date, allTransactions: F
     
     return isSameMonth(parseISO(t.date), cursorDate);
   });
+
+  if (hasPhysical) return true;
+
+  return allTemplates.some(t => {
+    if (t.account_id !== card.id || t.type !== 'expense' || t.status === 'cancelled') return false;
+    const tDate = parseISO(t.date);
+    return !isAfter(tDate, period ? period.endDate : endOfMonth(cursorDate));
+  });
 };
 
 const isInvoiceClosedForMonth = (card: Account, cursorDate: Date, allTransactions: FinancialTransaction[]) => {
@@ -135,7 +143,7 @@ const isInvoiceClosedForMonth = (card: Account, cursorDate: Date, allTransaction
   );
 };
 
-const getFirstOpenInvoiceMonth = (card: Account | null, allTransactions: FinancialTransaction[]): Date => {
+const getFirstOpenInvoiceMonth = (card: Account | null, allTransactions: FinancialTransaction[], allTemplates: FinancialTransaction[] = []): Date => {
   const defaultMonth = getSmartCurrentMonth(card);
   if (!card) return defaultMonth;
 
@@ -145,7 +153,7 @@ const getFirstOpenInvoiceMonth = (card: Account | null, allTransactions: Financi
 
     if (i < 0) {
       // Para meses passados, só consideramos se tiver despesas cadastradas e não estiver fechada
-      const hasExpenses = hasExpensesForMonth(card, cursorDate, allTransactions);
+      const hasExpenses = hasExpensesForMonth(card, cursorDate, allTransactions, allTemplates);
       if (hasExpenses) {
         const isClosed = isInvoiceClosedForMonth(card, cursorDate, allTransactions);
         if (!isClosed) {
@@ -197,6 +205,7 @@ const CreditCardV2 = () => {
   const [cards, setCards] = useState<Account[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [templates, setTemplates] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
@@ -251,7 +260,7 @@ const CreditCardV2 = () => {
     setCards(cardList);
   };
 
-  // Fetch all transactions
+  // Fetch all transactions and active templates
   const fetchTransactions = async () => {
     if (!user) return;
     setLoading(true);
@@ -271,6 +280,24 @@ const CreditCardV2 = () => {
         category: t.category_name ? { name: t.category_name, icon: t.category_icon, parent_id: t.category_parent_id } : null,
       }));
       setTransactions(mapped);
+
+      // Buscar templates de recorrência ativos para projeção virtual de fatura
+      const { data: templateData, error: templateError } = await (supabase as any)
+        .from('financial_transactions')
+        .select('*, client:client_id(name), category:category_id(name, icon, parent_id), account:account_id(name, type)')
+        .eq('user_id', user.id)
+        .eq('is_template', true)
+        .eq('recurrence_enabled', true);
+
+      if (templateError) throw templateError;
+      const mappedTemplates = (templateData || []).map((t: any) => ({
+        ...t,
+        account: t.account ? { name: t.account.name, type: t.account.type } : null,
+        destination_account: null,
+        client: t.client ? { name: t.client.name } : null,
+        category: t.category ? { name: t.category.name, icon: t.category.icon, parent_id: t.category.parent_id } : null,
+      }));
+      setTemplates(mappedTemplates);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao carregar transações');
@@ -294,15 +321,15 @@ const CreditCardV2 = () => {
           const [year, month] = initialMonth.split('-');
           setCurrentMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
         } else {
-          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions));
+          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions, templates));
         }
       } else if (cards.length > 0 && !selectedCardId) {
         setSelectedCardId(cards[0].id);
-        setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions));
+        setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions, templates));
       }
       setHasInitializedParams(true);
     }
-  }, [cards, loading, searchParams, hasInitializedParams, transactions]);
+  }, [cards, loading, searchParams, hasInitializedParams, transactions, templates]);
 
   // Sincroniza dinamicamente o cartão selecionado quando os parâmetros de busca da URL mudarem
   useEffect(() => {
@@ -316,19 +343,19 @@ const CreditCardV2 = () => {
           const [year, m] = month.split('-');
           setCurrentMonth(new Date(parseInt(year), parseInt(m) - 1, 1));
         } else {
-          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions));
+          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions, templates));
         }
       }
     } else if (!cardId && cards.length > 0 && hasInitializedParams) {
       setSelectedCardId(cards[0].id);
-      setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions));
+      setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions, templates));
     }
-  }, [searchParams, cards, hasInitializedParams, transactions]);
+  }, [searchParams, cards, hasInitializedParams, transactions, templates]);
 
   // Handle manual card change via select
   const handleCardChange = (card: Account) => {
     setSelectedCardId(card.id);
-    setCurrentMonth(getFirstOpenInvoiceMonth(card, transactions));
+    setCurrentMonth(getFirstOpenInvoiceMonth(card, transactions, templates));
     setIsCardDropdownOpen(false);
   };
 
@@ -364,20 +391,25 @@ const CreditCardV2 = () => {
 
   const currentInvoiceMonthString = format(currentMonth, 'yyyy-MM');
 
-  // Filter transactions for this card + invoice period
+  // Filter transactions for this card + invoice period (including virtual projections from templates)
   const cardInstances = useMemo((): TransactionInstance[] => {
     if (!selectedCardId) return [];
 
     const instances: TransactionInstance[] = [];
     const cardTransactions = transactions.filter(t => t.account_id === selectedCardId);
+    const cardTemplates = templates.filter(t => t.account_id === selectedCardId);
 
-    // Build set of physical dates and indices per parent
+    // Build set of physical dates, months and indices per parent
     const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalMonthsByParent = new Map<string, Set<string>>();
     const physicalIndicesByParent = new Map<string, Set<number>>();
     for (const t of cardTransactions) {
       const parentId = t.parent_id || t.id;
       if (!physicalDatesByParent.has(parentId)) physicalDatesByParent.set(parentId, new Set());
       physicalDatesByParent.get(parentId)!.add(t.date);
+
+      if (!physicalMonthsByParent.has(parentId)) physicalMonthsByParent.set(parentId, new Set());
+      physicalMonthsByParent.get(parentId)!.add(t.date.substring(0, 7));
 
       // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
       // Isso nos permite detectar quando uma ocorrência específica foi desmembrada por edição de escopo 'somente este'.
@@ -387,6 +419,7 @@ const CreditCardV2 = () => {
       }
     }
 
+    // Fase 1: Processar transações físicas reais (transactions)
     for (const t of cardTransactions) {
       // Skip cancelled records — they are blockers, not displayable items
       if (t.status === 'cancelled') continue;
@@ -464,9 +497,83 @@ const CreditCardV2 = () => {
       }
     }
 
+    // Fase 2: Projetar ocorrências virtuais a partir dos modelos de recorrência (templates)
+    for (const t of cardTemplates) {
+      if (t.status === 'cancelled') continue;
+      const interval = t.recurrence_interval || 1;
+      const period = t.recurrence_period || 'monthly';
+      const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
+      const tDate = parseISO(t.date);
+      const parentId = t.id;
+
+      const maxLimitDate = invoicePeriod ? addMonths(invoicePeriod.endDate, 2) : addMonths(currentMonth, 2);
+      let cursor = new Date(tDate);
+      let occurrenceIndex = 0;
+
+      while (isBefore(cursor, maxLimitDate) || isSameDay(cursor, maxLimitDate)) {
+        if (recEndDate && isAfter(cursor, recEndDate)) break;
+
+        const dateStr = format(cursor, 'yyyy-MM-dd');
+        const currentInst = (t.installment_current || 1) + occurrenceIndex;
+
+        const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
+        const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
+        const hasPhysicalByMonth = period === 'monthly' && physicalMonthsByParent.get(parentId)?.has(dateStr.substring(0, 7));
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate || hasPhysicalByMonth;
+
+        if (!alreadyHasPhysical) {
+          let occurrenceInvoiceMonth = t.invoice_month;
+          if (t.invoice_month) {
+            const [y, m] = t.invoice_month.split('-');
+            const origInvoiceDate = new Date(Number(y), Number(m) - 1, 1);
+            const diffMonths = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+            const newDate = addMonths(origInvoiceDate, diffMonths);
+            occurrenceInvoiceMonth = format(newDate, 'yyyy-MM');
+          }
+
+          const cursorDate = parseISO(dateStr);
+          let inPeriod = false;
+          if (occurrenceInvoiceMonth) {
+            inPeriod = occurrenceInvoiceMonth === currentInvoiceMonthString;
+          } else if (invoicePeriod) {
+            inPeriod = !isBefore(cursorDate, invoicePeriod.startDate) && !isAfter(cursorDate, invoicePeriod.endDate);
+          } else {
+            inPeriod = isSameMonth(cursorDate, currentMonth);
+          }
+
+          if (inPeriod) {
+            instances.push({
+              ...t,
+              instanceDate: dateStr,
+              isVirtual: true,
+              installment_current: currentInst,
+              invoice_month: occurrenceInvoiceMonth || currentInvoiceMonthString,
+            });
+          }
+        }
+
+        if (invoicePeriod && isAfter(cursor, invoicePeriod.endDate) && (!t.invoice_month || (t.invoice_month && cursor > tDate))) {
+          const [y, m] = (t.invoice_month || currentInvoiceMonthString).split('-');
+          const origInvoiceDate = new Date(Number(y), Number(m) - 1, 1);
+          const diffMonths = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
+          const occurrenceInvDate = addMonths(origInvoiceDate, diffMonths);
+          if (isAfter(occurrenceInvDate, currentMonth)) break;
+        }
+
+        occurrenceIndex++;
+        switch (period) {
+          case 'daily': cursor = addDays(cursor, interval); break;
+          case 'weekly': cursor = addWeeks(cursor, interval); break;
+          case 'monthly': cursor = addMonths(cursor, interval); break;
+          case 'yearly': cursor = addYears(cursor, interval); break;
+          default: cursor = addMonths(cursor, interval);
+        }
+      }
+    }
+
     const sorted = instances.sort((a, b) => new Date(a.instanceDate).getTime() - new Date(b.instanceDate).getTime());
     return sorted;
-  }, [transactions, selectedCardId, currentMonth, invoicePeriod]);
+  }, [transactions, templates, selectedCardId, currentMonth, currentInvoiceMonthString, invoicePeriod, today]);, currentMonth, invoicePeriod]);
 
   // Checar se a fatura atual está fechada (existe uma transferência agendada/paga para ela com o invoice_month correspondente)
   const billPaymentTransaction = useMemo(() => {
