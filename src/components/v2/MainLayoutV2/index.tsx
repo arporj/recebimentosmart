@@ -10,7 +10,7 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    UserCheck, Share2, Mail, Bell, RefreshCw
+    UserCheck, Share2, Mail, Bell, RefreshCw, DollarSign
 } from 'lucide-react';
 import { ChangelogDrawer } from '../ChangelogDrawer';
 
@@ -35,7 +35,19 @@ const sidebarSections: SidebarSection[] = [
         title: 'Geral',
         items: [
             { label: 'Dashboard', icon: BarChart3, href: '/v2/dashboard' },
-            { label: 'Resumo por Clientes', icon: UserCheck, href: '/v2/recorrencia' },
+        ],
+    },
+    {
+        title: 'Clientes',
+        items: [
+            {
+                label: 'Clientes',
+                icon: UserCheck,
+                subItems: [
+                    { label: 'Gestão de Clientes', icon: Users, href: '/v2/clientes/gestao' },
+                    { label: 'Cobranças', icon: DollarSign, href: '/v2/clientes/cobrancas' },
+                ]
+            },
         ],
     },
     {

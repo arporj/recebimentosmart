@@ -1,0 +1,465 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Search, UserPlus, Bell, Plus, Filter, AlertTriangle,
+  CheckCircle2, Users, TrendingUp, Clock, Globe, MoreVertical,
+  Pencil, Trash2, Eye, User, Phone, Mail, BellOff
+} from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
+import { usePlanLimits } from '../../../hooks/usePlanLimits';
+import { toast } from 'react-hot-toast';
+import ConfirmModal from '../../../components/v2/ConfirmModal';
+import { NewClientWithTransactionModal } from '../../../components/v2/ClientsArea/NewClientWithTransactionModal';
+import { QuickTransactionModal } from '../../../components/v2/ClientsArea/QuickTransactionModal';
+import { ClientNotificationConfig } from '../../../components/v2/ClientsArea/ClientNotificationConfig';
+import { GlobalNotificationSettings } from '../../../components/v2/ClientsArea/GlobalNotificationSettings';
+import ClientStatementModalV2 from '../../../components/v2/ClientStatementModalV2';
+import type { Database } from '../../../types/supabase';
+
+type Client = Database['public']['Tables']['clients']['Row'];
+
+interface ClientSummary {
+  client: Client;
+  pendingCount: number;
+  overdueCount: number;
+  totalPending: number;
+  nextDueDate: string | null;
+  hasNotificationConfig: boolean;
+}
+
+type PaymentFilter = 'all' | 'ok' | 'overdue' | 'none';
+type StatusFilter = 'all' | 'active' | 'inactive';
+
+export default function GestaoClientesV2() {
+  const { user } = useAuth();
+  const { checkLimit, refreshLimits } = usePlanLimits();
+
+  const [clients, setClients] = useState<Client[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [notifConfigs, setNotifConfigs] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+
+  // Modals state
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [quickTxClient, setQuickTxClient] = useState<Client | null>(null);
+  const [notifClient, setNotifClient] = useState<Client | null>(null);
+  const [statementClient, setStatementClient] = useState<{ id: string; name: string } | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [showGlobalNotif, setShowGlobalNotif] = useState(false);
+
+  const fetchAll = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const [{ data: clientsData }, { data: txData }, { data: notifData }] = await Promise.all([
+        supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .order('name', { ascending: true }),
+        supabase
+          .from('financial_transactions')
+          .select('id, amount, date, status, client_id, type')
+          .eq('user_id', user.id)
+          .not('client_id', 'is', null)
+          .neq('status', 'cancelled')
+          .eq('is_template', false),
+        supabase
+          .from('client_notification_settings')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .not('client_id', 'is', null)
+          .eq('is_active', true),
+      ]);
+
+      setClients(clientsData || []);
+      setTransactions(txData || []);
+
+      const notifMap: Record<string, boolean> = {};
+      (notifData || []).forEach((n: any) => {
+        if (n.client_id) notifMap[n.client_id] = true;
+      });
+      setNotifConfigs(notifMap);
+    } catch {
+      toast.error('Erro ao carregar dados dos clientes.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const handleDeleteClient = async (client: Client) => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', client.id);
+      if (error) throw error;
+      toast.success('Cliente removido.');
+      setClientToDelete(null);
+      fetchAll();
+      refreshLimits();
+    } catch {
+      toast.error('Erro ao remover cliente.');
+    }
+  };
+
+  // Build summaries
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const summaries: ClientSummary[] = clients.map(client => {
+    const clientTxs = transactions.filter(t => t.client_id === client.id && t.type === 'income');
+    const pending = clientTxs.filter(t => t.status !== 'paid');
+    const overdue = pending.filter(t => new Date(t.date + 'T00:00:00') < today);
+    const totalPending = pending.reduce((sum, t) => sum + Number(t.amount), 0);
+    const sorted = [...pending].sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      client,
+      pendingCount: pending.length,
+      overdueCount: overdue.length,
+      totalPending,
+      nextDueDate: sorted[0]?.date || null,
+      hasNotificationConfig: !!notifConfigs[client.id],
+    };
+  });
+
+  const filtered = summaries.filter(s => {
+    const matchesSearch = s.client.name.toLowerCase().includes(searchTerm.toLowerCase())
+      || (s.client.phone && s.client.phone.includes(searchTerm));
+    const matchesStatus = statusFilter === 'all' ? true
+      : statusFilter === 'active' ? s.client.status
+      : !s.client.status;
+    const matchesPayment = paymentFilter === 'all' ? true
+      : paymentFilter === 'overdue' ? s.overdueCount > 0
+      : paymentFilter === 'ok' ? s.pendingCount > 0 && s.overdueCount === 0
+      : s.pendingCount === 0;
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  // KPI totals
+  const totalClients = clients.filter(c => c.status).length;
+  const totalOverdue = summaries.filter(s => s.overdueCount > 0).length;
+  const totalPendingAll = summaries.reduce((sum, s) => sum + s.totalPending, 0);
+  const totalWithNotif = Object.keys(notifConfigs).length;
+
+  const formatCurrency = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  return (
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* ─── Header ─── */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 font-manrope">Gestão de Clientes</h1>
+          <p className="text-slate-500 text-sm mt-1">Visão consolidada de clientes e lançamentos vinculados.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowGlobalNotif(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <Globe size={16} /> Notif. Global
+          </button>
+          <button
+            onClick={() => { if (checkLimit('clients')) setShowNewClientModal(true); }}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20"
+          >
+            <UserPlus size={16} /> Novo Cliente
+          </button>
+        </div>
+      </div>
+
+      {/* ─── KPI Cards ─── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
+          { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+          { label: 'Total Pendente', value: formatCurrency(totalPendingAll), icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Com Notificação', value: totalWithNotif, icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' },
+        ].map(kpi => (
+          <div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
+              <kpi.icon size={18} className={kpi.color} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
+              <p className={`text-xl font-black ${kpi.color} font-manrope`}>{kpi.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── Search and Filters ─── */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nome ou telefone..."
+            className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm font-medium text-slate-700 transition-all shadow-sm"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+            className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm cursor-pointer"
+          >
+            <option value="all">Todos status</option>
+            <option value="active">Ativos</option>
+            <option value="inactive">Inativos</option>
+          </select>
+          <select
+            value={paymentFilter}
+            onChange={e => setPaymentFilter(e.target.value as PaymentFilter)}
+            className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm cursor-pointer"
+          >
+            <option value="all">Situação</option>
+            <option value="ok">Em dia</option>
+            <option value="overdue">Em atraso</option>
+            <option value="none">Sem lançamentos</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ─── Table ─── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center text-slate-400 space-y-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
+            <span className="text-sm font-medium">Carregando clientes...</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400">
+              <User size={28} />
+            </div>
+            <p className="text-slate-500 font-medium text-sm">
+              {searchTerm || statusFilter !== 'all' || paymentFilter !== 'all'
+                ? 'Nenhum cliente encontrado com esses filtros.'
+                : 'Nenhum cliente cadastrado ainda.'}
+            </p>
+            {!searchTerm && statusFilter === 'all' && paymentFilter === 'all' && (
+              <button
+                onClick={() => { if (checkLimit('clients')) setShowNewClientModal(true); }}
+                className="text-xs font-bold text-teal-600 hover:text-teal-700 underline uppercase tracking-wider"
+              >
+                Cadastrar meu primeiro cliente
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Próx. Vencimento</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Pendente</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.map(({ client, pendingCount, overdueCount, totalPending, nextDueDate, hasNotificationConfig }) => (
+                  <tr key={client.id} className="hover:bg-slate-50/60 transition-colors group">
+                    {/* Client name */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                          client.status ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          <User size={18} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800">{client.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {client.phone && (
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <Phone size={10} /> {client.phone}
+                              </span>
+                            )}
+                            {hasNotificationConfig ? (
+                              <span className="text-xs text-blue-500 flex items-center gap-1">
+                                <Bell size={10} /> Notif. ativa
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-300 flex items-center gap-1">
+                                <BellOff size={10} /> Sem notif.
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Next due */}
+                    <td className="px-6 py-4">
+                      {nextDueDate ? (
+                        <div>
+                          <p className={`text-sm font-semibold ${overdueCount > 0 ? 'text-rose-600' : 'text-slate-700'}`}>
+                            {format(parseISO(nextDueDate), 'dd/MM/yyyy')}
+                          </p>
+                          {overdueCount > 0 && (
+                            <p className="text-xs text-rose-500 font-medium">
+                              {overdueCount} em atraso
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-300 italic">Sem lançamentos</span>
+                      )}
+                    </td>
+
+                    {/* Total pending */}
+                    <td className="px-6 py-4 text-right">
+                      {pendingCount > 0 ? (
+                        <div>
+                          <p className={`font-black text-sm ${overdueCount > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                            {formatCurrency(totalPending)}
+                          </p>
+                          <p className="text-xs text-slate-400">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Status badge */}
+                    <td className="px-6 py-4 text-center">
+                      {overdueCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100">
+                          <AlertTriangle size={10} /> Em atraso
+                        </span>
+                      ) : pendingCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                          <Clock size={10} /> A vencer
+                        </span>
+                      ) : client.status ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <CheckCircle2 size={10} /> Em dia
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                          Inativo
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setStatementClient({ id: client.id, name: client.name })}
+                          className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all"
+                          title="Ver extrato"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          onClick={() => setQuickTxClient(client)}
+                          className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all"
+                          title="Adicionar lançamento"
+                        >
+                          <Plus size={15} />
+                        </button>
+                        <button
+                          onClick={() => setNotifClient(client)}
+                          className={`p-2 rounded-xl transition-all ${
+                            hasNotificationConfig
+                              ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
+                              : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
+                          title="Configurar notificação"
+                        >
+                          <Bell size={15} />
+                        </button>
+                        <button
+                          onClick={() => setClientToDelete(client)}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                          title="Remover cliente"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="px-6 py-4 border-t border-slate-100">
+              <p className="text-sm text-slate-500">
+                Mostrando <span className="font-semibold text-slate-800">{filtered.length}</span> de{' '}
+                <span className="font-semibold text-slate-800">{clients.length}</span> clientes
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Modals ─── */}
+      {showNewClientModal && (
+        <NewClientWithTransactionModal
+          onClose={() => setShowNewClientModal(false)}
+          onSuccess={fetchAll}
+        />
+      )}
+
+      {quickTxClient && (
+        <QuickTransactionModal
+          client={quickTxClient}
+          onClose={() => setQuickTxClient(null)}
+          onSuccess={fetchAll}
+        />
+      )}
+
+      {notifClient && (
+        <ClientNotificationConfig
+          client={notifClient}
+          onClose={() => { setNotifClient(null); fetchAll(); }}
+        />
+      )}
+
+      {showGlobalNotif && (
+        <GlobalNotificationSettings
+          onClose={() => setShowGlobalNotif(false)}
+        />
+      )}
+
+      {statementClient && (
+        <ClientStatementModalV2
+          clientId={statementClient.id}
+          clientName={statementClient.name}
+          onClose={() => setStatementClient(null)}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={!!clientToDelete}
+        onClose={() => setClientToDelete(null)}
+        onConfirm={() => clientToDelete && handleDeleteClient(clientToDelete)}
+        title="Remover Cliente"
+        message={
+          <div className="space-y-2">
+            <p>Deseja remover o cliente <strong className="text-slate-900">"{clientToDelete?.name}"</strong>?</p>
+            <p className="text-xs text-slate-400 italic">Os lançamentos vinculados ao cliente serão mantidos, mas ele deixará de aparecer nas listagens.</p>
+          </div>
+        }
+        confirmLabel="Remover Cliente"
+        confirmColor="red"
+      />
+    </div>
+  );
+}

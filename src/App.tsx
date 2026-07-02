@@ -45,6 +45,8 @@ import ClientsV2 from './pages/v2/ClientsV2';
 import AdminBroadcastV2 from './pages/v2/AdminBroadcastV2';
 import AdminSystemTestsV2 from './pages/v2/AdminSystemTestsV2';
 import AdminChangelogV2 from './pages/v2/AdminChangelogV2';
+import GestaoClientesV2 from './pages/v2/ClientsArea/GestaoClientesV2';
+import CobrancasV2 from './pages/v2/ClientsArea/CobrancasV2';
 
 // Componente para rotas de administrador
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -105,7 +107,16 @@ function AppRoutes() {
           {/* 
             ROTAS V2 PROTEGIDAS (Agora são o padrão do sistema) 
           */}
-          <Route path="/v2/clientes" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ClientListV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
+          {/* Rota legada /v2/clientes → redireciona para nova gestão */}
+          <Route path="/v2/clientes" element={<Navigate to="/v2/clientes/gestao" replace />} />
+
+          {/* Rota legada /v2/recorrencia → redireciona para nova gestão de clientes */}
+          <Route path="/v2/recorrencia" element={<Navigate to="/v2/clientes/gestao" replace />} />
+
+          {/* Novas rotas da área de Clientes */}
+          <Route path="/v2/clientes/gestao" element={<ProtectedRoute><MainLayoutV2><GestaoClientesV2 /></MainLayoutV2></ProtectedRoute>} />
+          <Route path="/v2/clientes/cobrancas" element={<ProtectedRoute><MainLayoutV2><CobrancasV2 /></MainLayoutV2></ProtectedRoute>} />
+
           <Route path="/v2/pagamentos" element={<ProtectedRoute><MainLayoutV2><ClientProvider><MonthlyPaymentsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/relatorios" element={<ProtectedRoute><MainLayoutV2><ClientProvider><ReportsV2 /></ClientProvider></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/feedbacks" element={<ProtectedRoute><MainLayoutV2><FeedbackV2 /></MainLayoutV2></ProtectedRoute>} />
