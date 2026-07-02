@@ -130,4 +130,14 @@ O projeto é o "recebimento-smart", um sistema híbrido que serve tanto para con
 11. **Manutenção do FAQ:** Sempre que criarmos, modificarmos ou retirarmos uma funcionalidade, o FAQ (em `src/components/v2/FAQPage/index.tsx`) precisa ser imediatamente revisado para se manter sempre atualizado.
 12. **Crítica Construtiva e Padrão Ouro:** Sempre que o usuário sugerir uma funcionalidade ou fluxo financeiro, avalie se ela atende às melhores práticas ("Padrão Ouro"). Se a sugestão for ineficiente ou gerar riscos de consistência de dados (como duplicidades ou loops indesejados), faça um alerta imediato. Apresente como grandes sistemas de faturamento e assinatura resolvem a questão e dê as duas opções de escolha para o usuário.
 13. **Proibição de Diálogos Nativos:** Nunca use e nunca sugira diálogos nativos do navegador (como `alert`, `confirm` ou `prompt`). Sempre implemente modais de confirmação customizados em React ou use notificações toast para comunicar e interagir com o usuário.
+14. **Auditoria Cruzada de Telas Financeiras (OBRIGATÓRIO):** Sempre que qualquer alteração envolver lógica de lançamentos, transações, valores, filtros de dados financeiros ou queries de `financial_transactions` / `v_financial_transactions`, você DEVE verificar se a mesma alteração precisa ser aplicada em **TODAS** as seguintes telas (auditadas em 02/07/2026):
+    - `src/pages/v2/FinancialTransactionsV2.tsx` — Lista principal de lançamentos
+    - `src/pages/v2/DashboardV2.tsx` — Dashboard / painel principal
+    - `src/pages/v2/CreditCardV2.tsx` — Cartões de crédito e faturas
+    - `src/pages/v2/RecurrenceV2.tsx` — Recorrências por cliente
+    - `src/pages/v2/ClientsArea/CobrancasV2.tsx` — Cobranças de clientes (já tinha filtro correto)
+    - `src/pages/v2/ClientsArea/GestaoClientesV2.tsx` — Gestão de clientes (já tinha filtro correto)
+    - `src/pages/v2/ReportsV2/index.tsx` — Relatórios (usa tabela `payments` legado — verificar se ainda é relevante)
+    - Verificar também: `src/components/financeiro/ModalOpcaoRecorrente.tsx` e `src/lib/financeiro/*.ts` para impacto em lógica compartilhada.
+    > **Regra de ouro:** Não feche nenhuma tarefa financeira sem confirmar que todas essas telas foram inspecionadas.
 </OUTPUT_INSTRUCTION>
