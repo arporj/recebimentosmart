@@ -373,7 +373,7 @@ export default function GestaoClientesV2() {
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
-                  <tr key={client.id} className="hover:bg-slate-800/90 transition-all duration-150 group">
+                  <tr key={client.id} className="hover:bg-slate-700/80 transition-colors duration-150 group">
                     {/* Client name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
