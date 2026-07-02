@@ -425,7 +425,6 @@ const FinancialTransactionsV2 = () => {
     }
 
     const maxDate = endOfMonth(currentMonth);
-    const todayStr = format(today, 'yyyy-MM-dd');
 
     // Fase 1: Adicionar transações físicas reais (de transactions)
     for (const t of transactions) {
@@ -434,16 +433,11 @@ const FinancialTransactionsV2 = () => {
       const tDate = parseISO(t.date);
 
       if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
-        let finalInstanceDate = t.date;
-        const isUnpaid = t.status !== 'paid';
-        
-        if (isUnpaid && t.date < todayStr) {
-          finalInstanceDate = todayStr;
-        }
-        
+        // Lançamentos não pagos do passado permanecem no seu mês original.
+        // O status visual "overdue" é tratado por getVisualStatus().
         instances.push({ 
           ...t, 
-          instanceDate: finalInstanceDate, 
+          instanceDate: t.date, 
           originalInstanceDate: t.date, 
           isVirtual: false 
         });
