@@ -361,9 +361,8 @@ export default function GestaoClientesV2() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-900/50 border-b border-slate-800">
+                   <thead>
+                <tr className="bg-slate-900/60 border-b border-slate-800">
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Próx. Vencimento</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Pendente</th>
@@ -373,17 +372,17 @@ export default function GestaoClientesV2() {
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
-                  <tr key={client.id} className="hover:bg-slate-50/60 transition-colors group">
+                  <tr key={client.id} className="hover:bg-slate-800/60 transition-colors group">
                     {/* Client name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                          client.status ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-400'
+                          client.status ? 'bg-teal-500/10 text-teal-400' : 'bg-slate-800 text-slate-500'
                         }`}>
                           <User size={18} />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-800">{client.name}</p>
+                          <p className="font-bold text-slate-100">{client.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {client.phone && (
                               <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -391,11 +390,11 @@ export default function GestaoClientesV2() {
                               </span>
                             )}
                             {hasNotificationConfig ? (
-                              <span className="text-xs text-blue-500 flex items-center gap-1">
+                              <span className="text-xs text-teal-400 flex items-center gap-1">
                                 <Bell size={10} /> Notif. ativa
                               </span>
                             ) : (
-                              <span className="text-xs text-slate-300 flex items-center gap-1">
+                              <span className="text-xs text-slate-500 flex items-center gap-1">
                                 <BellOff size={10} /> Sem notif.
                               </span>
                             )}
@@ -408,17 +407,17 @@ export default function GestaoClientesV2() {
                     <td className="px-6 py-4">
                       {nextDueDate ? (
                         <div>
-                          <p className={`text-sm font-semibold ${overdueCount > 0 ? 'text-rose-600' : 'text-slate-700'}`}>
+                          <p className={`text-sm font-semibold ${overdueCount > 0 ? 'text-rose-400' : 'text-slate-200'}`}>
                             {format(parseISO(nextDueDate), 'dd/MM/yyyy')}
                           </p>
                           {overdueCount > 0 && (
-                            <p className="text-xs text-rose-500 font-medium">
+                            <p className="text-xs text-rose-400 font-medium">
                               {overdueCount} em atraso
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-300 italic">Sem lançamentos</span>
+                        <span className="text-xs text-slate-500 italic">Sem lançamentos</span>
                       )}
                     </td>
 
@@ -427,38 +426,38 @@ export default function GestaoClientesV2() {
                       {pendingCount > 0 ? (
                         <div className="space-y-0.5">
                           {totalIncomePending > 0 && (
-                            <p className="font-bold text-sm text-emerald-600">
+                            <p className="font-bold text-sm text-emerald-400">
                               + {formatCurrency(totalIncomePending)} <span className="text-[10px] text-slate-400 font-normal">a receber</span>
                             </p>
                           )}
                           {totalExpensePending > 0 && (
-                            <p className="font-bold text-sm text-rose-600">
+                            <p className="font-bold text-sm text-rose-400">
                               - {formatCurrency(totalExpensePending)} <span className="text-[10px] text-slate-400 font-normal">a pagar</span>
                             </p>
                           )}
                           <p className="text-[11px] text-slate-400">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-300">—</span>
+                        <span className="text-xs text-slate-500">—</span>
                       )}
                     </td>
 
                     {/* Status badge */}
                     <td className="px-6 py-4 text-center">
                       {overdueCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                           <AlertTriangle size={10} /> Em atraso
                         </span>
                       ) : pendingCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                           <Clock size={10} /> A vencer
                         </span>
                       ) : client.status ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           <CheckCircle2 size={10} /> Em dia
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
                           Inativo
                         </span>
                       )}
@@ -469,14 +468,14 @@ export default function GestaoClientesV2() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setStatementClient({ id: client.id, name: client.name })}
-                          className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all"
+                          className="p-2 text-slate-400 hover:text-teal-400 hover:bg-slate-800 rounded-xl transition-all"
                           title="Ver extrato"
                         >
                           <Eye size={15} />
                         </button>
                         <button
                           onClick={() => setQuickTxClient(client)}
-                          className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all"
+                          className="p-2 text-slate-400 hover:text-teal-400 hover:bg-slate-800 rounded-xl transition-all"
                           title="Adicionar lançamento"
                         >
                           <Plus size={15} />
@@ -485,8 +484,8 @@ export default function GestaoClientesV2() {
                           onClick={() => setNotifClient(client)}
                           className={`p-2 rounded-xl transition-all ${
                             hasNotificationConfig
-                              ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
-                              : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                              ? 'text-teal-400 hover:bg-teal-500/10'
+                              : 'text-slate-400 hover:text-teal-400 hover:bg-slate-800'
                           }`}
                           title="Configurar notificação"
                         >
@@ -494,7 +493,7 @@ export default function GestaoClientesV2() {
                         </button>
                         <button
                           onClick={() => setClientToDelete(client)}
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                          className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-all"
                           title="Remover cliente"
                         >
                           <Trash2 size={15} />
@@ -506,10 +505,10 @@ export default function GestaoClientesV2() {
               </tbody>
             </table>
 
-            <div className="px-6 py-4 border-t border-slate-100">
-              <p className="text-sm text-slate-500">
-                Mostrando <span className="font-semibold text-slate-800">{filtered.length}</span> de{' '}
-                <span className="font-semibold text-slate-800">{clients.length}</span> clientes
+            <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/30">
+              <p className="text-sm text-slate-400">
+                Mostrando <span className="font-bold text-slate-200">{filtered.length}</span> de{' '}
+                <span className="font-bold text-slate-200">{clients.length}</span> clientes
               </p>
             </div>
           </div>
