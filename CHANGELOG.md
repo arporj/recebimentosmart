@@ -6,6 +6,21 @@ O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ---
 
+## [2.4.0] - 2026-07-02
+
+### Adicionado
+- **Campos Personalizados no Cadastro de Clientes**: Inclusão de suporte nativo a campos personalizados (custom fields) diretamente no Step 1 do modal de criação `NewClientWithTransactionModal.tsx`.
+- **Regra de Auditoria de Telas Financeiras**: Adicionada regra rigorosa de verificação cruzada (Regra 14 no GEMINI.md) obrigando auditoria de todas as telas que consomem dados financeiros a cada modificação em lançamentos.
+
+### Modificado
+- **Responsividade na Gestão de Clientes**: Substituição da tabela rígida por uma estrutura híbrida no mobile: KPIs com truncamento flexível contra overflow e listagem de clientes exibida em cards compactos empilhados com botões táteis.
+
+### Corrigido
+- **Filtro de Templates Recorrentes**: Correção da exibição indevida de templates recorrentes ("mãe") nas queries principais de faturamento e saldo em `DashboardV2.tsx`, `CreditCardV2.tsx` e `RecurrenceV2.tsx` (agora filtrando `is_template = false`).
+- **Lançamentos Antigos no Mês Atual**: Correção do bug na função `allInstancesUpToMonth` que movia transações não pagas de meses anteriores para a data de hoje.
+- **Remoção de Templates Fantasmas**: Criação de migração de banco para deletar templates órfãos com valor R$ 0,00 e sem filhos físicos que geravam exibições virtuais infinitas.
+- **Legibilidade no Modo Dark**: Suporte completo a cores escuras (`dark:bg-slate-900`, `dark:text-slate-100`, etc.) no componente `ModalOpcaoRecorrente.tsx`.
+
 ## [2.3.0] - 2026-07-01
 
 ### Adicionado
