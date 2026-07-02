@@ -4,7 +4,7 @@ import {
   CheckCircle2, Users, TrendingUp, Clock, Globe, MoreVertical,
   Pencil, Trash2, Eye, User, Phone, Mail, BellOff
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -37,6 +37,7 @@ export default function GestaoClientesV2() {
   const { user } = useAuth();
   const { checkLimit, refreshLimits } = usePlanLimits();
 
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [clients, setClients] = useState<Client[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [notifConfigs, setNotifConfigs] = useState<Record<string, boolean>>({});
@@ -57,7 +58,10 @@ export default function GestaoClientesV2() {
     if (!user) return;
     setLoading(true);
     try {
-      await gerarOcorrencias(new Date());
+      await gerarOcorrencias(currentMonth);
+
+      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
       const [{ data: clientsData }, { data: txData }, { data: notifData }] = await Promise.all([
         supabase
@@ -72,7 +76,9 @@ export default function GestaoClientesV2() {
           .eq('user_id', user.id)
           .not('client_id', 'is', null)
           .neq('status', 'cancelled')
-          .eq('is_template', false),
+          .eq('is_template', false)
+          .gte('date', start)
+          .lte('date', end),
         supabase
           .from('client_notification_settings')
           .select('client_id')
@@ -94,7 +100,7 @@ export default function GestaoClientesV2() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, currentMonth]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -157,15 +163,37 @@ export default function GestaoClientesV2() {
   const formatCurrency = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
+
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
       {/* ─── Header ─── */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 font-manrope">Gestão de Clientes</h1>
-          <p className="text-slate-500 text-sm mt-1">Visão consolidada de clientes e lançamentos vinculados.</p>
+          <p className="text-slate-500 text-sm mt-1">Visão consolidada de clientes e lançamentos do mês.</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Month selector */}
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
+            <button
+              onClick={() => setCurrentMonth(m => subMonths(m, 1))}
+              className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              ‹
+            </button>
+            <span className="text-sm font-bold text-slate-700 capitalize min-w-[130px] text-center">
+              {monthLabel}
+            </span>
+            <button
+              onClick={() => setCurrentMonth(m => addMonths(m, 1))}
+              className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              ›
+            </button>
+          </div>
+
           <button
             onClick={() => setShowGlobalNotif(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
@@ -186,7 +214,7 @@ export default function GestaoClientesV2() {
         {[
           { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', sub: 'cadastrados' },
           { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50', sub: 'clientes' },
-          { label: 'Total Pendente', value: formatCurrency(totalPendingAll), icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', sub: 'todos os meses' },
+          { label: 'Pendente (Mês)', value: formatCurrency(totalPendingAll), icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', sub: monthLabel },
           { label: 'Com Notificação', value: totalWithNotif, icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50', sub: 'configurados' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">

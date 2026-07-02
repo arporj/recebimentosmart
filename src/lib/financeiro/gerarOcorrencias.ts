@@ -13,10 +13,11 @@ export async function gerarOcorrencias(targetDate: Date = new Date()) {
   const monthStart = startOfMonth(targetDate);
   const monthEnd = endOfMonth(targetDate);
 
-  // 1. Buscar transações mãe (recorrentes e sem parent_id)
+  // 1. Buscar transações mãe (recorrentes e sem parent_id) do usuário atual
   const { data: parents } = await supabase
     .from('financial_transactions')
     .select('*')
+    .eq('user_id', userData.user.id)
     .eq('modalidade', 'recorrente')
     .is('parent_id', null)
     .or(`recurrence_end_date.is.null,recurrence_end_date.gte.${format(monthStart, 'yyyy-MM-dd')}`);
@@ -30,6 +31,7 @@ export async function gerarOcorrencias(targetDate: Date = new Date()) {
     const { data: exists } = await supabase
       .from('financial_transactions')
       .select('id')
+      .eq('user_id', userData.user.id)
       .eq('parent_id', parent.id)
       .gte('date', format(monthStart, 'yyyy-MM-dd'))
       .lte('date', format(monthEnd, 'yyyy-MM-dd'))
@@ -44,7 +46,8 @@ export async function gerarOcorrencias(targetDate: Date = new Date()) {
       if (isBefore(occurrenceDate, parseISO(parent.date))) continue;
 
       newOccurrences.push({
-        user_id: parent.user_id,
+        user_id: userData.user.id,
+        client_id: parent.client_id || null,
         description: parent.description,
         amount: parent.amount,
         type: parent.type,
