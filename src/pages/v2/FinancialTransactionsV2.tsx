@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Filter,
   CheckCircle2,
+  CalendarCheck,
   Repeat,
   Zap,
   ArrowRight,
@@ -555,6 +556,79 @@ const FinancialTransactionsV2 = () => {
     setQuickEditIsConfirming(true);
     setIsQuickEditOpen(true);
     setOpenDropdown(null);
+  };
+
+  const handleConfirmTodayAction = async (t: TransactionInstance) => {
+    setOpenDropdown(null);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayIso = new Date().toISOString();
+
+    try {
+      const cardConfig = t.account_id ? creditCardAccounts.find((c: any) => c.id === t.account_id) : null;
+      const isCreditCard = t.account_type === 'credit_card' || (cardConfig && cardConfig.type === 'credit_card');
+      const calculatedInvoiceMonth = cardConfig ? calcularMesFatura(todayStr, cardConfig) : null;
+
+      if (t.isVirtual) {
+        const newChildPayload: any = {
+          user_id: user!.id,
+          type: t.type,
+          amount: t.amount,
+          date: todayStr,
+          description: t.description || '',
+          account_id: t.account_id === 'sem-conta' ? null : (t.account_id || null),
+          category_id: t.category_id || null,
+          client_id: t.client_id || null,
+          status: 'paid',
+          paid_date: todayIso,
+          parent_id: t.parent_id || t.id,
+          modalidade: 'unica',
+          is_customized: true,
+          installment_current: t.installment_current || 1,
+          recurrence_enabled: false,
+          auto_confirm: false,
+          invoice_month: isCreditCard ? (calculatedInvoiceMonth || t.invoice_month || null) : null,
+        };
+
+        const { data: newChild, error: insertError } = await supabase
+          .from('financial_transactions')
+          .insert(newChildPayload)
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
+
+        if (t.tags && t.tags.length > 0 && newChild) {
+          const tagIds = t.tags.map((tagObj: any) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+          if (tagIds.length > 0) {
+            const junctionRows = tagIds.map((tagId: string) => ({
+              transaction_id: newChild.id,
+              tag_id: tagId,
+            }));
+            await supabase.from('transaction_tags').insert(junctionRows);
+          }
+        }
+      } else {
+        const updatePayload: any = {
+          status: 'paid',
+          paid_date: todayIso,
+          date: todayStr,
+          ...(isCreditCard && calculatedInvoiceMonth ? { invoice_month: calculatedInvoiceMonth } : {}),
+        };
+
+        const { error: updateError } = await supabase
+          .from('financial_transactions')
+          .update(updatePayload)
+          .eq('id', t.id);
+
+        if (updateError) throw updateError;
+      }
+
+      toast.success('Lançamento confirmado para hoje!');
+      fetchTransactions();
+    } catch (err: any) {
+      console.error('Erro ao confirmar hoje:', err);
+      toast.error('Erro ao confirmar lançamento.');
+    }
   };
 
 
@@ -1825,7 +1899,10 @@ const FinancialTransactionsV2 = () => {
                     {openDropdown === dropdownKey && (
                       <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-1.5 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                         {t.status !== 'paid' && (
-                          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
+                          <>
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-blue-600 hover:bg-blue-50 flex items-center gap-2"><CheckCircle2 size={12} /> Confirmar</button>
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmTodayAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"><CalendarCheck size={12} /> Confirmar hoje</button>
+                          </>
                         )}
                         {t.status === 'paid' && (
                           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnconfirmAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-amber-600 hover:bg-amber-50 flex items-center gap-2"><XCircle size={12} /> Desconfirmar</button>
@@ -2388,7 +2465,10 @@ const FinancialTransactionsV2 = () => {
                         {openDropdown === dropdownKey && (
                           <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`absolute right-0 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[300] ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                             {t.status !== 'paid' && (
-                              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                              <>
+                                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center gap-3"><CheckCircle2 size={14} /> Confirmar</button>
+                                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmTodayAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-emerald-600 hover:bg-emerald-50 flex items-center gap-3"><CalendarCheck size={14} /> Confirmar hoje</button>
+                              </>
                             )}
                             {t.status === 'paid' && (
                               <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnconfirmAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-amber-600 hover:bg-amber-50 flex items-center gap-3"><XCircle size={14} /> Desconfirmar</button>
