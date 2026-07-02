@@ -60,8 +60,6 @@ export default function GestaoClientesV2() {
     if (!user) return;
     setLoading(true);
     try {
-      await gerarOcorrencias(currentMonth);
-
       const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
       const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
