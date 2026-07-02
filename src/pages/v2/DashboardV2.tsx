@@ -222,15 +222,16 @@ const DashboardV2 = () => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     
     // Mapeamentos para identificar filhos físicos desmembrados de recorrências
-    const physicalIndicesByParent = new Map<string, Set<number>>();
     const physicalDatesByParent = new Map<string, Set<string>>();
-    
+    const physicalMonthsByParent = new Map<string, Set<string>>();
+    const physicalIndicesByParent = new Map<string, Set<number>>();
+
     txList.forEach(t => {
       if (t.parent_id) {
-        if (!physicalIndicesByParent.has(t.parent_id)) {
-          physicalIndicesByParent.set(t.parent_id, new Set());
-        }
-        if (t.installment_current) {
+        if (t.installment_current !== null && t.installment_current !== undefined) {
+          if (!physicalIndicesByParent.has(t.parent_id)) {
+            physicalIndicesByParent.set(t.parent_id, new Set());
+          }
           physicalIndicesByParent.get(t.parent_id)!.add(t.installment_current);
         }
         
@@ -238,6 +239,11 @@ const DashboardV2 = () => {
           physicalDatesByParent.set(t.parent_id, new Set());
         }
         physicalDatesByParent.get(t.parent_id)!.add(t.date);
+
+        if (!physicalMonthsByParent.has(t.parent_id)) {
+          physicalMonthsByParent.set(t.parent_id, new Set());
+        }
+        physicalMonthsByParent.get(t.parent_id)!.add(t.date.substring(0, 7));
       }
     });
 
@@ -283,7 +289,8 @@ const DashboardV2 = () => {
         
         const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
         const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
-        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
+        const hasPhysicalByMonth = period === 'monthly' && physicalMonthsByParent.get(parentId)?.has(dateStr.substring(0, 7));
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate || hasPhysicalByMonth;
         
         if (!alreadyHasPhysical) {
           const status = t.account_type === 'credit_card' 

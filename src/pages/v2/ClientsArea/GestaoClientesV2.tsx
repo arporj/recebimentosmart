@@ -97,11 +97,11 @@ export default function GestaoClientesV2() {
 
       // Process virtual occurrences from templates for currentMonth
       const endMonthDate = endOfMonth(currentMonth);
-      const physicalDatesByParent = new Map<string, Set<string>>();
+      const physicalMonthsByParent = new Map<string, Set<string>>();
       (txData || []).forEach((t: any) => {
         if (t.parent_id) {
-          if (!physicalDatesByParent.has(t.parent_id)) physicalDatesByParent.set(t.parent_id, new Set());
-          physicalDatesByParent.get(t.parent_id)!.add(t.date);
+          if (!physicalMonthsByParent.has(t.parent_id)) physicalMonthsByParent.set(t.parent_id, new Set());
+          physicalMonthsByParent.get(t.parent_id)!.add(t.date.substring(0, 7));
         }
       });
 
@@ -117,9 +117,10 @@ export default function GestaoClientesV2() {
           if (recEndDate && isAfter(cursor, recEndDate)) break;
 
           const dateStr = format(cursor, 'yyyy-MM-dd');
+          const monthKey = dateStr.substring(0, 7);
           if (isSameMonth(cursor, currentMonth)) {
-            const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
-            if (!alreadyHasPhysical) {
+            const alreadyHasPhysicalInMonth = physicalMonthsByParent.get(parentId)?.has(monthKey);
+            if (!alreadyHasPhysicalInMonth) {
               virtualOccurrences.push({
                 id: `virtual-${tmpl.id}-${dateStr}`,
                 amount: Number(tmpl.amount),

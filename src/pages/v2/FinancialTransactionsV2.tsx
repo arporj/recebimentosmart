@@ -395,6 +395,7 @@ const FinancialTransactionsV2 = () => {
 
     // 1. Identificar registros físicos daquela cadeia para evitar sobreposição
     const physicalDatesByParent = new Map<string, Set<string>>();
+    const physicalMonthsByParent = new Map<string, Set<string>>();
     const physicalIndicesByParent = new Map<string, Set<number>>();
     for (const t of transactions) {
       const parentId = t.parent_id || t.id;
@@ -403,9 +404,11 @@ const FinancialTransactionsV2 = () => {
       }
       physicalDatesByParent.get(parentId)!.add(t.date);
 
-      // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
-      // Isso nos permite detectar quando uma ocorrência específica (inclusive a primeira/mãe)
-      // foi desmembrada em um filho físico separado por edição de escopo 'somente este'.
+      if (!physicalMonthsByParent.has(parentId)) {
+        physicalMonthsByParent.set(parentId, new Set());
+      }
+      physicalMonthsByParent.get(parentId)!.add(t.date.substring(0, 7));
+
       if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
         if (!physicalIndicesByParent.has(parentId)) {
           physicalIndicesByParent.set(parentId, new Set());
@@ -427,7 +430,6 @@ const FinancialTransactionsV2 = () => {
         let finalInstanceDate = t.date;
         const isUnpaid = t.status !== 'paid';
         
-        // Se estiver pendente e no passado (atrasado), empurra visualmente para hoje
         if (isUnpaid && t.date < todayStr) {
           finalInstanceDate = todayStr;
         }
@@ -460,7 +462,8 @@ const FinancialTransactionsV2 = () => {
 
         const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
         const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
-        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
+        const hasPhysicalByMonth = period === 'monthly' && physicalMonthsByParent.get(parentId)?.has(dateStr.substring(0, 7));
+        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate || hasPhysicalByMonth;
 
         // Gerar apenas se não houver um filho físico real correspondente
         if (!alreadyHasPhysical) {
