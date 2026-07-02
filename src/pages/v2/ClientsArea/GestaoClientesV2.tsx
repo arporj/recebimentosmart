@@ -361,7 +361,8 @@ export default function GestaoClientesV2() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-                   <thead>
+            <table className="w-full text-left border-collapse">
+              <thead>
                 <tr className="bg-slate-900/60 border-b border-slate-800">
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Próx. Vencimento</th>
