@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, Mail, CheckCircle, Loader2, ChevronRight, ArrowRight } from 'lucide-react';
+import { X, User, Phone, Mail, CheckCircle, Loader2, ChevronRight, ArrowRight, Tag } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePlanLimits } from '../../../hooks/usePlanLimits';
 import { criarTransacao } from '../../../lib/financeiro/criarTransacao';
 import { getOrCreateContaPrincipal, listarContas } from '../../../lib/financeiro/contaPrincipal';
+import type { Database } from '../../../types/supabase';
+
+type CustomField = Database['public']['Tables']['custom_fields']['Row'];
 
 interface Account {
   id: string;
@@ -45,6 +48,10 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
   const [clientEmail, setClientEmail] = useState('');
   const [clientStatus, setClientStatus] = useState(true);
 
+  // Custom fields
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+
   const [description, setDescription] = useState('');
   const [amountRaw, setAmountRaw] = useState('');
   const [amount, setAmount] = useState('');
@@ -54,6 +61,19 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+  // Busca campos personalizados ao montar
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('custom_fields')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true })
+      .then(({ data }) => {
+        if (data) setCustomFields(data);
+      });
+  }, [user]);
 
   useEffect(() => {
     if (step === 'transaction' && user) {
@@ -105,6 +125,19 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
         .single();
 
       if (error) throw error;
+
+      // Salvar campos personalizados preenchidos
+      const valuesToUpsert = Object.entries(customFieldValues)
+        .filter(([, value]) => value.trim())
+        .map(([fieldId, value]) => ({ client_id: newClient.id, field_id: fieldId, value: value.trim() }));
+
+      if (valuesToUpsert.length > 0) {
+        const { error: upsertError } = await supabase
+          .from('client_custom_field_values')
+          .upsert(valuesToUpsert, { onConflict: 'client_id, field_id' });
+        if (upsertError) console.error('Erro ao salvar campos personalizados:', upsertError);
+      }
+
       setCreatedClientId(newClient.id);
       refreshLimits();
       if (!description.trim()) {
@@ -186,10 +219,10 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
   const selectClass = "w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#1e293b] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 bg-teal-500/10">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#1e293b] border border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92dvh] sm:max-h-[90vh] animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+        {/* Header — fixo */}
+        <div className="px-6 py-4 border-b border-slate-800 bg-teal-500/10 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-teal-400 font-manrope">Novo Cliente</h2>
             <button
@@ -222,8 +255,10 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
-          {/* ─── STEP 1: Client Data ─── */}
+        {/* Body — scrollável */}
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+
+          {/* ─── STEP 1: Dados do Cliente ─── */}
           {step === 'client' && (
             <>
               <div className="space-y-1.5">
@@ -240,7 +275,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Phone size={12} /> Telefone
@@ -271,6 +306,41 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                 </div>
               </div>
 
+              {/* Campos Personalizados — exibidos somente se existirem */}
+              {customFields.length > 0 && (
+                <div className="pt-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Tag size={11} className="text-slate-500" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        Campos Personalizados
+                      </span>
+                    </div>
+                    <div className="h-px bg-slate-800 flex-1" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {customFields.map(field => (
+                      <div key={field.id} className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {field.name}
+                          <span className="text-slate-600 font-normal normal-case ml-1">— opcional</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={customFieldValues[field.id] || ''}
+                          onChange={e =>
+                            setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))
+                          }
+                          placeholder="Sem informação"
+                          className={inputClass}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Toggle ativo/inativo */}
               <div className="flex items-center gap-3 p-4 bg-slate-800/40 rounded-xl border border-slate-800">
                 <button
                   type="button"
@@ -308,7 +378,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
             </>
           )}
 
-          {/* ─── STEP 2: Transaction ─── */}
+          {/* ─── STEP 2: Lançamento ─── */}
           {step === 'transaction' && (
             <>
               <p className="text-xs text-teal-300 bg-teal-950/30 px-4 py-2.5 rounded-xl border border-teal-900/50">
