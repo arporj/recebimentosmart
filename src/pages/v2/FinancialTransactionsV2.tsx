@@ -485,10 +485,6 @@ const FinancialTransactionsV2 = () => {
 
           const status = 'pending';
           let finalInstanceDate = dateStr;
-          
-          if (dateStr < todayStr) {
-             finalInstanceDate = todayStr;
-          }
 
           instances.push({
             ...t,

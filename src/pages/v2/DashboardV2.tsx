@@ -297,10 +297,6 @@ const DashboardV2 = () => {
             ? 'paid' 
             : 'pending';
           let finalInstanceDate = dateStr;
-          const isUnpaid = status !== 'paid';
-          if (isUnpaid && dateStr < todayStr && t.account_type !== 'credit_card') {
-            finalInstanceDate = todayStr;
-          }
           instances.push({
             ...t,
             is_template: false,
