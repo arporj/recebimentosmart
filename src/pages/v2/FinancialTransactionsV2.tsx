@@ -210,6 +210,7 @@ const FinancialTransactionsV2 = () => {
         .from('v_financial_transactions')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_template', false)
         .order('date', { ascending: true });
 
       if (error) throw error;
