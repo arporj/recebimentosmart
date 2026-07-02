@@ -107,6 +107,9 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
       if (error) throw error;
       setCreatedClientId(newClient.id);
       refreshLimits();
+      if (!description.trim()) {
+        setDescription(clientName.trim());
+      }
       setStep('transaction');
     } catch (err: any) {
       toast.error(err?.message || 'Erro ao criar cliente.');
