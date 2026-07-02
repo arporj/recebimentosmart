@@ -278,21 +278,21 @@ export default function GestaoClientesV2() {
       </div>
 
       {/* ─── KPI Cards ─── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         {[
           { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-400', bg: 'bg-teal-500/10', sub: 'cadastrados' },
           { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10', sub: 'clientes' },
-          { label: 'A Receber (Mês)', value: formatCurrency(totalIncomeAll), icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', sub: monthLabel },
-          { label: 'A Pagar (Mês)', value: formatCurrency(totalExpenseAll), icon: Clock, color: 'text-rose-400', bg: 'bg-rose-500/10', sub: monthLabel },
+          { label: 'A Receber', value: formatCurrency(totalIncomeAll), icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', sub: monthLabel },
+          { label: 'A Pagar', value: formatCurrency(totalExpenseAll), icon: Clock, color: 'text-rose-400', bg: 'bg-rose-500/10', sub: monthLabel },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-800 flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
-              <kpi.icon size={18} className={kpi.color} />
+          <div key={kpi.label} className="bg-[#1e293b] rounded-2xl p-3 md:p-4 shadow-sm border border-slate-800 flex items-center gap-2 md:gap-4 min-w-0">
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
+              <kpi.icon size={15} className={kpi.color} />
             </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
-              <p className={`text-xl font-black ${kpi.color} font-manrope`}>{kpi.value}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">{kpi.sub}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider truncate">{kpi.label}</p>
+              <p className={`text-base md:text-xl font-black ${kpi.color} font-manrope truncate`}>{kpi.value}</p>
+              <p className="text-[9px] md:text-[10px] text-slate-500 mt-0.5 truncate">{kpi.sub}</p>
             </div>
           </div>
         ))}
@@ -333,7 +333,7 @@ export default function GestaoClientesV2() {
         </div>
       </div>
 
-      {/* ─── Table ─── */}
+      {/* ─── Lista de Clientes ─── */}
       <div className="bg-[#1e293b] rounded-2xl shadow-sm border border-slate-800 overflow-hidden">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center text-slate-400 space-y-2">
@@ -360,151 +360,260 @@ export default function GestaoClientesV2() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-900/60 border-b border-slate-800">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Próx. Vencimento</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Pendente</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/80">
-                {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
-                  <tr key={client.id} className="hover:bg-[#2d3b4f] transition-colors duration-150 group">
-                    {/* Client name */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                          client.status ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 group-hover:border-teal-500/40' : 'bg-slate-800 text-slate-500 border border-slate-700'
-                        }`}>
-                          <User size={18} />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-100 group-hover:text-teal-400 transition-colors">{client.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {client.phone && (
-                              <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors flex items-center gap-1">
-                                <Phone size={10} /> {client.phone}
-                              </span>
-                            )}
-                            {hasNotificationConfig ? (
-                              <span className="text-xs text-teal-400 group-hover:text-teal-300 transition-colors flex items-center gap-1 font-medium">
-                                <Bell size={10} /> Notif. ativa
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors flex items-center gap-1">
-                                <BellOff size={10} /> Sem notif.
-                              </span>
-                            )}
-                          </div>
-                        </div>
+          <>
+            {/* ── MOBILE: cards empilhados ── */}
+            <div className="md:hidden divide-y divide-slate-800/80">
+              {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
+                <div key={client.id} className="p-4 space-y-3">
+                  {/* Linha 1: avatar + nome + badge status */}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                      client.status ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                    }`}>
+                      <User size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-100 text-sm truncate">{client.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {client.phone && (
+                          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                            <Phone size={9} /> {client.phone}
+                          </span>
+                        )}
+                        {hasNotificationConfig ? (
+                          <span className="text-[11px] text-teal-400 flex items-center gap-1 font-medium">
+                            <Bell size={9} /> Notif. ativa
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <BellOff size={9} /> Sem notif.
+                          </span>
+                        )}
                       </div>
-                    </td>
-
-                    {/* Next due */}
-                    <td className="px-6 py-4">
-                      {nextDueDate ? (
-                        <div>
-                          <p className={`text-sm font-semibold transition-colors ${overdueCount > 0 ? 'text-rose-400 group-hover:text-rose-300' : 'text-slate-200 group-hover:text-white'}`}>
-                            {format(parseISO(nextDueDate), 'dd/MM/yyyy')}
-                          </p>
-                          {overdueCount > 0 && (
-                            <p className="text-xs text-rose-400 group-hover:text-rose-300 font-medium transition-colors">
-                              {overdueCount} em atraso
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-500 group-hover:text-slate-400 italic transition-colors">Sem lançamentos</span>
-                      )}
-                    </td>
-
-                    {/* Total pending (Income & Expense) */}
-                    <td className="px-6 py-4 text-right">
-                      {pendingCount > 0 ? (
-                        <div className="space-y-0.5">
-                          {totalIncomePending > 0 && (
-                            <p className="font-bold text-sm text-emerald-400 group-hover:text-emerald-300 transition-colors">
-                              + {formatCurrency(totalIncomePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-300 font-normal">a receber</span>
-                            </p>
-                          )}
-                          {totalExpensePending > 0 && (
-                            <p className="font-bold text-sm text-rose-400 group-hover:text-rose-300 transition-colors">
-                              - {formatCurrency(totalExpensePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-300 font-normal">a pagar</span>
-                            </p>
-                          )}
-                          <p className="text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">—</span>
-                      )}
-                    </td>
-
+                    </div>
                     {/* Status badge */}
-                    <td className="px-6 py-4 text-center">
+                    <div className="shrink-0">
                       {overdueCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-colors">
-                          <AlertTriangle size={10} /> Em atraso
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                          <AlertTriangle size={9} /> Atraso
                         </span>
                       ) : pendingCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 transition-colors">
-                          <Clock size={10} /> A vencer
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <Clock size={9} /> A vencer
                         </span>
                       ) : client.status ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
-                          <CheckCircle2 size={10} /> Em dia
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <CheckCircle2 size={9} /> Em dia
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 group-hover:bg-slate-700 group-hover:text-slate-200 transition-colors">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
                           Inativo
                         </span>
                       )}
-                    </td>
+                    </div>
+                  </div>
 
-                    {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setStatementClient({ id: client.id, name: client.name })}
-                          className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-xl transition-all"
-                          title="Ver extrato"
-                        >
-                          <Eye size={15} />
-                        </button>
-                        <button
-                          onClick={() => setQuickTxClient(client)}
-                          className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-xl transition-all"
-                          title="Adicionar lançamento"
-                        >
-                          <Plus size={15} />
-                        </button>
-                        <button
-                          onClick={() => setNotifClient(client)}
-                          className={`p-2 rounded-xl transition-all ${
-                            hasNotificationConfig
-                              ? 'text-teal-400 hover:bg-teal-500/20'
-                              : 'text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80'
-                          }`}
-                          title="Configurar notificação"
-                        >
-                          <Bell size={15} />
-                        </button>
-                        <button
-                          onClick={() => setClientToDelete(client)}
-                          className="p-2 text-slate-400 group-hover:text-rose-400 hover:bg-rose-500/20 rounded-xl transition-all"
-                          title="Remover cliente"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                  {/* Linha 2: vencimento + valores */}
+                  <div className="flex items-start justify-between gap-2 pl-12">
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">Próx. vencimento</p>
+                      {nextDueDate ? (
+                        <p className={`text-sm font-semibold ${
+                          overdueCount > 0 ? 'text-rose-400' : 'text-slate-200'
+                        }`}>
+                          {format(parseISO(nextDueDate), 'dd/MM/yyyy')}
+                          {overdueCount > 0 && <span className="ml-1 text-[10px] text-rose-400">({overdueCount} atrasado{overdueCount > 1 ? 's' : ''})</span>}
+                        </p>
+                      ) : (
+                        <span className="text-xs text-slate-500 italic">Sem lançamentos</span>
+                      )}
+                    </div>
+                    {pendingCount > 0 && (
+                      <div className="text-right">
+                        {totalIncomePending > 0 && (
+                          <p className="text-xs font-bold text-emerald-400">+{formatCurrency(totalIncomePending)}</p>
+                        )}
+                        {totalExpensePending > 0 && (
+                          <p className="text-xs font-bold text-rose-400">-{formatCurrency(totalExpensePending)}</p>
+                        )}
+                        <p className="text-[10px] text-slate-500">{pendingCount} lanç.</p>
                       </div>
-                    </td>
+                    )}
+                  </div>
+
+                  {/* Linha 3: botões de ação */}
+                  <div className="flex items-center gap-1 pl-12 pt-1 border-t border-slate-800/60">
+                    <button
+                      onClick={() => setStatementClient({ id: client.id, name: client.name })}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-300 bg-slate-800/60 hover:bg-teal-500/10 hover:text-teal-400 rounded-xl transition-all"
+                    >
+                      <Eye size={13} /> Extrato
+                    </button>
+                    <button
+                      onClick={() => setQuickTxClient(client)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-300 bg-slate-800/60 hover:bg-teal-500/10 hover:text-teal-400 rounded-xl transition-all"
+                    >
+                      <Plus size={13} /> Lançar
+                    </button>
+                    <button
+                      onClick={() => setNotifClient(client)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-xl transition-all ${
+                        hasNotificationConfig
+                          ? 'text-teal-400 bg-teal-500/10'
+                          : 'text-slate-300 bg-slate-800/60 hover:bg-teal-500/10 hover:text-teal-400'
+                      }`}
+                    >
+                      <Bell size={13} /> Notif.
+                    </button>
+                    <button
+                      onClick={() => setClientToDelete(client)}
+                      className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── DESKTOP: tabela ── */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900/60 border-b border-slate-800">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Próx. Vencimento</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Pendente</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
+                    <tr key={client.id} className="hover:bg-[#2d3b4f] transition-colors duration-150 group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
+                            client.status ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 group-hover:border-teal-500/40' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                          }`}>
+                            <User size={18} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-100 group-hover:text-teal-400 transition-colors">{client.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {client.phone && (
+                                <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors flex items-center gap-1">
+                                  <Phone size={10} /> {client.phone}
+                                </span>
+                              )}
+                              {hasNotificationConfig ? (
+                                <span className="text-xs text-teal-400 group-hover:text-teal-300 transition-colors flex items-center gap-1 font-medium">
+                                  <Bell size={10} /> Notif. ativa
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors flex items-center gap-1">
+                                  <BellOff size={10} /> Sem notif.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {nextDueDate ? (
+                          <div>
+                            <p className={`text-sm font-semibold transition-colors ${overdueCount > 0 ? 'text-rose-400 group-hover:text-rose-300' : 'text-slate-200 group-hover:text-white'}`}>
+                              {format(parseISO(nextDueDate), 'dd/MM/yyyy')}
+                            </p>
+                            {overdueCount > 0 && (
+                              <p className="text-xs text-rose-400 group-hover:text-rose-300 font-medium transition-colors">
+                                {overdueCount} em atraso
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-500 group-hover:text-slate-400 italic transition-colors">Sem lançamentos</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {pendingCount > 0 ? (
+                          <div className="space-y-0.5">
+                            {totalIncomePending > 0 && (
+                              <p className="font-bold text-sm text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                                + {formatCurrency(totalIncomePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-300 font-normal">a receber</span>
+                              </p>
+                            )}
+                            {totalExpensePending > 0 && (
+                              <p className="font-bold text-sm text-rose-400 group-hover:text-rose-300 transition-colors">
+                                - {formatCurrency(totalExpensePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-300 font-normal">a pagar</span>
+                              </p>
+                            )}
+                            <p className="text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {overdueCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-colors">
+                            <AlertTriangle size={10} /> Em atraso
+                          </span>
+                        ) : pendingCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 transition-colors">
+                            <Clock size={10} /> A vencer
+                          </span>
+                        ) : client.status ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
+                            <CheckCircle2 size={10} /> Em dia
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 group-hover:bg-slate-700 group-hover:text-slate-200 transition-colors">
+                            Inativo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setStatementClient({ id: client.id, name: client.name })}
+                            className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-xl transition-all"
+                            title="Ver extrato"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            onClick={() => setQuickTxClient(client)}
+                            className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-xl transition-all"
+                            title="Adicionar lançamento"
+                          >
+                            <Plus size={15} />
+                          </button>
+                          <button
+                            onClick={() => setNotifClient(client)}
+                            className={`p-2 rounded-xl transition-all ${
+                              hasNotificationConfig
+                                ? 'text-teal-400 hover:bg-teal-500/20'
+                                : 'text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80'
+                            }`}
+                            title="Configurar notificação"
+                          >
+                            <Bell size={15} />
+                          </button>
+                          <button
+                            onClick={() => setClientToDelete(client)}
+                            className="p-2 text-slate-400 group-hover:text-rose-400 hover:bg-rose-500/20 rounded-xl transition-all"
+                            title="Remover cliente"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/30">
               <p className="text-sm text-slate-400">
@@ -512,7 +621,7 @@ export default function GestaoClientesV2() {
                 <span className="font-bold text-slate-200">{clients.length}</span> clientes
               </p>
             </div>
-          </div>
+          </>
         )}
       </div>
 
