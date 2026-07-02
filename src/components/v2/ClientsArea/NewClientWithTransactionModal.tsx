@@ -99,6 +99,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
           phone: clientPhone.trim() || null,
           email: clientEmail.trim() || null,
           status: clientStatus,
+          monthly_payment: 0,
         })
         .select('id')
         .single();
