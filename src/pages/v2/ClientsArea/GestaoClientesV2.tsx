@@ -4,7 +4,7 @@ import {
   CheckCircle2, Users, TrendingUp, Clock, Globe, MoreVertical,
   Pencil, Trash2, Eye, User, Phone, Mail, BellOff
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -63,7 +63,7 @@ export default function GestaoClientesV2() {
       const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
       const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
-      const [{ data: clientsData }, { data: txData }, { data: notifData }] = await Promise.all([
+      const [{ data: clientsData }, { data: txData }, { data: templateData }, { data: notifData }] = await Promise.all([
         supabase
           .from('clients')
           .select('*')
@@ -72,13 +72,21 @@ export default function GestaoClientesV2() {
           .order('name', { ascending: true }),
         supabase
           .from('financial_transactions')
-          .select('id, amount, date, status, client_id, type')
+          .select('id, amount, date, status, client_id, type, parent_id')
           .eq('user_id', user.id)
           .not('client_id', 'is', null)
           .neq('status', 'cancelled')
           .eq('is_template', false)
           .gte('date', start)
           .lte('date', end),
+        supabase
+          .from('financial_transactions')
+          .select('id, amount, date, status, client_id, type, recurrence_period, recurrence_interval, recurrence_end_date')
+          .eq('user_id', user.id)
+          .not('client_id', 'is', null)
+          .neq('status', 'cancelled')
+          .eq('is_template', true)
+          .eq('recurrence_enabled', true),
         supabase
           .from('client_notification_settings')
           .select('client_id')
@@ -87,8 +95,55 @@ export default function GestaoClientesV2() {
           .eq('is_active', true),
       ]);
 
+      // Process virtual occurrences from templates for currentMonth
+      const endMonthDate = endOfMonth(currentMonth);
+      const physicalDatesByParent = new Map<string, Set<string>>();
+      (txData || []).forEach((t: any) => {
+        if (t.parent_id) {
+          if (!physicalDatesByParent.has(t.parent_id)) physicalDatesByParent.set(t.parent_id, new Set());
+          physicalDatesByParent.get(t.parent_id)!.add(t.date);
+        }
+      });
+
+      const virtualOccurrences: any[] = [];
+      (templateData || []).forEach((tmpl: any) => {
+        const interval = tmpl.recurrence_interval || 1;
+        const period = tmpl.recurrence_period || 'monthly';
+        const recEndDate = tmpl.recurrence_end_date ? parseISO(tmpl.recurrence_end_date) : null;
+        let cursor = parseISO(tmpl.date);
+        const parentId = tmpl.id;
+
+        while (isBefore(cursor, endMonthDate) || isSameDay(cursor, endMonthDate)) {
+          if (recEndDate && isAfter(cursor, recEndDate)) break;
+
+          const dateStr = format(cursor, 'yyyy-MM-dd');
+          if (isSameMonth(cursor, currentMonth)) {
+            const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
+            if (!alreadyHasPhysical) {
+              virtualOccurrences.push({
+                id: `virtual-${tmpl.id}-${dateStr}`,
+                amount: Number(tmpl.amount),
+                date: dateStr,
+                status: 'pending',
+                client_id: tmpl.client_id,
+                type: tmpl.type,
+                isVirtual: true,
+              });
+            }
+          }
+
+          switch (period) {
+            case 'daily': cursor = addDays(cursor, interval); break;
+            case 'weekly': cursor = addWeeks(cursor, interval); break;
+            case 'monthly': cursor = addMonths(cursor, interval); break;
+            case 'yearly': cursor = addYears(cursor, interval); break;
+            default: cursor = addMonths(cursor, interval);
+          }
+        }
+      });
+
       setClients(clientsData || []);
-      setTransactions(txData || []);
+      setTransactions([...(txData || []), ...virtualOccurrences]);
 
       const notifMap: Record<string, boolean> = {};
       (notifData || []).forEach((n: any) => {

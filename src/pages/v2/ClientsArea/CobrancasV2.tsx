@@ -3,14 +3,12 @@ import {
   Search, TrendingUp, AlertTriangle, CheckCircle2, Clock,
   DollarSign, Bell, Filter, Calendar, Loader2, Send
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../../components/v2/ConfirmModal';
-
-import { gerarOcorrencias } from '../../../lib/financeiro/gerarOcorrencias';
 
 interface Transaction {
   id: string;
@@ -40,24 +38,33 @@ export default function CobrancasV2() {
     if (!user) return;
     setLoading(true);
     try {
-      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      const [{ data: txData, error: txError }, { data: templateData, error: tmplError }] = await Promise.all([
+        supabase
+          .from('financial_transactions')
+          .select('id, amount, date, description, status, client_id, type, parent_id, client:clients!financial_transactions_client_id_fkey(name)')
+          .eq('user_id', user.id)
+          .not('client_id', 'is', null)
+          .neq('status', 'cancelled')
+          .eq('is_template', false)
+          .eq('type', 'income')
+          .gte('date', start)
+          .lte('date', end)
+          .order('date', { ascending: true }),
+        supabase
+          .from('financial_transactions')
+          .select('id, amount, date, description, status, client_id, type, recurrence_period, recurrence_interval, recurrence_end_date, client:clients!financial_transactions_client_id_fkey(name)')
+          .eq('user_id', user.id)
+          .not('client_id', 'is', null)
+          .neq('status', 'cancelled')
+          .eq('is_template', true)
+          .eq('recurrence_enabled', true)
+          .eq('type', 'income'),
+      ]);
 
-      const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('id, amount, date, description, status, client_id, type, client:clients!financial_transactions_client_id_fkey(name)')
-        .eq('user_id', user.id)
-        .not('client_id', 'is', null)
-        .neq('status', 'cancelled')
-        .eq('is_template', false)
-        .eq('type', 'income')
-        .gte('date', start)
-        .lte('date', end)
-        .order('date', { ascending: true });
+      if (txError) throw txError;
+      if (tmplError) throw tmplError;
 
-      if (error) throw error;
-
-      const mapped: Transaction[] = (data || []).map((t: any) => ({
+      const mappedPhysical: Transaction[] = (txData || []).map((t: any) => ({
         id: t.id,
         amount: Number(t.amount),
         date: t.date,
@@ -69,7 +76,56 @@ export default function CobrancasV2() {
         type: t.type,
       }));
 
-      setTransactions(mapped);
+      const endMonthDate = endOfMonth(currentMonth);
+      const physicalDatesByParent = new Map<string, Set<string>>();
+      (txData || []).forEach((t: any) => {
+        if (t.parent_id) {
+          if (!physicalDatesByParent.has(t.parent_id)) physicalDatesByParent.set(t.parent_id, new Set());
+          physicalDatesByParent.get(t.parent_id)!.add(t.date);
+        }
+      });
+
+      const virtualOccurrences: Transaction[] = [];
+      (templateData || []).forEach((tmpl: any) => {
+        const interval = tmpl.recurrence_interval || 1;
+        const period = tmpl.recurrence_period || 'monthly';
+        const recEndDate = tmpl.recurrence_end_date ? parseISO(tmpl.recurrence_end_date) : null;
+        let cursor = parseISO(tmpl.date);
+        const parentId = tmpl.id;
+
+        while (isBefore(cursor, endMonthDate) || isSameDay(cursor, endMonthDate)) {
+          if (recEndDate && isAfter(cursor, recEndDate)) break;
+
+          const dateStr = format(cursor, 'yyyy-MM-dd');
+          if (isSameMonth(cursor, currentMonth)) {
+            const alreadyHasPhysical = physicalDatesByParent.get(parentId)?.has(dateStr);
+            if (!alreadyHasPhysical) {
+              virtualOccurrences.push({
+                id: `virtual-${tmpl.id}-${dateStr}`,
+                amount: Number(tmpl.amount),
+                date: dateStr,
+                description: tmpl.description,
+                status: 'pending',
+                client_id: tmpl.client_id,
+                client_name: tmpl.client?.name || 'Cliente desconhecido',
+                client_email: null,
+                type: tmpl.type,
+              });
+            }
+          }
+
+          switch (period) {
+            case 'daily': cursor = addDays(cursor, interval); break;
+            case 'weekly': cursor = addWeeks(cursor, interval); break;
+            case 'monthly': cursor = addMonths(cursor, interval); break;
+            case 'yearly': cursor = addYears(cursor, interval); break;
+            default: cursor = addMonths(cursor, interval);
+          }
+        }
+      });
+
+      const allTxs = [...mappedPhysical, ...virtualOccurrences].sort((a, b) => a.date.localeCompare(b.date));
+      setTransactions(allTxs);
     } catch {
       toast.error('Erro ao carregar cobranças.');
     } finally {
