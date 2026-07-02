@@ -86,3 +86,23 @@ Este documento registra o histórico de bugs corrigidos, refatorações realizad
 ### 19. 🔄 Refatoração de Recorrências para o Padrão Template/Contrato
 * **Status:** Concluído em Jul/2026.
 * **Descrição:** Refatoração do modelo de recorrência e tabelas para o padrão de contrato/template mãe (`is_template = true`) isolada no extrato e saldo, gerando automaticamente filhos físicos na criação e permitindo edições seguras de escopo e backfill retroativo robusto.
+
+### 20. 🐛 Correção de Lançamentos de Meses Passados Exibidos no Mês Atual
+* **Status:** Concluído em Jul/2026.
+* **Descrição:** Corrigida a lógica da função `allInstancesUpToMonth` que incorretamente movia o `instanceDate` de transações não pagas do passado para o dia atual. Agora, essas transações permanecem em seus meses originais (apenas com a tag visual "atrasado"), e foi adicionado o filtro `is_template = false` nas queries principais de faturamento e extrato (DashboardV2, CreditCardV2 e RecurrenceV2).
+
+### 21. 💡 Correção de Legibilidade do Modal de Recorrência no Modo Dark
+* **Status:** Concluído em Jul/2026.
+* **Descrição:** Ajustadas as classes Tailwind do componente `ModalOpcaoRecorrente.tsx` adicionando suporte completo ao modo dark (`dark:bg-slate-900`, `dark:text-slate-100`, `dark:border-slate-800`), resolvendo problemas de contraste e legibilidade de textos no tema escuro.
+
+### 22. 🗑️ Remoção de Templates Recorrentes Fantasmas Zerados
+* **Status:** Concluído em Jul/2026.
+* **Descrição:** Criada migração no banco de dados para expurgar templates recorrentes órfãos e inativos com `amount = 0.00` e sem filhos físicos. Isso corrigiu o problema em que usuários (como Ricardo Cabral, André Ricardo e Alicia Galhano) viam dezenas de cobranças virtuais zeradas sendo projetadas nos meses futuros.
+
+### 23. 🏷️ Campos Personalizados na Criação de Clientes
+* **Status:** Concluído em Jul/2026.
+* **Descrição:** Integrado suporte nativo para exibição e salvamento de campos personalizados (custom fields) diretamente no Step 1 do modal responsivo de cadastro rápido `NewClientWithTransactionModal.tsx`.
+
+### 24. 📱 Otimização Responsiva da Gestão de Clientes no Mobile
+* **Status:** Concluído em Jul/2026.
+* **Descrição:** Substituído o grid original de KPIs e a tabela de 5 colunas por componentes específicos para mobile: KPIs com fonte flexível e truncamento de texto, e listagem de clientes convertida em cards empilhados (`block md:hidden`) com botões táteis no mobile, mantendo a tabela clássica somente para telas desktop.
