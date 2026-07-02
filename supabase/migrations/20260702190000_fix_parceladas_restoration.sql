@@ -1,7 +1,6 @@
--- Migration: Gold Standard V1 to V2 Client & Payment Data Backfill (Fixed)
--- 1. Corrects import_client_history_v1_to_v2 RPC to properly mark master templates with is_template = true.
--- 2. Backfills master templates and V1 paid history for ALL valid users with c.user_id IS NOT NULL.
--- 3. Cleans up orphaned physical pending child transactions to stop repeating overdue entries.
+-- Migration: Fix Gold Standard V1 to V2 Migration & Restore Missing Installment Transactions
+-- 1. Corrects import_client_history_v1_to_v2_gold to exclude 'parcelada' transactions from cleanup.
+-- 2. Restores missing future installments for all 'parcelada' transactions (e.g., 32/60 to 60/60).
 
 CREATE OR REPLACE FUNCTION public.import_client_history_v1_to_v2_gold(p_target_user_id UUID DEFAULT NULL)
 RETURNS JSONB
@@ -187,12 +186,14 @@ BEGIN
 
     END LOOP;
 
-    -- 3. Limpar transações físicas filhas pendentes que foram geradas erroneamente (substituídas pelo motor virtual da V2)
+    -- 3. Limpar apenas transações físicas filhas de recorrências que foram geradas erroneamente
+    -- PRESERVANDO EXPLICITAMENTE AS PARCELADAS (modalidade = 'parcelada')
     WITH deleted_rows AS (
         DELETE FROM public.financial_transactions
         WHERE parent_id IS NOT NULL 
           AND is_template = false 
           AND status = 'pending'
+          AND (modalidade IS NULL OR modalidade != 'parcelada')
         RETURNING id
     )
     SELECT COUNT(*) INTO v_count_duplicates_cleaned FROM deleted_rows;
@@ -224,5 +225,92 @@ BEGIN
     END IF;
 
     RETURN public.import_client_history_v1_to_v2_gold(v_client.user_id);
+END;
+$$;
+
+-- 4. Função/Bloco de Restauração Automática de Parcelas Faltantes (ex: 32/60 até 60/60)
+DO $$
+DECLARE
+    r_parcel RECORD;
+    i INT;
+    v_next_date DATE;
+    v_base_desc TEXT;
+    v_new_desc TEXT;
+    v_exists BOOLEAN;
+    v_restored_count INT := 0;
+BEGIN
+    -- Buscar todas as transações que são parceladas (ou mães de parcelamentos)
+    FOR r_parcel IN 
+        SELECT * 
+        FROM public.financial_transactions
+        WHERE (modalidade = 'parcelada' OR installment_total > 1)
+          AND installment_total IS NOT NULL 
+          AND installment_total > 1
+          AND (parent_id IS NULL OR parent_id = id)
+        ORDER BY created_at ASC
+    LOOP
+        -- Extrair descrição base sem a numeração de parcela ex: " (31/60)"
+        v_base_desc := regexp_replace(r_parcel.description, '\s*\(\d+/\d+\)$', '', 'g');
+        IF v_base_desc IS NULL OR v_base_desc = '' THEN
+            v_base_desc := r_parcel.description;
+        END IF;
+
+        -- Iterar de (installment_current + 1) até installment_total
+        FOR i IN (COALESCE(r_parcel.installment_current, 1) + 1)..r_parcel.installment_total LOOP
+            -- Verificar se a parcela física i já existe para essa cadeia de parcelas
+            SELECT EXISTS (
+                SELECT 1 
+                FROM public.financial_transactions
+                WHERE (id = r_parcel.id OR parent_id = r_parcel.id)
+                  AND installment_current = i
+            ) INTO v_exists;
+
+            IF NOT v_exists THEN
+                -- Calcular a data da parcela i a partir da data da parcela mãe
+                v_next_date := (r_parcel.date::date + ((i - COALESCE(r_parcel.installment_current, 1)) || ' months')::interval)::date;
+                v_new_desc := v_base_desc || ' (' || i || '/' || r_parcel.installment_total || ')';
+
+                INSERT INTO public.financial_transactions (
+                    user_id,
+                    client_id,
+                    account_id,
+                    category_id,
+                    type,
+                    amount,
+                    date,
+                    description,
+                    modalidade,
+                    parent_id,
+                    installment_current,
+                    installment_total,
+                    status,
+                    is_template,
+                    auto_confirm,
+                    invoice_month
+                ) VALUES (
+                    r_parcel.user_id,
+                    r_parcel.client_id,
+                    r_parcel.account_id,
+                    r_parcel.category_id,
+                    r_parcel.type,
+                    r_parcel.amount,
+                    v_next_date,
+                    v_new_desc,
+                    'parcelada',
+                    r_parcel.id,
+                    i,
+                    r_parcel.installment_total,
+                    'pending',
+                    FALSE,
+                    COALESCE(r_parcel.auto_confirm, FALSE),
+                    r_parcel.invoice_month
+                );
+
+                v_restored_count := v_restored_count + 1;
+            END IF;
+        END LOOP;
+    END LOOP;
+
+    RAISE NOTICE 'Restauradas % parcelas faltantes com sucesso.', v_restored_count;
 END;
 $$;
