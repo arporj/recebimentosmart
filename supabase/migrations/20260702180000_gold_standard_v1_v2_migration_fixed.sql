@@ -1,6 +1,6 @@
--- Migration: Gold Standard V1 to V2 Client & Payment Data Backfill
+-- Migration: Gold Standard V1 to V2 Client & Payment Data Backfill (Fixed)
 -- 1. Corrects import_client_history_v1_to_v2 RPC to properly mark master templates with is_template = true.
--- 2. Backfills master templates and V1 paid history for ALL users (Gilberto, Rafael Macabu, André, etc.).
+-- 2. Backfills master templates and V1 paid history for ALL valid users with c.user_id IS NOT NULL.
 -- 3. Cleans up orphaned physical pending child transactions to stop repeating overdue entries.
 
 CREATE OR REPLACE FUNCTION public.import_client_history_v1_to_v2_gold(p_target_user_id UUID DEFAULT NULL)
@@ -20,11 +20,12 @@ DECLARE
     v_count_duplicates_cleaned INT := 0;
     v_exists BOOLEAN;
 BEGIN
-    -- Loop por todos os clientes (ou de um usuário específico se informado)
+    -- Loop por todos os clientes válidos vinculados a um usuário (garantindo user_id IS NOT NULL)
     FOR r_client IN 
         SELECT c.* 
         FROM public.clients c
-        WHERE (p_target_user_id IS NULL OR c.user_id = p_target_user_id)
+        WHERE c.user_id IS NOT NULL
+          AND (p_target_user_id IS NULL OR c.user_id = p_target_user_id)
           AND (c.deleted_at IS NULL)
         ORDER BY c.user_id, c.name
     LOOP
@@ -205,10 +206,10 @@ BEGIN
 END;
 $$;
 
--- Executar o procedimento para TODOS os usuários do sistema imediatamente
+-- Executar o procedimento para TODOS os usuários válidos do sistema imediatamente
 SELECT public.import_client_history_v1_to_v2_gold(NULL);
 
--- Atualizar a RPC RPC oficial import_client_history_v1_to_v2 para apontar para a versão corrigida
+-- Atualizar a RPC oficial import_client_history_v1_to_v2 para apontar para a versão corrigida
 CREATE OR REPLACE FUNCTION public.import_client_history_v1_to_v2(p_client_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -218,8 +219,8 @@ DECLARE
     v_client RECORD;
 BEGIN
     SELECT * INTO v_client FROM public.clients WHERE id = p_client_id;
-    IF v_client.id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'message', 'Cliente não encontrado.');
+    IF v_client.id IS NULL OR v_client.user_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Cliente inválido ou não encontrado.');
     END IF;
 
     RETURN public.import_client_history_v1_to_v2_gold(v_client.user_id);
