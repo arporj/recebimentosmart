@@ -40,14 +40,8 @@ const sidebarSections: SidebarSection[] = [
     {
         title: 'Clientes',
         items: [
-            {
-                label: 'Clientes',
-                icon: UserCheck,
-                subItems: [
-                    { label: 'Gestão de Clientes', icon: Users, href: '/v2/clientes/gestao' },
-                    { label: 'Cobranças', icon: DollarSign, href: '/v2/clientes/cobrancas' },
-                ]
-            },
+            { label: 'Gestão de Clientes', icon: Users, href: '/v2/clientes/gestao' },
+            { label: 'Cobranças', icon: DollarSign, href: '/v2/clientes/cobrancas' },
         ],
     },
     {

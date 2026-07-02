@@ -243,6 +243,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                     <Phone size={12} /> Telefone
+                    <span className="text-slate-300 font-normal normal-case tracking-normal ml-1">— opcional</span>
                   </label>
                   <input
                     type="tel"
@@ -251,10 +252,12 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                     placeholder="(11) 99999-9999"
                     className={inputClass}
                   />
+                  <p className="text-[10px] text-slate-400">Usado para notificações via WhatsApp (em breve)</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                     <Mail size={12} /> E-mail
+                    <span className="text-slate-300 font-normal normal-case tracking-normal ml-1">— opcional</span>
                   </label>
                   <input
                     type="email"
@@ -263,6 +266,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                     placeholder="email@exemplo.com"
                     className={inputClass}
                   />
+                  <p className="text-[10px] text-slate-400">Usado para notificações de cobrança por e-mail</p>
                 </div>
               </div>
 

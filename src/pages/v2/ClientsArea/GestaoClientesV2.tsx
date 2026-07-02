@@ -16,6 +16,7 @@ import { QuickTransactionModal } from '../../../components/v2/ClientsArea/QuickT
 import { ClientNotificationConfig } from '../../../components/v2/ClientsArea/ClientNotificationConfig';
 import { GlobalNotificationSettings } from '../../../components/v2/ClientsArea/GlobalNotificationSettings';
 import ClientStatementModalV2 from '../../../components/v2/ClientStatementModalV2';
+import { gerarOcorrencias } from '../../../lib/financeiro/gerarOcorrencias';
 import type { Database } from '../../../types/supabase';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -56,6 +57,8 @@ export default function GestaoClientesV2() {
     if (!user) return;
     setLoading(true);
     try {
+      await gerarOcorrencias(new Date());
+
       const [{ data: clientsData }, { data: txData }, { data: notifData }] = await Promise.all([
         supabase
           .from('clients')
@@ -181,10 +184,10 @@ export default function GestaoClientesV2() {
       {/* ─── KPI Cards ─── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
-          { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
-          { label: 'Total Pendente', value: formatCurrency(totalPendingAll), icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Com Notificação', value: totalWithNotif, icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', sub: 'cadastrados' },
+          { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50', sub: 'clientes' },
+          { label: 'Total Pendente', value: formatCurrency(totalPendingAll), icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', sub: 'todos os meses' },
+          { label: 'Com Notificação', value: totalWithNotif, icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50', sub: 'configurados' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
@@ -193,6 +196,7 @@ export default function GestaoClientesV2() {
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
               <p className={`text-xl font-black ${kpi.color} font-manrope`}>{kpi.value}</p>
+              <p className="text-[10px] text-slate-300 mt-0.5">{kpi.sub}</p>
             </div>
           </div>
         ))}

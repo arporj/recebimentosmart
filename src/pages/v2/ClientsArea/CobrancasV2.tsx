@@ -10,6 +10,8 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../../components/v2/ConfirmModal';
 
+import { gerarOcorrencias } from '../../../lib/financeiro/gerarOcorrencias';
+
 interface Transaction {
   id: string;
   amount: number;
@@ -38,15 +40,14 @@ export default function CobrancasV2() {
     if (!user) return;
     setLoading(true);
     try {
+      await gerarOcorrencias(currentMonth);
+
       const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
       const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
       const { data, error } = await supabase
         .from('financial_transactions')
-        .select(`
-          id, amount, date, description, status, client_id, type,
-          client:clients!financial_transactions_client_id_fkey(name, email)
-        `)
+        .select('id, amount, date, description, status, client_id, type, client:clients!financial_transactions_client_id_fkey(name)')
         .eq('user_id', user.id)
         .not('client_id', 'is', null)
         .neq('status', 'cancelled')
@@ -66,7 +67,7 @@ export default function CobrancasV2() {
         status: t.status,
         client_id: t.client_id,
         client_name: t.client?.name || 'Cliente desconhecido',
-        client_email: t.client?.email || null,
+        client_email: null, // será populado após migration adicionar email à tabela clients
         type: t.type,
       }));
 
