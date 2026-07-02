@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { 
     FlaskConical, Users, Mail, CalendarCheck, AlertTriangle, 
     Trash2, Play, Terminal, ChevronRight, CheckCircle, ShieldAlert,
-    Search, ChevronDown, CreditCard
+    Search, ChevronDown, CreditCard, UserCheck
 } from 'lucide-react';
 
 const removeAccents = (str: string): string => {
@@ -207,6 +207,41 @@ export default function AdminSystemTestsV2() {
             console.error('Erro:', error);
             addLog('error', `Erro na RPC process_card_invoice_notification_test: ${error.message || 'Erro inesperado'}`, error);
             toast.error('Erro ao disparar teste.', { id: toastId });
+        } finally {
+            setExecuting(false);
+        }
+    };
+
+    // 2.2. Testar Notificação de Cobrança ao Cliente (envia cópia para o admin)
+    const handleTestClientNotification = async () => {
+        const selUser = getSelectedUser();
+        if (!selUser) {
+            toast.error('Por favor, selecione um usuário primeiro.');
+            return;
+        }
+
+        setExecuting(true);
+        addLog('info', `Invocando Edge Function send-client-notification-manual para notificação de cliente do usuário ${selUser.name || selUser.email}...`);
+        const toastId = toast.loading('Disparando e-mail de teste (Notificação do Cliente)...');
+        
+        try {
+            const { data, error } = await supabase.functions.invoke('send-client-notification-manual', {
+                body: { 
+                    userId: selUser.id,
+                    targetEmail: 'andre@andreric.com',
+                    isTest: true
+                } 
+            });
+            
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            addLog('success', `E-mail de notificação de cobrança do cliente enviado com sucesso para ${data.sentTo || 'andre@andreric.com'}!`, data);
+            toast.success(data.message || 'E-mail de teste enviado para andre@andreric.com!', { id: toastId });
+        } catch (error: any) {
+            console.error('Erro:', error);
+            addLog('error', `Erro ao invocar send-client-notification-manual: ${error.message || 'Erro inesperado'}`, error);
+            toast.error('Erro ao disparar teste de notificação do cliente.', { id: toastId });
         } finally {
             setExecuting(false);
         }
@@ -476,6 +511,14 @@ export default function AdminSystemTestsV2() {
                                 >
                                     <span>Testar Fechamento de Fatura de Cartão</span>
                                     <CreditCard className="w-4 h-4 text-indigo-500" />
+                                </button>
+                                <button
+                                    onClick={handleTestClientNotification}
+                                    disabled={executing || loadingUsers}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 hover:bg-slate-100 transition-all disabled:opacity-50"
+                                >
+                                    <span>Testar Notificação de Cobrança ao Cliente</span>
+                                    <UserCheck className="w-4 h-4 text-teal-600" />
                                 </button>
                                 <button
                                     onClick={handleNotifyDuePayments}

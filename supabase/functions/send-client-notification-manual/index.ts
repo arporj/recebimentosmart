@@ -120,10 +120,15 @@ serve(async (req) => {
     if (!SUPABASE_URL) throw new Error('SUPABASE_URL não configurada');
     if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada');
 
-    const { clientId, userId } = await req.json();
-    if (!clientId || !userId) {
+    const body = await req.json();
+    const clientId = body.clientId || body.client_id;
+    const userId = body.userId || body.user_id;
+    const targetEmail = body.targetEmail || body.target_email;
+    const isTest = Boolean(body.isTest || body.is_test);
+
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: 'clientId e userId são obrigatórios' }),
+        JSON.stringify({ error: 'userId é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -139,42 +144,109 @@ serve(async (req) => {
 
     const userName = profile?.name || 'Recebimento Smart';
 
-    // 2. Buscar dados do cliente
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
-      .select('name, email, phone')
-      .eq('id', clientId)
-      .eq('user_id', userId)
-      .single();
+    let client: { name: string; email: string; phone?: string | null } | null = null;
+    let transactions: any[] = [];
 
-    if (clientError || !client) {
+    if (clientId) {
+      // 2a. Buscar dados do cliente específico
+      const { data: fetchedClient } = await supabase
+        .from('clients')
+        .select('name, email, phone')
+        .eq('id', clientId)
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchedClient) {
+        client = fetchedClient;
+      }
+    }
+
+    // Se não tiver clientId informado ou se não encontrou o cliente específico e não é teste
+    if (!client && !isTest && clientId) {
       return new Response(
         JSON.stringify({ error: 'Cliente não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!client.email) {
+    if (client && !client.email && !targetEmail && !isTest) {
       return new Response(
         JSON.stringify({ error: 'Cliente não tem e-mail cadastrado' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 3. Buscar lançamentos pendentes do cliente
-    const today = new Date().toISOString().split('T')[0];
-    const { data: transactions, error: txError } = await supabase
-      .from('financial_transactions')
-      .select('id, description, amount, date, status')
-      .eq('user_id', userId)
-      .eq('client_id', clientId)
-      .eq('status', 'pending')
-      .eq('type', 'income')
-      .eq('is_template', false)
-      .neq('status', 'cancelled')
-      .order('date', { ascending: true });
+    // 3. Buscar lançamentos pendentes do cliente ou do primeiro cliente do usuário
+    if (client && clientId) {
+      const { data: txData } = await supabase
+        .from('financial_transactions')
+        .select('id, description, amount, date, status')
+        .eq('user_id', userId)
+        .eq('client_id', clientId)
+        .eq('status', 'pending')
+        .eq('type', 'income')
+        .eq('is_template', false)
+        .neq('status', 'cancelled')
+        .order('date', { ascending: true });
 
-    if (txError) throw txError;
+      if (txData) transactions = txData;
+    } else if (isTest) {
+      // Se estiver em modo de teste e não tiver clientId especificado, buscar o primeiro cliente com pendências
+      const { data: firstClientWithTx } = await supabase
+        .from('financial_transactions')
+        .select('client_id, clients!inner(name, email)')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .eq('type', 'income')
+        .eq('is_template', false)
+        .neq('status', 'cancelled')
+        .not('client_id', 'is', null)
+        .limit(1);
+
+      if (firstClientWithTx && firstClientWithTx.length > 0) {
+        const foundClientId = firstClientWithTx[0].client_id;
+        const fetchedClient = (firstClientWithTx[0] as any).clients;
+        if (fetchedClient) client = fetchedClient;
+        const { data: txData } = await supabase
+          .from('financial_transactions')
+          .select('id, description, amount, date, status')
+          .eq('user_id', userId)
+          .eq('client_id', foundClientId)
+          .eq('status', 'pending')
+          .eq('type', 'income')
+          .eq('is_template', false)
+          .neq('status', 'cancelled')
+          .order('date', { ascending: true });
+        if (txData) transactions = txData;
+      }
+    }
+
+    // Fallback para Modo de Teste / Simulação: se não houver lançamentos ou cliente para o teste
+    if (isTest && (!client || transactions.length === 0)) {
+      if (!client) {
+        client = {
+          name: 'Cliente de Demonstração (Simulação)',
+          email: targetEmail || profile?.email || 'teste@recebimentosmart.com.br'
+        };
+      }
+      const todayStr = new Date().toISOString().split('T')[0];
+      transactions = [
+        {
+          id: 'mock-1',
+          description: 'Prestação de Serviços - Simulação de Teste',
+          amount: 150.00,
+          date: todayStr,
+          status: 'pending'
+        },
+        {
+          id: 'mock-2',
+          description: 'Mensalidade de Consultoria (Exemplo)',
+          amount: 250.00,
+          date: todayStr,
+          status: 'pending'
+        }
+      ];
+    }
 
     if (!transactions || transactions.length === 0) {
       return new Response(
@@ -183,12 +255,23 @@ serve(async (req) => {
       );
     }
 
+    // Destinatário final
+    const recipientEmail = targetEmail || client?.email;
+    const recipientName = client?.name || 'Cliente';
+
+    if (!recipientEmail) {
+      return new Response(
+        JSON.stringify({ error: 'Nenhum e-mail de destino foi definido para o envio.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 4. Montar e enviar e-mail
-    const htmlContent = buildEmailHtml(client.name, transactions, userName);
+    const htmlContent = buildEmailHtml(recipientName, transactions, userName);
 
     const emailPayload = {
       sender: { name: 'Recebimento $mart', email: 'no-reply@recebimentosmart.com.br' },
-      to: [{ email: client.email, name: client.name }],
+      to: [{ email: recipientEmail, name: recipientName }],
       subject: `💰 Lembrete: ${transactions.length} lançamento${transactions.length > 1 ? 's' : ''} pendente${transactions.length > 1 ? 's' : ''} para você`,
       htmlContent,
     };
@@ -211,8 +294,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `E-mail enviado para ${client.email}`,
+        sentTo: recipientEmail,
+        message: `E-mail enviado para ${recipientEmail}`,
         transactionsCount: transactions.length,
+        isTest,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
