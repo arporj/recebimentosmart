@@ -93,7 +93,7 @@ function buildEmailHtml(clientName: string, transactions: any[], userName: strin
       </div>
 
       <p style="font-size: 13px; color: #94a3b8; margin: 0;">
-        Em caso de dúvidas, entre em contato diretamente com quem enviou este lembrete.
+        Em caso de dúvidas, entre em contato diretamente com <strong style="color: #475569;">${userName}</strong>.
       </p>
     </div>
 
