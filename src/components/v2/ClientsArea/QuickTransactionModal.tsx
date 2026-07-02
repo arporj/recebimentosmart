@@ -44,7 +44,7 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
     return today.toISOString().split('T')[0];
   });
   const [period, setPeriod] = useState<'monthly' | 'weekly' | 'quarterly' | 'yearly' | 'daily'>('monthly');
-  const [installments, setInstallments] = useState(0); // 0 = recorrente sem fim
+  const [installments, setInstallments] = useState(0);
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -88,11 +88,9 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
 
     setSaving(true);
     try {
-      // Garante que conta principal existe
       const resolvedAccountId = accountId || await getOrCreateContaPrincipal(user.id);
 
       if (installments === 0) {
-        // Recorrente sem fim
         const { error } = await criarTransacao({
           description: description.trim(),
           amount: parsedAmount,
@@ -106,7 +104,6 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
         });
         if (error) throw error;
       } else if (installments === 1) {
-        // Lançamento único
         const { error } = await criarTransacao({
           description: description.trim(),
           amount: parsedAmount,
@@ -118,7 +115,6 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
         });
         if (error) throw error;
       } else {
-        // Parcelado
         const { error } = await criarTransacao({
           description: description.trim(),
           amount: parsedAmount,
@@ -143,30 +139,33 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
     }
   };
 
+  const inputClass = "w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all";
+  const selectClass = "w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#1e293b] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-teal-500/10">
           <div>
-            <h2 className="text-lg font-bold text-white font-manrope">Novo Lançamento</h2>
-            <p className="text-teal-100 text-sm mt-0.5 truncate max-w-[260px]">
-              Para: <span className="font-semibold">{client.name}</span>
+            <h2 className="text-lg font-bold text-teal-400 font-manrope">Novo Lançamento</h2>
+            <p className="text-slate-300 text-sm mt-0.5 truncate max-w-[260px]">
+              Para: <span className="font-semibold text-white">{client.name}</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-teal-100 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Descrição */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Descrição *
             </label>
             <input
@@ -174,26 +173,26 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Ex: Mensalidade, Serviço de consultoria..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+              className={inputClass}
               required
             />
           </div>
 
           {/* Valor */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Valor *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <span className="text-slate-400 text-sm font-bold">R$</span>
+                <span className="text-slate-500 text-sm font-bold">R$</span>
               </div>
               <input
                 type="text"
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder="0,00"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                 inputMode="numeric"
                 required
               />
@@ -202,18 +201,18 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
 
           {/* Data do 1º pagamento */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Data do 1º pagamento *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Calendar size={16} className="text-slate-400" />
+                <Calendar size={16} className="text-slate-500" />
               </div>
               <input
                 type="date"
                 value={firstDate}
                 onChange={e => setFirstDate(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                 required
               />
             </div>
@@ -222,31 +221,31 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
           {/* Periodicidade e Parcelas */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                 <Repeat size={12} /> Periodicidade
               </label>
               <select
                 value={period}
                 onChange={e => setPeriod(e.target.value as typeof period)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                className={selectClass}
               >
                 {PERIOD_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value} className="bg-slate-900 text-slate-100">{o.label}</option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Quantidade
               </label>
               <select
                 value={installments}
                 onChange={e => setInstallments(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                className={selectClass}
               >
                 {INSTALLMENT_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value} className="bg-slate-900 text-slate-100">{o.label}</option>
                 ))}
               </select>
             </div>
@@ -254,11 +253,11 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
 
           {/* Conta */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
               <Wallet size={12} /> Conta
             </label>
             {loadingAccounts ? (
-              <div className="flex items-center gap-2 py-3 px-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-2 py-3 px-4 bg-slate-800/60 rounded-xl border border-slate-700">
                 <Loader2 size={14} className="animate-spin text-slate-400" />
                 <span className="text-sm text-slate-400">Carregando contas...</span>
               </div>
@@ -266,20 +265,20 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
               <select
                 value={accountId}
                 onChange={e => setAccountId(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                className={selectClass}
               >
                 {accounts.length === 0 && (
-                  <option value="">Conta Principal (será criada)</option>
+                  <option value="" className="bg-slate-900 text-slate-100">Conta Principal (será criada)</option>
                 )}
                 {accounts.map(a => (
-                  <option key={a.id} value={a.id}>
+                  <option key={a.id} value={a.id} className="bg-slate-900 text-slate-100">
                     {a.name}{a.is_default ? ' (Principal)' : ''}
                   </option>
                 ))}
               </select>
             )}
             {accounts.length === 0 && !loadingAccounts && (
-              <p className="flex items-center gap-1.5 text-xs text-amber-600">
+              <p className="flex items-center gap-1.5 text-xs text-amber-400">
                 <AlertCircle size={12} />
                 Uma "Conta Principal" será criada automaticamente.
               </p>
@@ -288,9 +287,9 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
 
           {/* Resumo */}
           {parsedAmount > 0 && (
-            <div className="p-4 bg-teal-50 rounded-xl border border-teal-100">
-              <p className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-1">Resumo</p>
-              <p className="text-sm text-teal-800 font-medium">
+            <div className="p-4 bg-teal-950/30 rounded-xl border border-teal-900/50">
+              <p className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-1">Resumo</p>
+              <p className="text-sm text-teal-200 font-medium">
                 {installments === 0
                   ? `Recorrência ${PERIOD_OPTIONS.find(o => o.value === period)?.label.toLowerCase()} de R$ ${amount}`
                   : installments === 1
@@ -302,18 +301,18 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-1">
+          <div className="flex gap-3 pt-2 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex-1 py-3 rounded-xl border border-slate-700 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving || parsedAmount <= 0}
-              className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {saving ? (
                 <><Loader2 size={16} className="animate-spin" /> Salvando...</>

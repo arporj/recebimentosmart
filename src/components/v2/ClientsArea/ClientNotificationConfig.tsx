@@ -50,7 +50,6 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
     if (!user) return;
     setLoading(true);
     try {
-      // Load global setting
       const { data: global } = await supabase
         .from('client_notification_settings')
         .select('*')
@@ -62,7 +61,6 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
         setGlobalDayOfMonth(global.notify_day_of_month);
       }
 
-      // Load client-specific setting
       const { data: clientSetting } = await supabase
         .from('client_notification_settings')
         .select('*')
@@ -81,7 +79,7 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
           is_active: clientSetting.is_active,
         });
       }
-    } catch (err) {
+    } catch {
       toast.error('Erro ao carregar configurações.');
     } finally {
       setLoading(false);
@@ -128,24 +126,24 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
   const update = (partial: Partial<NotificationSettings>) =>
     setSettings(s => ({ ...s, ...partial }));
 
-  const inputClass = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all";
+  const selectClass = "w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#1e293b] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-amber-500 to-orange-500">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-amber-500/10">
           <div>
-            <h2 className="text-lg font-bold text-white font-manrope flex items-center gap-2">
+            <h2 className="text-lg font-bold text-amber-400 font-manrope flex items-center gap-2">
               <Bell size={18} /> Notificações por E-mail
             </h2>
-            <p className="text-amber-100 text-sm mt-0.5 truncate max-w-[260px]">
+            <p className="text-slate-300 text-sm mt-0.5 truncate max-w-[260px]">
               {client.name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-amber-100 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X size={20} />
           </button>
@@ -158,15 +156,15 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
         ) : (
           <div className="p-6 space-y-5">
             {/* Active toggle */}
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between p-4 bg-slate-800/40 rounded-xl border border-slate-800">
               <div>
-                <p className="text-sm font-bold text-slate-800">Notificação ativa</p>
-                <p className="text-xs text-slate-500 mt-0.5">Enviar e-mail de cobrança para este cliente</p>
+                <p className="text-sm font-bold text-slate-200">Notificação ativa</p>
+                <p className="text-xs text-slate-400 mt-0.5">Enviar e-mail de cobrança para este cliente</p>
               </div>
               <button
                 type="button"
                 onClick={() => update({ is_active: !settings.is_active })}
-                className={`relative w-12 h-6 rounded-full transition-colors ${settings.is_active ? 'bg-teal-500' : 'bg-slate-300'}`}
+                className={`relative w-12 h-6 rounded-full transition-colors ${settings.is_active ? 'bg-amber-500' : 'bg-slate-700'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.is_active ? 'translate-x-6' : 'translate-x-0'}`} />
               </button>
@@ -176,7 +174,7 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
               <>
                 {/* Mode selection */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Modo de notificação
                   </label>
 
@@ -203,26 +201,26 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                       key={option.value}
                       type="button"
                       onClick={() => update({ notification_mode: option.value })}
-                      className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
                         settings.notification_mode === option.value
-                          ? 'border-teal-500 bg-teal-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-amber-500 bg-amber-500/10'
+                          : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
                         settings.notification_mode === option.value
-                          ? 'border-teal-500 bg-teal-500'
-                          : 'border-slate-300'
+                          ? 'border-amber-500 bg-amber-500'
+                          : 'border-slate-600'
                       }`}>
                         {settings.notification_mode === option.value && (
                           <div className="w-2 h-2 rounded-full bg-white" />
                         )}
                       </div>
                       <div>
-                        <p className={`text-sm font-bold ${settings.notification_mode === option.value ? 'text-teal-800' : 'text-slate-700'}`}>
+                        <p className={`text-sm font-bold ${settings.notification_mode === option.value ? 'text-amber-400' : 'text-slate-200'}`}>
                           {option.label}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">{option.desc}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{option.desc}</p>
                       </div>
                     </button>
                   ))}
@@ -231,16 +229,16 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                 {/* Fixed day input */}
                 {settings.notification_mode === 'fixed_day' && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                       <Calendar size={12} /> Dia do mês para envio
                     </label>
                     <select
                       value={settings.notify_day_of_month ?? 5}
                       onChange={e => update({ notify_day_of_month: Number(e.target.value) })}
-                      className={inputClass}
+                      className={selectClass}
                     >
                       {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-                        <option key={d} value={d}>Dia {d}</option>
+                        <option key={d} value={d} className="bg-slate-900 text-slate-100">Dia {d}</option>
                       ))}
                     </select>
                   </div>
@@ -250,7 +248,7 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                 {settings.notification_mode === 'based_on_due' && (
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                         <Clock size={12} /> Estratégia de envio
                       </label>
 
@@ -262,33 +260,33 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                           key={opt.value}
                           type="button"
                           onClick={() => update({ notification_strategy: opt.value })}
-                          className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
+                          className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
                             settings.notification_strategy === opt.value
-                              ? 'border-teal-500 bg-teal-50'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
+                              ? 'border-amber-500 bg-amber-500/10'
+                              : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'
                           }`}
                         >
                           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            settings.notification_strategy === opt.value ? 'border-teal-500 bg-teal-500' : 'border-slate-300'
+                            settings.notification_strategy === opt.value ? 'border-amber-500 bg-amber-500' : 'border-slate-600'
                           }`}>
                             {settings.notification_strategy === opt.value && (
                               <div className="w-2 h-2 rounded-full bg-white" />
                             )}
                           </div>
                           <div>
-                            <p className={`text-sm font-bold ${settings.notification_strategy === opt.value ? 'text-teal-800' : 'text-slate-700'}`}>
+                            <p className={`text-sm font-bold ${settings.notification_strategy === opt.value ? 'text-amber-400' : 'text-slate-200'}`}>
                               {opt.label}
                             </p>
-                            <p className="text-xs text-slate-500">{opt.desc}</p>
+                            <p className="text-xs text-slate-400">{opt.desc}</p>
                           </div>
                         </button>
                       ))}
                     </div>
 
                     {settings.notification_strategy === 'full_cycle' && (
-                      <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-amber-950/20 rounded-xl border border-amber-900/40">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+                          <label className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                             Dias antes
                           </label>
                           <input
@@ -297,12 +295,12 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                             max={30}
                             value={settings.notify_before_days}
                             onChange={e => update({ notify_before_days: Number(e.target.value) })}
-                            className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-amber-400/20 focus:border-amber-400 transition-all text-center"
+                            className="w-full px-3 py-2 bg-slate-800 border border-amber-800/40 rounded-xl text-sm font-bold text-amber-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-center"
                           />
-                          <p className="text-[10px] text-amber-600 text-center">aviso antecipado</p>
+                          <p className="text-[10px] text-amber-500 text-center">aviso antecipado</p>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+                          <label className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                             Dias após
                           </label>
                           <input
@@ -311,9 +309,9 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                             max={30}
                             value={settings.notify_after_days}
                             onChange={e => update({ notify_after_days: Number(e.target.value) })}
-                            className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-amber-400/20 focus:border-amber-400 transition-all text-center"
+                            className="w-full px-3 py-2 bg-slate-800 border border-amber-800/40 rounded-xl text-sm font-bold text-amber-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-center"
                           />
-                          <p className="text-[10px] text-amber-600 text-center">aviso de atraso</p>
+                          <p className="text-[10px] text-amber-500 text-center">aviso de atraso</p>
                         </div>
                       </div>
                     )}
@@ -323,11 +321,11 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-1">
+            <div className="flex gap-3 pt-1 border-t border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="flex-1 py-3 rounded-xl border border-slate-700 text-sm font-bold text-slate-300 hover:bg-slate-800 transition-colors"
               >
                 Cancelar
               </button>
@@ -335,7 +333,7 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-all shadow-lg shadow-amber-500/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-sm font-bold transition-all shadow-lg shadow-amber-500/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? (
                   <><Loader2 size={16} className="animate-spin" /> Salvando...</>

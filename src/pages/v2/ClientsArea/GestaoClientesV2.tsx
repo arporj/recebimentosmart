@@ -180,29 +180,30 @@ export default function GestaoClientesV2() {
   const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+  return (
+    <div className="p-6 space-y-6 min-h-screen">
       {/* ─── Header ─── */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-manrope">Gestão de Clientes</h1>
-          <p className="text-slate-500 text-sm mt-1">Visão consolidada de entradas e saídas por cliente.</p>
+          <h1 className="text-2xl font-bold text-slate-100 font-manrope">Gestão de Clientes</h1>
+          <p className="text-slate-400 text-sm mt-1">Visão consolidada de entradas e saídas por cliente.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {/* Month selector */}
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
+          <div className="flex items-center gap-2 bg-[#1e293b] border border-slate-800 rounded-xl px-4 py-2 shadow-sm">
             <button
               onClick={() => setCurrentMonth(m => subMonths(m, 1))}
-              className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
             >
               ‹
             </button>
-            <span className="text-sm font-bold text-slate-700 capitalize min-w-[130px] text-center">
+            <span className="text-sm font-bold text-slate-200 capitalize min-w-[130px] text-center">
               {monthLabel}
             </span>
             <button
               onClick={() => setCurrentMonth(m => addMonths(m, 1))}
-              className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
             >
               ›
             </button>
@@ -210,13 +211,13 @@ export default function GestaoClientesV2() {
 
           <button
             onClick={() => setShowGlobalNotif(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-800 bg-[#1e293b] text-sm font-bold text-slate-300 hover:border-slate-700 hover:text-white transition-all shadow-sm"
           >
             <Globe size={16} /> Notif. Global
           </button>
           <button
             onClick={() => { if (checkLimit('clients')) setShowNewClientModal(true); }}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20"
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20"
           >
             <UserPlus size={16} /> Novo Cliente
           </button>
@@ -226,19 +227,19 @@ export default function GestaoClientesV2() {
       {/* ─── KPI Cards ─── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', sub: 'cadastrados' },
-          { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50', sub: 'clientes' },
-          { label: 'A Receber (Mês)', value: formatCurrency(totalIncomeAll), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', sub: monthLabel },
-          { label: 'A Pagar (Mês)', value: formatCurrency(totalExpenseAll), icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50', sub: monthLabel },
+          { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-400', bg: 'bg-teal-500/10', sub: 'cadastrados' },
+          { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10', sub: 'clientes' },
+          { label: 'A Receber (Mês)', value: formatCurrency(totalIncomeAll), icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', sub: monthLabel },
+          { label: 'A Pagar (Mês)', value: formatCurrency(totalExpenseAll), icon: Clock, color: 'text-rose-400', bg: 'bg-rose-500/10', sub: monthLabel },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
+          <div key={kpi.label} className="bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-800 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
               <kpi.icon size={18} className={kpi.color} />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
               <p className={`text-xl font-black ${kpi.color} font-manrope`}>{kpi.value}</p>
-              <p className="text-[10px] text-slate-300 mt-0.5">{kpi.sub}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{kpi.sub}</p>
             </div>
           </div>
         ))}
@@ -253,45 +254,45 @@ export default function GestaoClientesV2() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por nome ou telefone..."
-            className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm font-medium text-slate-700 transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 bg-[#1e293b] rounded-xl border border-slate-800 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm font-medium text-slate-100 placeholder:text-slate-500 transition-all shadow-sm"
           />
         </div>
         <div className="flex gap-2">
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as StatusFilter)}
-            className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm cursor-pointer"
+            className="px-4 py-3 bg-[#1e293b] border border-slate-800 rounded-xl text-sm font-medium text-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm cursor-pointer"
           >
-            <option value="all">Todos status</option>
-            <option value="active">Ativos</option>
-            <option value="inactive">Inativos</option>
+            <option value="all" className="bg-slate-900 text-slate-100">Todos status</option>
+            <option value="active" className="bg-slate-900 text-slate-100">Ativos</option>
+            <option value="inactive" className="bg-slate-900 text-slate-100">Inativos</option>
           </select>
           <select
             value={paymentFilter}
             onChange={e => setPaymentFilter(e.target.value as PaymentFilter)}
-            className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm cursor-pointer"
+            className="px-4 py-3 bg-[#1e293b] border border-slate-800 rounded-xl text-sm font-medium text-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm cursor-pointer"
           >
-            <option value="all">Situação</option>
-            <option value="ok">Em dia</option>
-            <option value="overdue">Em atraso</option>
-            <option value="none">Sem lançamentos</option>
+            <option value="all" className="bg-slate-900 text-slate-100">Situação</option>
+            <option value="ok" className="bg-slate-900 text-slate-100">Em dia</option>
+            <option value="overdue" className="bg-slate-900 text-slate-100">Em atraso</option>
+            <option value="none" className="bg-slate-900 text-slate-100">Sem lançamentos</option>
           </select>
         </div>
       </div>
 
       {/* ─── Table ─── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-[#1e293b] rounded-2xl shadow-sm border border-slate-800 overflow-hidden">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center text-slate-400 space-y-2">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
             <span className="text-sm font-medium">Carregando clientes...</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/60 text-slate-400">
               <User size={28} />
             </div>
-            <p className="text-slate-500 font-medium text-sm">
+            <p className="text-slate-400 font-medium text-sm">
               {searchTerm || statusFilter !== 'all' || paymentFilter !== 'all'
                 ? 'Nenhum cliente encontrado com esses filtros.'
                 : 'Nenhum cliente cadastrado ainda.'}
@@ -299,7 +300,7 @@ export default function GestaoClientesV2() {
             {!searchTerm && statusFilter === 'all' && paymentFilter === 'all' && (
               <button
                 onClick={() => { if (checkLimit('clients')) setShowNewClientModal(true); }}
-                className="text-xs font-bold text-teal-600 hover:text-teal-700 underline uppercase tracking-wider"
+                className="text-xs font-bold text-teal-400 hover:text-teal-300 underline uppercase tracking-wider"
               >
                 Cadastrar meu primeiro cliente
               </button>
@@ -309,7 +310,7 @@ export default function GestaoClientesV2() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
+                <tr className="bg-slate-900/50 border-b border-slate-800">
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Próx. Vencimento</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Pendente</th>
@@ -317,7 +318,7 @@ export default function GestaoClientesV2() {
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-800/60">
                 {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
                   <tr key={client.id} className="hover:bg-slate-50/60 transition-colors group">
                     {/* Client name */}

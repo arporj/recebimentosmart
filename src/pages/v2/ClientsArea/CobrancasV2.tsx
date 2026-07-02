@@ -40,8 +40,6 @@ export default function CobrancasV2() {
     if (!user) return;
     setLoading(true);
     try {
-      await gerarOcorrencias(currentMonth);
-
       const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
       const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
@@ -67,7 +65,7 @@ export default function CobrancasV2() {
         status: t.status,
         client_id: t.client_id,
         client_name: t.client?.name || 'Cliente desconhecido',
-        client_email: null, // será populado após migration adicionar email à tabela clients
+        client_email: null,
         type: t.type,
       }));
 
@@ -97,7 +95,6 @@ export default function CobrancasV2() {
     return matchesSearch && matchesStatus;
   });
 
-  // KPIs
   const totalReceived = transactions.filter(t => t.status === 'paid').reduce((s, t) => s + t.amount, 0);
   const totalPending = transactions.filter(t => t.status === 'pending' && !isOverdue(t)).reduce((s, t) => s + t.amount, 0);
   const totalOverdue = transactions.filter(t => isOverdue(t)).reduce((s, t) => s + t.amount, 0);
@@ -106,65 +103,66 @@ export default function CobrancasV2() {
   const formatCurrency = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const handleMarkPaid = async (tx: Transaction) => {
+  const handleSendNotif = async (tx: Transaction) => {
+    setSendingNotifFor(tx.id);
     try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update({ status: 'paid', paid_date: new Date().toISOString() })
-        .eq('id', tx.id);
+      const { data, error } = await supabase.functions.invoke('send-client-notification-manual', {
+        body: { client_id: tx.client_id },
+      });
       if (error) throw error;
-      toast.success('Lançamento marcado como pago!');
-      setMarkPaidTx(null);
-      fetchTransactions();
-    } catch {
-      toast.error('Erro ao marcar como pago.');
+      if (data?.success) {
+        toast.success(`E-mail enviado para ${data.sentTo}`);
+      } else {
+        toast.error(data?.error || 'Não foi possível enviar o e-mail.');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao enviar notificação.');
+    } finally {
+      setSendingNotifFor(null);
     }
   };
 
-  const handleSendNotification = async (clientId: string, clientEmail: string | null) => {
-    if (!clientEmail) {
-      toast.error('Este cliente não tem e-mail cadastrado.');
-      return;
-    }
-    setSendingNotifFor(clientId);
+  const handleMarkAsPaid = async () => {
+    if (!markPaidTx) return;
     try {
-      const { error } = await supabase.functions.invoke('send-client-notification-manual', {
-        body: { clientId, userId: user?.id },
-      });
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({ status: 'paid' })
+        .eq('id', markPaidTx.id);
       if (error) throw error;
-      toast.success('Notificação enviada com sucesso!');
+      toast.success('Cobrança marcada como paga!');
+      setMarkPaidTx(null);
+      fetchTransactions();
     } catch {
-      toast.error('Erro ao enviar notificação. Verifique se a Edge Function está disponível.');
-    } finally {
-      setSendingNotifFor(null);
+      toast.error('Erro ao atualizar cobrança.');
     }
   };
 
   const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+    <div className="p-6 space-y-6 min-h-screen">
       {/* ─── Header ─── */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-manrope">Cobranças</h1>
-          <p className="text-slate-500 text-sm mt-1">Lançamentos de receita vinculados a clientes.</p>
+          <h1 className="text-2xl font-bold text-slate-100 font-manrope">Cobranças</h1>
+          <p className="text-slate-400 text-sm mt-1">Lançamentos de receita vinculados a clientes.</p>
         </div>
 
         {/* Month navigation */}
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+        <div className="flex items-center gap-2 bg-[#1e293b] border border-slate-800 rounded-xl px-4 py-2.5 shadow-sm">
           <button
             onClick={() => setCurrentMonth(m => subMonths(m, 1))}
-            className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
           >
             ‹
           </button>
-          <span className="text-sm font-bold text-slate-700 capitalize min-w-[140px] text-center">
+          <span className="text-sm font-bold text-slate-200 capitalize min-w-[140px] text-center">
             {monthLabel}
           </span>
           <button
             onClick={() => setCurrentMonth(m => addMonths(m, 1))}
-            className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
           >
             ›
           </button>
@@ -174,12 +172,12 @@ export default function CobrancasV2() {
       {/* ─── KPI Cards ─── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total do Mês', value: formatCurrency(totalAll), icon: DollarSign, color: 'text-slate-600', bg: 'bg-slate-100' },
-          { label: 'Recebido', value: formatCurrency(totalReceived), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'A Vencer', value: formatCurrency(totalPending), icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Em Atraso', value: formatCurrency(totalOverdue), icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+          { label: 'Total do Mês', value: formatCurrency(totalAll), icon: DollarSign, color: 'text-slate-300', bg: 'bg-slate-800' },
+          { label: 'Recebido', value: formatCurrency(totalReceived), icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { label: 'A Vencer', value: formatCurrency(totalPending), icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+          { label: 'Em Atraso', value: formatCurrency(totalOverdue), icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10' },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
+          <div key={kpi.label} className="bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-800 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
               <kpi.icon size={18} className={kpi.color} />
             </div>
@@ -200,7 +198,7 @@ export default function CobrancasV2() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por cliente ou descrição..."
-            className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm font-medium text-slate-700 transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 bg-[#1e293b] rounded-xl border border-slate-800 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm font-medium text-slate-100 placeholder:text-slate-500 transition-all shadow-sm"
           />
         </div>
         <div className="flex gap-2">
@@ -211,7 +209,7 @@ export default function CobrancasV2() {
               className={`px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                 statusFilter === f
                   ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                  : 'bg-[#1e293b] text-slate-300 border border-slate-800 hover:border-slate-700'
               }`}
             >
               {{ all: 'Todos', pending: 'A vencer', overdue: 'Em atraso', paid: 'Pagos' }[f]}
@@ -221,7 +219,7 @@ export default function CobrancasV2() {
       </div>
 
       {/* ─── Table ─── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-[#1e293b] rounded-2xl shadow-sm border border-slate-800 overflow-hidden">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center text-slate-400 space-y-2">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
@@ -240,7 +238,7 @@ export default function CobrancasV2() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
+                <tr className="bg-slate-900/50 border-b border-slate-800">
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Descrição</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Vencimento</th>
@@ -249,44 +247,44 @@ export default function CobrancasV2() {
                   <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-800/60">
                 {filtered.map(tx => {
                   const overdue = isOverdue(tx);
                   return (
-                    <tr key={tx.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr key={tx.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="px-6 py-4">
-                        <p className="font-bold text-slate-800 text-sm">{tx.client_name}</p>
+                        <p className="font-bold text-slate-100 text-sm">{tx.client_name}</p>
                         {tx.client_email && (
                           <p className="text-xs text-slate-400 mt-0.5">{tx.client_email}</p>
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-slate-600 max-w-[200px] truncate">{tx.description || '—'}</p>
+                        <p className="text-sm text-slate-300 max-w-[200px] truncate">{tx.description || '—'}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className={`text-sm font-semibold ${overdue ? 'text-rose-600' : 'text-slate-700'}`}>
+                        <p className={`text-sm font-semibold ${overdue ? 'text-rose-400' : 'text-slate-200'}`}>
                           {format(parseISO(tx.date), 'dd/MM/yyyy')}
                         </p>
                         {overdue && (
-                          <p className="text-xs text-rose-500 font-medium">Vencido</p>
+                          <p className="text-xs text-rose-400 font-medium">Vencido</p>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <p className={`font-black text-sm ${overdue ? 'text-rose-600' : 'text-slate-800'}`}>
+                        <p className={`font-black text-sm ${overdue ? 'text-rose-400' : 'text-slate-100'}`}>
                           {formatCurrency(tx.amount)}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-center">
                         {tx.status === 'paid' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             <CheckCircle2 size={10} /> Pago
                           </span>
                         ) : overdue ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                             <AlertTriangle size={10} /> Atrasado
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                             <Clock size={10} /> Pendente
                           </span>
                         )}
@@ -296,19 +294,19 @@ export default function CobrancasV2() {
                           {tx.status !== 'paid' && (
                             <button
                               onClick={() => setMarkPaidTx(tx)}
-                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                              className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all"
                               title="Marcar como pago"
                             >
                               <CheckCircle2 size={15} />
                             </button>
                           )}
                           <button
-                            onClick={() => handleSendNotification(tx.client_id, tx.client_email)}
-                            disabled={sendingNotifFor === tx.client_id}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all disabled:opacity-50"
+                            onClick={() => handleSendNotif(tx)}
+                            disabled={sendingNotifFor === tx.id}
+                            className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all disabled:opacity-50"
                             title="Enviar notificação por e-mail"
                           >
-                            {sendingNotifFor === tx.client_id ? (
+                            {sendingNotifFor === tx.id ? (
                               <Loader2 size={15} className="animate-spin" />
                             ) : (
                               <Send size={15} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, Mail, CheckCircle, Loader2, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
+import { X, User, Phone, Mail, CheckCircle, Loader2, ChevronRight, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -40,13 +40,11 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
   const [saving, setSaving] = useState(false);
   const [createdClientId, setCreatedClientId] = useState<string | null>(null);
 
-  // Step 1 — Client data
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientStatus, setClientStatus] = useState(true);
 
-  // Step 2 — Transaction data
   const [description, setDescription] = useState('');
   const [amountRaw, setAmountRaw] = useState('');
   const [amount, setAmount] = useState('');
@@ -86,7 +84,6 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
 
   const parsedAmount = amountRaw ? Number(amountRaw) / 100 : 0;
 
-  // Step 1 — Save client, proceed to step 2
   const handleSaveClient = async () => {
     if (!user) return;
     if (!clientName.trim()) return toast.error('Informe o nome do cliente.');
@@ -117,7 +114,6 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
     }
   };
 
-  // Step 2 — Save transaction (or skip)
   const handleSaveTransaction = async () => {
     if (!user || !createdClientId) return;
     if (!description.trim()) return toast.error('Informe a descrição.');
@@ -182,37 +178,38 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
     onClose();
   };
 
-  const inputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all";
+  const inputClass = "w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all";
+  const selectClass = "w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#1e293b] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95">
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-teal-600 to-teal-700">
+        <div className="px-6 py-4 border-b border-slate-800 bg-teal-500/10">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-white font-manrope">Novo Cliente</h2>
+            <h2 className="text-lg font-bold text-teal-400 font-manrope">Novo Cliente</h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-teal-100 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               <X size={20} />
             </button>
           </div>
           {/* Steps indicator */}
           <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 ${step === 'client' ? 'text-white' : 'text-teal-300'}`}>
+            <div className={`flex items-center gap-1.5 ${step === 'client' ? 'text-teal-300' : 'text-slate-500'}`}>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                step === 'client' ? 'bg-white text-teal-700' :
-                createdClientId ? 'bg-teal-500 text-white border-2 border-teal-300' : 'bg-teal-500/40 text-teal-100'
+                step === 'client' ? 'bg-teal-500 text-slate-950' :
+                createdClientId ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}>
                 {createdClientId && step !== 'client' ? <CheckCircle size={14} /> : '1'}
               </div>
               <span className="text-xs font-semibold">Dados do Cliente</span>
             </div>
-            <ChevronRight size={14} className="text-teal-300" />
-            <div className={`flex items-center gap-1.5 ${step === 'transaction' ? 'text-white' : 'text-teal-300'}`}>
+            <ChevronRight size={14} className="text-slate-600" />
+            <div className={`flex items-center gap-1.5 ${step === 'transaction' ? 'text-teal-300' : 'text-slate-500'}`}>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                step === 'transaction' ? 'bg-white text-teal-700' : 'bg-teal-500/40 text-teal-100'
+                step === 'transaction' ? 'bg-teal-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}>
                 2
               </div>
@@ -226,7 +223,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
           {step === 'client' && (
             <>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <User size={12} /> Nome *
                 </label>
                 <input
@@ -241,9 +238,9 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Phone size={12} /> Telefone
-                    <span className="text-slate-300 font-normal normal-case tracking-normal ml-1">— opcional</span>
+                    <span className="text-slate-500 font-normal normal-case ml-1">— opcional</span>
                   </label>
                   <input
                     type="tel"
@@ -252,12 +249,12 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                     placeholder="(11) 99999-9999"
                     className={inputClass}
                   />
-                  <p className="text-[10px] text-slate-400">Usado para notificações via WhatsApp (em breve)</p>
+                  <p className="text-[10px] text-slate-500">Notificações WhatsApp (em breve)</p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Mail size={12} /> E-mail
-                    <span className="text-slate-300 font-normal normal-case tracking-normal ml-1">— opcional</span>
+                    <span className="text-slate-500 font-normal normal-case ml-1">— opcional</span>
                   </label>
                   <input
                     type="email"
@@ -266,28 +263,28 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                     placeholder="email@exemplo.com"
                     className={inputClass}
                   />
-                  <p className="text-[10px] text-slate-400">Usado para notificações de cobrança por e-mail</p>
+                  <p className="text-[10px] text-slate-500">Notificações de cobrança</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-3 p-4 bg-slate-800/40 rounded-xl border border-slate-800">
                 <button
                   type="button"
                   onClick={() => setClientStatus(s => !s)}
-                  className={`relative w-10 h-6 rounded-full transition-colors ${clientStatus ? 'bg-teal-500' : 'bg-slate-300'}`}
+                  className={`relative w-10 h-6 rounded-full transition-colors ${clientStatus ? 'bg-teal-500' : 'bg-slate-700'}`}
                 >
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${clientStatus ? 'translate-x-4' : 'translate-x-0'}`} />
                 </button>
-                <span className="text-sm font-medium text-slate-700">
-                  Cliente {clientStatus ? <span className="text-teal-600 font-bold">ativo</span> : <span className="text-slate-400">inativo</span>}
+                <span className="text-sm font-medium text-slate-300">
+                  Cliente {clientStatus ? <span className="text-teal-400 font-bold">ativo</span> : <span className="text-slate-500">inativo</span>}
                 </span>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex-1 py-3 rounded-xl border border-slate-700 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                 >
                   Cancelar
                 </button>
@@ -295,7 +292,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                   type="button"
                   onClick={handleSaveClient}
                   disabled={saving || !clientName.trim()}
-                  className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {saving ? (
                     <><Loader2 size={16} className="animate-spin" /> Criando...</>
@@ -310,17 +307,17 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
           {/* ─── STEP 2: Transaction ─── */}
           {step === 'transaction' && (
             <>
-              <p className="text-xs text-slate-500 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
-                ✅ Cliente criado. Agora adicione um lançamento recorrente ou pule essa etapa.
+              <p className="text-xs text-teal-300 bg-teal-950/30 px-4 py-2.5 rounded-xl border border-teal-900/50">
+                ✅ Cliente criado com sucesso. Adicione um lançamento recorrente ou pule essa etapa.
               </p>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Descrição *</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição *</label>
                 <input
                   type="text"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Ex: Mensalidade de julho..."
+                  placeholder="Ex: Mensalidade de serviço..."
                   className={inputClass}
                   autoFocus
                 />
@@ -328,23 +325,23 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Valor *</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Valor *</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-slate-400 text-sm font-bold">R$</span>
+                      <span className="text-slate-500 text-sm font-bold">R$</span>
                     </div>
                     <input
                       type="text"
                       value={amount}
                       onChange={handleAmountChange}
                       placeholder="0,00"
-                      className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      className="w-full pl-9 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                       inputMode="numeric"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">1º Pagamento *</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">1º Pagamento *</label>
                   <input
                     type="date"
                     value={firstDate}
@@ -356,31 +353,31 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Periodicidade</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Periodicidade</label>
                   <select
                     value={period}
                     onChange={e => setPeriod(e.target.value as typeof period)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                    className={selectClass}
                   >
-                    {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value} className="bg-slate-900 text-slate-100">{o.label}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quantidade</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quantidade</label>
                   <select
                     value={installments}
                     onChange={e => setInstallments(Number(e.target.value))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                    className={selectClass}
                   >
-                    {INSTALLMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {INSTALLMENT_OPTIONS.map(o => <option key={o.value} value={o.value} className="bg-slate-900 text-slate-100">{o.label}</option>)}
                   </select>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Conta</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Conta</label>
                 {loadingAccounts ? (
-                  <div className="flex items-center gap-2 py-3 px-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-2 py-3 px-4 bg-slate-800 border border-slate-700 rounded-xl">
                     <Loader2 size={14} className="animate-spin text-slate-400" />
                     <span className="text-sm text-slate-400">Carregando...</span>
                   </div>
@@ -388,21 +385,21 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                   <select
                     value={accountId}
                     onChange={e => setAccountId(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                    className={selectClass}
                   >
-                    {accounts.length === 0 && <option value="">Conta Principal (será criada)</option>}
+                    {accounts.length === 0 && <option value="" className="bg-slate-900 text-slate-100">Conta Principal (será criada)</option>}
                     {accounts.map(a => (
-                      <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' (Principal)' : ''}</option>
+                      <option key={a.id} value={a.id} className="bg-slate-900 text-slate-100">{a.name}{a.is_default ? ' (Principal)' : ''}</option>
                     ))}
                   </select>
                 )}
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={handleSkipTransaction}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex-1 py-3 rounded-xl border border-slate-700 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                 >
                   Pular etapa
                 </button>
@@ -410,7 +407,7 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                   type="button"
                   onClick={handleSaveTransaction}
                   disabled={saving || parsedAmount <= 0 || !description.trim()}
-                  className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {saving ? (
                     <><Loader2 size={16} className="animate-spin" /> Salvando...</>
