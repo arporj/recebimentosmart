@@ -25,7 +25,9 @@ interface ClientSummary {
   client: Client;
   pendingCount: number;
   overdueCount: number;
-  totalPending: number;
+  totalIncomePending: number;
+  totalExpensePending: number;
+  netPending: number;
   nextDueDate: string | null;
   hasNotificationConfig: boolean;
 }
@@ -120,22 +122,33 @@ export default function GestaoClientesV2() {
     }
   };
 
-  // Build summaries
+  // Build summaries (agora inclui income e expense!)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const summaries: ClientSummary[] = clients.map(client => {
-    const clientTxs = transactions.filter(t => t.client_id === client.id && t.type === 'income');
+    const clientTxs = transactions.filter(t => t.client_id === client.id);
     const pending = clientTxs.filter(t => t.status !== 'paid');
     const overdue = pending.filter(t => new Date(t.date + 'T00:00:00') < today);
-    const totalPending = pending.reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalIncomePending = pending
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalExpensePending = pending
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const netPending = totalIncomePending - totalExpensePending;
     const sorted = [...pending].sort((a, b) => a.date.localeCompare(b.date));
 
     return {
       client,
       pendingCount: pending.length,
       overdueCount: overdue.length,
-      totalPending,
+      totalIncomePending,
+      totalExpensePending,
+      netPending,
       nextDueDate: sorted[0]?.date || null,
       hasNotificationConfig: !!notifConfigs[client.id],
     };
@@ -157,7 +170,8 @@ export default function GestaoClientesV2() {
   // KPI totals
   const totalClients = clients.filter(c => c.status).length;
   const totalOverdue = summaries.filter(s => s.overdueCount > 0).length;
-  const totalPendingAll = summaries.reduce((sum, s) => sum + s.totalPending, 0);
+  const totalIncomeAll = summaries.reduce((sum, s) => sum + s.totalIncomePending, 0);
+  const totalExpenseAll = summaries.reduce((sum, s) => sum + s.totalExpensePending, 0);
   const totalWithNotif = Object.keys(notifConfigs).length;
 
   const formatCurrency = (v: number) =>
@@ -171,7 +185,7 @@ export default function GestaoClientesV2() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 font-manrope">Gestão de Clientes</h1>
-          <p className="text-slate-500 text-sm mt-1">Visão consolidada de clientes e lançamentos do mês.</p>
+          <p className="text-slate-500 text-sm mt-1">Visão consolidada de entradas e saídas por cliente.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -214,8 +228,8 @@ export default function GestaoClientesV2() {
         {[
           { label: 'Clientes Ativos', value: totalClients, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', sub: 'cadastrados' },
           { label: 'Em Atraso', value: totalOverdue, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50', sub: 'clientes' },
-          { label: 'Pendente (Mês)', value: formatCurrency(totalPendingAll), icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', sub: monthLabel },
-          { label: 'Com Notificação', value: totalWithNotif, icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50', sub: 'configurados' },
+          { label: 'A Receber (Mês)', value: formatCurrency(totalIncomeAll), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', sub: monthLabel },
+          { label: 'A Pagar (Mês)', value: formatCurrency(totalExpenseAll), icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50', sub: monthLabel },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
@@ -304,7 +318,7 @@ export default function GestaoClientesV2() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filtered.map(({ client, pendingCount, overdueCount, totalPending, nextDueDate, hasNotificationConfig }) => (
+                {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
                   <tr key={client.id} className="hover:bg-slate-50/60 transition-colors group">
                     {/* Client name */}
                     <td className="px-6 py-4">
@@ -354,14 +368,21 @@ export default function GestaoClientesV2() {
                       )}
                     </td>
 
-                    {/* Total pending */}
+                    {/* Total pending (Income & Expense) */}
                     <td className="px-6 py-4 text-right">
                       {pendingCount > 0 ? (
-                        <div>
-                          <p className={`font-black text-sm ${overdueCount > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
-                            {formatCurrency(totalPending)}
-                          </p>
-                          <p className="text-xs text-slate-400">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
+                        <div className="space-y-0.5">
+                          {totalIncomePending > 0 && (
+                            <p className="font-bold text-sm text-emerald-600">
+                              + {formatCurrency(totalIncomePending)} <span className="text-[10px] text-slate-400 font-normal">a receber</span>
+                            </p>
+                          )}
+                          {totalExpensePending > 0 && (
+                            <p className="font-bold text-sm text-rose-600">
+                              - {formatCurrency(totalExpensePending)} <span className="text-[10px] text-slate-400 font-normal">a pagar</span>
+                            </p>
+                          )}
+                          <p className="text-[11px] text-slate-400">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
                         </div>
                       ) : (
                         <span className="text-xs text-slate-300">—</span>
