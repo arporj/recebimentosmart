@@ -232,12 +232,12 @@ export default function AdminUserManagementV2() {
             </div>
 
             {/* Search and Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-6 border-b border-slate-100">
+            <div className="bg-[#1e293b] rounded-2xl shadow-sm border border-slate-800 overflow-hidden">
+                <div className="p-6 border-b border-slate-800">
                     <div className="relative max-w-xl">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                         <input
-                            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-900 outline-none transition-all placeholder:text-slate-400"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-custom/20 focus:border-custom text-slate-100 outline-none transition-all placeholder:text-slate-500"
                             placeholder="Pesquisar usuários por nome, email ou plano..."
                             type="text"
                             value={searchTerm}
@@ -249,26 +249,26 @@ export default function AdminUserManagementV2() {
                 <div className="overflow-x-auto min-h-[300px]">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-500 uppercase text-xs font-bold tracking-wider">
-                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
+                            <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 uppercase text-xs font-bold tracking-wider">
+                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-800/80 transition-colors" onClick={() => handleSort('name')}>
                                     Usuário {getSortIcon('name')}
                                 </th>
-                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('plan_name')}>
+                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-800/80 transition-colors" onClick={() => handleSort('plan_name')}>
                                     Plano {getSortIcon('plan_name')}
                                 </th>
-                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('subscription_status')}>
+                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-800/80 transition-colors" onClick={() => handleSort('subscription_status')}>
                                     Status {getSortIcon('subscription_status')}
                                 </th>
-                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('total_transactions')}>
+                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-800/80 transition-colors" onClick={() => handleSort('total_transactions')}>
                                     Transações {getSortIcon('total_transactions')}
                                 </th>
-                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('last_sign_in_at')}>
+                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-800/80 transition-colors" onClick={() => handleSort('last_sign_in_at')}>
                                     Último Login {getSortIcon('last_sign_in_at')}
                                 </th>
                                 <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-700/80">
                             {loadingUsers ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
@@ -286,17 +286,17 @@ export default function AdminUserManagementV2() {
                                 </tr>
                             ) : (
                                 currentUsers.map(user => (
-                                    <tr key={user.id} className={`hover:bg-slate-50/80 transition-colors group ${user.subscription_status === 'deleted' ? 'opacity-70 bg-rose-50/10' : ''}`}>
+                                    <tr key={user.id} className={`hover:bg-slate-100 transition-colors duration-150 group ${user.subscription_status === 'deleted' ? 'opacity-70 bg-rose-50/10' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-custom/10 border border-custom/20 flex items-center justify-center font-bold text-custom shrink-0">
+                                                <div className="w-10 h-10 rounded-full bg-custom/10 border border-custom/20 flex items-center justify-center font-bold text-custom group-hover:bg-custom group-hover:text-white transition-colors shrink-0">
                                                     {getInitials(user.name, user.email)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-sm text-slate-900">{user.name || 'Sem Nome'}</p>
-                                                    <p className="text-xs text-slate-500 font-medium">{user.email}</p>
+                                                    <p className="font-bold text-sm text-slate-100 group-hover:text-slate-900 transition-colors">{user.name || 'Sem Nome'}</p>
+                                                    <p className="text-xs text-slate-400 group-hover:text-slate-700 font-medium transition-colors">{user.email}</p>
                                                     {rowDensity === 'expanded' && (
-                                                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                        <p className="text-[10px] text-slate-400 group-hover:text-slate-600 font-medium mt-0.5 transition-colors">
                                                             Cadastrado em: {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                                                         </p>
                                                     )}
@@ -309,17 +309,17 @@ export default function AdminUserManagementV2() {
                                         <td className="px-6 py-4">
                                             <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 font-bold">
+                                        <td className="px-6 py-4 text-sm text-slate-200 group-hover:text-slate-900 font-bold transition-colors">
                                              {user.total_transactions ?? 0}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 font-medium">
+                                        <td className="px-6 py-4 text-sm text-slate-300 group-hover:text-slate-800 font-medium transition-colors">
                                             {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '-'}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => setSelectedUser(user)}
-                                                    className="p-2 text-slate-400 hover:text-custom hover:bg-custom/10 rounded-lg transition-colors"
+                                                    className="p-2 text-slate-400 group-hover:text-slate-900 hover:bg-slate-300/80 rounded-lg transition-colors"
                                                     title="Configurações"
                                                 >
                                                     <MoreVertical className="w-5 h-5" />
