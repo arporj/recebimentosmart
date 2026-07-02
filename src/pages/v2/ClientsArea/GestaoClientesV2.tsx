@@ -180,7 +180,6 @@ export default function GestaoClientesV2() {
   const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
 
   return (
-  return (
     <div className="p-6 space-y-6 min-h-screen">
       {/* ─── Header ─── */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
