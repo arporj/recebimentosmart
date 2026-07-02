@@ -284,10 +284,16 @@ const FinancialTransactionsV2 = () => {
       let usedSaved = false;
       if (saved) {
         try {
-          const ids = JSON.parse(saved);
-          // Garante que os IDs salvos pertencem ao usuário atual ou são a conta virtual
+          const ids: string[] = JSON.parse(saved);
           const validAccountIds = new Set([...fetchedAccounts.map(a => a.id), 'sem-conta']);
-          const validSavedIds = ids.filter((id: string) => validAccountIds.has(id));
+          let validSavedIds = ids.filter((id: string) => validAccountIds.has(id));
+          
+          // Garante que novas contas criadas sejam automaticamente incluídas no filtro
+          fetchedAccounts.forEach(acc => {
+            if (!ids.includes(acc.id)) {
+              validSavedIds.push(acc.id);
+            }
+          });
           
           if (validSavedIds.length > 0) {
             setSelectedAccountIds(new Set(validSavedIds));
