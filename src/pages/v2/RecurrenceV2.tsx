@@ -180,7 +180,8 @@ export default function RecurrenceV2() {
         `)
         .eq('user_id', user.id)
         .not('client_id', 'is', null)
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled')
+        .eq('is_template', false);
 
       if (txError) throw txError;
 
