@@ -20,6 +20,12 @@ interface UserSelectOption {
     subscription_status: string | null;
 }
 
+interface ClientSelectOption {
+    id: string;
+    name: string;
+    email: string | null;
+}
+
 interface LogEntry {
     timestamp: string;
     type: 'info' | 'success' | 'error' | 'warning';
@@ -31,6 +37,9 @@ export default function AdminSystemTestsV2() {
     const { user: adminUser } = useAuth();
     const [users, setUsers] = useState<UserSelectOption[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
+    const [userClients, setUserClients] = useState<ClientSelectOption[]>([]);
+    const [selectedClientId, setSelectedClientId] = useState<string>('');
+    const [loadingClients, setLoadingClients] = useState(false);
     const [userSearchTerm, setUserSearchTerm] = useState('');
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [executing, setExecuting] = useState(false);
@@ -87,6 +96,41 @@ export default function AdminSystemTestsV2() {
         };
         fetchUsers();
     }, []);
+
+    // Buscar clientes do usuário selecionado
+    useEffect(() => {
+        if (!selectedUserId) {
+            setUserClients([]);
+            setSelectedClientId('');
+            return;
+        }
+        const fetchUserClients = async () => {
+            setLoadingClients(true);
+            try {
+                const { data, error } = await supabase
+                    .from('clients')
+                    .select('id, name, email')
+                    .eq('user_id', selectedUserId)
+                    .is('deleted_at', null)
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+                setUserClients(data || []);
+                if (data && data.length > 0) {
+                    setSelectedClientId(data[0].id);
+                } else {
+                    setSelectedClientId('');
+                }
+            } catch (err: any) {
+                console.error('Erro ao carregar clientes do usuário:', err);
+                setUserClients([]);
+                setSelectedClientId('');
+            } finally {
+                setLoadingClients(false);
+            }
+        };
+        fetchUserClients();
+    }, [selectedUserId]);
 
     const addLog = (type: 'info' | 'success' | 'error' | 'warning', message: string, details?: any) => {
         const newEntry: LogEntry = {
@@ -225,11 +269,18 @@ export default function AdminSystemTestsV2() {
         const toastId = toast.loading('Disparando e-mail de teste (Notificação do Cliente)...');
         
         try {
+            const targetClientId = selectedClientId || (userClients.length > 0 ? userClients[0].id : '00000000-0000-0000-0000-000000000000');
+
             const { data, error } = await supabase.functions.invoke('send-client-notification-manual', {
                 body: { 
                     userId: selUser.id,
+                    user_id: selUser.id,
+                    clientId: targetClientId,
+                    client_id: targetClientId,
                     targetEmail: 'andre@andreric.com',
-                    isTest: true
+                    target_email: 'andre@andreric.com',
+                    isTest: true,
+                    is_test: true
                 } 
             });
             
@@ -241,7 +292,7 @@ export default function AdminSystemTestsV2() {
         } catch (error: any) {
             console.error('Erro:', error);
             addLog('error', `Erro ao invocar send-client-notification-manual: ${error.message || 'Erro inesperado'}`, error);
-            toast.error('Erro ao disparar teste de notificação do cliente.', { id: toastId });
+            toast.error(`Erro ao disparar teste: ${error.message || 'Falha na função'}`, { id: toastId });
         } finally {
             setExecuting(false);
         }
@@ -473,6 +524,35 @@ export default function AdminSystemTestsV2() {
                                 )}
                             </div>
                         )}
+
+                        {/* Seleção do Cliente do Usuário */}
+                        <div className="pt-3 border-t border-slate-100 space-y-1.5">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                Cliente do Usuário (para Notificação de Cobrança)
+                            </label>
+                            {loadingClients ? (
+                                <div className="text-xs font-semibold text-slate-400 animate-pulse py-2">Carregando clientes do usuário...</div>
+                            ) : (
+                                <select
+                                    value={selectedClientId}
+                                    onChange={(e) => setSelectedClientId(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-800 transition-all focus:ring-2 focus:ring-custom/20 focus:border-custom outline-none shadow-sm cursor-pointer"
+                                >
+                                    {userClients.length === 0 ? (
+                                        <option value="">Nenhum cliente cadastrado (usará dados simulados de teste)</option>
+                                    ) : (
+                                        <>
+                                            <option value="">Automático (Primeiro cliente com pendências)</option>
+                                            {userClients.map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name} {c.email ? `(${c.email})` : '(sem e-mail)'}
+                                                </option>
+                                            ))}
+                                        </>
+                                    )}
+                                </select>
+                            )}
+                        </div>
                     </div>
 
                     {/* Grid de Disparos de E-mail */}
