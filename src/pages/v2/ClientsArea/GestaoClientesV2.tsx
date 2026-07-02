@@ -373,29 +373,29 @@ export default function GestaoClientesV2() {
               </thead>
               <tbody className="divide-y divide-slate-800/80">
                 {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
-                  <tr key={client.id} className="hover:bg-slate-100 transition-colors duration-150 group">
+                  <tr key={client.id} className="hover:bg-[#2d3b4f] transition-colors duration-150 group">
                     {/* Client name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                          client.status ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 group-hover:bg-teal-100 group-hover:text-teal-700 group-hover:border-teal-300' : 'bg-slate-800 text-slate-500 border border-slate-700 group-hover:bg-slate-200 group-hover:text-slate-700'
+                          client.status ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 group-hover:border-teal-500/40' : 'bg-slate-800 text-slate-500 border border-slate-700'
                         }`}>
                           <User size={18} />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-100 group-hover:text-slate-900 transition-colors">{client.name}</p>
+                          <p className="font-bold text-slate-100 group-hover:text-teal-400 transition-colors">{client.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {client.phone && (
-                              <span className="text-xs text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
+                              <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors flex items-center gap-1">
                                 <Phone size={10} /> {client.phone}
                               </span>
                             )}
                             {hasNotificationConfig ? (
-                              <span className="text-xs text-teal-400 group-hover:text-teal-700 transition-colors flex items-center gap-1 font-medium">
+                              <span className="text-xs text-teal-400 group-hover:text-teal-300 transition-colors flex items-center gap-1 font-medium">
                                 <Bell size={10} /> Notif. ativa
                               </span>
                             ) : (
-                              <span className="text-xs text-slate-500 group-hover:text-slate-600 transition-colors flex items-center gap-1">
+                              <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors flex items-center gap-1">
                                 <BellOff size={10} /> Sem notif.
                               </span>
                             )}
@@ -408,17 +408,17 @@ export default function GestaoClientesV2() {
                     <td className="px-6 py-4">
                       {nextDueDate ? (
                         <div>
-                          <p className={`text-sm font-semibold transition-colors ${overdueCount > 0 ? 'text-rose-400 group-hover:text-rose-700' : 'text-slate-200 group-hover:text-slate-900'}`}>
+                          <p className={`text-sm font-semibold transition-colors ${overdueCount > 0 ? 'text-rose-400 group-hover:text-rose-300' : 'text-slate-200 group-hover:text-white'}`}>
                             {format(parseISO(nextDueDate), 'dd/MM/yyyy')}
                           </p>
                           {overdueCount > 0 && (
-                            <p className="text-xs text-rose-400 group-hover:text-rose-700 font-medium transition-colors">
+                            <p className="text-xs text-rose-400 group-hover:text-rose-300 font-medium transition-colors">
                               {overdueCount} em atraso
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-500 group-hover:text-slate-600 italic transition-colors">Sem lançamentos</span>
+                        <span className="text-xs text-slate-500 group-hover:text-slate-400 italic transition-colors">Sem lançamentos</span>
                       )}
                     </td>
 
@@ -427,38 +427,38 @@ export default function GestaoClientesV2() {
                       {pendingCount > 0 ? (
                         <div className="space-y-0.5">
                           {totalIncomePending > 0 && (
-                            <p className="font-bold text-sm text-emerald-400 group-hover:text-emerald-700 transition-colors">
-                              + {formatCurrency(totalIncomePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-600 font-normal">a receber</span>
+                            <p className="font-bold text-sm text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                              + {formatCurrency(totalIncomePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-300 font-normal">a receber</span>
                             </p>
                           )}
                           {totalExpensePending > 0 && (
-                            <p className="font-bold text-sm text-rose-400 group-hover:text-rose-700 transition-colors">
-                              - {formatCurrency(totalExpensePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-600 font-normal">a pagar</span>
+                            <p className="font-bold text-sm text-rose-400 group-hover:text-rose-300 transition-colors">
+                              - {formatCurrency(totalExpensePending)} <span className="text-[10px] text-slate-400 group-hover:text-slate-300 font-normal">a pagar</span>
                             </p>
                           )}
-                          <p className="text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
+                          <p className="text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors">{pendingCount} lançamento{pendingCount > 1 ? 's' : ''}</p>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-500 group-hover:text-slate-600 transition-colors">—</span>
+                        <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">—</span>
                       )}
                     </td>
 
                     {/* Status badge */}
                     <td className="px-6 py-4 text-center">
                       {overdueCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-100 group-hover:text-rose-800 group-hover:border-rose-300 transition-colors">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-colors">
                           <AlertTriangle size={10} /> Em atraso
                         </span>
                       ) : pendingCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-100 group-hover:text-amber-800 group-hover:border-amber-300 transition-colors">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 transition-colors">
                           <Clock size={10} /> A vencer
                         </span>
                       ) : client.status ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-100 group-hover:text-emerald-800 group-hover:border-emerald-300 transition-colors">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
                           <CheckCircle2 size={10} /> Em dia
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 group-hover:bg-slate-300 group-hover:text-slate-800 group-hover:border-slate-400 transition-colors">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 group-hover:bg-slate-700 group-hover:text-slate-200 transition-colors">
                           Inativo
                         </span>
                       )}
@@ -469,14 +469,14 @@ export default function GestaoClientesV2() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setStatementClient({ id: client.id, name: client.name })}
-                          className="p-2 text-slate-400 group-hover:text-slate-800 hover:bg-slate-300/80 rounded-xl transition-all"
+                          className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-xl transition-all"
                           title="Ver extrato"
                         >
                           <Eye size={15} />
                         </button>
                         <button
                           onClick={() => setQuickTxClient(client)}
-                          className="p-2 text-slate-400 group-hover:text-slate-800 hover:bg-slate-300/80 rounded-xl transition-all"
+                          className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-xl transition-all"
                           title="Adicionar lançamento"
                         >
                           <Plus size={15} />
@@ -485,8 +485,8 @@ export default function GestaoClientesV2() {
                           onClick={() => setNotifClient(client)}
                           className={`p-2 rounded-xl transition-all ${
                             hasNotificationConfig
-                              ? 'text-teal-400 group-hover:text-teal-800 hover:bg-teal-200'
-                              : 'text-slate-400 group-hover:text-slate-800 hover:bg-slate-300/80'
+                              ? 'text-teal-400 hover:bg-teal-500/20'
+                              : 'text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80'
                           }`}
                           title="Configurar notificação"
                         >
@@ -494,7 +494,7 @@ export default function GestaoClientesV2() {
                         </button>
                         <button
                           onClick={() => setClientToDelete(client)}
-                          className="p-2 text-slate-400 group-hover:text-rose-700 hover:bg-rose-100 rounded-xl transition-all"
+                          className="p-2 text-slate-400 group-hover:text-rose-400 hover:bg-rose-500/20 rounded-xl transition-all"
                           title="Remover cliente"
                         >
                           <Trash2 size={15} />

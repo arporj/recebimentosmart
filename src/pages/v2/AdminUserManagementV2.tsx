@@ -286,17 +286,17 @@ export default function AdminUserManagementV2() {
                                 </tr>
                             ) : (
                                 currentUsers.map(user => (
-                                    <tr key={user.id} className={`hover:bg-slate-100 transition-colors duration-150 group ${user.subscription_status === 'deleted' ? 'opacity-70 bg-rose-50/10' : ''}`}>
+                                    <tr key={user.id} className={`hover:bg-[#2d3b4f] transition-colors duration-150 group border-b border-slate-800/80 ${user.subscription_status === 'deleted' ? 'opacity-70 bg-rose-50/10' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-custom/10 border border-custom/20 flex items-center justify-center font-bold text-custom group-hover:bg-custom group-hover:text-white transition-colors shrink-0">
+                                                <div className="w-10 h-10 rounded-full bg-custom/10 border border-custom/20 flex items-center justify-center font-bold text-custom shrink-0 group-hover:border-custom/40 transition-colors">
                                                     {getInitials(user.name, user.email)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-sm text-slate-100 group-hover:text-slate-900 transition-colors">{user.name || 'Sem Nome'}</p>
-                                                    <p className="text-xs text-slate-400 group-hover:text-slate-700 font-medium transition-colors">{user.email}</p>
+                                                    <p className="font-bold text-sm text-slate-100 group-hover:text-teal-400 transition-colors">{user.name || 'Sem Nome'}</p>
+                                                    <p className="text-xs text-slate-400 group-hover:text-slate-200 font-medium transition-colors">{user.email}</p>
                                                     {rowDensity === 'expanded' && (
-                                                        <p className="text-[10px] text-slate-400 group-hover:text-slate-600 font-medium mt-0.5 transition-colors">
+                                                        <p className="text-[10px] text-slate-400 group-hover:text-slate-300 font-medium mt-0.5 transition-colors">
                                                             Cadastrado em: {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                                                         </p>
                                                     )}
@@ -309,17 +309,17 @@ export default function AdminUserManagementV2() {
                                         <td className="px-6 py-4">
                                             <StatusBadge status={user.subscription_status} isAdmin={user.is_admin} />
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-200 group-hover:text-slate-900 font-bold transition-colors">
+                                        <td className="px-6 py-4 text-sm text-slate-200 group-hover:text-white font-bold transition-colors">
                                              {user.total_transactions ?? 0}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-300 group-hover:text-slate-800 font-medium transition-colors">
+                                        <td className="px-6 py-4 text-sm text-slate-300 group-hover:text-white font-medium transition-colors">
                                             {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '-'}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => setSelectedUser(user)}
-                                                    className="p-2 text-slate-400 group-hover:text-slate-900 hover:bg-slate-300/80 rounded-lg transition-colors"
+                                                    className="p-2 text-slate-400 group-hover:text-teal-400 hover:bg-slate-700/80 rounded-lg transition-colors"
                                                     title="Configurações"
                                                 >
                                                     <MoreVertical className="w-5 h-5" />
