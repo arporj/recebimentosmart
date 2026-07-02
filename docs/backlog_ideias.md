@@ -13,7 +13,7 @@ Este documento centraliza todas as ideias adiadas, bugs registrados e melhorias 
 ## 2. 💡 Planejamento de Ideias e Recursos Futuros
 
 ### 2.1. 🔄 Refatoração de Recorrências para o Padrão Template/Contrato (Prioritário)
-* **Status:** Planejado (Prioridade Alta).
+* **Status:** Concluído 🚀 (Julho/2026).
 * **Descrição:** Refatorar o modelo de recorrência do sistema para adotar o padrão de **Template de Recorrência** (ou assinatura), onde o registro principal criado no banco de dados funciona puramente como um configurador/gerador (contrato) que nunca entra diretamente no saldo nem aparece na listagem financeira.
 * **Principais Requisitos:**
   * **Registro Template (Mãe Isolado):** A transação configuradora do ciclo recebe a flag `is_template = true` e fica oculta das consultas reativas de saldo e transações diárias.
