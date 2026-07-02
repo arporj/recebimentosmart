@@ -30,7 +30,7 @@ export async function getOrCreateContaPrincipal(userId: string): Promise<string>
       user_id: userId,
       name: 'Conta Principal',
       type: 'checking',
-      balance: 0,
+      initial_balance: 0,
       is_default: true,
     })
     .select('id')
@@ -50,7 +50,7 @@ export async function getOrCreateContaPrincipal(userId: string): Promise<string>
 export async function listarContas(userId: string) {
   const { data, error } = await supabase
     .from('financial_accounts')
-    .select('id, name, type, is_default, balance')
+    .select('id, name, type, is_default, initial_balance')
     .eq('user_id', userId)
     .order('is_default', { ascending: false })
     .order('name', { ascending: true });
