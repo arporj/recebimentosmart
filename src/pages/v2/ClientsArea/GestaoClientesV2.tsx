@@ -373,17 +373,17 @@ export default function GestaoClientesV2() {
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
-                  <tr key={client.id} className="hover:bg-slate-800/60 transition-colors group">
+                  <tr key={client.id} className="hover:bg-slate-800/90 transition-all duration-150 group">
                     {/* Client name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                          client.status ? 'bg-teal-500/10 text-teal-400' : 'bg-slate-800 text-slate-500'
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
+                          client.status ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-slate-800 text-slate-500 border border-slate-700'
                         }`}>
                           <User size={18} />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-100">{client.name}</p>
+                          <p className="font-bold text-slate-100 group-hover:text-teal-400 transition-colors">{client.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {client.phone && (
                               <span className="text-xs text-slate-400 flex items-center gap-1">
