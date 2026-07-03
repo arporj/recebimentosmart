@@ -38,14 +38,14 @@ const RISK_STYLES: Record<PendingAction['risk'], { border: string; bg: string; i
 const RISK_LABELS: Record<PendingAction['risk'], string> = {
   low: 'Ação segura',
   medium: 'Requer confirmação',
-  high: '⚠️ Ação destrutiva',
+  high: '⚠️ Confirme a exclusão',
 };
 
 export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: ArtieConfirmCardProps) {
   const styles = RISK_STYLES[action.risk];
 
   return (
-    <div className={`rounded-xl border ${styles.border} ${styles.bg} p-4 space-y-3.5 mx-1 shadow-md transition-all`}>
+    <div className={`rounded-xl border ${styles.border} ${styles.bg} p-4 space-y-3.5 mx-1 shadow-md transition-all animate-in fade-in slide-in-from-bottom-2 duration-200`}>
       {/* Header */}
       <div className="flex items-center gap-2">
         <AlertTriangle size={16} className={styles.icon} />
@@ -77,7 +77,7 @@ export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: A
             ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <Check size={16} />
           }
-          {isExecuting ? 'Executando...' : 'Confirmar'}
+          {isExecuting ? 'Excluindo...' : 'Sim, excluir'}
         </button>
 
         <button
@@ -86,7 +86,7 @@ export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: A
           className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all disabled:opacity-60 shadow-sm"
         >
           <X size={16} />
-          Cancelar
+          Não, cancelar
         </button>
       </div>
     </div>

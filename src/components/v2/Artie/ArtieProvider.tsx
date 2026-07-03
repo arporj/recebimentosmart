@@ -263,19 +263,18 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Tools de médio/alto risco: pede confirmação
+    // Tools de médio/alto risco: exibe o card de confirmação com os botões Sim/Não sem duplicar como mensagem em texto
     const confirmMsg = buildConfirmationMessage(toolCall);
-    addMessage({ role: 'model', content: confirmMsg });
 
     setPendingAction({
       toolName: toolCall.name,
       args: toolCall.args,
       risk,
       confirmationMessage: confirmMsg,
-      requiresDoubleConfirm: risk === 'high',
+      requiresDoubleConfirm: false,
     });
     setChatState('awaiting_confirm');
-  }, [user, addMessage, buildApiMessages, entityContext, userMemory, sessionId]);
+  }, [user, buildApiMessages, entityContext, userMemory, sessionId]);
 
   // ─── Confirmar ação pendente ──────────────────────────────────────────────────
 
@@ -299,7 +298,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   }, [pendingAction, user, addMessage]);
 
   const cancelPendingAction = useCallback(() => {
-    addMessage({ role: 'model', content: 'Tudo bem, ação cancelada.' });
+    addMessage({ role: 'model', content: 'Tudo bem, exclusão cancelada.' });
     setPendingAction(null);
     setChatState('idle');
   }, [addMessage]);
@@ -308,9 +307,27 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
   const sendTextMessage = useCallback(async (text: string) => {
     if (!text.trim() || chatState === 'processing') return;
+
     addMessage({ role: 'user', content: text });
+
+    // Se houver ação pendente aguardando resposta do usuário
+    if (pendingAction) {
+      const norm = text.toLowerCase().trim();
+      const isAff = ['sim', 'pode', 'confirma', 'confirmar', 'excluir', 'apagar', 'ok', 'pode sim', 'sim, confirma', 'exclui'].some(k => norm.includes(k));
+      const isNeg = ['não', 'nao', 'cancela', 'cancelar', 'deixa pra lá', 'deixa pra la', 'não quero', 'nao quero'].some(k => norm.includes(k));
+
+      if (isAff) {
+        await confirmPendingAction();
+        return;
+      }
+      if (isNeg) {
+        cancelPendingAction();
+        return;
+      }
+    }
+
     await callBackend(text);
-  }, [addMessage, callBackend, chatState]);
+  }, [addMessage, callBackend, chatState, pendingAction, confirmPendingAction, cancelPendingAction]);
 
   const sendAudio = useCallback(async (audioBlob: Blob, mimeType: string) => {
     if (chatState === 'processing') return;
