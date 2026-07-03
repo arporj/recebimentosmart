@@ -247,11 +247,11 @@ exports.handler = async (event) => {
   }
 
   const geminiPayload = {
-    system_instruction: { parts: [{ text: systemPrompt }] },
+    systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: geminiContents,
-    tools: [{ function_declarations: ARTIE_TOOLS }],
-    tool_config: {
-      function_calling_config: {
+    tools: [{ functionDeclarations: ARTIE_TOOLS }],
+    toolConfig: {
+      functionCallingConfig: {
         mode: 'AUTO', // Gemini decide sozinho: responde em texto OU emite tool_call
       },
     },

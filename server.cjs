@@ -808,15 +808,15 @@ app.post('/api/artie/chat', async (req, res) => {
   }
 
   const geminiPayload = {
-    system_instruction: { parts: [{ text: systemPrompt }] },
+    systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: geminiContents,
-    tools: [{ function_declarations: ARTIE_TOOLS_LOCAL }],
-    tool_config: { function_calling_config: { mode: 'AUTO' } },
+    tools: [{ functionDeclarations: ARTIE_TOOLS_LOCAL }],
+    toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
     generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
   };
 
-  // Fallback de modelos: tenta do mais recente para o mais antigo
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Modelos suportados pela Gemini REST API
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastGeminiError = null;
 
   for (const model of models) {
