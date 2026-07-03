@@ -261,62 +261,99 @@ exports.handler = async (event) => {
     },
   };
 
-  try {
-    const resp = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiPayload),
-    });
+  // Modelos suportados pela Gemini REST API (prioridade: 3.5-flash -> 2.5-flash -> 2.0-flash -> 1.5-flash)
+  const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastGeminiError = null;
 
-    const result = await resp.json();
+  for (const model of models) {
+    try {
+      const modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      const resp = await fetch(modelUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiPayload),
+      });
 
-    if (!resp.ok) {
-      console.error('[Artie] Gemini API error:', result);
-      return {
-        statusCode: 502,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ success: false, error: 'Erro na API do Artie. Tente novamente.' }),
-      };
-    }
+      const result = await resp.json();
 
-    const candidate = result.candidates?.[0];
-    if (!candidate) {
+      if (!resp.ok) {
+        const errorMsg = result?.error?.message || `HTTP ${resp.status}`;
+        console.warn(`[Artie] Falha com modelo ${model}:`, errorMsg);
+        lastGeminiError = errorMsg;
+
+        if (resp.status === 429 || errorMsg.includes('Quota exceeded')) {
+          break;
+        }
+        continue;
+      }
+
+      const candidate = result.candidates?.[0];
+      if (!candidate) {
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ success: false, error: 'Sem resposta do Artie.' }),
+        };
+      }
+
+      // Verificar se é um tool_call
+      const toolCallPart = candidate.content?.parts?.find((p) => p.functionCall);
+      if (toolCallPart) {
+        const fn = toolCallPart.functionCall;
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            success: true,
+            tool_call: { name: fn.name, args: fn.args || {} },
+          }),
+        };
+      }
+
+      // Resposta textual
+      const textPart = candidate.content?.parts?.find((p) => p.text);
+      const reply = textPart?.text || 'Não entendi o comando. Pode repetir?';
+
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ success: false, error: 'Sem resposta do Artie.' }),
+        body: JSON.stringify({ success: true, reply }),
       };
+    } catch (err) {
+      console.error(`[Artie] Erro ao chamar modelo ${model}:`, err);
+      lastGeminiError = err.message;
     }
-
-    // Verificar se é um tool_call
-    const toolCallPart = candidate.content?.parts?.find((p) => p.functionCall);
-    if (toolCallPart) {
-      const fn = toolCallPart.functionCall;
-      return {
-        statusCode: 200,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({
-          success: true,
-          tool_call: { name: fn.name, args: fn.args || {} },
-        }),
-      };
-    }
-
-    // Resposta textual
-    const textPart = candidate.content?.parts?.find((p) => p.text);
-    const reply = textPart?.text || 'Não entendi o comando. Pode repetir?';
-
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ success: true, reply }),
-    };
-  } catch (err) {
-    console.error('[Artie] Erro inesperado:', err);
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ success: false, error: 'Erro interno do Artie. Tente novamente.' }),
-    };
   }
+
+  const friendlyError = formatFriendlyGeminiError(lastGeminiError);
+  return {
+    statusCode: 200,
+    headers: CORS_HEADERS,
+    body: JSON.stringify({ success: false, error: friendlyError }),
+  };
 };
+
+function formatFriendlyGeminiError(rawError) {
+  if (!rawError) return 'O Artie não conseguiu responder no momento. Tente novamente em alguns instantes.';
+
+  const str = String(rawError);
+
+  if (str.includes('Quota exceeded') || str.includes('exceeded your current quota') || str.includes('429') || str.includes('RESOURCE_EXHAUSTED')) {
+    const retryMatch = str.match(/retry in ([0-9.]+)\s*s/i);
+    if (retryMatch && retryMatch[1]) {
+      const seconds = Math.ceil(parseFloat(retryMatch[1]));
+      if (seconds >= 60) {
+        const minutes = Math.ceil(seconds / 60);
+        return `O Artie atingiu o limite de cota de chamadas da IA. Por favor, aguarde cerca de ${minutes} minuto(s) antes de tentar novamente.`;
+      }
+      return `O Artie atingiu o limite de cota de chamadas da IA. Por favor, aguarde cerca de ${seconds} segundo(s) antes de tentar novamente.`;
+    }
+    return 'O Artie atingiu o limite temporário de uso da IA. Por favor, aguarde cerca de 1 minuto antes de tentar novamente.';
+  }
+
+  if (str.includes('API_KEY_INVALID') || str.includes('API key not valid')) {
+    return 'O serviço do Artie está com uma chave de API inválida. Verifique sua chave VITE_GEMINI_API_KEY no arquivo .env.';
+  }
+
+  return `O Artie encontrou uma instabilidade temporária. Tente novamente em instantes. (${str})`;
+}

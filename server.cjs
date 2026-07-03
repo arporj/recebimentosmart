@@ -754,6 +754,34 @@ ${cards}
 7. Responda sempre em português do Brasil. Seja conciso.`;
 }
 
+function formatFriendlyGeminiError(rawError) {
+  if (!rawError) return 'O Artie não conseguiu responder no momento. Tente novamente em alguns instantes.';
+
+  const str = String(rawError);
+
+  // Detectar limite de cota / rate limit / quota exceeded
+  if (str.includes('Quota exceeded') || str.includes('exceeded your current quota') || str.includes('429') || str.includes('RESOURCE_EXHAUSTED')) {
+    // Tentar extrair o tempo de espera (ex: "Please retry in 52.579055622s.")
+    const retryMatch = str.match(/retry in ([0-9.]+)\s*s/i);
+    if (retryMatch && retryMatch[1]) {
+      const seconds = Math.ceil(parseFloat(retryMatch[1]));
+      if (seconds >= 60) {
+        const minutes = Math.ceil(seconds / 60);
+        return `O Artie atingiu o limite de cota de chamadas da IA. Por favor, aguarde cerca de ${minutes} minuto(s) antes de tentar novamente.`;
+      }
+      return `O Artie atingiu o limite de cota de chamadas da IA. Por favor, aguarde cerca de ${seconds} segundo(s) antes de tentar novamente.`;
+    }
+    return 'O Artie atingiu o limite temporário de uso da IA. Por favor, aguarde cerca de 1 minuto antes de tentar novamente.';
+  }
+
+  // Chave de API inválida
+  if (str.includes('API_KEY_INVALID') || str.includes('API key not valid')) {
+    return 'O serviço do Artie está com uma chave de API inválida. Verifique sua chave VITE_GEMINI_API_KEY no arquivo .env.';
+  }
+
+  return `O Artie encontrou uma instabilidade temporária. Tente novamente em instantes. (${str})`;
+}
+
 app.post('/api/artie/chat', async (req, res) => {
   // Remove aspas extras que o dotenv pode incluir quando o .env tem "valor entre aspas"
   const geminiApiKey = (process.env.VITE_GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
@@ -815,8 +843,8 @@ app.post('/api/artie/chat', async (req, res) => {
     generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
   };
 
-  // Modelos suportados pela Gemini REST API
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Modelos suportados pela Gemini REST API (prioridade: 3.5-flash -> 2.5-flash -> 2.0-flash -> 1.5-flash)
+  const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastGeminiError = null;
 
   for (const model of models) {
@@ -837,7 +865,7 @@ app.post('/api/artie/chat', async (req, res) => {
       const toolCallPart = candidate.content?.parts?.find(p => p.functionCall);
       if (toolCallPart) {
         const fn = toolCallPart.functionCall;
-        console.log(`[Artie] Tool call emitida: ${fn.name}`);
+        console.log(`[Artie] Tool call emitida por ${model}: ${fn.name}`);
         return res.json({ success: true, tool_call: { name: fn.name, args: fn.args || {} } });
       }
 
@@ -851,13 +879,16 @@ app.post('/api/artie/chat', async (req, res) => {
       console.warn(`[Artie] Falha com ${model} (HTTP ${status}): ${geminiError}`);
       lastGeminiError = geminiError;
 
-      // Se não for erro de modelo não encontrado, não tenta o próximo
-      if (status && status !== 404 && status !== 400) break;
+      // Se for 429 ou quota exceeded, interrompe fallback pois a cota da chave esgotou
+      if (status === 429 || (geminiError && geminiError.includes('Quota exceeded'))) {
+        break;
+      }
     }
   }
 
-  console.error('[Artie] Todos os modelos falharam. Último erro:', lastGeminiError);
-  return res.status(500).json({ success: false, error: `Erro ao chamar o Artie: ${lastGeminiError || 'tente novamente'}` });
+  const friendlyError = formatFriendlyGeminiError(lastGeminiError);
+  console.error('[Artie] Falha ao chamar Gemini. Erro formatado:', friendlyError);
+  return res.status(200).json({ success: false, error: friendlyError });
 });
 
 // --- Inicialização do Servidor ---
