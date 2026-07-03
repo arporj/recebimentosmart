@@ -8,6 +8,13 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { createClient } = require('@supabase/supabase-js');
 
+process.on('uncaughtException', (err) => {
+  console.error('[CRITICAL] Uncaught Exception in server.cjs:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[CRITICAL] Unhandled Rejection in server.cjs:', reason);
+});
+
 // --- Configuração e Inicialização ---
 const app = express();
 const PORT = process.env.API_PORT || 3000;
@@ -888,12 +895,12 @@ app.post('/api/artie/chat', async (req, res) => {
         return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
 
       } catch (err) {
-        const status = err.response?.status;
-        const geminiError = err.response?.data?.error?.message || err.message;
+        const status = err?.response?.status || 500;
+        const geminiError = err?.response?.data?.error?.message || err?.message || String(err);
         console.warn(`[Artie] Falha com ${model} (HTTP ${status}): ${geminiError}`);
         lastGeminiError = geminiError;
 
-        if (status === 429 || (geminiError && geminiError.includes('Quota exceeded'))) {
+        if (status === 429 || (geminiError && String(geminiError).includes('Quota exceeded'))) {
           break;
         }
       }
