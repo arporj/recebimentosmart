@@ -265,7 +265,8 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
         }),
       });
       const finalResult = await resp.json();
-      addMessage({ role: 'model', content: finalResult.reply || 'Aqui estão os dados solicitados.', toolCall, toolResult: result });
+      const finalReply = formatTransactionsFallback(result.data, finalResult.reply);
+      addMessage({ role: 'model', content: finalReply, toolCall, toolResult: result });
     } else {
       // Criar/confirmar/editar/deletar avulso: mensagem de sucesso direta
       addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data), toolCall, toolResult: result });
@@ -446,4 +447,21 @@ function buildSuccessMessage(toolCall: ArtieToolCall, data: any): string {
     default:
       return '✅ Ação executada com sucesso!';
   }
+}
+
+function formatTransactionsFallback(data: any, originalReply?: string): string {
+  if (originalReply && originalReply.trim() && !originalReply.includes('Aqui estão os dados solicitados')) {
+    return originalReply;
+  }
+  if (!Array.isArray(data) || data.length === 0) {
+    return 'Não encontrei nenhum lançamento para o período informado.';
+  }
+  const items = data.slice(0, 5).map(tx => {
+    const val = Number(Math.abs(tx.amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const st = tx.status === 'paid' ? 'Pago' : 'Pendente';
+    const dateStr = tx.date ? tx.date.split('-').reverse().join('/') : '';
+    return `• **${tx.description}**: R$ ${val} (${dateStr}) — *${st}*`;
+  }).join('\n');
+
+  return `Aqui estão os lançamentos encontrados:\n\n${items}\n\nDeseja realizar alguma alteração nesses lançamentos? (ex: marcar como pendente/pago, alterar valor ou excluir)`;
 }
