@@ -795,114 +795,117 @@ function formatFriendlyGeminiError(rawError) {
 }
 
 app.post('/api/artie/chat', async (req, res) => {
-  // Remove aspas extras que o dotenv pode incluir quando o .env tem "valor entre aspas"
-  const geminiApiKey = (process.env.VITE_GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
-  if (!geminiApiKey) {
-    return res.status(500).json({ success: false, error: 'Chave da API Gemini não configurada.' });
-  }
+  try {
+    // Remove aspas extras que o dotenv pode incluir quando o .env tem "valor entre aspas"
+    const geminiApiKey = (process.env.VITE_GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
+    if (!geminiApiKey) {
+      return res.status(200).json({ success: false, error: 'Chave da API Gemini não configurada.' });
+    }
 
-  const { messages, entity_context, user_memory, audio_base64, audio_mime_type } = req.body;
+    const { messages, entity_context, user_memory, audio_base64, audio_mime_type } = req.body || {};
 
-  const allMessages = messages || [];
-  const hasText = allMessages.some(m => m.role === 'user' && m.content && String(m.content).trim().length > 0);
-  const hasAudio = !!audio_base64;
+    const allMessages = messages || [];
+    const hasText = allMessages.some(m => m.role === 'user' && m.content && String(m.content).trim().length > 0);
+    const hasAudio = !!audio_base64;
 
-  if (!hasText && !hasAudio) {
-    return res.status(400).json({ success: false, error: 'Mensagem ou áudio obrigatório.' });
-  }
+    if (!hasText && !hasAudio) {
+      return res.status(200).json({ success: false, error: 'Mensagem ou áudio obrigatório.' });
+    }
 
-  const dateToday = new Date().toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
-  }).split('/').reverse().join('-');
+    const dateToday = new Date().toLocaleDateString('pt-BR', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).split('/').reverse().join('-');
 
-  const systemPrompt = buildArtieSystemPrompt(entity_context, user_memory, dateToday);
-  const historyMessages = allMessages.slice(-15);
-  const lastHistoryIndex = historyMessages.length - 1;
+    const systemPrompt = buildArtieSystemPrompt(entity_context, user_memory, dateToday);
+    const historyMessages = allMessages.slice(-15);
+    const lastHistoryIndex = historyMessages.length - 1;
 
-  const geminiContents = historyMessages.map((msg, idx) => {
-    // Usa índice para identificar última mensagem (evita comparação de referência após JSON.parse)
-    const isLastUserMsg = hasAudio && idx === lastHistoryIndex && msg.role === 'user';
-    if (isLastUserMsg) {
-      return {
+    const geminiContents = historyMessages.map((msg, idx) => {
+      const isLastUserMsg = hasAudio && idx === lastHistoryIndex && msg.role === 'user';
+      if (isLastUserMsg) {
+        return {
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: audio_mime_type || 'audio/webm', data: audio_base64 } },
+            { text: 'Processe este áudio e execute a ação solicitada. Responda em português do Brasil.' },
+          ],
+        };
+      }
+      let textContent = msg.content || ' ';
+      if (msg.tool_call && msg.tool_result) {
+        textContent += `\n[Contexto da ação realizada: ${msg.tool_call.name} -> Dados retornados do banco: ${JSON.stringify(msg.tool_result)}]`;
+      }
+      return { role: msg.role === 'model' ? 'model' : 'user', parts: [{ text: textContent }] };
+    });
+
+    // Áudio puro sem histórico de mensagens
+    if (hasAudio && historyMessages.length === 0) {
+      geminiContents.push({
         role: 'user',
         parts: [
           { inlineData: { mimeType: audio_mime_type || 'audio/webm', data: audio_base64 } },
           { text: 'Processe este áudio e execute a ação solicitada. Responda em português do Brasil.' },
         ],
-      };
-    }
-    let textContent = msg.content || ' ';
-    if (msg.tool_call && msg.tool_result) {
-      textContent += `\n[Contexto da ação realizada: ${msg.tool_call.name} -> Dados retornados do banco: ${JSON.stringify(msg.tool_result)}]`;
-    }
-    return { role: msg.role === 'model' ? 'model' : 'user', parts: [{ text: textContent }] };
-  });
-
-  // Áudio puro sem histórico de mensagens
-  if (hasAudio && historyMessages.length === 0) {
-    geminiContents.push({
-      role: 'user',
-      parts: [
-        { inlineData: { mimeType: audio_mime_type || 'audio/webm', data: audio_base64 } },
-        { text: 'Processe este áudio e execute a ação solicitada. Responda em português do Brasil.' },
-      ],
-    });
-  }
-
-  const geminiPayload = {
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: geminiContents,
-    tools: [{ functionDeclarations: ARTIE_TOOLS_LOCAL }],
-    toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-  };
-
-  // Modelos suportados pela Gemini REST API (prioridade: 3.5-flash -> 2.5-flash -> 2.0-flash -> 1.5-flash)
-  const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-  let lastGeminiError = null;
-
-  for (const model of models) {
-    try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-      console.log(`[Artie] Chamando ${model}...`);
-
-      const resp = await axios.post(geminiUrl, geminiPayload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
       });
+    }
 
-      const candidate = resp.data?.candidates?.[0];
-      if (!candidate) {
-        return res.json({ success: false, error: 'Sem resposta do Artie.' });
-      }
+    const geminiPayload = {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: geminiContents,
+      tools: [{ functionDeclarations: ARTIE_TOOLS_LOCAL }],
+      toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+    };
 
-      const toolCallPart = candidate.content?.parts?.find(p => p.functionCall);
-      if (toolCallPart) {
-        const fn = toolCallPart.functionCall;
-        console.log(`[Artie] Tool call emitida por ${model}: ${fn.name}`);
-        return res.json({ success: true, tool_call: { name: fn.name, args: fn.args || {} } });
-      }
+    // Modelos suportados pela Gemini REST API (prioridade: 3.5-flash -> 2.5-flash -> 2.0-flash -> 1.5-flash)
+    const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastGeminiError = null;
 
-      const textPart = candidate.content?.parts?.find(p => p.text);
-      console.log(`[Artie] Resposta textual gerada com ${model}`);
-      return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
+    for (const model of models) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+        console.log(`[Artie] Chamando ${model}...`);
 
-    } catch (err) {
-      const status = err.response?.status;
-      const geminiError = err.response?.data?.error?.message || err.message;
-      console.warn(`[Artie] Falha com ${model} (HTTP ${status}): ${geminiError}`);
-      lastGeminiError = geminiError;
+        const resp = await axios.post(geminiUrl, geminiPayload, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 30000,
+        });
 
-      // Se for 429 ou quota exceeded, interrompe fallback pois a cota da chave esgotou
-      if (status === 429 || (geminiError && geminiError.includes('Quota exceeded'))) {
-        break;
+        const candidate = resp.data?.candidates?.[0];
+        if (!candidate) {
+          return res.json({ success: false, error: 'Sem resposta do Artie.' });
+        }
+
+        const toolCallPart = candidate.content?.parts?.find(p => p.functionCall);
+        if (toolCallPart) {
+          const fn = toolCallPart.functionCall;
+          console.log(`[Artie] Tool call emitida por ${model}: ${fn.name}`);
+          return res.json({ success: true, tool_call: { name: fn.name, args: fn.args || {} } });
+        }
+
+        const textPart = candidate.content?.parts?.find(p => p.text);
+        console.log(`[Artie] Resposta textual gerada com ${model}`);
+        return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
+
+      } catch (err) {
+        const status = err.response?.status;
+        const geminiError = err.response?.data?.error?.message || err.message;
+        console.warn(`[Artie] Falha com ${model} (HTTP ${status}): ${geminiError}`);
+        lastGeminiError = geminiError;
+
+        if (status === 429 || (geminiError && geminiError.includes('Quota exceeded'))) {
+          break;
+        }
       }
     }
-  }
 
-  const friendlyError = formatFriendlyGeminiError(lastGeminiError);
-  console.error('[Artie] Falha ao chamar Gemini. Erro formatado:', friendlyError);
-  return res.status(200).json({ success: false, error: friendlyError });
+    const friendlyError = formatFriendlyGeminiError(lastGeminiError);
+    console.error('[Artie] Falha ao chamar Gemini. Erro formatado:', friendlyError);
+    return res.status(200).json({ success: false, error: friendlyError });
+  } catch (globalErr) {
+    console.error('[Artie] Erro interno crítico no handler do chat:', globalErr);
+    return res.status(200).json({ success: false, error: `Erro no servidor do Artie: ${globalErr.message}` });
+  }
 });
 
 // --- Inicialização do Servidor ---
