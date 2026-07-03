@@ -36,7 +36,7 @@ export default function LoginV2() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-gray-50 dark:bg-slate-950 overflow-x-hidden">
+    <div className="relative flex min-h-screen w-full flex-col bg-slate-50 dark:bg-slate-950 overflow-x-hidden transition-colors duration-200">
 
       {/* ─── Branding Banner ─── */}
       <div className="px-4 py-3">

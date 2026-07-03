@@ -88,17 +88,78 @@
 }
 
 /* ─── 2. MODO ESCURO (THEME DARK) ─── */
-.theme-dark {
+.theme-dark,
+.dark {
     background-color: #0b0f19 !important;
     color: #f1f5f9 !important;
 }
 
 .theme-dark body,
+.dark body,
 .theme-dark #root,
+.dark #root,
 .theme-dark .bg-slate-50,
+.dark .bg-slate-50,
+.theme-dark .bg-gray-50,
+.dark .bg-gray-50,
+.theme-dark .bg-\[\#f6f8f8\],
+.dark .bg-\[\#f6f8f8\],
 .theme-dark .bg-slate-100\/60,
-.theme-dark .bg-slate-100 {
+.dark .bg-slate-100\/60,
+.theme-dark .bg-slate-100,
+.dark .bg-slate-100 {
     background-color: #0b0f19 !important;
+}
+
+.theme-dark .bg-\[\#f6f8f8\]\/80,
+.dark .bg-\[\#f6f8f8\]\/80 {
+    background-color: rgba(11, 15, 25, 0.85) !important;
+}
+
+.theme-dark .bg-slate-200\/50,
+.dark .bg-slate-200\/50 {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+/* Cards de confirmação do Artie e Alertas no modo escuro */
+.theme-dark .artie-confirm-msg,
+.dark .artie-confirm-msg {
+    color: #f8fafc !important;
+}
+
+.theme-dark .bg-red-50,
+.dark .bg-red-50,
+.theme-dark .bg-red-100\/90,
+.dark .bg-red-100\/90 {
+    background-color: #3f1212 !important;
+    border-color: #7f1d1d !important;
+}
+
+.theme-dark .bg-amber-50,
+.dark .bg-amber-50 {
+    background-color: #3b2506 !important;
+    border-color: #78350f !important;
+}
+
+.theme-dark .bg-teal-50,
+.dark .bg-teal-50 {
+    background-color: #0b2e2b !important;
+    border-color: #134e4a !important;
+}
+
+.theme-dark .artie-confirm-title-high,
+.dark .artie-confirm-title-high {
+    color: #fca5a5 !important;
+}
+
+.theme-dark .artie-confirm-title-medium,
+.dark .artie-confirm-title-medium {
+    color: #fde047 !important;
+}
+
+.theme-dark .artie-confirm-title-low,
+.dark .artie-confirm-title-low {
+    color: #5eead4 !important;
 }
 
 .theme-dark aside.bg-\[\#0f172a\] {

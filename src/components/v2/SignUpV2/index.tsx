@@ -133,7 +133,7 @@ export default function SignUpV2() {
         } bg-white focus:ring-2 focus:ring-custom focus:border-custom h-14 placeholder:text-slate-400 p-[15px] pl-12 pr-12 text-base font-normal transition-all`;
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col bg-gray-50 overflow-x-hidden">
+        <div className="relative flex min-h-screen w-full flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-x-hidden transition-colors duration-200">
 
             {/* ─── Branding Banner ─── */}
             <div className="px-4 py-3">
