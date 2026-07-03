@@ -15,6 +15,7 @@ import type {
   PendingAction,
   ArtieToolCall,
 } from '../../../lib/artie/types';
+import type { PendingScopeAction } from './ArtieConfirmCard';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,10 +48,12 @@ interface ArtieContextValue {
   messages: ArtieMessage[];
   chatState: ArtieChatState;
   pendingAction: PendingAction | null;
+  pendingScopeAction: PendingScopeAction | null;
 
   sendTextMessage: (text: string) => Promise<void>;
   sendAudio: (audioBlob: Blob, mimeType: string) => Promise<void>;
   confirmPendingAction: () => Promise<void>;
+  confirmScopeAction: (scope: 'this' | 'following') => Promise<void>;
   cancelPendingAction: () => void;
   clearHistory: () => void;
 
@@ -369,9 +372,11 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     messages,
     chatState,
     pendingAction,
+    pendingScopeAction,
     sendTextMessage,
     sendAudio,
     confirmPendingAction,
+    confirmScopeAction,
     cancelPendingAction,
     clearHistory,
     entityContext,
