@@ -149,21 +149,28 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
   const addMessage = useCallback((msg: Omit<ArtieMessage, 'id' | 'createdAt'>): ArtieMessage => {
     const full: ArtieMessage = { ...msg, id: uuidv4(), createdAt: new Date() };
-    setMessages(prev => [...prev, full]);
+    const next = [...messagesRef.current, full];
+    messagesRef.current = next;
+    setMessages(next);
     return full;
   }, []);
 
-  const buildApiMessages = useCallback(() =>
-    messagesRef.current
+  const buildApiMessages = useCallback((currentUserText?: string) => {
+    const list = messagesRef.current
       .filter(m => m.role === 'user' || m.role === 'model')
       .map(m => ({
         role: m.role,
         content: m.content,
         tool_call: m.toolCall,
         tool_result: m.toolResult,
-      }))
-      .slice(-15),
-  []);
+      }));
+
+    if (currentUserText && (list.length === 0 || list[list.length - 1].content !== currentUserText)) {
+      list.push({ role: 'user', content: currentUserText });
+    }
+
+    return list.slice(-15);
+  }, []);
 
   // ─── Chamada ao backend ──────────────────────────────────────────────────────
 
@@ -178,7 +185,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
     try {
       const body: Record<string, unknown> = {
-        messages: buildApiMessages(),
+        messages: buildApiMessages(userText),
         entity_context: entityContext,
         user_memory: userMemory,
         session_id: sessionId,
