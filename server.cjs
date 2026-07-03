@@ -459,31 +459,33 @@ app.post('/api/lancamento-voz', async (req, res) => {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
         console.log(`[Art] Tentando enviar requisição para o ${model} (temperature: 0, deterministic)...`);
         
-        const resCall = await axios.post(geminiUrl, payload, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          timeout: 12000
+        const resCall = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
 
+        const resData = await resCall.json();
+
         if (
-          resCall.data &&
-          resCall.data.candidates &&
-          resCall.data.candidates.length > 0 &&
-          resCall.data.candidates[0].content &&
-          resCall.data.candidates[0].content.parts &&
-          resCall.data.candidates[0].content.parts.length > 0
+          resCall.ok &&
+          resData &&
+          resData.candidates &&
+          resData.candidates.length > 0 &&
+          resData.candidates[0].content &&
+          resData.candidates[0].content.parts &&
+          resData.candidates[0].content.parts.length > 0
         ) {
-          response = resCall;
+          response = resData;
           console.log(`[Art] Requisição bem-sucedida usando o modelo ${model}!`);
           break;
         } else {
-          throw new Error(`Retorno inválido ou vazio da API do Gemini para o modelo ${model}.`);
+          const errMsg = resData?.error?.message || `HTTP ${resCall.status}`;
+          console.warn(`[Art] Falha ao tentar com o modelo ${model} (${resCall.status}): ${errMsg}`);
+          lastError = new Error(errMsg);
         }
       } catch (error) {
-        const errStatus = error.response?.status || 'N/A';
-        const errMsg = error.message || 'erro desconhecido';
-        console.warn(`[Art] Falha ao tentar com o modelo ${model} (${errStatus}): ${errMsg}`);
+        console.warn(`[Art] Falha ao tentar com o modelo ${model}: ${error.message}`);
         lastError = error;
       }
     }
@@ -492,7 +494,7 @@ app.post('/api/lancamento-voz', async (req, res) => {
       throw lastError || new Error('Todos os modelos do Gemini falharam no processamento do áudio.');
     }
 
-    const responseText = response.data.candidates[0].content.parts[0].text;
+    const responseText = response.candidates[0].content.parts[0].text;
     console.log(`[Art] Resposta bruta do Gemini:`, responseText);
 
     const parsedData = JSON.parse(responseText);
