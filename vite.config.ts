@@ -29,8 +29,17 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (err, _req, res) => {
+            console.error('[Vite Proxy Error]:', err.message);
+            if ('writeHead' in res && typeof res.writeHead === 'function' && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: 'Servidor local temporariamente indisponível.' }));
+            }
+          });
+        },
       },
     },
   },

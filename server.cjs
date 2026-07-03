@@ -926,7 +926,7 @@ app.post('/api/artie/chat', async (req, res) => {
 });
 
 // --- Inicialização do Servidor ---
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
   console.log(`Servidor de API do Recebimento Smart ativo!`);
   console.log(`Rodando na porta local: http://localhost:${PORT}`);
