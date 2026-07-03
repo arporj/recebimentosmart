@@ -219,62 +219,81 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   // ─── Gerenciamento de Tool Calls ─────────────────────────────────────────────
 
   const handleToolCall = useCallback(async (toolCall: ArtieToolCall, originalUserText?: string) => {
-    const risk = TOOL_RISK[toolCall.name] || 'medium';
-    const label = TOOL_LABELS[toolCall.name] || toolCall.name;
+    setChatState('processing');
+    const result = await executeArtieToolCall(user!.id, toolCall);
 
-    // Tools de baixo risco e consulta: executar automaticamente
-    if (risk === 'low' && toolCall.name !== 'delete_transaction') {
-      setChatState('processing');
-      const result = await executeArtieToolCall(user!.id, toolCall);
-
-      if (!result.success) {
-        // Se falhou (ex: ambiguidade), retornar o erro ao Gemini para que ele responda
-        addMessage({ role: 'model', content: result.error || 'Não foi possível executar.', toolCall, toolResult: result });
-        setChatState('idle');
-        return;
-      }
-
-      // Para consultas, devolver o resultado ao Gemini para formular resposta
-      if (toolCall.name === 'list_transactions') {
-        const followUp = buildApiMessages();
-        followUp.push({
-          role: 'user',
-          content: `[RESULTADO DA TOOL list_transactions]: ${JSON.stringify(result.data)}. Formule uma resposta clara para o usuário com base nesses dados.`,
-        });
-
-        const resp = await fetch('/api/artie/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: followUp,
-            entity_context: entityContext,
-            user_memory: userMemory,
-            session_id: sessionId,
-          }),
-        });
-        const finalResult = await resp.json();
-        addMessage({ role: 'model', content: finalResult.reply || 'Aqui estão os dados solicitados.', toolCall, toolResult: result });
-      } else {
-        // Criar/confirmar: mensagem de sucesso direta
-        addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data), toolCall, toolResult: result });
-      }
-
+    if (!result.success) {
+      addMessage({ role: 'model', content: result.error || 'Não foi possível executar.', toolCall, toolResult: result });
       setChatState('idle');
       return;
     }
 
-    // Tools de médio/alto risco: exibe o card de confirmação com os botões Sim/Não sem duplicar como mensagem em texto
-    const confirmMsg = buildConfirmationMessage(toolCall);
+    // Se for deleção de lançamento recorrente/parcelado que exige escolha de escopo
+    if (result.requiresScope && result.data) {
+      setPendingScopeAction(result.data);
+      setChatState('awaiting_confirm');
+      return;
+    }
 
-    setPendingAction({
-      toolName: toolCall.name,
-      args: toolCall.args,
-      risk,
-      confirmationMessage: confirmMsg,
-      requiresDoubleConfirm: false,
-    });
-    setChatState('awaiting_confirm');
-  }, [user, buildApiMessages, entityContext, userMemory, sessionId]);
+    // Para consultas, devolver o resultado ao Gemini para formular resposta
+    if (toolCall.name === 'list_transactions') {
+      const followUp = buildApiMessages();
+      followUp.push({
+        role: 'user',
+        content: `[RESULTADO DA TOOL list_transactions]: ${JSON.stringify(result.data)}. Formule uma resposta clara para o usuário com base nesses dados.`,
+      });
+
+      const resp = await fetch('/api/artie/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: followUp,
+          entity_context: entityContext,
+          user_memory: userMemory,
+          session_id: sessionId,
+        }),
+      });
+      const finalResult = await resp.json();
+      addMessage({ role: 'model', content: finalResult.reply || 'Aqui estão os dados solicitados.', toolCall, toolResult: result });
+    } else {
+      // Criar/confirmar/editar/deletar avulso: mensagem de sucesso direta
+      addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data), toolCall, toolResult: result });
+    }
+
+    setChatState('idle');
+  }, [user, buildApiMessages, entityContext, userMemory, sessionId, addMessage]);
+
+  // ─── Confirmar / Escolher Escopo em Recorrentes ────────────────────────────────
+
+  const confirmScopeAction = useCallback(async (scope: 'this' | 'following') => {
+    if (!pendingScopeAction || !user) return;
+
+    setChatState('processing');
+    const toolCall: ArtieToolCall = {
+      name: 'delete_transaction',
+      args: {
+        search_description: pendingScopeAction.search_description,
+        search_date: pendingScopeAction.search_date,
+        search_amount: pendingScopeAction.search_amount,
+        scope,
+      },
+    };
+
+    const result = await executeArtieToolCall(user.id, toolCall);
+    if (!result.success) {
+      addMessage({ role: 'model', content: `❌ ${result.error}`, toolCall, toolResult: result });
+    } else {
+      addMessage({
+        role: 'model',
+        content: buildSuccessMessage(toolCall, result.data),
+        toolCall,
+        toolResult: result,
+      });
+    }
+
+    setPendingScopeAction(null);
+    setChatState('idle');
+  }, [pendingScopeAction, user, addMessage]);
 
   // ─── Confirmar ação pendente ──────────────────────────────────────────────────
 
@@ -300,6 +319,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   const cancelPendingAction = useCallback(() => {
     addMessage({ role: 'model', content: 'Tudo bem, exclusão cancelada.' });
     setPendingAction(null);
+    setPendingScopeAction(null);
     setChatState('idle');
   }, [addMessage]);
 

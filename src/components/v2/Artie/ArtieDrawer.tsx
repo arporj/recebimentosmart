@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { Bot, X, Trash2, Send, Loader2, Sparkles } from 'lucide-react';
 import { useArtie } from './ArtieProvider';
 import { ArtieMessageBubble } from './ArtieMessageBubble';
-import { ArtieConfirmCard } from './ArtieConfirmCard';
+import { ArtieConfirmCard, ArtieScopeCard } from './ArtieConfirmCard';
 import { ArtieVoiceInput } from './ArtieVoiceInput';
 
 export function ArtieDrawer() {
@@ -16,9 +16,11 @@ export function ArtieDrawer() {
     messages,
     chatState,
     pendingAction,
+    pendingScopeAction,
     sendTextMessage,
     sendAudio,
     confirmPendingAction,
+    confirmScopeAction,
     cancelPendingAction,
     clearHistory,
   } = useArtie();
@@ -166,6 +168,15 @@ export function ArtieDrawer() {
           {messages.map(msg => (
             <ArtieMessageBubble key={msg.id} message={msg} />
           ))}
+
+          {/* Card de escolha de escopo (Recorrente/Parcelado) */}
+          {pendingScopeAction && (
+            <ArtieScopeCard
+              scopeAction={pendingScopeAction}
+              onSelectScope={confirmScopeAction}
+              isExecuting={isExecuting}
+            />
+          )}
 
           {/* Card de confirmação */}
           {pendingAction && (

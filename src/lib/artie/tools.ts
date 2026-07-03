@@ -144,8 +144,9 @@ Busque o lançamento pelo que o usuário descreveu. Informe ao usuário o que se
     name: 'delete_transaction',
     description: `Remove um lançamento existente.
 Use quando o usuário quiser EXCLUIR, APAGAR, REMOVER um lançamento.
-ATENÇÃO: sempre confirme com o usuário antes de chamar esta tool. Informe o que será deletado.
-Busca pelo que o usuário descreveu.`,
+Se for um lançamento avulso, ele é excluído diretamente.
+Se for recorrente ou parcelado, o sistema pergunta ao usuário o escopo.
+Você pode passar 'scope' se o usuário já especificou no texto (ex: "exclua todos os próximos" -> scope: "following", "exclua só este" -> scope: "this").`,
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -159,7 +160,12 @@ Busca pelo que o usuário descreveu.`,
         },
         search_amount: {
           type: 'NUMBER',
-          description: 'Valor do lançamento. Opcional para refinar busca.',
+          description: 'Valor para refinar busca. Opcional.',
+        },
+        scope: {
+          type: 'STRING',
+          enum: ['this', 'following', 'all'],
+          description: 'Escopo da exclusão: "this" (apenas este), "following" (este e todos os próximos). Omita se não informado.',
         },
       },
       required: ['search_description'],

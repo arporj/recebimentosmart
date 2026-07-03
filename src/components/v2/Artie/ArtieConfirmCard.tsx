@@ -1,8 +1,16 @@
-// ArtieConfirmCard — Card inline de confirmação de ação
-// Exibido quando o Artie identifica uma ação que requer aprovação do usuário.
+// ArtieConfirmCard — Cards inline de confirmação de ação e escolha de escopo recorrente
 
-import { AlertTriangle, Check, X } from 'lucide-react';
+import { AlertTriangle, Check, X, Repeat, CalendarX, Trash2 } from 'lucide-react';
 import type { PendingAction } from '../../../lib/artie/types';
+
+export interface PendingScopeAction {
+  search_description: string;
+  search_date?: string;
+  search_amount?: number;
+  description: string;
+  amount: number;
+  message: string;
+}
 
 interface ArtieConfirmCardProps {
   action: PendingAction;
@@ -38,7 +46,7 @@ const RISK_STYLES: Record<PendingAction['risk'], { border: string; bg: string; i
 const RISK_LABELS: Record<PendingAction['risk'], string> = {
   low: 'Ação segura',
   medium: 'Requer confirmação',
-  high: '⚠️ Confirme a exclusão',
+  high: '⚠️ Confirme a alteração',
 };
 
 export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: ArtieConfirmCardProps) {
@@ -46,7 +54,6 @@ export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: A
 
   return (
     <div className={`rounded-xl border ${styles.border} ${styles.bg} p-4 space-y-3.5 mx-1 shadow-md transition-all animate-in fade-in slide-in-from-bottom-2 duration-200`}>
-      {/* Header */}
       <div className="flex items-center gap-2">
         <AlertTriangle size={16} className={styles.icon} />
         <span className={`text-xs font-extrabold tracking-wide uppercase ${styles.title}`}>
@@ -54,30 +61,21 @@ export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: A
         </span>
       </div>
 
-      {/* Ação */}
       <p className={`text-sm font-semibold leading-relaxed ${styles.text}`}>
         {action.confirmationMessage.replace(/\*\*/g, '')}
       </p>
 
-      {/* Botões */}
       <div className="flex gap-2.5 pt-1">
         <button
           onClick={onConfirm}
           disabled={isExecuting}
-          className={`
-            flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm
-            ${action.risk === 'high'
-              ? 'bg-red-600 hover:bg-red-700 text-white'
-              : 'bg-teal-600 hover:bg-teal-700 text-white'
-            }
-            disabled:opacity-60 disabled:cursor-not-allowed
-          `}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold bg-teal-600 hover:bg-teal-700 text-white transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isExecuting
             ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <Check size={16} />
           }
-          {isExecuting ? 'Excluindo...' : 'Sim, excluir'}
+          {isExecuting ? 'Executando...' : 'Confirmar'}
         </button>
 
         <button
@@ -86,7 +84,52 @@ export function ArtieConfirmCard({ action, onConfirm, onCancel, isExecuting }: A
           className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all disabled:opacity-60 shadow-sm"
         >
           <X size={16} />
-          Não, cancelar
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ArtieScopeCard({
+  scopeAction,
+  onSelectScope,
+  isExecuting,
+}: {
+  scopeAction: PendingScopeAction;
+  onSelectScope: (scope: 'this' | 'following') => void;
+  isExecuting: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/80 p-4 space-y-3.5 mx-1 shadow-md transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div className="flex items-center gap-2">
+        <Repeat size={16} className="text-amber-700 dark:text-amber-400" />
+        <span className="text-xs font-extrabold tracking-wide uppercase text-amber-800 dark:text-amber-300 artie-confirm-title-medium">
+          Lançamento Recorrente / Parcelado
+        </span>
+      </div>
+
+      <p className="text-sm font-semibold leading-relaxed text-slate-900 dark:text-amber-100 artie-confirm-msg">
+        O lançamento <strong className="font-bold">"{scopeAction.description}"</strong> faz parte de uma sequência. Como deseja prosseguir com a exclusão?
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-2 pt-1">
+        <button
+          onClick={() => onSelectScope('this')}
+          disabled={isExecuting}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-sm disabled:opacity-60"
+        >
+          <CalendarX size={15} />
+          Apenas este lançamento
+        </button>
+
+        <button
+          onClick={() => onSelectScope('following')}
+          disabled={isExecuting}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-all shadow-sm disabled:opacity-60"
+        >
+          <Trash2 size={15} />
+          Este e todos os próximos
         </button>
       </div>
     </div>

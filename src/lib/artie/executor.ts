@@ -35,7 +35,7 @@ async function findTransactions(
 
   let query = supabase
     .from('financial_transactions')
-    .select('id, description, amount, date, type, status, account_id, category_id, financial_accounts!account_id(name)')
+    .select('id, description, amount, date, type, status, account_id, category_id, modalidade, parent_id, recurrence_enabled, installment_total, financial_accounts!account_id(name)')
     .eq('user_id', userId)
     .gte('date', searchDate ? from : '2000-01-01')
     .lte('date', searchDate ? to : '2099-12-31');
@@ -165,16 +165,49 @@ async function executeDeleteTransaction(
     if (matches.length > 1) {
       return {
         success: false,
-        error: `Encontrei ${matches.length} lançamentos. Qual devo excluir? ${matches.map(m => `"${m.description}" (R$${Math.abs(m.amount).toFixed(2)} em ${m.date})`).join(', ')}.`,
+        error: `Encontrei ${matches.length} lançamentos que correspondem. Seja mais específico (data ou valor). Encontrei: ${matches.map(m => `"${m.description}" (R$${Math.abs(m.amount).toFixed(2)} em ${m.date})`).join(', ')}.`,
       };
     }
 
     const tx = matches[0];
-    const { error } = await deletarTransacao(tx.id);
+    const isRecurringOrInstallment =
+      (tx.modalidade && tx.modalidade !== 'unica') ||
+      !!tx.parent_id ||
+      (tx.installment_total && tx.installment_total > 1) ||
+      !!tx.recurrence_enabled;
+
+    // Se o lançamento for recorrente/parcelado e o usuário ainda não indicou se quer apagar um ou todos os próximos
+    if (isRecurringOrInstallment && !args.scope) {
+      return {
+        success: true,
+        requiresScope: true,
+        data: {
+          transactionId: tx.id,
+          description: tx.description,
+          amount: tx.amount,
+          date: tx.date,
+          search_description: args.search_description,
+          search_date: args.search_date,
+          search_amount: args.search_amount,
+          message: `O lançamento "${tx.description}" (R$ ${Math.abs(tx.amount).toFixed(2)}) faz parte de uma sequência (recorrente/parcelado).`
+        }
+      };
+    }
+
+    const scopeToUse = args.scope || 'this';
+    const { error } = await deletarTransacao({ transactionId: tx.id, scope: scopeToUse });
     if (error) throw error;
 
     window.dispatchEvent(new CustomEvent('transaction_created'));
-    return { success: true, data: { id: tx.id, description: tx.description } };
+    return {
+      success: true,
+      data: {
+        id: tx.id,
+        description: tx.description,
+        amount: tx.amount,
+        scope: scopeToUse
+      }
+    };
   } catch (err: any) {
     return { success: false, error: err.message || 'Erro ao excluir lançamento.' };
   }

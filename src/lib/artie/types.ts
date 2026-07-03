@@ -27,7 +27,8 @@ export interface ArtieToolCall {
 
 export interface ArtieToolResult {
   success: boolean;
-  data?: unknown;
+  requiresScope?: boolean;
+  data?: any;
   error?: string;
 }
 
@@ -62,6 +63,7 @@ export interface DeleteTransactionArgs {
   search_description: string;
   search_date?: string;
   search_amount?: number;
+  scope?: 'this' | 'following' | 'all';
 }
 
 export interface ConfirmTransactionArgs {
