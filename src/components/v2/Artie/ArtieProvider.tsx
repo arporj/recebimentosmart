@@ -78,6 +78,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ArtieMessage[]>([]);
   const [chatState, setChatState] = useState<ArtieChatState>('idle');
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [pendingScopeAction, setPendingScopeAction] = useState<PendingScopeAction | null>(null);
   const [entityContext, setEntityContext] = useState<ArtieEntityContext>({ accounts: [], categories: [], credit_cards: [] });
   const [userMemory, setUserMemory] = useState<Partial<ArtieUserMemory> | null>(null);
   const [sessionId] = useState(() => uuidv4());
