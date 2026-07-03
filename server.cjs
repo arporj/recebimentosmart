@@ -620,6 +620,221 @@ app.post('/webhooks/inter', async (req, res) => {
   }
 });
 
+// --- Rota do Artie (Assistente IA Agêntico) ---
+// Espelha a Netlify Function netlify/functions/artie-chat.js para desenvolvimento local.
+
+const ARTIE_TOOLS_LOCAL = [
+  {
+    name: 'create_transaction',
+    description: `Cria um novo lançamento financeiro (despesa, receita ou transferência).
+Use quando o usuário quiser REGISTRAR, ADICIONAR ou LANÇAR algo novo.
+NUNCA invente valores ou descrições. Se faltar informação essencial (valor ou descrição), pergunte antes de chamar esta tool.
+Se o usuário não mencionar conta, crie sem conta (account_id omitido). Se não mencionar categoria, crie sem categoria.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        description: { type: 'STRING', description: 'Descrição exata do lançamento.' },
+        amount: { type: 'NUMBER', description: 'Valor numérico positivo. NUNCA invente.' },
+        type: { type: 'STRING', enum: ['expense', 'income', 'transfer'] },
+        date: { type: 'STRING', description: 'Data YYYY-MM-DD. Use hoje se não mencionado.' },
+        account_id: { type: 'STRING', description: 'ID da conta (veja entity_context.accounts). Omita se não mencionado.' },
+        category_id: { type: 'STRING', description: 'ID da categoria (veja entity_context.categories). Omita se não mencionado.' },
+        modalidade: { type: 'STRING', enum: ['unica', 'parcelada', 'recorrente'] },
+        installment_total: { type: 'NUMBER' },
+        recurrence_period: { type: 'STRING', enum: ['daily', 'weekly', 'monthly', 'yearly'] },
+        recurrence_interval: { type: 'NUMBER' },
+        status: { type: 'STRING', enum: ['pending', 'paid'] },
+      },
+      required: ['description', 'amount', 'type', 'date'],
+    },
+  },
+  {
+    name: 'confirm_transaction',
+    description: `Dá baixa em um lançamento PENDENTE existente.
+Use quando o usuário disser "confirmei", "paguei", "recebi", "dar baixa".`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        search_description: { type: 'STRING' },
+        search_date: { type: 'STRING' },
+        search_amount: { type: 'NUMBER' },
+        confirm_date: { type: 'STRING' },
+      },
+      required: ['search_description'],
+    },
+  },
+  {
+    name: 'update_transaction',
+    description: `Edita campos de um lançamento existente. Use quando o usuário quiser ALTERAR ou CORRIGIR.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        search_description: { type: 'STRING' },
+        search_date: { type: 'STRING' },
+        search_amount: { type: 'NUMBER' },
+        update_description: { type: 'STRING' },
+        update_amount: { type: 'NUMBER' },
+        update_date: { type: 'STRING' },
+        update_account_id: { type: 'STRING' },
+        update_category_id: { type: 'STRING' },
+      },
+      required: ['search_description'],
+    },
+  },
+  {
+    name: 'delete_transaction',
+    description: `Remove um lançamento existente. SEMPRE confirme com o usuário antes.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        search_description: { type: 'STRING' },
+        search_date: { type: 'STRING' },
+        search_amount: { type: 'NUMBER' },
+      },
+      required: ['search_description'],
+    },
+  },
+  {
+    name: 'list_transactions',
+    description: `Busca lançamentos para responder perguntas financeiras. Use SEMPRE antes de responder "quanto gastei em X".`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        limit: { type: 'NUMBER' },
+        date_from: { type: 'STRING' },
+        date_to: { type: 'STRING' },
+        type: { type: 'STRING', enum: ['income', 'expense', 'transfer'] },
+        category_name: { type: 'STRING' },
+        status: { type: 'STRING', enum: ['pending', 'paid'] },
+      },
+      required: [],
+    },
+  },
+];
+
+function buildArtieSystemPrompt(entityContext, userMemory, dateToday) {
+  const tone = userMemory?.conversation_tone || 'normal';
+  const toneMap = {
+    casual: 'Use linguagem informal, amigável e descontraída. Pode usar emojis com moderação.',
+    normal: 'Use linguagem clara, direta e profissional.',
+    tecnico: 'Use linguagem técnica. Mencione termos contábeis quando relevante. Seja preciso.',
+  };
+
+  const accounts = (entityContext?.accounts || []).map(a => `  - ${a.name} (id: ${a.id}, tipo: ${a.type})`).join('\n') || '  (nenhuma conta cadastrada)';
+  const categories = (entityContext?.categories || []).map(c => `  - ${c.name} (id: ${c.id})`).join('\n') || '  (nenhuma categoria cadastrada)';
+  const cards = (entityContext?.credit_cards || []).map(c => `  - ${c.name} (id: ${c.id}, fecha dia ${c.closing_day}, vence dia ${c.due_day}, limite: R$${Number(c.limit).toFixed(2)}, usado: R$${Number(c.current_balance).toFixed(2)})`).join('\n') || '  (nenhum cartão cadastrado)';
+
+  return `Você é o Artie, assistente financeiro inteligente do Recebimento $mart.
+
+## Tom de Conversa
+${toneMap[tone]}
+
+## Hoje
+${dateToday} (fuso horário: America/Sao_Paulo)
+
+## Entidades do Usuário
+Use estes dados reais ao emitir tool_calls. NUNCA invente IDs.
+
+### Contas Bancárias/Carteiras
+${accounts}
+
+### Categorias
+${categories}
+
+### Cartões de Crédito
+${cards}
+
+## Regras Absolutas
+1. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
+2. NUNCA invente valores, descrições ou IDs. Se faltar informação, PERGUNTE.
+3. Use sempre os IDs reais listados acima ao emitir tool_calls.
+4. Ao responder perguntas financeiras ("quanto gastei"), chame list_transactions ANTES.
+5. Se houver ambiguidade na busca, informe e peça mais detalhes.
+6. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
+7. Responda sempre em português do Brasil. Seja conciso.`;
+}
+
+app.post('/api/artie/chat', async (req, res) => {
+  const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    return res.status(500).json({ success: false, error: 'Chave da API Gemini não configurada.' });
+  }
+
+  const { messages, entity_context, user_memory, audio_base64, audio_mime_type } = req.body;
+
+  const lastMessage = (messages || []).slice(-1)[0];
+  const hasText = lastMessage?.role === 'user' && lastMessage?.content?.trim();
+  const hasAudio = !!audio_base64;
+
+  if (!hasText && !hasAudio) {
+    return res.status(400).json({ success: false, error: 'Mensagem ou áudio obrigatório.' });
+  }
+
+  const dateToday = new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-');
+
+  const systemPrompt = buildArtieSystemPrompt(entity_context, user_memory, dateToday);
+  const historyMessages = (messages || []).slice(-15);
+
+  const geminiContents = historyMessages.map((msg) => {
+    if (msg.role === 'user' && hasAudio && msg === lastMessage) {
+      return {
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: audio_mime_type || 'audio/webm', data: audio_base64 } },
+          { text: 'Processe este áudio e execute a ação solicitada. Responda em português do Brasil.' },
+        ],
+      };
+    }
+    return { role: msg.role === 'model' ? 'model' : 'user', parts: [{ text: msg.content || ' ' }] };
+  });
+
+  if (hasAudio && !hasText) {
+    geminiContents.push({
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType: audio_mime_type || 'audio/webm', data: audio_base64 } },
+        { text: 'Processe este áudio e execute a ação solicitada. Responda em português do Brasil.' },
+      ],
+    });
+  }
+
+  const geminiPayload = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: geminiContents,
+    tools: [{ function_declarations: ARTIE_TOOLS_LOCAL }],
+    tool_config: { function_calling_config: { mode: 'AUTO' } },
+    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+  };
+
+  try {
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+    const resp = await axios.post(GEMINI_URL, geminiPayload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000,
+    });
+
+    const candidate = resp.data?.candidates?.[0];
+    if (!candidate) {
+      return res.json({ success: false, error: 'Sem resposta do Artie.' });
+    }
+
+    const toolCallPart = candidate.content?.parts?.find(p => p.functionCall);
+    if (toolCallPart) {
+      const fn = toolCallPart.functionCall;
+      return res.json({ success: true, tool_call: { name: fn.name, args: fn.args || {} } });
+    }
+
+    const textPart = candidate.content?.parts?.find(p => p.text);
+    return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
+
+  } catch (err) {
+    console.error('[Artie] Erro ao chamar Gemini:', err.response?.data || err.message);
+    return res.status(500).json({ success: false, error: 'Erro ao chamar o Artie. Tente novamente.' });
+  }
+});
+
 // --- Inicialização do Servidor ---
 app.listen(PORT, () => {
   console.log(`\n======================================================`);

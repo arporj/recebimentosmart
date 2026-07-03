@@ -4,6 +4,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { Mic } from 'lucide-react';
 
+const MIN_RECORDING_MS = 500;  // Mínimo de 500ms para considerar gravação válida
+const MIN_BLOB_SIZE_BYTES = 1000; // Mínimo de 1KB para considerar áudio com conteúdo
+
 interface ArtieVoiceInputProps {
   onAudioReady: (blob: Blob, mimeType: string) => void;
   disabled?: boolean;
@@ -16,13 +19,15 @@ export function ArtieVoiceInput({ onAudioReady, disabled }: ArtieVoiceInputProps
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingStartRef = useRef<number>(0);
 
   const startRecording = useCallback(async () => {
-    if (disabled) return;
+    if (disabled || isRecording) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
+      recordingStartRef.current = Date.now();
 
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
@@ -32,8 +37,14 @@ export function ArtieVoiceInput({ onAudioReady, disabled }: ArtieVoiceInputProps
       };
 
       recorder.onstop = () => {
+        const elapsed = Date.now() - recordingStartRef.current;
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        onAudioReady(blob, 'audio/webm');
+
+        // Ignora silenciosamente cliques rápidos ou áudio vazio
+        if (elapsed >= MIN_RECORDING_MS && blob.size >= MIN_BLOB_SIZE_BYTES) {
+          onAudioReady(blob, 'audio/webm');
+        }
+
         stream.getTracks().forEach(t => t.stop());
         streamRef.current = null;
       };
@@ -54,7 +65,7 @@ export function ArtieVoiceInput({ onAudioReady, disabled }: ArtieVoiceInputProps
     } catch {
       // Permissão negada ou microfone indisponível
     }
-  }, [disabled, onAudioReady]);
+  }, [disabled, isRecording, onAudioReady]);
 
   const stopRecording = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
