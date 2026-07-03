@@ -4,7 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { AdBanner } from '../AdBanner';
 import { supabase } from '../../../lib/supabase';
-import { VoiceFloatingButton } from '../VoiceFloatingButton';
+import { ArtieProvider } from '../Artie/ArtieProvider';
+import { ArtieDrawer, ArtieFab } from '../Artie/ArtieDrawer';
 import {
     Users, CalendarDays, BarChart3,
     MessageCircle, FormInput, CreditCard,
@@ -432,7 +433,10 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 </main>
             </div>
 
-            <VoiceFloatingButton />
+            <ArtieProvider>
+                <ArtieFab />
+                <ArtieDrawer />
+            </ArtieProvider>
             <ChangelogDrawer
                 isOpen={isChangelogOpen}
                 onClose={() => setIsChangelogOpen(false)}

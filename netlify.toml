@@ -9,6 +9,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/artie/chat"
+  to = "/.netlify/functions/artie-chat"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
