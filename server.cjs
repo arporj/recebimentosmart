@@ -873,12 +873,26 @@ app.post('/api/artie/chat', async (req, res) => {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
         console.log(`[Artie] Chamando ${model}...`);
 
-        const resp = await axios.post(geminiUrl, geminiPayload, {
+        const resp = await fetch(geminiUrl, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          timeout: 30000,
+          body: JSON.stringify(geminiPayload),
         });
 
-        const candidate = resp.data?.candidates?.[0];
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          const errorMsg = data?.error?.message || `HTTP ${resp.status}`;
+          console.warn(`[Artie] Falha com ${model} (HTTP ${resp.status}): ${errorMsg}`);
+          lastGeminiError = errorMsg;
+
+          if (resp.status === 429 || (errorMsg && errorMsg.includes('Quota exceeded'))) {
+            break;
+          }
+          continue;
+        }
+
+        const candidate = data?.candidates?.[0];
         if (!candidate) {
           return res.json({ success: false, error: 'Sem resposta do Artie.' });
         }
@@ -895,14 +909,8 @@ app.post('/api/artie/chat', async (req, res) => {
         return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
 
       } catch (err) {
-        const status = err?.response?.status || 500;
-        const geminiError = err?.response?.data?.error?.message || err?.message || String(err);
-        console.warn(`[Artie] Falha com ${model} (HTTP ${status}): ${geminiError}`);
-        lastGeminiError = geminiError;
-
-        if (status === 429 || (geminiError && String(geminiError).includes('Quota exceeded'))) {
-          break;
-        }
+        console.warn(`[Artie] Falha ao conectar ao modelo ${model}:`, err?.message || String(err));
+        lastGeminiError = err?.message || String(err);
       }
     }
 
