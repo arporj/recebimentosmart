@@ -89,7 +89,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     try {
       const [accountsRes, categoriesRes, cardsRes] = await Promise.all([
         supabase.from('financial_accounts').select('id, name, type').eq('user_id', user.id).eq('is_active', true),
-        supabase.from('financial_categories').select('id, name, type').eq('user_id', user.id),
+        supabase.from('financial_categories').select('id, name').eq('user_id', user.id),
         supabase.from('financial_accounts').select('id, name, credit_limit, due_day, closing_days_before')
           .eq('user_id', user.id).eq('type', 'credit_card').eq('is_active', true),
       ]);
@@ -120,7 +120,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
         .from('artie_user_memory')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle(); // maybeSingle retorna null sem erro quando não há linha ainda
       if (data) setUserMemory(data);
     } catch {
       // Tabela pode não existir ainda — silencioso
