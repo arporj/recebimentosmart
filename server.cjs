@@ -696,7 +696,10 @@ Use quando o usuário disser "confirmei", "paguei", "recebi", "dar baixa".`,
   },
   {
     name: 'list_transactions',
-    description: `Busca lançamentos para responder perguntas financeiras. Use SEMPRE antes de responder "quanto gastei em X".`,
+    description: `Busca lançamentos do usuário para responder QUALQUER pergunta financeira ou de saldo, como:
+"Qual meu saldo final do mês?", "Quanto gastei em mercado?", "Quais contas estão pendentes?", "Quais os lançamentos de julho?".
+Use esta tool OBRIGATORIAMENTE antes de responder qualquer pergunta sobre valores, contas, gastos ou saldos.
+NUNCA invente lançamentos se a resposta desta tool for vazia.`,
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -744,14 +747,15 @@ ${categories}
 ### Cartões de Crédito
 ${cards}
 
-## Regras Absolutas
-1. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
-2. NUNCA invente valores, descrições ou IDs. Se faltar informação, PERGUNTE.
-3. Use sempre os IDs reais listados acima ao emitir tool_calls.
-4. Ao responder perguntas financeiras ("quanto gastei"), chame list_transactions ANTES.
-5. Se houver ambiguidade na busca, informe e peça mais detalhes.
-6. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
-7. Responda sempre em português do Brasil. Seja conciso.`;
+## Regras Absolutas de Fidelidade aos Dados (ANTI-ALUCINAÇÃO)
+1. NUNCA INVENTE, ALUCINE OU CRIE lançamentos, valores, datas ou descrições fictícias (ex: se o usuário tiver "Aluguel Aracaju, 275" de R$3.000, NUNCA diga "Aluguel R$ 1.250").
+2. Se a tool list_transactions retornar vazia ou sem lançamentos para o período, DIGA CLARAMENTE: "Não encontrei lançamentos para esse período." NUNCA preencha com exemplos.
+3. Ao listar ou responder sobre lançamentos, use EXATAMENTE a descrição e o valor retornados pela tool list_transactions.
+4. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
+5. Ao responder perguntas financeiras ("saldo", "quanto gastei"), chame list_transactions OBRIGATORIAMENTE ANTES de responder.
+6. Se houver ambiguidade na busca, informe e peça mais detalhes.
+7. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
+8. Responda sempre em português do Brasil. Seja conciso.`;
 }
 
 function formatFriendlyGeminiError(rawError) {

@@ -97,14 +97,16 @@ ATENÇÃO: sempre confirme com o usuário antes de emitir esta tool.`,
   },
   {
     name: 'list_transactions',
-    description: `Busca lançamentos para responder perguntas financeiras do usuário.
-Use SEMPRE antes de responder "quanto gastei em X" ou "quais contas pendentes".`,
+    description: `Busca lançamentos do usuário para responder QUALQUER pergunta financeira ou de saldo, como:
+"Qual meu saldo final do mês?", "Quanto gastei em mercado?", "Quais contas estão pendentes?", "Quais os lançamentos de julho?".
+Use esta tool OBRIGATORIAMENTE antes de responder qualquer pergunta sobre valores, contas, gastos ou saldos.
+NUNCA invente lançamentos se a resposta desta tool for vazia.`,
     parameters: {
       type: 'OBJECT',
       properties: {
         limit: { type: 'NUMBER' },
-        date_from: { type: 'STRING', description: 'YYYY-MM-DD' },
-        date_to: { type: 'STRING', description: 'YYYY-MM-DD' },
+        date_from: { type: 'STRING' },
+        date_to: { type: 'STRING' },
         type: { type: 'STRING', enum: ['income', 'expense', 'transfer'] },
         category_name: { type: 'STRING' },
         status: { type: 'STRING', enum: ['pending', 'paid'] },
@@ -120,7 +122,7 @@ function buildSystemPrompt(entityContext, userMemory, dateToday) {
   const tone = userMemory?.conversation_tone || 'normal';
   const toneGuidance = {
     casual: 'Use linguagem informal, amigável e descontraída. Pode usar emojis com moderação. Seja simpático.',
-    normal: 'Use linguagem clara, direta e profissional. Equilibrado entre formal e informal.',
+    normal: 'Use linguagem clara, direta e profissional.',
     tecnico: 'Use linguagem técnica. Mencione termos contábeis quando relevante (DRE, fluxo de caixa, competência, caixa). Seja preciso.',
   };
 
@@ -156,15 +158,15 @@ ${categoriesList}
 ### Cartões de Crédito
 ${creditCardsList}
 
-## Regras Absolutas
-1. NUNCA execute ações destrutivas (delete_transaction) sem confirmar com o usuário primeiro.
-2. NUNCA invente valores, descrições ou IDs. Se faltar informação, PERGUNTE.
-3. Ao emitir uma tool_call, use SEMPRE os IDs reais listados acima.
-4. Se o usuário pedir informações financeiras ("quanto gastei"), chame list_transactions ANTES de responder.
-5. Ao buscar um lançamento, se houver ambiguidade (mais de um resultado), informe o usuário e peça mais detalhes.
-6. Para lançamentos sem conta ou categoria mencionada, omita account_id/category_id na tool_call.
-7. Responda sempre em português do Brasil.
-8. Seja conciso e direto. Após executar uma ação, confirme o que foi feito em uma linha.`;
+## Regras Absolutas de Fidelidade aos Dados (ANTI-ALUCINAÇÃO)
+1. NUNCA INVENTE, ALUCINE OU CRIE lançamentos, valores, datas ou descrições fictícias (ex: se o usuário tiver "Aluguel Aracaju, 275" de R$3.000, NUNCA diga "Aluguel R$ 1.250").
+2. Se a tool list_transactions retornar vazia ou sem lançamentos para o período, DIGA CLARAMENTE: "Não encontrei lançamentos para esse período." NUNCA preencha com exemplos.
+3. Ao listar ou responder sobre lançamentos, use EXATAMENTE a descrição e o valor retornados pela tool list_transactions.
+4. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
+5. Ao responder perguntas financeiras ("saldo", "quanto gastei"), chame list_transactions OBRIGATORIAMENTE ANTES de responder.
+6. Se houver ambiguidade na busca, informe e peça mais detalhes.
+7. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
+8. Responda sempre em português do Brasil. Seja conciso.`;
 }
 
 // ─── Handler Principal ────────────────────────────────────────────────────────

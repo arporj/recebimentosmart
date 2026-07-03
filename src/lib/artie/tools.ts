@@ -168,16 +168,16 @@ Busca pelo que o usuário descreveu.`,
 
   {
     name: 'list_transactions',
-    description: `Busca lançamentos do usuário para responder perguntas como:
-"Quanto gastei em mercado esse mês?", "Quais contas estão pendentes?", "Mostre meus gastos de julho".
-Use SEMPRE que o usuário pedir informações sobre seus lançamentos antes de criar ou alterar algo.
-Retorna os lançamentos encontrados para você formular uma resposta em linguagem natural.`,
+    description: `Busca lançamentos do usuário para responder QUALQUER pergunta financeira ou de saldo, tais como:
+"Quanto gastei em mercado esse mês?", "Quais contas estão pendentes?", "Qual meu saldo no final do mês?", "Mostre meus gastos de julho".
+Use esta tool OBRIGATORIAMENTE antes de responder qualquer pergunta sobre finanças, valores, contas ou saldos.
+Retorna os lançamentos reais encontrados para você formular uma resposta em linguagem natural. NUNCA invente lançamentos.`,
     parameters: {
       type: 'OBJECT',
       properties: {
         limit: {
           type: 'NUMBER',
-          description: 'Máximo de lançamentos a retornar. Padrão: 20.',
+          description: 'Máximo de lançamentos a retornar. Padrão: 50.',
         },
         date_from: {
           type: 'STRING',
@@ -185,7 +185,7 @@ Retorna os lançamentos encontrados para você formular uma resposta em linguage
         },
         date_to: {
           type: 'STRING',
-          description: 'Data final do filtro (YYYY-MM-DD). Ex: último dia do mês atual.',
+          description: 'Data final do filtro (YYYY-MM-DD). Ex: último dia do mês desejado.',
         },
         type: {
           type: 'STRING',
