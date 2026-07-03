@@ -64,12 +64,12 @@ Use quando o usuário disser "confirmei", "paguei", "recebi", "dar baixa".`,
   },
   {
     name: 'update_transaction',
-    description: `Edita campos de um lançamento existente.
-Use quando o usuário quiser ALTERAR, CORRIGIR um lançamento já criado.`,
+    description: `Edita campos (descrição, valor, data, conta, categoria ou STATUS) de um lançamento existente.
+Use quando o usuário quiser ALTERAR, CORRIGIR ou MUDAR O STATUS de um lançamento (ex: marcar como pendente, marcar como pago, alterar valor).`,
     parameters: {
       type: 'OBJECT',
       properties: {
-        search_description: { type: 'STRING' },
+        search_description: { type: 'STRING', description: 'Trecho da descrição. Omita se o usuário informar apenas valor/data.' },
         search_date: { type: 'STRING' },
         search_amount: { type: 'NUMBER' },
         update_description: { type: 'STRING' },
@@ -77,8 +77,8 @@ Use quando o usuário quiser ALTERAR, CORRIGIR um lançamento já criado.`,
         update_date: { type: 'STRING' },
         update_account_id: { type: 'STRING' },
         update_category_id: { type: 'STRING' },
+        update_status: { type: 'STRING', enum: ['pending', 'paid'], description: '"pending" para não pago/pendente, "paid" para pago/confirmado.' },
       },
-      required: ['search_description'],
     },
   },
   {
@@ -199,8 +199,7 @@ exports.handler = async (event) => {
   const { messages, entity_context, user_memory, audio_base64, audio_mime_type } = body;
 
   // Validar presença de conteúdo (mensagem de texto OU áudio)
-  const lastMessage = messages?.[messages.length - 1];
-  const hasText = lastMessage?.role === 'user' && lastMessage?.content?.trim();
+  const hasText = (messages || []).some(m => m.role === 'user' && m.content && String(m.content).trim().length > 0);
   const hasAudio = !!audio_base64;
 
   if (!hasText && !hasAudio) {

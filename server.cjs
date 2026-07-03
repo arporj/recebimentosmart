@@ -665,11 +665,12 @@ Use quando o usuário disser "confirmei", "paguei", "recebi", "dar baixa".`,
   },
   {
     name: 'update_transaction',
-    description: `Edita campos de um lançamento existente. Use quando o usuário quiser ALTERAR ou CORRIGIR.`,
+    description: `Edita campos (descrição, valor, data, conta, categoria ou STATUS) de um lançamento existente.
+Use quando o usuário quiser ALTERAR, MODIFICAR, CORRIGIR ou MUDAR O STATUS de um lançamento (ex: "marcar como pendente", "marcar como pago", "alterar valor para X").`,
     parameters: {
       type: 'OBJECT',
       properties: {
-        search_description: { type: 'STRING' },
+        search_description: { type: 'STRING', description: 'Trecho da descrição. Omita se o usuário informar apenas valor/data.' },
         search_date: { type: 'STRING' },
         search_amount: { type: 'NUMBER' },
         update_description: { type: 'STRING' },
@@ -677,8 +678,8 @@ Use quando o usuário disser "confirmei", "paguei", "recebi", "dar baixa".`,
         update_date: { type: 'STRING' },
         update_account_id: { type: 'STRING' },
         update_category_id: { type: 'STRING' },
+        update_status: { type: 'STRING', enum: ['pending', 'paid'], description: '"pending" para marcar como não pago/pendente, "paid" para pago/confirmado.' },
       },
-      required: ['search_description'],
     },
   },
   {
@@ -796,9 +797,7 @@ app.post('/api/artie/chat', async (req, res) => {
   const { messages, entity_context, user_memory, audio_base64, audio_mime_type } = req.body;
 
   const allMessages = messages || [];
-  const lastMessageIndex = allMessages.length - 1;
-  const lastMessage = allMessages[lastMessageIndex];
-  const hasText = lastMessage?.role === 'user' && lastMessage?.content?.trim();
+  const hasText = allMessages.some(m => m.role === 'user' && m.content && String(m.content).trim().length > 0);
   const hasAudio = !!audio_base64;
 
   if (!hasText && !hasAudio) {

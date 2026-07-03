@@ -97,15 +97,14 @@ Busca o lançamento pelo que o usuário descreveu. Se encontrar mais de um, perg
 
   {
     name: 'update_transaction',
-    description: `Edita campos de um lançamento existente.
-Use quando o usuário quiser ALTERAR, MODIFICAR, CORRIGIR um lançamento já criado.
-Busque o lançamento pelo que o usuário descreveu. Informe ao usuário o que será alterado antes de chamar.`,
+    description: `Edita campos (descrição, valor, data, conta, categoria ou STATUS) de um lançamento existente.
+Use quando o usuário quiser ALTERAR, MODIFICAR, CORRIGIR ou MUDAR O STATUS de um lançamento (ex: "marcar como pendente", "marcar como pago", "alterar valor para X", "mudar data para Y").`,
     parameters: {
       type: 'OBJECT',
       properties: {
         search_description: {
           type: 'STRING',
-          description: 'Trecho da descrição do lançamento a editar.',
+          description: 'Trecho da descrição do lançamento a editar. Omita se o usuário informar apenas valor ou data.',
         },
         search_date: {
           type: 'STRING',
@@ -135,8 +134,12 @@ Busque o lançamento pelo que o usuário descreveu. Informe ao usuário o que se
           type: 'STRING',
           description: 'Novo category_id. Omita se não for alterar.',
         },
+        update_status: {
+          type: 'STRING',
+          enum: ['pending', 'paid'],
+          description: 'Novo status do lançamento ("pending" para não pago/pendente, "paid" para pago/confirmado). Omita se não for alterar.',
+        },
       },
-      required: ['search_description'],
     },
   },
 

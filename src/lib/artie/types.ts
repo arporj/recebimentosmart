@@ -49,7 +49,7 @@ export interface CreateTransactionArgs {
 }
 
 export interface UpdateTransactionArgs {
-  search_description: string;
+  search_description?: string;
   search_date?: string;
   search_amount?: number;
   update_description?: string;
@@ -57,6 +57,7 @@ export interface UpdateTransactionArgs {
   update_date?: string;
   update_account_id?: string;
   update_category_id?: string;
+  update_status?: 'pending' | 'paid';
 }
 
 export interface DeleteTransactionArgs {

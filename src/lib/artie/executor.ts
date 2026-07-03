@@ -24,7 +24,7 @@ const normalize = (s: string) =>
 
 async function findTransactions(
   userId: string,
-  searchDescription: string,
+  searchDescription?: string,
   searchDate?: string,
   searchAmount?: number,
   statusFilter?: string,
@@ -47,9 +47,11 @@ async function findTransactions(
   const { data, error } = await query.order('date', { ascending: false }).limit(50);
   if (error || !data) return [];
 
-  const searchNorm = normalize(searchDescription);
+  const searchNorm = searchDescription ? normalize(searchDescription) : '';
+  const isGeneric = !searchDescription || ['lançamento', 'lancamento', 'conta', 'valor', 'despesa', 'receita'].includes(searchDescription.toLowerCase().trim());
+
   return data.filter((tx) => {
-    const descMatch = normalize(tx.description).includes(searchNorm) || searchNorm.includes(normalize(tx.description));
+    const descMatch = isGeneric || normalize(tx.description).includes(searchNorm) || searchNorm.includes(normalize(tx.description));
     const valMatch = !searchAmount || searchAmount === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(searchAmount)) < 0.10;
     return descMatch && valMatch;
   });
@@ -92,7 +94,7 @@ async function executeConfirmTransaction(
     const matches = await findTransactions(userId, args.search_description, args.search_date, args.search_amount, 'pending');
 
     if (matches.length === 0) {
-      return { success: false, error: `Nenhum lançamento pendente encontrado com "${args.search_description}".` };
+      return { success: false, error: `Nenhum lançamento pendente encontrado com "${args.search_description || 'valor informado'}".` };
     }
     if (matches.length > 1) {
       return {
@@ -121,12 +123,13 @@ async function executeUpdateTransaction(
     const matches = await findTransactions(userId, args.search_description, args.search_date, args.search_amount);
 
     if (matches.length === 0) {
-      return { success: false, error: `Nenhum lançamento encontrado com "${args.search_description}".` };
+      const descLabel = args.search_description ? `"${args.search_description}"` : (args.search_amount ? `de R$ ${args.search_amount}` : '');
+      return { success: false, error: `Nenhum lançamento encontrado ${descLabel}.` };
     }
     if (matches.length > 1) {
       return {
         success: false,
-        error: `Encontrei ${matches.length} lançamentos. Pode ser mais específico? Encontrei: ${matches.map(m => `"${m.description}" em ${m.date}`).join(', ')}.`,
+        error: `Encontrei ${matches.length} lançamentos. Pode ser mais específico? Encontrei: ${matches.map(m => `"${m.description}" (R$${Math.abs(m.amount).toFixed(2)} em ${m.date})`).join(', ')}.`,
       };
     }
 
@@ -137,6 +140,7 @@ async function executeUpdateTransaction(
     if (args.update_date) updatePayload.date = args.update_date;
     if (args.update_account_id) updatePayload.account_id = args.update_account_id;
     if (args.update_category_id) updatePayload.category_id = args.update_category_id;
+    if (args.update_status) updatePayload.status = args.update_status;
 
     if (Object.keys(updatePayload).length === 0) {
       return { success: false, error: 'Nenhum campo para atualizar foi informado.' };
