@@ -660,23 +660,27 @@ exports.handler = async (event, context) => {
           for (const model of models) {
             try {
               const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-              const resCall = await axios.post(geminiUrl, payload, {
+              const resCall = await fetch(geminiUrl, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                timeout: 12000
+                body: JSON.stringify(payload),
               });
 
+              const resData = await resCall.json();
+
               if (
-                resCall.data &&
-                resCall.data.candidates &&
-                resCall.data.candidates.length > 0 &&
-                resCall.data.candidates[0].content &&
-                resCall.data.candidates[0].content.parts &&
-                resCall.data.candidates[0].content.parts.length > 0
+                resCall.ok &&
+                resData &&
+                resData.candidates &&
+                resData.candidates.length > 0 &&
+                resData.candidates[0].content &&
+                resData.candidates[0].content.parts &&
+                resData.candidates[0].content.parts.length > 0
               ) {
-                response = resCall;
+                response = resData;
                 break;
               } else {
-                throw new Error(`Retorno inválido do Gemini para o modelo ${model}.`);
+                lastError = new Error(resData?.error?.message || `HTTP ${resCall.status}`);
               }
             } catch (error) {
               lastError = error;
@@ -687,7 +691,7 @@ exports.handler = async (event, context) => {
             throw lastError || new Error('Todos os modelos do Gemini falharam.');
           }
 
-          const responseText = response.data.candidates[0].content.parts[0].text;
+          const responseText = response.candidates[0].content.parts[0].text;
           const parsedData = JSON.parse(responseText);
 
           return {
