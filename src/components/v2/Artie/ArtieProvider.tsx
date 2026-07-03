@@ -251,7 +251,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
       const followUp = buildApiMessages();
       followUp.push({
         role: 'user',
-        content: `[RESULTADO DA TOOL list_transactions]: ${JSON.stringify(result.data)}. Formule uma resposta clara para o usuário com base nesses dados.`,
+        content: `[RESULTADO DA TOOL list_transactions]: ${JSON.stringify(result.data)}. Se o objetivo do usuário for alterar, deletar ou mudar o status de um lançamento (ex: "marcar como não pago", "alterar para pendente", "mudar valor"), chame a tool correspondente (ex: update_transaction). Se for apenas uma dúvida ou consulta, formule uma resposta clara em português.`,
       });
 
       const resp = await fetch('/api/artie/chat', {

@@ -166,7 +166,14 @@ ${creditCardsList}
 5. Ao responder perguntas financeiras ("saldo", "quanto gastei"), chame list_transactions OBRIGATORIAMENTE ANTES de responder.
 6. Se houver ambiguidade na busca, informe e peça mais detalhes.
 7. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
-8. Responda sempre em português do Brasil. Seja conciso.`;
+8. Responda sempre em português do Brasil. Seja conciso.
+9. **Lançamentos Recorrentes e Parcelados:**
+   - Se o usuário disser que um lançamento é parcelado (ex: "em 10x", "parcelado em 6x"), defina modalidade: 'parcelada' e installment_total: <número>.
+   - Se disser que é recorrente (ex: "todo mês", "mensal", "semanal", "anual"), defina modalidade: 'recorrente' e recurrence_period correspondente ('monthly', 'weekly', 'yearly').
+10. **Alteração de Status ("marcar como não pago", "marcar como pendente", "marcar como pago"):**
+   - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame `update_transaction` com `update_status: "pending"`.
+   - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame `update_transaction` ou `confirm_transaction` com `update_status: "paid"`.
+   - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).`;
 }
 
 // ─── Handler Principal ────────────────────────────────────────────────────────
