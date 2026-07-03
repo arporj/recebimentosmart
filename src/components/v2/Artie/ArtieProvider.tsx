@@ -152,7 +152,12 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   const buildApiMessages = useCallback(() =>
     messagesRef.current
       .filter(m => m.role === 'user' || m.role === 'model')
-      .map(m => ({ role: m.role, content: m.content }))
+      .map(m => ({
+        role: m.role,
+        content: m.content,
+        tool_call: m.toolCall,
+        tool_result: m.toolResult,
+      }))
       .slice(-15),
   []);
 
@@ -224,7 +229,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
       if (!result.success) {
         // Se falhou (ex: ambiguidade), retornar o erro ao Gemini para que ele responda
-        addMessage({ role: 'model', content: result.error || 'Não foi possível executar.' });
+        addMessage({ role: 'model', content: result.error || 'Não foi possível executar.', toolCall, toolResult: result });
         setChatState('idle');
         return;
       }
@@ -248,10 +253,10 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
           }),
         });
         const finalResult = await resp.json();
-        addMessage({ role: 'model', content: finalResult.reply || 'Aqui estão os dados solicitados.' });
+        addMessage({ role: 'model', content: finalResult.reply || 'Aqui estão os dados solicitados.', toolCall, toolResult: result });
       } else {
         // Criar/confirmar: mensagem de sucesso direta
-        addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data) });
+        addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data), toolCall, toolResult: result });
       }
 
       setChatState('idle');
@@ -284,9 +289,9 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     });
 
     if (!result.success) {
-      addMessage({ role: 'model', content: `❌ ${result.error}` });
+      addMessage({ role: 'model', content: `❌ ${result.error}`, toolCall: { name: pendingAction.toolName, args: pendingAction.args }, toolResult: result });
     } else {
-      addMessage({ role: 'model', content: buildSuccessMessage({ name: pendingAction.toolName, args: pendingAction.args }, result.data) });
+      addMessage({ role: 'model', content: buildSuccessMessage({ name: pendingAction.toolName, args: pendingAction.args }, result.data), toolCall: { name: pendingAction.toolName, args: pendingAction.args }, toolResult: result });
     }
 
     setPendingAction(null);

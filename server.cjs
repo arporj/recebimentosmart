@@ -821,7 +821,11 @@ app.post('/api/artie/chat', async (req, res) => {
         ],
       };
     }
-    return { role: msg.role === 'model' ? 'model' : 'user', parts: [{ text: msg.content || ' ' }] };
+    let textContent = msg.content || ' ';
+    if (msg.tool_call && msg.tool_result) {
+      textContent += `\n[Contexto da ação realizada: ${msg.tool_call.name} -> Dados retornados do banco: ${JSON.stringify(msg.tool_result)}]`;
+    }
+    return { role: msg.role === 'model' ? 'model' : 'user', parts: [{ text: textContent }] };
   });
 
   // Áudio puro sem histórico de mensagens

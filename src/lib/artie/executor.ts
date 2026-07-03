@@ -6,7 +6,7 @@ import { supabase } from '../supabase';
 import { criarTransacao } from '../financeiro/criarTransacao';
 import { editarTransacao } from '../financeiro/editarTransacao';
 import { deletarTransacao } from '../financeiro/deletarTransacao';
-import { format, subDays, addDays, parseISO, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subDays, addDays, parseISO, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import type {
   ArtieToolCall,
   ArtieToolResult,
@@ -187,7 +187,8 @@ async function executeListTransactions(
   try {
     const today = new Date();
     const dateFrom = args.date_from || format(startOfMonth(today), 'yyyy-MM-dd');
-    const dateTo = args.date_to || format(endOfMonth(today), 'yyyy-MM-dd');
+    // Padrão: busca até o fim do MÊS QUE VEM por padrão para responder perguntas sobre o próximo mês
+    const dateTo = args.date_to || format(endOfMonth(addMonths(today, 1)), 'yyyy-MM-dd');
 
     let query = supabase
       .from('financial_transactions')
