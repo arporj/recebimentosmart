@@ -404,17 +404,32 @@ function buildConfirmationMessage(toolCall: ArtieToolCall): string {
   }
 }
 
-function buildSuccessMessage(toolCall: ArtieToolCall, data: unknown): string {
+function buildSuccessMessage(toolCall: ArtieToolCall, data: any): string {
   const { name, args } = toolCall;
   switch (name) {
-    case 'create_transaction':
-      return `✅ Lançamento **"${args.description}"** de R$${Number(args.amount).toFixed(2)} criado com sucesso!`;
+    case 'create_transaction': {
+      const modalidade = args.modalidade || 'unica';
+      const amountStr = Number(args.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (modalidade === 'parcelada' && args.installment_total) {
+        return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} (${args.installment_total}x parceladas) registrado com sucesso!`;
+      }
+      if (modalidade === 'recorrente') {
+        const periodMap: Record<string, string> = { daily: 'diário', weekly: 'semanal', monthly: 'mensal', yearly: 'anual' };
+        const periodLabel = periodMap[String(args.recurrence_period || 'monthly')] || 'recorrente';
+        return `✅ Lançamento recorrente **"${args.description}"** de R$ ${amountStr} (${periodLabel}) registrado com sucesso!`;
+      }
+      return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} registrado com sucesso!`;
+    }
     case 'confirm_transaction':
-      return `✅ Lançamento **"${args.search_description}"** confirmado como pago!`;
+      return `✅ Lançamento **"${data?.description || args.search_description}"** marcado como pago com sucesso!`;
     case 'update_transaction':
-      return `✅ Lançamento **"${args.search_description}"** atualizado!`;
-    case 'delete_transaction':
-      return `✅ Lançamento **"${args.search_description}"** excluído.`;
+      return `✅ Lançamento **"${data?.description || args.search_description}"** atualizado com sucesso!`;
+    case 'delete_transaction': {
+      if (data?.scope === 'following') {
+        return `🗑️ Lançamento **"${data?.description || args.search_description}"** e as próximas ocorrências foram excluídos com sucesso.`;
+      }
+      return `🗑️ Lançamento **"${data?.description || args.search_description}"** excluído com sucesso.`;
+    }
     default:
       return '✅ Ação executada com sucesso!';
   }
