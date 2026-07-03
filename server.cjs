@@ -755,14 +755,17 @@ ${cards}
 }
 
 app.post('/api/artie/chat', async (req, res) => {
-  const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
+  // Remove aspas extras que o dotenv pode incluir quando o .env tem "valor entre aspas"
+  const geminiApiKey = (process.env.VITE_GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
   if (!geminiApiKey) {
     return res.status(500).json({ success: false, error: 'Chave da API Gemini não configurada.' });
   }
 
   const { messages, entity_context, user_memory, audio_base64, audio_mime_type } = req.body;
 
-  const lastMessage = (messages || []).slice(-1)[0];
+  const allMessages = messages || [];
+  const lastMessageIndex = allMessages.length - 1;
+  const lastMessage = allMessages[lastMessageIndex];
   const hasText = lastMessage?.role === 'user' && lastMessage?.content?.trim();
   const hasAudio = !!audio_base64;
 
@@ -775,10 +778,13 @@ app.post('/api/artie/chat', async (req, res) => {
   }).split('/').reverse().join('-');
 
   const systemPrompt = buildArtieSystemPrompt(entity_context, user_memory, dateToday);
-  const historyMessages = (messages || []).slice(-15);
+  const historyMessages = allMessages.slice(-15);
+  const lastHistoryIndex = historyMessages.length - 1;
 
-  const geminiContents = historyMessages.map((msg) => {
-    if (msg.role === 'user' && hasAudio && msg === lastMessage) {
+  const geminiContents = historyMessages.map((msg, idx) => {
+    // Usa índice para identificar última mensagem (evita comparação de referência após JSON.parse)
+    const isLastUserMsg = hasAudio && idx === lastHistoryIndex && msg.role === 'user';
+    if (isLastUserMsg) {
       return {
         role: 'user',
         parts: [
@@ -790,7 +796,8 @@ app.post('/api/artie/chat', async (req, res) => {
     return { role: msg.role === 'model' ? 'model' : 'user', parts: [{ text: msg.content || ' ' }] };
   });
 
-  if (hasAudio && !hasText) {
+  // Áudio puro sem histórico de mensagens
+  if (hasAudio && historyMessages.length === 0) {
     geminiContents.push({
       role: 'user',
       parts: [
@@ -808,31 +815,49 @@ app.post('/api/artie/chat', async (req, res) => {
     generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
   };
 
-  try {
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-    const resp = await axios.post(GEMINI_URL, geminiPayload, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 30000,
-    });
+  // Fallback de modelos: tenta do mais recente para o mais antigo
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastGeminiError = null;
 
-    const candidate = resp.data?.candidates?.[0];
-    if (!candidate) {
-      return res.json({ success: false, error: 'Sem resposta do Artie.' });
+  for (const model of models) {
+    try {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      console.log(`[Artie] Chamando ${model}...`);
+
+      const resp = await axios.post(geminiUrl, geminiPayload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      });
+
+      const candidate = resp.data?.candidates?.[0];
+      if (!candidate) {
+        return res.json({ success: false, error: 'Sem resposta do Artie.' });
+      }
+
+      const toolCallPart = candidate.content?.parts?.find(p => p.functionCall);
+      if (toolCallPart) {
+        const fn = toolCallPart.functionCall;
+        console.log(`[Artie] Tool call emitida: ${fn.name}`);
+        return res.json({ success: true, tool_call: { name: fn.name, args: fn.args || {} } });
+      }
+
+      const textPart = candidate.content?.parts?.find(p => p.text);
+      console.log(`[Artie] Resposta textual gerada com ${model}`);
+      return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
+
+    } catch (err) {
+      const status = err.response?.status;
+      const geminiError = err.response?.data?.error?.message || err.message;
+      console.warn(`[Artie] Falha com ${model} (HTTP ${status}): ${geminiError}`);
+      lastGeminiError = geminiError;
+
+      // Se não for erro de modelo não encontrado, não tenta o próximo
+      if (status && status !== 404 && status !== 400) break;
     }
-
-    const toolCallPart = candidate.content?.parts?.find(p => p.functionCall);
-    if (toolCallPart) {
-      const fn = toolCallPart.functionCall;
-      return res.json({ success: true, tool_call: { name: fn.name, args: fn.args || {} } });
-    }
-
-    const textPart = candidate.content?.parts?.find(p => p.text);
-    return res.json({ success: true, reply: textPart?.text || 'Não entendi. Pode repetir?' });
-
-  } catch (err) {
-    console.error('[Artie] Erro ao chamar Gemini:', err.response?.data || err.message);
-    return res.status(500).json({ success: false, error: 'Erro ao chamar o Artie. Tente novamente.' });
   }
+
+  console.error('[Artie] Todos os modelos falharam. Último erro:', lastGeminiError);
+  return res.status(500).json({ success: false, error: `Erro ao chamar o Artie: ${lastGeminiError || 'tente novamente'}` });
 });
 
 // --- Inicialização do Servidor ---
