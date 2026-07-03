@@ -171,8 +171,8 @@ ${creditCardsList}
    - Se o usuário disser que um lançamento é parcelado (ex: "em 10x", "parcelado em 6x"), defina modalidade: 'parcelada' e installment_total: <número>.
    - Se disser que é recorrente (ex: "todo mês", "mensal", "semanal", "anual"), defina modalidade: 'recorrente' e recurrence_period correspondente ('monthly', 'weekly', 'yearly').
 10. **Alteração de Status ("marcar como não pago", "marcar como pendente", "marcar como pago"):**
-   - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame `update_transaction` com `update_status: "pending"`.
-   - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame `update_transaction` ou `confirm_transaction` com `update_status: "paid"`.
+   - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame a tool update_transaction com update_status: "pending".
+   - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame update_transaction ou confirm_transaction com update_status: "paid".
    - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).`;
 }
 
