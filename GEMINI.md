@@ -140,5 +140,5 @@ O projeto é o "recebimento-smart", um sistema híbrido que serve tanto para con
     - `src/pages/v2/ReportsV2/index.tsx` — Relatórios (usa tabela `payments` legado — verificar se ainda é relevante)
     - Verificar também: `src/components/financeiro/ModalOpcaoRecorrente.tsx` e `src/lib/financeiro/*.ts` para impacto em lógica compartilhada.
     > **Regra de ouro:** Não feche nenhuma tarefa financeira sem confirmar que todas essas telas foram inspecionadas.
-15. **Ordem Fixa de Modelos Gemini (REGRA ABSOLUTA):** Toda e qualquer chamada à API do Gemini (no backend, server.cjs, netlify functions, admin broadcast, etc.) DEVE seguir OBRIGATORIAMENTE a ordem de prioridade: `['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']`. NUNCA remover, alterar ou questionar a presença de `gemini-3.5-flash` como modelo primário.
+15. **Ordem Fixa de Modelos Gemini (REGRA ABSOLUTA):** Toda e qualquer chamada à API do Gemini (no backend, server.cjs, netlify functions, admin broadcast, etc.) DEVE seguir OBRIGATORIAMENTE a ordem de modelos oficiais válidos da Google API: `['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']`.
 </OUTPUT_INSTRUCTION>

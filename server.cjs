@@ -450,7 +450,7 @@ app.post('/api/lancamento-voz', async (req, res) => {
       }
     };
 
-    const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     let response = null;
     let lastError = null;
 
@@ -867,7 +867,7 @@ app.post('/api/artie/chat', async (req, res) => {
     };
 
     // Modelos suportados pela Gemini REST API (prioridade: 3.5-flash -> 2.5-flash -> 2.0-flash -> 1.5-flash)
-    const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     let lastGeminiError = null;
 
     for (const model of models) {
