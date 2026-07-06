@@ -401,59 +401,32 @@ const DashboardV2 = () => {
   }, [currentMonthInstances, accounts, selectedAccountIds]);
 
   // 3. Balanço Patrimonial (Ativo vs Passivo)
+  // Ativo e passivo usam computeAccountBalanceAsOf com invoiceGroups vazio de propósito: aqui
+  // queremos o saldo bruto de cada conta (sem a dedução de fatura pendente que o saldo
+  // projetado das Transações aplica), já que o passivo do cartão já é contabilizado
+  // separadamente abaixo — deduzir a fatura dos dois lados seria contar a dívida duas vezes.
   const balanceSheetData = useMemo(() => {
     const activeAccs = accounts.filter(a => a.type !== 'credit_card');
-    let totalAssets = 0;
+    const totalAssets = activeAccs.reduce((sum, acc) => sum + computeAccountBalanceAsOf(
+      acc.id, expandedInstances, [], Number(acc.initial_balance) || 0,
+      { asOf: endOfMonth(currentMonth), onlyConfirmed },
+    ), 0);
 
-    activeAccs.forEach(acc => {
-      const initial = Number(acc.initial_balance) || 0;
-      const history = expandedInstances.filter(t => 
-        isBefore(parseISO(t.instanceDate), endOfMonth(currentMonth)) &&
-        ((t.account_id === acc.id) || (t.destination_account_id === acc.id))
-      );
-
-      const netChange = history.reduce((sum, t) => {
-        if (t.status === 'cancelled') return sum;
-        if (onlyConfirmed && t.status !== 'paid') return sum;
-        const amt = t.amount;
-        if (t.type === 'income') return sum + amt;
-        if (t.type === 'expense') return sum - amt;
-        if (t.type === 'transfer') {
-          if (t.destination_account_id === acc.id) return sum + amt;
-          if (t.account_id === acc.id) return sum - amt;
-        }
-        return sum;
-      }, initial);
-
-      totalAssets += netChange;
-    });
-
+    // Passivo do cartão = -saldo da conta do cartão: uma compra (expense) aumenta a dívida,
+    // um pagamento (transfer de entrada) reduz a dívida — computeAccountBalanceAsOf já
+    // contabiliza os dois lados corretamente, corrigindo um bug antigo em que um pagamento de
+    // fatura nunca reduzia o passivo exibido aqui (só olhava account_id, nunca destination_account_id).
     const cardAccs = accounts.filter(a => a.type === 'credit_card');
-    let totalLiabilities = 0;
-
-    cardAccs.forEach(card => {
-      const history = expandedInstances.filter(t => 
-        isBefore(parseISO(t.instanceDate), endOfMonth(currentMonth)) &&
-        t.account_id === card.id
-      );
-
-      const balance = history.reduce((sum, t) => {
-        if (t.status === 'cancelled') return sum;
-        if (onlyConfirmed && t.status !== 'paid') return sum;
-        const amt = t.amount;
-        if (t.type === 'expense') return sum + amt;
-        if (t.type === 'income') return sum - amt;
-        return sum;
-      }, 0);
-
-      totalLiabilities += balance;
-    });
+    const cardLiabilities = cardAccs.reduce((sum, card) => sum - computeAccountBalanceAsOf(
+      card.id, expandedInstances, [], 0,
+      { asOf: endOfMonth(currentMonth), onlyConfirmed },
+    ), 0);
 
     const unpaidExpenses = currentMonthInstances
       .filter(t => t.type === 'expense' && t.status === 'pending')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    totalLiabilities += unpaidExpenses;
+    const totalLiabilities = cardLiabilities + unpaidExpenses;
 
     return {
       assets: totalAssets,

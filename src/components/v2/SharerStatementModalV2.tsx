@@ -14,22 +14,16 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  format, 
-  parseISO, 
-  isBefore, 
-  startOfMonth, 
-  endOfMonth, 
-  isAfter, 
-  isSameMonth, 
-  addDays, 
-  addWeeks, 
-  addMonths, 
-  addYears, 
-  isSameDay,
-  subMonths 
+import {
+  format,
+  parseISO,
+  endOfMonth,
+  isSameMonth,
+  addMonths,
+  subMonths
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { expandTransactionInstances } from '../../lib/financeiro/instanceExpansion';
 
 interface SharerStatementModalProps {
   isOpen: boolean;
@@ -152,85 +146,19 @@ export default function SharerStatementModalV2({
   };
 
   // Expansão local de recorrências/parcelamentos do remetente
+  // Expansão de recorrências e parcelamento localmente para o mês atual (fonte compartilhada
+  // com FinancialTransactionsV2/DashboardV2). rawTransactions mistura o registro-mãe recorrente
+  // (recurrence_enabled=true, sem parent_id) com as ocorrências físicas materializadas —
+  // separamos os dois papéis antes de chamar o expansor compartilhado.
   const monthInstances = useMemo((): TransactionInstance[] => {
-    const instances: TransactionInstance[] = [];
-    const maxDate = endOfMonth(currentMonth);
+    const templates = rawTransactions.filter(t => t.recurrence_enabled && !t.parent_id);
+    const materialized = rawTransactions.filter(t => !(t.recurrence_enabled && !t.parent_id));
 
-    const physicalDatesByParent = new Map<string, Set<string>>();
-    const physicalIndicesByParent = new Map<string, Set<number>>();
-    for (const t of rawTransactions) {
-      const parentId = t.parent_id || t.id;
-      if (!physicalDatesByParent.has(parentId)) {
-        physicalDatesByParent.set(parentId, new Set());
-      }
-      physicalDatesByParent.get(parentId)!.add(t.date);
+    const expanded = expandTransactionInstances(materialized as any, templates as any, {
+      horizonEnd: endOfMonth(currentMonth),
+    }) as unknown as TransactionInstance[];
 
-      // CRUCIAL: Adicionamos ao índice de parcelas físicas APENAS se for um filho físico (t.parent_id !== null).
-      // Isso nos permite detectar quando uma ocorrência específica foi desmembrada por edição de escopo 'somente este'.
-      if (t.parent_id && t.installment_current !== null && t.installment_current !== undefined) {
-        if (!physicalIndicesByParent.has(parentId)) {
-          physicalIndicesByParent.set(parentId, new Set());
-        }
-        physicalIndicesByParent.get(parentId)!.add(t.installment_current);
-      }
-    }
-
-    for (const t of rawTransactions) {
-      const tDate = parseISO(t.date);
-
-      if (!t.recurrence_enabled) {
-        if (isBefore(tDate, maxDate) || isSameDay(tDate, maxDate)) {
-          instances.push({ ...t, instanceDate: t.date, isVirtual: false });
-        }
-        continue;
-      }
-
-      const interval = t.recurrence_interval || 1;
-      const period = t.recurrence_period || 'monthly';
-      const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
-      
-      let cursor = new Date(tDate);
-      const parentId = t.id;
-      
-      while (isBefore(cursor, maxDate) || isSameDay(cursor, maxDate)) {
-        if (recEndDate && isAfter(cursor, recEndDate)) break;
-
-        const dateStr = format(cursor, 'yyyy-MM-dd');
-        const monthsDiff = (cursor.getFullYear() - tDate.getFullYear()) * 12 + (cursor.getMonth() - tDate.getMonth());
-        const currentInst = (t.installment_current || 1) + monthsDiff;
-
-        // Checar por índice sequencial e por data (fallback)
-        const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
-        const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
-        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
-
-        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
-        // ou uma virtual que não existe fisicamente.
-        if (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex)) {
-          if (period === 'parcelada' && t.installment_total && currentInst > t.installment_total) {
-            break;
-          }
-
-          instances.push({
-            ...t,
-            instanceDate: dateStr,
-            isVirtual: dateStr !== t.date,
-            status: dateStr !== t.date ? 'pending' : t.status,
-            installment_current: currentInst,
-          });
-        }
-        
-        switch (period) {
-          case 'daily': cursor = addDays(cursor, interval); break;
-          case 'weekly': cursor = addWeeks(cursor, interval); break;
-          case 'monthly': cursor = addMonths(cursor, interval); break;
-          case 'yearly': cursor = addYears(cursor, interval); break;
-          default: cursor = addMonths(cursor, interval);
-        }
-      }
-    }
-
-    const filtered = instances.filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth));
+    const filtered = expanded.filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth));
     return filtered.sort((a, b) => b.instanceDate.localeCompare(a.instanceDate));
   }, [rawTransactions, currentMonth]);
 
