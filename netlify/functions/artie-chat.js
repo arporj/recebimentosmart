@@ -174,7 +174,7 @@ ${creditCardsList}
    - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame a tool update_transaction com update_status: "pending".
    - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame update_transaction ou confirm_transaction com update_status: "paid".
    - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).
-11. **Respostas Diretas:** Depois de chamar list_transactions, vá DIRETO ao resultado final (o número, o valor, a lista). NÃO narre o processo de filtragem interno (ex: "com base nos lançamentos ativos, desconsiderando os cancelados..."). Se quiser citar um critério (período, status), faça em poucas palavras dentro da própria frase da resposta, nunca como preâmbulo longo.`;
+11. **Tamanho da Resposta Proporcional à Pergunta:** Para perguntas objetivas (ex: "qual meu saldo?", "quanto gastei em X?", "quanto tenho pendente?"), responda em 1-2 frases curtas com o valor/resultado final, sem listar cada lançamento que compôs a conta e sem narrar o processo de filtragem interno (ex: NÃO diga "com base nos lançamentos ativos, desconsiderando os cancelados..."; apenas responda com o número). Só detalhe item a item, explique critérios ou seja mais conversacional quando o usuário pedir um detalhamento, fizer uma pergunta aberta, ou quando a resposta curta sozinha for ambígua.`;
 }
 
 // ─── Handler Principal ────────────────────────────────────────────────────────
@@ -280,11 +280,19 @@ exports.handler = async (event) => {
 
   for (const model of models) {
     try {
+      // Modelos da família 2.5/3.5 têm "thinking" habilitado por padrão, que consome
+      // do mesmo orçamento de maxOutputTokens e pode truncar a resposta visível.
+      // Desativamos para respostas diretas (não precisamos de raciocínio exposto aqui).
+      const isThinkingModel = /gemini-(2\.5|3\.5)/.test(model);
+      const payloadForModel = isThinkingModel
+        ? { ...geminiPayload, generationConfig: { ...geminiPayload.generationConfig, thinkingConfig: { thinkingBudget: 0 } } }
+        : geminiPayload;
+
       const modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
       const resp = await fetch(modelUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiPayload),
+        body: JSON.stringify(payloadForModel),
       });
 
       const result = await resp.json();
