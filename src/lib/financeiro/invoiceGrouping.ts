@@ -93,13 +93,25 @@ export function groupCreditCardInvoices(
   return groups;
 }
 
-/** Constrói as linhas sintéticas de "Fatura X" para exibição em uma lista de lançamentos. */
+/**
+ * Constrói as linhas sintéticas de "Fatura X" para exibição em uma lista de lançamentos.
+ *
+ * Filtra pelo mês da DATA DE EXIBIÇÃO (finalDate), não pelo invoice_month nominal do grupo:
+ * uma fatura reconciliada é exibida na data real do pagamento (billTransfer.date), que pode
+ * cair num mês diferente do invoice_month (ex: fatura de junho paga em julho). A lista esconde
+ * a transferência real (para não duplicar visualmente) usando a DATA da transação, então a
+ * linha substituta precisa aparecer nesse mesmo mês — senão o valor da transferência some da
+ * visualização sem nenhuma linha compensando, inflando o saldo acumulado exibido.
+ */
 export function buildInvoiceSummaryInstances(
   groups: InvoiceGroup[],
-  invoiceMonth: string,
+  targetMonth: string,
 ): TransactionInstance[] {
   return groups
-    .filter(g => g.invoiceMonth === invoiceMonth)
+    .filter(g => {
+      const finalDate = g.billTransfer ? g.billTransfer.date : g.dueDate;
+      return finalDate.substring(0, 7) === targetMonth;
+    })
     .map(g => {
       const finalDate = g.billTransfer ? g.billTransfer.date : g.dueDate;
       // Quando já existe uma transferência real pagando a fatura, o valor exibido/descontado

@@ -288,7 +288,11 @@ async function executeGetAccountBalance(
     const [accountsRes, txRes, templatesRes, cardsRes] = await Promise.all([
       supabase.from('financial_accounts').select('id, name, type, initial_balance').eq('user_id', userId).eq('is_active', true).neq('type', 'credit_card'),
       (supabase as any).from('v_financial_transactions').select('*').eq('user_id', userId).eq('is_template', false),
-      supabase.from('financial_transactions').select('*').eq('user_id', userId).eq('is_template', true).eq('recurrence_enabled', true),
+      // Precisa do join com account_id para obter account_type — sem ele, o recalculo do mes
+      // da fatura de recorrencias em cartao de credito (dentro de expandTransactionInstances)
+      // nao consegue reconhecer o cartao e usa o invoice_month original do template, gerando
+      // um saldo diferente do calculado pela tela (que ja faz esse mesmo join hoje).
+      supabase.from('financial_transactions').select('*, account:account_id(type)').eq('user_id', userId).eq('is_template', true).eq('recurrence_enabled', true),
       supabase.from('financial_accounts').select('id, name, due_day, invoice_payment_account_id').eq('user_id', userId).eq('type', 'credit_card').eq('is_active', true),
     ]);
 
@@ -311,7 +315,12 @@ async function executeGetAccountBalance(
       }
     }
 
-    const instances = expandTransactionInstances((txRes.data as any) || [], (templatesRes.data as any) || [], {
+    const mappedTemplates = ((templatesRes.data as any[]) || []).map((t: any) => ({
+      ...t,
+      account_type: t.account?.type || 'checking',
+    }));
+
+    const instances = expandTransactionInstances((txRes.data as any) || [], mappedTemplates, {
       horizonEnd: endOfMonth(asOfDate),
     });
     const invoiceGroups = groupCreditCardInvoices(instances, (cardsRes.data as any) || [], { onlyConfirmed });

@@ -86,4 +86,27 @@ describe('buildInvoiceSummaryInstances', () => {
     const lines = buildInvoiceSummaryInstances(groups, '2026-07');
     expect(lines[0].amount).toBe(450);
   });
+
+  it('REGRESSION: shows a reconciled invoice in the month of the real payment, not the nominal invoice_month', () => {
+    // Fatura de JUNHO paga em JULHO (comum quando o usuario atrasa ou agenda o pagamento para
+    // o mes seguinte). A transferencia real (datada em julho) e sempre escondida da lista para
+    // nao duplicar visualmente — a linha substituta de fatura PRECISA aparecer em julho (mes da
+    // data real), senao a deducao desaparece da visualizacao de julho e o saldo acumulado fica
+    // inflado por exatamente o valor da fatura.
+    const juneExpense = instance({ id: 'e1', amount: 500, date: '2026-06-05', instanceDate: '2026-06-05', invoice_month: '2026-06' });
+    const julyTransfer = instance({
+      id: 'transfer-1', type: 'transfer', account_id: 'acc-1', destination_account_id: 'card-1',
+      amount: 500, status: 'paid', isVirtual: false,
+      date: '2026-07-15', instanceDate: '2026-07-15', invoice_month: '2026-06',
+    });
+    const groups = groupCreditCardInvoices([juneExpense, julyTransfer], [card]);
+
+    const juneLines = buildInvoiceSummaryInstances(groups, '2026-06');
+    expect(juneLines).toHaveLength(0);
+
+    const julyLines = buildInvoiceSummaryInstances(groups, '2026-07');
+    expect(julyLines).toHaveLength(1);
+    expect(julyLines[0].amount).toBe(500);
+    expect(julyLines[0].instanceDate).toBe('2026-07-15');
+  });
 });
