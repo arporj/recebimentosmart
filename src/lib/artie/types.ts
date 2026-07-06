@@ -83,6 +83,15 @@ export interface ListTransactionsArgs {
   status?: 'pending' | 'paid';
 }
 
+export interface GetAccountBalanceArgs {
+  /** Nome da conta (busca parcial). Omita para somar todas as contas bancárias/carteiras. */
+  account_name?: string;
+  /** Data de corte YYYY-MM-DD. Padrão: último dia do mês atual. */
+  as_of_date?: string;
+  /** true = só lançamentos pagos; false (padrão) = saldo projetado, incluindo pendentes. */
+  only_confirmed?: boolean;
+}
+
 // ─── Risco de Ações ──────────────────────────────────────────────────────────
 
 export type ActionRisk = 'low' | 'medium' | 'high';

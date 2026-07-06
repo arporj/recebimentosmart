@@ -7,6 +7,9 @@ import { criarTransacao } from '../financeiro/criarTransacao';
 import { editarTransacao } from '../financeiro/editarTransacao';
 import { deletarTransacao } from '../financeiro/deletarTransacao';
 import { format, subDays, addDays, parseISO, startOfMonth, endOfMonth, addMonths } from 'date-fns';
+import { expandTransactionInstances } from '../financeiro/instanceExpansion';
+import { groupCreditCardInvoices } from '../financeiro/invoiceGrouping';
+import { computeAccountBalanceAsOf } from '../financeiro/balanceCalculator';
 import type {
   ArtieToolCall,
   ArtieToolResult,
@@ -15,6 +18,7 @@ import type {
   DeleteTransactionArgs,
   ConfirmTransactionArgs,
   ListTransactionsArgs,
+  GetAccountBalanceArgs,
 } from './types';
 
 // ─── Utilitários de busca ─────────────────────────────────────────────────────
@@ -238,7 +242,7 @@ async function executeListTransactions(
       .gte('date', dateFrom)
       .lte('date', dateTo)
       .order('date', { ascending: false })
-      .limit(args.limit || 20);
+      .limit(args.limit || 200);
 
     if (args.type) query = query.eq('type', args.type);
     if (args.status) query = query.eq('status', args.status);
@@ -273,6 +277,66 @@ async function executeListTransactions(
   }
 }
 
+async function executeGetAccountBalance(
+  userId: string,
+  args: GetAccountBalanceArgs,
+): Promise<ArtieToolResult> {
+  try {
+    const onlyConfirmed = args.only_confirmed ?? false;
+    const asOfDate = args.as_of_date ? parseISO(args.as_of_date) : endOfMonth(new Date());
+
+    const [accountsRes, txRes, templatesRes, cardsRes] = await Promise.all([
+      supabase.from('financial_accounts').select('id, name, type, initial_balance').eq('user_id', userId).eq('is_active', true).neq('type', 'credit_card'),
+      (supabase as any).from('v_financial_transactions').select('*').eq('user_id', userId).eq('is_template', false),
+      supabase.from('financial_transactions').select('*').eq('user_id', userId).eq('is_template', true).eq('recurrence_enabled', true),
+      supabase.from('financial_accounts').select('id, name, due_day, invoice_payment_account_id').eq('user_id', userId).eq('type', 'credit_card').eq('is_active', true),
+    ]);
+
+    if (accountsRes.error) throw accountsRes.error;
+    if (txRes.error) throw txRes.error;
+    if (templatesRes.error) throw templatesRes.error;
+    if (cardsRes.error) throw cardsRes.error;
+
+    const accounts: any[] = accountsRes.data || [];
+    if (accounts.length === 0) {
+      return { success: false, error: 'Nenhuma conta bancária encontrada.' };
+    }
+
+    let matchedAccounts = accounts;
+    if (args.account_name) {
+      const nameNorm = normalize(args.account_name);
+      matchedAccounts = accounts.filter(a => normalize(a.name).includes(nameNorm));
+      if (matchedAccounts.length === 0) {
+        return { success: false, error: `Não encontrei nenhuma conta chamada "${args.account_name}".` };
+      }
+    }
+
+    const instances = expandTransactionInstances((txRes.data as any) || [], (templatesRes.data as any) || [], {
+      horizonEnd: endOfMonth(asOfDate),
+    });
+    const invoiceGroups = groupCreditCardInvoices(instances, (cardsRes.data as any) || [], { onlyConfirmed });
+
+    const perAccount = matchedAccounts.map(acc => ({
+      account: acc.name,
+      balance: computeAccountBalanceAsOf(acc.id, instances, invoiceGroups, Number(acc.initial_balance) || 0, { asOf: asOfDate, onlyConfirmed }),
+    }));
+
+    const total = perAccount.reduce((sum, a) => sum + a.balance, 0);
+
+    return {
+      success: true,
+      data: {
+        accounts: perAccount,
+        total,
+        as_of: format(asOfDate, 'yyyy-MM-dd'),
+        only_confirmed: onlyConfirmed,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Erro ao calcular saldo.' };
+  }
+}
+
 // ─── Entry point: executa qualquer tool pelo nome ─────────────────────────────
 
 export async function executeArtieToolCall(
@@ -292,6 +356,8 @@ export async function executeArtieToolCall(
       return executeDeleteTransaction(userId, args as DeleteTransactionArgs);
     case 'list_transactions':
       return executeListTransactions(userId, args as ListTransactionsArgs);
+    case 'get_account_balance':
+      return executeGetAccountBalance(userId, args as GetAccountBalanceArgs);
     default:
       return { success: false, error: `Tool desconhecida: ${name}` };
   }

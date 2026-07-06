@@ -8,7 +8,8 @@
     "server": "node server.cjs",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
@@ -56,6 +57,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.1",
     "vite": "^7.3.1",
-    "vite-plugin-sitemap": "^0.6.2"
+    "vite-plugin-sitemap": "^0.6.2",
+    "vitest": "^4.1.10"
   }
 }

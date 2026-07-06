@@ -247,11 +247,16 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     }
 
     // Para consultas, devolver o resultado ao Gemini para formular resposta
-    if (toolCall.name === 'list_transactions') {
+    if (toolCall.name === 'list_transactions' || toolCall.name === 'get_account_balance') {
+      const isBalance = toolCall.name === 'get_account_balance';
       const followUp = buildApiMessages();
       followUp.push({
         role: 'user',
-        content: `[RESULTADO DA TOOL list_transactions]: ${JSON.stringify(result.data)}. Se o objetivo do usuário for alterar, deletar ou mudar o status de um lançamento (ex: "marcar como não pago", "alterar para pendente", "mudar valor"), chame a tool correspondente (ex: update_transaction). Se for apenas uma dúvida ou consulta, formule uma resposta clara em português.`,
+        content: `[RESULTADO DA TOOL ${toolCall.name}]: ${JSON.stringify(result.data)}. ${
+          isBalance
+            ? 'Use este saldo exatamente como retornado (não recalcule) para responder de forma direta e curta.'
+            : 'Se o objetivo do usuário for alterar, deletar ou mudar o status de um lançamento (ex: "marcar como não pago", "alterar para pendente", "mudar valor"), chame a tool correspondente (ex: update_transaction). Se for apenas uma dúvida ou consulta, formule uma resposta clara em português.'
+        }`,
       });
 
       const resp = await fetch('/api/artie/chat', {
@@ -265,7 +270,9 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
         }),
       });
       const finalResult = await resp.json();
-      const finalReply = formatTransactionsFallback(result.data, finalResult.reply);
+      const finalReply = isBalance
+        ? (finalResult.reply || formatBalanceFallback(result.data))
+        : formatTransactionsFallback(result.data, finalResult.reply);
       addMessage({ role: 'model', content: finalReply, toolCall, toolResult: result });
     } else {
       // Criar/confirmar/editar/deletar avulso: mensagem de sucesso direta
@@ -447,6 +454,11 @@ function buildSuccessMessage(toolCall: ArtieToolCall, data: any): string {
     default:
       return '✅ Ação executada com sucesso!';
   }
+}
+
+function formatBalanceFallback(data: any): string {
+  const total = Number(data?.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `Seu saldo${data?.only_confirmed ? ' confirmado' : ' projetado'} é de R$ ${total}.`;
 }
 
 function formatTransactionsFallback(data: any, originalReply?: string): string {

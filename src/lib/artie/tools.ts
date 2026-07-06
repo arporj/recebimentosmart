@@ -177,9 +177,9 @@ Você pode passar 'scope' se o usuário já especificou no texto (ex: "exclua to
 
   {
     name: 'list_transactions',
-    description: `Busca lançamentos do usuário para responder QUALQUER pergunta financeira ou de saldo, tais como:
-"Quanto gastei em mercado esse mês?", "Quais contas estão pendentes?", "Qual meu saldo no final do mês?", "Mostre meus gastos de julho".
-Use esta tool OBRIGATORIAMENTE antes de responder qualquer pergunta sobre finanças, valores, contas ou saldos.
+    description: `Busca lançamentos do usuário para responder perguntas sobre GASTOS, RECEITAS ou LISTAGEM de lançamentos, tais como:
+"Quanto gastei em mercado esse mês?", "Quais contas estão pendentes?", "Mostre meus gastos de julho".
+NÃO use esta tool para perguntas de SALDO (use get_account_balance nesse caso).
 Retorna os lançamentos reais encontrados para você formular uma resposta em linguagem natural. NUNCA invente lançamentos.`,
     parameters: {
       type: 'OBJECT',
@@ -209,6 +209,32 @@ Retorna os lançamentos reais encontrados para você formular uma resposta em li
           type: 'STRING',
           enum: ['pending', 'paid'],
           description: 'Filtrar por status. Omita para todos.',
+        },
+      },
+      required: [],
+    },
+  },
+
+  {
+    name: 'get_account_balance',
+    description: `Calcula o saldo de uma ou todas as contas bancárias/carteiras do usuário.
+Use esta tool OBRIGATORIAMENTE para QUALQUER pergunta de saldo, como:
+"Qual meu saldo?", "Qual meu saldo no final do mês?", "Quanto vou ter em Julho?", "Quanto tenho na conta X?".
+Esta tool já aplica toda a regra de negócio (recorrências, parcelas, faturas de cartão pendentes) e retorna o número final pronto — NÃO tente recalcular o saldo somando lançamentos de list_transactions.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        account_name: {
+          type: 'STRING',
+          description: 'Nome da conta (busca parcial). Omita para somar todas as contas.',
+        },
+        as_of_date: {
+          type: 'STRING',
+          description: 'Data de corte YYYY-MM-DD. Padrão: último dia do mês atual (saldo projetado do mês).',
+        },
+        only_confirmed: {
+          type: 'BOOLEAN',
+          description: 'true = considera só lançamentos já pagos. Padrão false (inclui pendentes, ou seja, saldo "projetado").',
         },
       },
       required: [],

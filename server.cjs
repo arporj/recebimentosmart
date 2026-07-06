@@ -706,9 +706,9 @@ Use quando o usuário quiser ALTERAR, MODIFICAR, CORRIGIR ou MUDAR O STATUS de u
   },
   {
     name: 'list_transactions',
-    description: `Busca lançamentos do usuário para responder QUALQUER pergunta financeira ou de saldo, como:
-"Qual meu saldo final do mês?", "Quanto gastei em mercado?", "Quais contas estão pendentes?", "Quais os lançamentos de julho?".
-Use esta tool OBRIGATORIAMENTE antes de responder qualquer pergunta sobre valores, contas, gastos ou saldos.
+    description: `Busca lançamentos do usuário para responder perguntas sobre GASTOS, RECEITAS ou LISTAGEM de lançamentos, como:
+"Quanto gastei em mercado?", "Quais contas estão pendentes?", "Quais os lançamentos de julho?".
+NÃO use esta tool para perguntas de SALDO (use get_account_balance nesse caso).
 NUNCA invente lançamentos se a resposta desta tool for vazia.`,
     parameters: {
       type: 'OBJECT',
@@ -719,6 +719,22 @@ NUNCA invente lançamentos se a resposta desta tool for vazia.`,
         type: { type: 'STRING', enum: ['income', 'expense', 'transfer'] },
         category_name: { type: 'STRING' },
         status: { type: 'STRING', enum: ['pending', 'paid'] },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_account_balance',
+    description: `Calcula o saldo de uma ou todas as contas bancárias/carteiras do usuário.
+Use esta tool OBRIGATORIAMENTE para QUALQUER pergunta de saldo, como:
+"Qual meu saldo?", "Qual meu saldo no final do mês?", "Quanto vou ter em Julho?", "Quanto tenho na conta X?".
+Esta tool já aplica toda a regra de negócio (recorrências, parcelas, faturas de cartão pendentes) e retorna o número final pronto — NÃO tente recalcular o saldo você mesmo somando lançamentos de list_transactions.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        account_name: { type: 'STRING', description: 'Nome da conta (busca parcial). Omita para somar todas as contas.' },
+        as_of_date: { type: 'STRING', description: 'Data de corte YYYY-MM-DD. Padrão: último dia do mês atual (saldo projetado do mês).' },
+        only_confirmed: { type: 'BOOLEAN', description: 'true = considera só lançamentos já pagos. Padrão false (inclui pendentes, ou seja, saldo "projetado").' },
       },
       required: [],
     },
@@ -762,7 +778,7 @@ ${cards}
 2. Se a tool list_transactions retornar vazia ou sem lançamentos para o período, DIGA CLARAMENTE: "Não encontrei lançamentos para esse período." NUNCA preencha com exemplos.
 3. Ao listar ou responder sobre lançamentos, use EXATAMENTE a descrição e o valor retornados pela tool list_transactions.
 4. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
-5. Ao responder perguntas financeiras ("saldo", "quanto gastei"), chame list_transactions OBRIGATORIAMENTE ANTES de responder.
+5. Ao responder perguntas de SALDO ("qual meu saldo", "quanto vou ter no fim do mês"), chame get_account_balance OBRIGATORIAMENTE e use o número retornado tal como está — NUNCA some lançamentos de list_transactions manualmente para calcular saldo, pois list_transactions não considera recorrências futuras nem faturas de cartão pendentes. Para perguntas de gasto/receita por categoria ou período ("quanto gastei em X"), chame list_transactions.
 6. Se houver ambiguidade na busca, informe e peça mais detalhes.
 7. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
 8. Responda sempre em português do Brasil. Seja conciso.
