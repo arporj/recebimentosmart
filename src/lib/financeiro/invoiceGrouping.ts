@@ -102,10 +102,16 @@ export function buildInvoiceSummaryInstances(
     .filter(g => g.invoiceMonth === invoiceMonth)
     .map(g => {
       const finalDate = g.billTransfer ? g.billTransfer.date : g.dueDate;
+      // Quando já existe uma transferência real pagando a fatura, o valor exibido/descontado
+      // TEM que ser o valor real da transferência (não o total recalculado dos lançamentos do
+      // cartão) — senão, se algum lançamento for adicionado/editado nesse invoice_month depois
+      // do fechamento, a linha da fatura passa a mostrar um valor diferente do que de fato saiu
+      // da conta, e o saldo da lista diverge do saldo calculado por conta.
+      const displayAmount = g.reconciled && g.billTransfer ? g.billTransfer.amount : g.total;
       return {
         id: `invoice-${g.cardId}-${g.invoiceMonth}`,
         type: 'expense' as const,
-        amount: g.total,
+        amount: displayAmount,
         date: finalDate,
         description: `Fatura ${g.cardName}`,
         status: g.isPaid ? ('paid' as const) : ('pending' as const),

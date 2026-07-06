@@ -71,4 +71,19 @@ describe('buildInvoiceSummaryInstances', () => {
     expect(lines[0].isInvoiceSummary).toBe(true);
     expect(lines[0].amount).toBe(500);
   });
+
+  it('REGRESSION: uses the real transfer amount (not the recalculated card total) once the invoice is reconciled', () => {
+    // Fatura fechada com Acerto de Saldo: a transferencia real paga R$450, mas depois um novo
+    // lancamento de R$50 foi adicionado a esse invoice_month sem reabrir a fatura, fazendo o
+    // total recalculado (500) divergir do que de fato saiu da conta (450). A linha exibida na
+    // lista PRECISA usar o valor real da transferencia, senao o saldo da lista diverge do
+    // saldo calculado por computeAccountBalanceAsOf (que sempre usa a transferencia real).
+    const transfer = instance({
+      id: 'transfer-1', type: 'transfer', account_id: 'acc-1', destination_account_id: 'card-1',
+      amount: 450, status: 'paid', isVirtual: false,
+    });
+    const groups = groupCreditCardInvoices([instance({ amount: 500 }), transfer], [card]);
+    const lines = buildInvoiceSummaryInstances(groups, '2026-07');
+    expect(lines[0].amount).toBe(450);
+  });
 });
