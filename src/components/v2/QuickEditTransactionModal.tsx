@@ -105,7 +105,7 @@ const QuickEditTransactionModal = ({
   // Populate form fields
   useEffect(() => {
     if (isOpen && transaction) {
-      let initialDate = transaction.originalInstanceDate || transaction.date || format(new Date(), 'yyyy-MM-dd');
+      let initialDate = transaction.originalInstanceDate || transaction.instanceDate || transaction.date || format(new Date(), 'yyyy-MM-dd');
       
       // Se for confirmação e a data for futura, ajusta para hoje
       if (isConfirming) {

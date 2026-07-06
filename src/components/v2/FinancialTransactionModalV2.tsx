@@ -82,6 +82,9 @@ interface TransactionData {
   tags?: { tag: { id: string; name: string; color: string } }[];
   invoice_month?: string | null;
   card_holder_name?: string | null;
+  instanceDate?: string;
+  originalInstanceDate?: string;
+  isVirtual?: boolean;
 }
 
 interface FinancialTransactionModalProps {
@@ -322,7 +325,7 @@ const FinancialTransactionModalV2 = ({
     if (isOpen && transaction) {
       setType(transaction.type);
       setDescription(transaction.description || '');
-      setDate(transaction.date);
+      setDate(transaction.originalInstanceDate || transaction.instanceDate || transaction.date);
       setClientId(transaction.client_id || '');
       setAccountId(transaction.account_id || 'sem-conta');
       setDestinationAccountId(transaction.destination_account_id || '');
