@@ -593,40 +593,13 @@ const CreditCardV2 = () => {
 
   const isBillClosed = !!billPaymentTransaction;
 
-  // Lançamento de "Acerto de Saldo" criado nesta fatura ao fechá-la com valor diferente do total calculado
-  const billAdjustmentTransaction = useMemo(() => {
-    if (!selectedCardId) return null;
-    return transactions.find(t =>
-      t.account_id === selectedCardId &&
-      t.invoice_month === currentInvoiceMonthString &&
-      t.category?.name === 'Acerto de Saldo' &&
-      t.description === 'Acerto de Saldo'
-    ) || null;
-  }, [transactions, selectedCardId, currentInvoiceMonthString]);
-
-  // Lançamento de "Acerto de Saldo" empurrado para a fatura do mês seguinte a partir do fechamento desta fatura
-  const billPushedAdjustmentTransaction = useMemo(() => {
-    if (!selectedCardId) return null;
-    const originMonthLabel = format(currentMonth, 'MM/yy');
-    const nextInvoiceMonthString = format(addMonths(currentMonth, 1), 'yyyy-MM');
-    return transactions.find(t =>
-      t.account_id === selectedCardId &&
-      t.invoice_month === nextInvoiceMonthString &&
-      t.category?.name === 'Acerto de Saldo' &&
-      t.description === `Acerto de conta do mês ${originMonthLabel}`
-    ) || null;
-  }, [transactions, selectedCardId, currentMonth]);
-
   const handleReopenBill = async () => {
     if (!billPaymentTransaction) return;
     try {
-      const idsToDelete = [
-        billPaymentTransaction.id,
-        billAdjustmentTransaction?.id,
-        billPushedAdjustmentTransaction?.id
-      ].filter((id): id is string => !!id);
-
-      const { error } = await supabase.from('financial_transactions').delete().in('id', idsToDelete);
+      // Reabrir desfaz apenas o agendamento de pagamento (transferência). Lançamentos de
+      // "Acerto de Saldo" já criados são transações normais da fatura e permanecem intactos,
+      // podendo ser editados/excluídos manualmente como qualquer outro lançamento.
+      const { error } = await supabase.from('financial_transactions').delete().eq('id', billPaymentTransaction.id);
       if (error) throw error;
       toast.success('Fatura reaberta com sucesso!');
       fetchTransactions();
@@ -1102,7 +1075,7 @@ const CreditCardV2 = () => {
       <ConfirmModal
         isOpen={isReopenConfirmOpen}
         title="Reabrir Fatura"
-        message={`Você tem certeza que deseja cancelar o fechamento da fatura ${currentInvoiceMonthString}? Isso excluirá o agendamento de pagamento associado${(billAdjustmentTransaction || billPushedAdjustmentTransaction) ? ' e os lançamentos de Acerto de Saldo criados no fechamento' : ''}.`}
+        message={`Você tem certeza que deseja cancelar o fechamento da fatura ${currentInvoiceMonthString}? Isso excluirá o agendamento de pagamento associado. Lançamentos de Acerto de Saldo já criados permanecem na fatura.`}
         confirmLabel="Sim, Reabrir"
         cancelLabel="Cancelar"
         onConfirm={handleReopenBill}
