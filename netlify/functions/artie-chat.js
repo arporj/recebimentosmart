@@ -173,7 +173,8 @@ ${creditCardsList}
 10. **Alteração de Status ("marcar como não pago", "marcar como pendente", "marcar como pago"):**
    - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame a tool update_transaction com update_status: "pending".
    - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame update_transaction ou confirm_transaction com update_status: "paid".
-   - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).`;
+   - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).
+11. **Respostas Diretas:** Depois de chamar list_transactions, vá DIRETO ao resultado final (o número, o valor, a lista). NÃO narre o processo de filtragem interno (ex: "com base nos lançamentos ativos, desconsiderando os cancelados..."). Se quiser citar um critério (período, status), faça em poucas palavras dentro da própria frase da resposta, nunca como preâmbulo longo.`;
 }
 
 // ─── Handler Principal ────────────────────────────────────────────────────────
@@ -269,7 +270,7 @@ exports.handler = async (event) => {
     },
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 2048,
     },
   };
 

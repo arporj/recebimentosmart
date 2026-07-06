@@ -772,7 +772,8 @@ ${cards}
 10. **Alteração de Status ("marcar como não pago", "marcar como pendente", "marcar como pago"):**
    - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame a tool update_transaction com update_status: "pending".
    - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame update_transaction ou confirm_transaction com update_status: "paid".
-   - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).`;
+   - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).
+11. **Respostas Diretas:** Depois de chamar list_transactions, vá DIRETO ao resultado final (o número, o valor, a lista). NÃO narre o processo de filtragem interno (ex: "com base nos lançamentos ativos, desconsiderando os cancelados..."). Se quiser citar um critério (período, status), faça em poucas palavras dentro da própria frase da resposta, nunca como preâmbulo longo.`;
 }
 
 function formatFriendlyGeminiError(rawError) {
@@ -863,7 +864,7 @@ app.post('/api/artie/chat', async (req, res) => {
       contents: geminiContents,
       tools: [{ functionDeclarations: ARTIE_TOOLS_LOCAL }],
       toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
     };
 
     // Modelos suportados pela Gemini REST API (prioridade: 3.5-flash -> 2.5-flash -> 2.0-flash -> 1.5-flash)
