@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../components/v2/ConfirmModal';
+import { CategoryIconPickerV2 } from '../../components/v2/CategoryIconPickerV2';
 
 interface Category {
   id: string;
@@ -219,24 +220,9 @@ const FinancialCategoriesV2 = () => {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ícone (emoji)</label>
-                <div className="flex flex-wrap gap-2">
-                  {emojiOptions.map(emoji => (
-                    <button 
-                      key={emoji} type="button"
-                      onClick={() => setIcon(emoji)}
-                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${
-                        icon === emoji ? 'bg-teal-600 shadow-lg scale-110' : 'bg-slate-100 hover:bg-slate-200'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div>
+                  <CategoryIconPickerV2 value={icon} onChange={setIcon} />
                 </div>
-                {icon && (
-                  <button type="button" onClick={() => setIcon('')} className="text-xs text-slate-400 hover:text-slate-600">
-                    Remover ícone
-                  </button>
-                )}
               </div>
 
               <div className="space-y-1.5">
