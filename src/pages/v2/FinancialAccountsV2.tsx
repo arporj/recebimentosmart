@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { 
+import {
   Plus, Pencil, Trash2, X, Building2, CreditCard, Landmark, TrendingUp,
-  ChevronDown, ArrowRight, Users, HelpCircle
+  ChevronDown, ArrowRight, Users, HelpCircle, Star
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +11,7 @@ import ConfirmModal from '../../components/v2/ConfirmModal';
 import { format, subDays, setDate, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { BRAZILIAN_BANKS, inferBankDomain } from '../../constants/banks';
+import { definirContaPadrao } from '../../lib/financeiro/contaPrincipal';
 
 interface Account {
   id: string;
@@ -31,6 +32,7 @@ interface Account {
   bank_name?: string | null;
   bank_icon?: string | null;
   card_brand?: string | null;
+  is_default?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -270,6 +272,16 @@ const FinancialAccountsV2 = () => {
     fetchAccounts();
   };
 
+  const handleSetPrincipal = async (accountId: string) => {
+    try {
+      await definirContaPadrao(accountId);
+      toast.success('Conta principal atualizada!');
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao definir conta principal.');
+    }
+  };
+
   const handleAddSecondaryCard = () => {
     if (!newSecondaryCard.trim()) return;
     setSecondaryCards(prev => [...prev, newSecondaryCard.trim()]);
@@ -382,6 +394,22 @@ const FinancialAccountsV2 = () => {
                       <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap shrink-0 ${typeColors[a.type]}`}>
                         {typeLabels[a.type]}
                       </span>
+                      {a.type !== 'credit_card' && (
+                        a.is_default ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap shrink-0 bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
+                            <Star size={10} className="fill-amber-500 text-amber-500" /> Principal
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrincipal(a.id)}
+                            className="text-[10px] px-2 py-0.5 rounded-md font-medium border whitespace-nowrap shrink-0 text-slate-400 border-slate-200 hover:text-amber-700 hover:border-amber-200 hover:bg-amber-50 transition-colors flex items-center gap-1"
+                            title="Marcar como conta principal"
+                          >
+                            <Star size={10} /> Marcar como principal
+                          </button>
+                        )
+                      )}
                       {a.bank_name && (
                         <span className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
                           em <span className="font-bold text-slate-500 truncate">{a.bank_name}</span>

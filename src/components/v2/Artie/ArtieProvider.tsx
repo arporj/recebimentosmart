@@ -92,7 +92,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     try {
       const [accountsRes, categoriesRes, cardsRes] = await Promise.all([
-        supabase.from('financial_accounts').select('id, name, type').eq('user_id', user.id).eq('is_active', true),
+        supabase.from('financial_accounts').select('id, name, type, is_default').eq('user_id', user.id).eq('is_active', true),
         supabase.from('financial_categories').select('id, name').eq('user_id', user.id),
         supabase.from('financial_accounts').select('id, name, credit_limit, due_day, closing_days_before')
           .eq('user_id', user.id).eq('type', 'credit_card').eq('is_active', true),

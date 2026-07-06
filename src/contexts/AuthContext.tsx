@@ -33,6 +33,8 @@ interface AuthContextType {
   setPredictedLayout: (layout: 'below' | 'column') => void;
   dashboardWidgets: Record<string, boolean>;
   updateDashboardWidgets: (widgets: Record<string, boolean>) => Promise<void>;
+  collapsedAccountGroups: string[];
+  updateCollapsedAccountGroups: (groups: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     receitasCategoria: true,
     despesasCategoria: true,
   });
+  const [collapsedAccountGroups, setCollapsedAccountGroups] = useState<string[]>([]);
 
   // Effect para injetar as classes de tema, densidade e bold na tag html
   useEffect(() => {
@@ -189,6 +192,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (profile.dashboard_widgets) {
             setDashboardWidgets(profile.dashboard_widgets);
+          }
+          if (profile.collapsed_account_groups) {
+            setCollapsedAccountGroups(profile.collapsed_account_groups);
           }
         }
 
@@ -439,6 +445,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateCollapsedAccountGroups = async (groups: string[]) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ collapsed_account_groups: groups })
+        .eq('id', user.id);
+      if (error) throw error;
+      setCollapsedAccountGroups(groups);
+    } catch (error) {
+      console.error('Erro ao atualizar grupos colapsados:', error);
+      toast.error('Erro ao salvar preferências de visualização');
+    }
+  };
+
   const updateUserName = async (name: string) => {
     if (!user) return;
     try {
@@ -536,6 +557,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setPredictedLayout,
         dashboardWidgets,
         updateDashboardWidgets,
+        collapsedAccountGroups,
+        updateCollapsedAccountGroups,
       }}
     >
       {children}

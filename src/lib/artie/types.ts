@@ -120,7 +120,7 @@ export interface ArtieUserMemory {
 // as entidades reais do usuário antes de emitir um tool_call.
 
 export interface ArtieEntityContext {
-  accounts: Array<{ id: string; name: string; type: string }>;
+  accounts: Array<{ id: string; name: string; type: string; is_default?: boolean }>;
   categories: Array<{ id: string; name: string; type?: string }>;
   credit_cards: Array<{
     id: string;

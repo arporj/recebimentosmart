@@ -286,7 +286,7 @@ async function executeGetAccountBalance(
     const asOfDate = args.as_of_date ? parseISO(args.as_of_date) : endOfMonth(new Date());
 
     const [accountsRes, txRes, templatesRes, cardsRes] = await Promise.all([
-      supabase.from('financial_accounts').select('id, name, type, initial_balance').eq('user_id', userId).eq('is_active', true).neq('type', 'credit_card'),
+      supabase.from('financial_accounts').select('id, name, type, initial_balance, is_default').eq('user_id', userId).eq('is_active', true).neq('type', 'credit_card'),
       (supabase as any).from('v_financial_transactions').select('*').eq('user_id', userId).eq('is_template', false),
       // Precisa do join com account_id para obter account_type — sem ele, o recalculo do mes
       // da fatura de recorrencias em cartao de credito (dentro de expandTransactionInstances)
@@ -332,6 +332,15 @@ async function executeGetAccountBalance(
 
     const total = perAccount.reduce((sum, a) => sum + a.balance, 0);
 
+    let defaultAccount: { name: string; balance: number } | null = null;
+    if (!args.account_name) {
+      const defaultAcc = matchedAccounts.find(a => a.is_default);
+      if (defaultAcc) {
+        const match = perAccount.find(a => a.account === defaultAcc.name);
+        if (match) defaultAccount = { name: match.account, balance: match.balance };
+      }
+    }
+
     return {
       success: true,
       data: {
@@ -339,6 +348,8 @@ async function executeGetAccountBalance(
         total,
         as_of: format(asOfDate, 'yyyy-MM-dd'),
         only_confirmed: onlyConfirmed,
+        default_account: defaultAccount,
+        has_multiple_accounts: matchedAccounts.length > 1,
       },
     };
   } catch (err: any) {

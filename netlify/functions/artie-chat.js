@@ -119,7 +119,8 @@ NUNCA invente lançamentos se a resposta desta tool for vazia.`,
     description: `Calcula o saldo de uma ou todas as contas bancárias/carteiras do usuário.
 Use esta tool OBRIGATORIAMENTE para QUALQUER pergunta de saldo, como:
 "Qual meu saldo?", "Qual meu saldo no final do mês?", "Quanto vou ter em Julho?", "Quanto tenho na conta X?".
-Esta tool já aplica toda a regra de negócio (recorrências, parcelas, faturas de cartão pendentes) e retorna o número final pronto — NÃO tente recalcular o saldo você mesmo somando lançamentos de list_transactions.`,
+Esta tool já aplica toda a regra de negócio (recorrências, parcelas, faturas de cartão pendentes) e retorna o número final pronto — NÃO tente recalcular o saldo você mesmo somando lançamentos de list_transactions.
+Quando account_name for omitido, o retorno traz o saldo da conta principal do usuário (default_account) além do total de todas as contas.`,
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -143,7 +144,7 @@ function buildSystemPrompt(entityContext, userMemory, dateToday) {
   };
 
   const accountsList = entityContext.accounts
-    .map(a => `  - ${a.name} (id: ${a.id}, tipo: ${a.type})`)
+    .map(a => `  - ${a.name} (id: ${a.id}, tipo: ${a.type}${a.is_default ? ', principal' : ''})`)
     .join('\n') || '  (nenhuma conta cadastrada)';
 
   const categoriesList = entityContext.categories
@@ -180,6 +181,7 @@ ${creditCardsList}
 3. Ao listar ou responder sobre lançamentos, use EXATAMENTE a descrição e o valor retornados pela tool list_transactions.
 4. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
 5. Ao responder perguntas de SALDO ("qual meu saldo", "quanto vou ter no fim do mês"), chame get_account_balance OBRIGATORIAMENTE e use o número retornado tal como está — NUNCA some lançamentos de list_transactions manualmente para calcular saldo, pois list_transactions não considera recorrências futuras nem faturas de cartão pendentes. Para perguntas de gasto/receita por categoria ou período ("quanto gastei em X"), chame list_transactions.
+   - Se a pergunta NÃO especificar uma conta, a tool retorna 'default_account' (a conta principal do usuário) e 'has_multiple_accounts'. Use o saldo de 'default_account' como resposta e, se 'has_multiple_accounts' for true, pergunte na sequência se o usuário quer ver o saldo de todas as contas ou de uma conta específica — com liberdade total de fraseado, no tom de conversa configurado, sem necessidade de usar literalmente a palavra "principal" ou qualquer frase fixa. Se 'has_multiple_accounts' for false (só existe uma conta), responda apenas o saldo, sem oferecer a opção de ver outras contas.
 6. Se houver ambiguidade na busca, informe e peça mais detalhes.
 7. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
 8. Responda sempre em português do Brasil. Seja conciso.

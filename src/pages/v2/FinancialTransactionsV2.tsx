@@ -12,6 +12,7 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Filter,
   CheckCircle2,
   CalendarCheck,
@@ -99,7 +100,7 @@ interface TransactionInstance extends FinancialTransaction {
 }
 
 const FinancialTransactionsV2 = () => {
-  const { user, rowDensity, predictedLayout } = useAuth();
+  const { user, rowDensity, predictedLayout, collapsedAccountGroups, updateCollapsedAccountGroups } = useAuth();
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [templates, setTemplates] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -619,6 +620,36 @@ const FinancialTransactionsV2 = () => {
     });
   }, [accounts, moduleInstances, currentMonth, creditCardInvoiceGroups]);
 
+  // Agrupa as contas do card de resumo por tipo (Corrente/Poupança/Investimento), com subtotal por grupo
+  const accountGroups = useMemo(() => {
+    const groupOrder: Array<{ type: 'checking' | 'savings' | 'investment'; label: string }> = [
+      { type: 'checking', label: 'Conta Corrente' },
+      { type: 'savings', label: 'Poupança' },
+      { type: 'investment', label: 'Investimento' },
+    ];
+    return groupOrder
+      .map(({ type, label }) => {
+        const items = accountsData.filter(acc => acc.type === type);
+        if (items.length === 0) return null;
+        return {
+          type,
+          label,
+          items,
+          confirmed: items.reduce((sum, a) => sum + a.confirmed, 0),
+          projected: items.reduce((sum, a) => sum + a.projected, 0),
+        };
+      })
+      .filter((g): g is { type: string; label: string; items: typeof accountsData; confirmed: number; projected: number } => g !== null);
+  }, [accountsData]);
+
+  const toggleAccountGroup = (type: string) => {
+    const isCollapsed = collapsedAccountGroups.includes(type);
+    const next = isCollapsed
+      ? collapsedAccountGroups.filter(t => t !== type)
+      : [...collapsedAccountGroups, type];
+    updateCollapsedAccountGroups(next);
+  };
+
   // Linhas sintéticas de "Fatura X" para o mês corrente, usadas na lista e no total de despesas
   const invoiceInstances = useMemo((): TransactionInstance[] => {
     const currentMonthStr = format(currentMonth, 'yyyy-MM');
@@ -1130,29 +1161,47 @@ const FinancialTransactionsV2 = () => {
           <span>Contas</span>
           <span>Saldo</span>
         </div>
-        <div className="divide-y divide-slate-50 max-h-[160px] overflow-y-auto no-scrollbar">
-          {accountsData.map((acc) => (
-            <div key={acc.id} className="py-1 px-3 flex items-center gap-2 hover:bg-slate-50 transition-colors">
-              <input 
-                type="checkbox"
-                checked={selectedAccountIds.has(acc.id)}
-                onChange={() => {
-                  const next = new Set(selectedAccountIds);
-                  if (next.has(acc.id)) next.delete(acc.id); else next.add(acc.id);
-                  setSelectedAccountIds(next);
-                }}
-                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 cursor-pointer"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-bold text-slate-700 truncate">{acc.name}</p>
-                <p className="text-[8px] text-slate-400">{acc.type === 'checking' ? 'Corrente' : acc.type === 'savings' ? 'Poupança' : 'Inv.'}</p>
+        <div className="max-h-[220px] overflow-y-auto no-scrollbar">
+          {accountGroups.map((group) => {
+            const isCollapsed = collapsedAccountGroups.includes(group.type);
+            return (
+              <div key={group.type} className="border-b border-slate-50 last:border-b-0">
+                <button
+                  onClick={() => toggleAccountGroup(group.type)}
+                  className="w-full py-1 px-3 flex items-center gap-2 bg-slate-50/60 hover:bg-slate-100 transition-colors"
+                >
+                  <ChevronDown size={11} className={`text-slate-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider flex-1 text-left">{group.label}</span>
+                  <span className="text-[10px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(group.confirmed)}</span>
+                </button>
+                {!isCollapsed && (
+                  <div className="divide-y divide-slate-50">
+                    {group.items.map((acc) => (
+                      <div key={acc.id} className="py-1 px-3 pl-6 flex items-center gap-2 hover:bg-slate-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedAccountIds.has(acc.id)}
+                          onChange={() => {
+                            const next = new Set(selectedAccountIds);
+                            if (next.has(acc.id)) next.delete(acc.id); else next.add(acc.id);
+                            setSelectedAccountIds(next);
+                          }}
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-slate-700 truncate">{acc.name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[11px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
+                          <p className={`text-[8px] font-bold ${acc.projected >= 0 ? 'text-emerald-600/75' : 'text-rose-500/75'}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="text-right">
-                <p className="text-[11px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.confirmed)}</p>
-                <p className={`text-[8px] font-bold ${acc.projected >= 0 ? 'text-emerald-600/75' : 'text-rose-500/75'}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.projected)}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="py-2 px-3 bg-gradient-to-br from-[#0d9488] to-[#0f766e] text-white flex justify-between items-center border-t border-teal-700/40">
           <div className="flex flex-col">
