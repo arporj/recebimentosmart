@@ -31,7 +31,6 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths, isAfter, isBefo
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactionModalV2';
-import QuickEditTransactionModal from '../../components/v2/QuickEditTransactionModal';
 import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { TransactionSummaryModal } from '../../components/v2/TransactionSummaryModal';
@@ -176,11 +175,6 @@ const FinancialTransactionsV2 = () => {
 
   // Estado para o modal de compartilhamento
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-
-  // Estado para o modal de edição rápida
-  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
-  const [quickEditTransaction, setQuickEditTransaction] = useState<TransactionInstance | null>(null);
-  const [quickEditIsConfirming, setQuickEditIsConfirming] = useState(false);
 
   // Estado para confirmação de exclusão de lançamentos únicos
   const [deleteConfirmModalConfig, setDeleteConfirmModalConfig] = useState<{
@@ -536,11 +530,11 @@ const FinancialTransactionsV2 = () => {
   };
 
   const handleEdit = (t: TransactionInstance) => {
-    // Abre o modal de edição rápida com a data da instância original
+    // Abre a modal completa de lançamento com a data da instância original
     const transactionToEdit = { ...t, date: t.originalInstanceDate || t.instanceDate || t.date };
-    setQuickEditTransaction(transactionToEdit);
-    setQuickEditIsConfirming(false);
-    setIsQuickEditOpen(true);
+    setEditingTransaction(transactionToEdit);
+    setIsConfirming(false);
+    setIsModalOpen(true);
     setOpenDropdown(null);
   };
 
@@ -551,9 +545,9 @@ const FinancialTransactionsV2 = () => {
     const dateToSet = originalDate > todayStr ? todayStr : originalDate;
 
     const transactionToEdit = { ...t, date: dateToSet };
-    setQuickEditTransaction(transactionToEdit);
-    setQuickEditIsConfirming(true);
-    setIsQuickEditOpen(true);
+    setEditingTransaction(transactionToEdit);
+    setIsConfirming(true);
+    setIsModalOpen(true);
     setOpenDropdown(null);
   };
 
@@ -2490,14 +2484,6 @@ const FinancialTransactionsV2 = () => {
       <FinancialTransactionModalV2 
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchTransactions}
         initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming}
-      />
-
-      <QuickEditTransactionModal
-        isOpen={isQuickEditOpen}
-        onClose={() => setIsQuickEditOpen(false)}
-        onSuccess={fetchTransactions}
-        transaction={quickEditTransaction}
-        isConfirming={quickEditIsConfirming}
       />
 
       <TransactionSummaryModal

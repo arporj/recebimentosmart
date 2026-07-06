@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  X, 
-  Search, 
-  Calendar as CalendarIcon, 
-  CheckSquare, 
-  Square, 
+import {
+  X,
+  Search,
+  Calendar as CalendarIcon,
+  CheckSquare,
+  Square,
   ArrowRight,
   ChevronDown,
   Plus,
@@ -12,7 +12,10 @@ import {
   CreditCard,
   TrendingUp,
   Landmark,
-  PiggyBank
+  PiggyBank,
+  Trash2,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,6 +28,7 @@ import { TagModalV2 } from './FinancialTransactionModalV2/TagModalV2';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { criarTransacao as criarTransacaoFinanceira } from '../../lib/financeiro/criarTransacao';
 import { editarTransacao as editarTransacaoFinanceira } from '../../lib/financeiro/editarTransacao';
+import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { ModalOpcaoRecorrente } from '../financeiro/ModalOpcaoRecorrente';
 import QuickAddAccountModal from './QuickAddAccountModal';
 import QuickAddCategoryModal from './QuickAddCategoryModal';
@@ -146,6 +150,7 @@ const FinancialTransactionModalV2 = ({
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [scopeType, setScopeType] = useState<'edit' | 'delete'>('edit');
   const [tempFormData, setTempFormData] = useState<any>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [periodicidade, setPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
   const [startInstallment, setStartInstallment] = useState<string>('1');
   const [isTotalValue, setIsTotalValue] = useState(false);
@@ -160,6 +165,7 @@ const FinancialTransactionModalV2 = ({
   const [status, setStatus] = useState<'pending' | 'paid'>('pending');
 
   const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
+  const isRecurring = !!transaction && (transaction.modalidade === 'recorrente' || transaction.modalidade === 'parcelada' || !!(transaction as any).parent_id || !!transaction.recurrence_enabled);
   const [loading, setLoading] = useState(false);
   
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -177,6 +183,9 @@ const FinancialTransactionModalV2 = ({
   const [pendingAccountType, setPendingAccountType] = useState<'origin' | 'destination'>('origin');
 
   const [isMobile, setIsMobile] = useState(false);
+  // Rastreia se o usuário alterou manualmente a data/conta durante a sessão de edição atual,
+  // para não sobrescrever um invoice_month já customizado assim que as contas carregarem.
+  const userChangedDateOrAccountRef = useRef(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
   const tagRef = useRef<HTMLDivElement>(null);
@@ -296,7 +305,7 @@ const FinancialTransactionModalV2 = ({
 
   useEscapeKey(() => {
     // Só fecha o modal principal se nenhum sub-dropdown ou sub-modal estiver aberto
-    if (isCategoryDropdownOpen || isAccountDropdownOpen || isDestAccountDropdownOpen || isTagDropdownOpen || isClientModalOpen || isTagModalOpen || isQuickAddAccountOpen || isQuickAddCategoryOpen || isScopeModalOpen) {
+    if (isCategoryDropdownOpen || isAccountDropdownOpen || isDestAccountDropdownOpen || isTagDropdownOpen || isClientModalOpen || isTagModalOpen || isQuickAddAccountOpen || isQuickAddCategoryOpen || isScopeModalOpen || isDeleteConfirmOpen) {
       return;
     }
     onClose();
@@ -322,6 +331,7 @@ const FinancialTransactionModalV2 = ({
 
   // Popular campos ao editar
   useEffect(() => {
+    userChangedDateOrAccountRef.current = false;
     if (isOpen && transaction) {
       setType(transaction.type);
       setDescription(transaction.description || '');
@@ -612,10 +622,14 @@ const FinancialTransactionModalV2 = ({
     );
   };
 
-  // Calcular fatura correta ao mudar data ou cartao selecionado
+  // Calcular fatura correta ao mudar data ou cartao selecionado.
+  // Na edição, o invoice_month da transação já vem correto (pode ter sido customizado
+  // manualmente para uma fatura diferente da "natural"); só recalcula se o usuário
+  // de fato alterar a data ou a conta durante esta sessão de edição.
   useEffect(() => {
     if (!accountId || !date || !accounts.length) return;
-    
+    if (isEditing && !userChangedDateOrAccountRef.current) return;
+
     const account = accounts.find(a => a.id === accountId);
     if (account?.type === 'credit_card' && account.due_day && account.closing_days_before) {
       const result = calcularMesFatura(date, {
@@ -627,7 +641,7 @@ const FinancialTransactionModalV2 = ({
         setInvoiceMonth(result);
       }
     }
-  }, [date, accountId, accounts]);
+  }, [date, accountId, accounts, isEditing]);
 
   useEffect(() => {
     if (isCreditCard && accountId && accounts.length > 0) {
@@ -842,9 +856,44 @@ const FinancialTransactionModalV2 = ({
     }
   };
 
+  const handleDelete = async (scope?: 'this' | 'following' | 'all') => {
+    if (!transaction) return;
+
+    if (isRecurring && !scope) {
+      setScopeType('delete');
+      setIsScopeModalOpen(true);
+      return;
+    }
+
+    if (!isRecurring && !isDeleteConfirmOpen && !scope) {
+      setIsDeleteConfirmOpen(true);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await deletarTransacao({
+        transactionId: transaction.id,
+        scope: scope || 'this',
+        instanceDate: transaction.originalInstanceDate || transaction.instanceDate || transaction.date,
+        installmentCurrent: (transaction as any).installment_current,
+      });
+      if (error) throw error;
+      toast.success('Excluído!');
+      onSuccess();
+      handleClose();
+    } catch {
+      toast.error('Erro ao excluir.');
+    } finally {
+      setLoading(false);
+      setIsDeleteConfirmOpen(false);
+    }
+  };
+
   const handleClose = () => {
     setSelectedTags([]);
     setTagSearch('');
+    setIsDeleteConfirmOpen(false);
     onClose();
   };
 
@@ -969,6 +1018,7 @@ const FinancialTransactionModalV2 = ({
                       value={date}
                       onChange={(e) => {
                         setDate(e.target.value);
+                        userChangedDateOrAccountRef.current = true;
                       }}
                       className="w-full pl-12 pr-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-teal-500/20 text-sm"
                     />
@@ -1460,6 +1510,7 @@ const FinancialTransactionModalV2 = ({
                               onClick={(e) => {
                                 e.preventDefault();
                                 setAccountId(a.id);
+                                userChangedDateOrAccountRef.current = true;
                                 setIsAccountDropdownOpen(false);
                               }}
                               className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
@@ -1965,22 +2016,35 @@ const FinancialTransactionModalV2 = ({
         </div>
 
         <footer className="p-4 md:px-6 md:py-4 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between shrink-0">
-          <button 
-            type="button"
-            onClick={onClose}
-            className="w-full md:w-auto px-8 py-3.5 text-xs font-extrabold text-slate-400 hover:text-slate-900 transition-all uppercase tracking-widest"
-          >
-            Cancelar
-          </button>
-          <button 
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => handleDelete()}
+                disabled={loading}
+                className="flex items-center gap-2 px-5 py-3.5 text-xs font-extrabold text-rose-600 hover:bg-rose-50 rounded-2xl transition-colors border border-rose-200 uppercase tracking-widest"
+              >
+                <Trash2 size={14} />
+                Excluir
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-8 py-3.5 text-xs font-extrabold text-slate-400 hover:text-slate-900 transition-all uppercase tracking-widest"
+            >
+              Cancelar
+            </button>
+          </div>
+          <button
             onClick={handleSubmit}
             disabled={loading}
             className={`w-full md:w-auto px-10 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-white text-xs font-extrabold transition-all shadow-xl uppercase tracking-widest ${
               isConfirming
                 ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                : type === 'income' 
-                  ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20' 
-                  : type === 'expense' 
+                : type === 'income'
+                  ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'
+                  : type === 'expense'
                     ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
                     : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
             }`}
@@ -2165,6 +2229,7 @@ const FinancialTransactionModalV2 = ({
                       type="button"
                       onClick={() => {
                         setAccountId(a.id);
+                        userChangedDateOrAccountRef.current = true;
                         setIsAccountDropdownOpen(false);
                         setAccountSearch('');
                       }}
@@ -2414,12 +2479,55 @@ const FinancialTransactionModalV2 = ({
         onClose={() => setIsScopeModalOpen(false)}
         onSelect={(scope) => {
           setIsScopeModalOpen(false);
-          // Re-disparar o submit passando o escopo selecionado como argumento para evitar closures estáticas com estado assíncrono
-          handleSubmit(undefined, scope as any);
+          // Re-disparar a ação passando o escopo selecionado como argumento para evitar closures estáticas com estado assíncrono
+          if (scopeType === 'delete') {
+            handleDelete(scope as any);
+          } else {
+            handleSubmit(undefined, scope as any);
+          }
         }}
         type={scopeType}
-        modalidade={modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
+        modalidade={(transaction as any)?.modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
       />
+
+      {/* Confirmação de exclusão para lançamentos únicos */}
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-600 mb-4">
+              <div className="p-3 bg-rose-50 rounded-2xl">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">Excluir Lançamento</h3>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+              Tem certeza que deseja excluir{' '}
+              <strong className="text-slate-800 font-extrabold">"{transaction?.description}"</strong> de valor{' '}
+              <strong className="text-rose-600 font-extrabold">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(transaction?.amount || 0)}
+              </strong>
+              ? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
+              <button
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-colors text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete('this')}
+                disabled={loading}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold shadow-lg shadow-rose-500/30 transition-colors text-xs disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : 'Sim, Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isClientModalOpen && (
         <ClientFormV2 
@@ -2453,6 +2561,7 @@ const FinancialTransactionModalV2 = ({
           fetchAccounts();
           if (pendingAccountType === 'origin') {
             setAccountId(newId);
+            userChangedDateOrAccountRef.current = true;
           } else {
             setDestinationAccountId(newId);
           }
