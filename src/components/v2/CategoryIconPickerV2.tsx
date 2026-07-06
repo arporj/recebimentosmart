@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, Check, Smile, Utensils, Car, ShoppingBag, HeartPulse, Briefcase, DollarSign, Sparkles } from 'lucide-react';
 
 interface CategoryIconPickerV2Props {
@@ -179,19 +180,16 @@ export const CategoryIconPickerV2: React.FC<CategoryIconPickerV2Props> = ({ valu
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('finance');
   const [searchQuery, setSearchQuery] = useState('');
-  const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Close when clicking outside
+  // Close modal on ESC key
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
         setIsOpen(false);
       }
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   // Search filter across ALL emojis
@@ -229,12 +227,12 @@ export const CategoryIconPickerV2: React.FC<CategoryIconPickerV2Props> = ({ valu
   };
 
   return (
-    <div className="relative inline-block text-left" ref={popoverRef}>
+    <div className="inline-block text-left">
       {/* Trigger Button */}
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setIsOpen(true)}
           className={`group flex items-center justify-center gap-2.5 px-4 py-3 bg-slate-50 border border-slate-200 hover:border-teal-500 rounded-2xl transition-all shadow-sm hover:shadow ${
             value ? 'text-2xl' : 'text-slate-400 text-sm font-semibold'
           }`}
@@ -259,138 +257,163 @@ export const CategoryIconPickerV2: React.FC<CategoryIconPickerV2Props> = ({ valu
         )}
       </div>
 
-      {/* WhatsApp-Style Popover */}
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          {/* Top Header & Search Bar */}
-          <div className="p-3 bg-slate-50/80 border-b border-slate-100 space-y-2">
-            <div className="relative flex items-center">
-              <Search size={16} className="absolute left-3.5 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar ícone... (ex: cerveja, chopp, cigarro, uber)"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
-                autoFocus
-              />
-              {searchQuery && (
+      {/* WhatsApp-Style Modal via Portal (Escapes overflow-hidden) */}
+      {isOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div
+              className="absolute inset-0"
+              onClick={() => setIsOpen(false)}
+            />
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[80vh] z-10 animate-in zoom-in-95 duration-150">
+              
+              {/* Modal Header */}
+              <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm font-manrope">Escolher Ícone</h3>
+                  <p className="text-[11px] text-slate-400">Selecione uma categoria ou busque pelo nome</p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-slate-200/60 rounded-full text-slate-500 transition-colors"
                 >
-                  <X size={14} />
+                  <X size={18} />
                 </button>
-              )}
-            </div>
-
-            {/* Category Tabs (Horizontal Scroll) */}
-            {!searchQuery && (
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 scroll-smooth">
-                {EMOJI_CATEGORIES.map(cat => {
-                  const isActive = activeTab === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setActiveTab(cat.id)}
-                      className={`flex items-center justify-center p-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                        isActive
-                          ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20 scale-105'
-                          : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800'
-                      }`}
-                      title={cat.name}
-                    >
-                      {cat.icon}
-                    </button>
-                  );
-                })}
               </div>
-            )}
-          </div>
 
-          {/* Emoji Grid Area */}
-          <div className="p-3 max-h-64 overflow-y-auto min-h-[220px]">
-            {searchResults ? (
-              // Search Mode Results
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
-                  Resultados da busca ({searchResults.length})
-                </p>
-                {searchResults.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-400 italic">
-                    Nenhum ícone encontrado para "{searchQuery}".
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-6 sm:grid-cols-7 gap-1.5">
-                    {searchResults.map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSelectEmoji(item.emoji)}
-                        title={item.name}
-                        className={`group relative h-10 w-10 flex items-center justify-center rounded-xl text-xl transition-all hover:bg-teal-50 hover:scale-125 hover:z-10 ${
-                          value === item.emoji ? 'bg-teal-100 ring-2 ring-teal-600' : 'bg-slate-50/50'
-                        }`}
-                      >
-                        {item.emoji}
-                        {value === item.emoji && (
-                          <span className="absolute -top-1 -right-1 bg-teal-600 text-white rounded-full p-0.5 shadow-sm">
-                            <Check size={8} />
-                          </span>
-                        )}
-                      </button>
-                    ))}
+              {/* Search Bar & Tabs */}
+              <div className="p-3 bg-slate-50/50 border-b border-slate-100 space-y-2.5 shrink-0">
+                <div className="relative flex items-center">
+                  <Search size={16} className="absolute left-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar ícone... (ex: cerveja, chopp, cigarro, uber)"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Tabs (Horizontal Scroll) */}
+                {!searchQuery && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 scroll-smooth">
+                    {EMOJI_CATEGORIES.map(cat => {
+                      const isActive = activeTab === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setActiveTab(cat.id)}
+                          className={`flex items-center justify-center p-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                            isActive
+                              ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20 scale-105'
+                              : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800'
+                          }`}
+                          title={cat.name}
+                        >
+                          {cat.icon}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            ) : (
-              // Tab Mode Grid
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1 flex items-center justify-between">
-                  <span>{activeCategory.name}</span>
-                  <span className="text-[10px] text-slate-300 font-normal">{activeCategory.emojis.length} ícones</span>
-                </p>
-                <div className="grid grid-cols-6 sm:grid-cols-7 gap-1.5">
-                  {activeCategory.emojis.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSelectEmoji(item.emoji)}
-                      title={item.name}
-                      className={`group relative h-10 w-10 flex items-center justify-center rounded-xl text-xl transition-all hover:bg-teal-50 hover:scale-125 hover:z-10 active:scale-95 ${
-                        value === item.emoji ? 'bg-teal-100 ring-2 ring-teal-600 shadow-sm' : 'bg-slate-50/60 hover:bg-slate-100'
-                      }`}
-                    >
-                      {item.emoji}
-                      {value === item.emoji && (
-                        <span className="absolute -top-1 -right-1 bg-teal-600 text-white rounded-full p-0.5 shadow-sm">
-                          <Check size={8} />
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* Footer bar */}
-          <div className="px-3 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Selecione para aplicar</span>
-            {value && (
-              <button
-                type="button"
-                onClick={handleClearIcon}
-                className="font-bold text-slate-500 hover:text-rose-600 transition-colors"
-              >
-                Limpar seleção
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+              {/* Emoji Grid Area (Flexible height with independent scroll) */}
+              <div className="p-4 overflow-y-auto flex-1 min-h-[250px]">
+                {searchResults ? (
+                  // Search Mode Results
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                      Resultados da busca ({searchResults.length})
+                    </p>
+                    {searchResults.length === 0 ? (
+                      <div className="py-12 text-center text-xs text-slate-400 italic">
+                        Nenhum ícone encontrado para "{searchQuery}".
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-6 sm:grid-cols-7 gap-2">
+                        {searchResults.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSelectEmoji(item.emoji)}
+                            title={item.name}
+                            className={`group relative h-11 w-11 flex items-center justify-center rounded-2xl text-2xl transition-all hover:bg-teal-50 hover:scale-125 hover:z-10 ${
+                              value === item.emoji ? 'bg-teal-100 ring-2 ring-teal-600' : 'bg-slate-50/60 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item.emoji}
+                            {value === item.emoji && (
+                              <span className="absolute -top-1 -right-1 bg-teal-600 text-white rounded-full p-0.5 shadow-sm">
+                                <Check size={10} />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Tab Mode Grid
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1 flex items-center justify-between">
+                      <span>{activeCategory.name}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">{activeCategory.emojis.length} ícones</span>
+                    </p>
+                    <div className="grid grid-cols-6 sm:grid-cols-7 gap-2">
+                      {activeCategory.emojis.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectEmoji(item.emoji)}
+                          title={item.name}
+                          className={`group relative h-11 w-11 flex items-center justify-center rounded-2xl text-2xl transition-all hover:bg-teal-50 hover:scale-125 hover:z-10 active:scale-95 ${
+                            value === item.emoji ? 'bg-teal-100 ring-2 ring-teal-600 shadow-sm' : 'bg-slate-50/60 hover:bg-slate-100'
+                          }`}
+                        >
+                          {item.emoji}
+                          {value === item.emoji && (
+                            <span className="absolute -top-1 -right-1 bg-teal-600 text-white rounded-full p-0.5 shadow-sm">
+                              <Check size={10} />
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer bar */}
+              <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 shrink-0">
+                <span>Clique para selecionar</span>
+                {value && (
+                  <button
+                    type="button"
+                    onClick={handleClearIcon}
+                    className="font-bold text-slate-500 hover:text-rose-600 transition-colors"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
