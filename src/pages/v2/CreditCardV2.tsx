@@ -209,7 +209,7 @@ const CreditCardV2 = () => {
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down');
 
@@ -347,16 +347,24 @@ const CreditCardV2 = () => {
         }
       }
     } else if (!cardId && cards.length > 0 && hasInitializedParams) {
-      setSelectedCardId(cards[0].id);
-      setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions, templates));
+      const currentSelectedExists = cards.some(c => c.id === selectedCardId);
+      if (!selectedCardId || !currentSelectedExists) {
+        setSelectedCardId(cards[0].id);
+        setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions, templates));
+      }
     }
-  }, [searchParams, cards, hasInitializedParams, transactions, templates]);
+  }, [searchParams, cards, hasInitializedParams, selectedCardId, transactions, templates]);
 
   // Handle manual card change via select
   const handleCardChange = (card: Account) => {
     setSelectedCardId(card.id);
     setCurrentMonth(getFirstOpenInvoiceMonth(card, transactions, templates));
     setIsCardDropdownOpen(false);
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      p.set('cardId', card.id);
+      return p;
+    }, { replace: true });
   };
 
   // Close dropdowns on outside click

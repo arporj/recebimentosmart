@@ -282,32 +282,37 @@ const FinancialTransactionsV2 = () => {
       const accountsWithVirtual = [...fetchedAccounts, semContaVirtual];
       setAccounts(accountsWithVirtual);
 
-      const saved = localStorage.getItem(`recebimento_smart_selected_accounts_${user.id}`);
+      const allAccountIds = [...fetchedAccounts.map(a => a.id), 'sem-conta'];
+      const savedUnselected = localStorage.getItem(`recebimento_smart_unselected_accounts_${user.id}`);
       let usedSaved = false;
-      if (saved) {
+      
+      if (savedUnselected) {
         try {
-          const ids: string[] = JSON.parse(saved);
-          const validAccountIds = new Set([...fetchedAccounts.map(a => a.id), 'sem-conta']);
-          let validSavedIds = ids.filter((id: string) => validAccountIds.has(id));
-          
-          // Garante que novas contas criadas sejam automaticamente incluídas no filtro
-          fetchedAccounts.forEach(acc => {
-            if (!ids.includes(acc.id)) {
-              validSavedIds.push(acc.id);
-            }
-          });
-          
-          if (validSavedIds.length > 0) {
+          const unselectedIds: string[] = JSON.parse(savedUnselected);
+          const unselectedSet = new Set(unselectedIds);
+          const initialSelected = allAccountIds.filter(id => !unselectedSet.has(id));
+          setSelectedAccountIds(new Set(initialSelected));
+          usedSaved = true;
+        } catch (e) {
+          console.error('Erro ao carregar contas desmarcadas salvas:', e);
+        }
+      } else {
+        const savedSelected = localStorage.getItem(`recebimento_smart_selected_accounts_${user.id}`);
+        if (savedSelected) {
+          try {
+            const ids: string[] = JSON.parse(savedSelected);
+            const validAccountIds = new Set(allAccountIds);
+            const validSavedIds = ids.filter((id: string) => validAccountIds.has(id));
             setSelectedAccountIds(new Set(validSavedIds));
             usedSaved = true;
+          } catch (e) {
+            console.error('Erro ao carregar contas salvas legadas:', e);
           }
-        } catch (e) {
-          console.error('Erro ao carregar contas salvas:', e);
         }
-      } 
+      }
       
       if (!usedSaved && fetchedAccounts.length > 0) {
-        setSelectedAccountIds(new Set([...fetchedAccounts.map(a => a.id), 'sem-conta']));
+        setSelectedAccountIds(new Set(allAccountIds));
       }
     } catch (err) {
       console.error('Erro ao buscar contas:', err);
@@ -373,10 +378,13 @@ const FinancialTransactionsV2 = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (user && (selectedAccountIds.size > 0 || accounts.length > 0)) {
+    if (user && accounts.length > 0) {
+      const allAccountIds = accounts.map(a => a.id);
+      const unselectedAccountIds = allAccountIds.filter(id => !selectedAccountIds.has(id));
+      localStorage.setItem(`recebimento_smart_unselected_accounts_${user.id}`, JSON.stringify(unselectedAccountIds));
       localStorage.setItem(`recebimento_smart_selected_accounts_${user.id}`, JSON.stringify(Array.from(selectedAccountIds)));
     }
-  }, [selectedAccountIds, accounts.length, user?.id]);
+  }, [selectedAccountIds, accounts, user?.id]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
