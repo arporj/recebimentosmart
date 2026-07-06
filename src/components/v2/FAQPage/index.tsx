@@ -36,6 +36,11 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
+        question: 'Como funciona o fechamento de fatura do cartão de crédito?',
+        answer: 'Ao fechar a fatura, o sistema sugere a data de vencimento do cartão como data de agendamento do pagamento e permite que você altere o valor final da fatura antes de confirmar. Se o valor informado for diferente do total calculado, é criado automaticamente um lançamento de "Acerto de Saldo" (receita, se você reduziu o valor, ou despesa, se aumentou) na própria fatura para refletir a diferença. Quando a fatura é reduzida, o sistema também pergunta se você deseja descartar essa diferença ou lançá-la como despesa na fatura do mês seguinte. Se você não alterar o valor sugerido, o fechamento ocorre normalmente, sem nenhum lançamento adicional.'
+    },
+    {
+        category: 'funcionalidades',
         question: 'Como funcionam os alertas por e-mail de contas e cartões?',
         answer: 'Dependendo do seu plano, você pode habilitar alertas por e-mail em suas Preferências. Para planos de envio diário, é possível ativar alertas de contas que vencem no dia e notificações na data exata de fechamento da fatura do seu cartão. Para planos semanais, você recebe um resumo consolidado das contas da semana juntamente com a fatura do cartão a vencer, tudo de forma automática no dia escolhido.'
     },
