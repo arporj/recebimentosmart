@@ -308,52 +308,50 @@ const CreditCardV2 = () => {
 
   useEffect(() => { fetchCards(); fetchTransactions(); }, [user?.id]);
 
-  // Inicialização inteligente do cartão e mês
+  // Inicialização inteligente do cartão e mês na primeira carga
   useEffect(() => {
     if (cards.length > 0 && !loading && !hasInitializedParams) {
       const initialCardId = searchParams.get('cardId');
       const initialMonth = searchParams.get('month'); // format: yyyy-MM
       
-      const foundCard = cards.find(c => c.id === initialCardId);
-      if (foundCard) {
-        setSelectedCardId(foundCard.id);
-        if (initialMonth) {
-          const [year, month] = initialMonth.split('-');
-          setCurrentMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
-        } else {
-          setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions, templates));
-        }
-      } else if (cards.length > 0 && !selectedCardId) {
-        setSelectedCardId(cards[0].id);
-        setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions, templates));
+      const foundCard = cards.find(c => c.id === initialCardId) || cards[0];
+      setSelectedCardId(foundCard.id);
+
+      if (initialMonth) {
+        const [year, month] = initialMonth.split('-');
+        setCurrentMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
+      } else {
+        setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions, templates));
       }
       setHasInitializedParams(true);
     }
   }, [cards, loading, searchParams, hasInitializedParams, transactions, templates]);
 
-  // Sincroniza dinamicamente o cartão selecionado quando os parâmetros de busca da URL mudarem
+  // Sincroniza cartão/mês SOMENTE se os parâmetros de busca da URL (searchParams) mudarem externamente
   useEffect(() => {
+    if (!hasInitializedParams || cards.length === 0) return;
+
     const cardId = searchParams.get('cardId');
     const month = searchParams.get('month');
-    if (cardId && cards.length > 0) {
+
+    if (cardId) {
       const foundCard = cards.find(c => c.id === cardId);
-      if (foundCard) {
+      if (foundCard && foundCard.id !== selectedCardId) {
         setSelectedCardId(foundCard.id);
-        if (month) {
-          const [year, m] = month.split('-');
-          setCurrentMonth(new Date(parseInt(year), parseInt(m) - 1, 1));
-        } else {
+        if (!month) {
           setCurrentMonth(getFirstOpenInvoiceMonth(foundCard, transactions, templates));
         }
       }
-    } else if (!cardId && cards.length > 0 && hasInitializedParams) {
-      const currentSelectedExists = cards.some(c => c.id === selectedCardId);
-      if (!selectedCardId || !currentSelectedExists) {
-        setSelectedCardId(cards[0].id);
-        setCurrentMonth(getFirstOpenInvoiceMonth(cards[0], transactions, templates));
+    }
+
+    if (month) {
+      const [year, m] = month.split('-');
+      const targetMonthDate = new Date(parseInt(year), parseInt(m) - 1, 1);
+      if (!isSameMonth(targetMonthDate, currentMonth)) {
+        setCurrentMonth(targetMonthDate);
       }
     }
-  }, [searchParams, cards, hasInitializedParams, selectedCardId, transactions, templates]);
+  }, [searchParams, cards, hasInitializedParams]);
 
   // Handle manual card change via select
   const handleCardChange = (card: Account) => {
