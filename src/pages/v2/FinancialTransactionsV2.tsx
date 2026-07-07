@@ -405,8 +405,15 @@ const FinancialTransactionsV2 = () => {
   }, [user?.id]);
 
   const allInstancesUpToMonth = useMemo((): TransactionInstance[] => {
+    // Horizonte nunca fica mais curto que o mês real atual: ao navegar para um mês passado,
+    // a transferência que quitou uma fatura pode estar datada em um mês seguinte (ex: pagamento
+    // feito já em julho para a fatura de junho). Sem isso, groupCreditCardInvoices não encontra
+    // essa transferência e mostra a fatura como pendente mesmo já paga.
+    const horizonEnd = isBefore(endOfMonth(currentMonth), endOfMonth(today))
+      ? endOfMonth(today)
+      : endOfMonth(currentMonth);
     return expandTransactionInstances(transactions, templates, {
-      horizonEnd: endOfMonth(currentMonth),
+      horizonEnd,
     }) as unknown as TransactionInstance[];
   }, [transactions, templates, currentMonth]);
 
@@ -656,6 +663,23 @@ const FinancialTransactionsV2 = () => {
     return buildInvoiceSummaryInstances(creditCardInvoiceGroups, currentMonthStr) as unknown as TransactionInstance[];
   }, [creditCardInvoiceGroups, currentMonth]);
 
+  // Lançamentos pendentes de meses JÁ FECHADOS (anteriores ao corrente), "empurrados"
+  // visualmente pra hoje — só quando o mês visualizado é o mês real atual, pra que uma conta
+  // atrasada de um mês passado não fique escondida atrás de navegação manual. Reusa o rollover
+  // já existente e testado de instanceExpansion.ts (mesmo usado pelo Dashboard), mas isolado
+  // aqui: nunca entra em monthInstances/totals (o Resumo Mensal e o saldo acumulado continuam
+  // baseados só na data real do lançamento) — é puramente um alerta visual com o badge de dias.
+  const overdueRolloverInstances = useMemo((): TransactionInstance[] => {
+    if (!isSameMonth(currentMonth, today)) return [];
+    const rolled = expandTransactionInstances(transactions, [], {
+      horizonEnd: endOfMonth(currentMonth),
+      rollOverUnpaidToToday: true,
+    }) as unknown as TransactionInstance[];
+    return rolled
+      .filter(t => t.originalInstanceDate !== t.instanceDate && !isSameMonth(parseISO(t.originalInstanceDate), currentMonth))
+      .map(t => ({ ...t, isVirtual: true, isOverdueRollover: true }));
+  }, [transactions, currentMonth]);
+
   const totals = useMemo(() => {
     const selected = accountsData.filter(a => selectedAccountIds.has(a.id));
     const confirmed = selected.reduce((sum, a) => sum + a.confirmed, 0);
@@ -737,8 +761,23 @@ const FinancialTransactionsV2 = () => {
       return matchesFilter && matchesSearch;
     });
 
+    // Lançamentos atrasados de meses fechados, empurrados pra hoje (mesmos filtros de conta/busca de `filtered`)
+    const filteredOverdueRollover = overdueRolloverInstances.filter(t => {
+      const isSelected = (t.account_id && selectedAccountIds.has(t.account_id)) || (t.destination_account_id && selectedAccountIds.has(t.destination_account_id));
+      const matchesFilter = filter === 'all' || t.type === filter;
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = searchTerm === '' ||
+        t.description?.toLowerCase().includes(search) ||
+        t.client?.name?.toLowerCase().includes(search) ||
+        t.account?.name?.toLowerCase().includes(search) ||
+        t.destination_account?.name?.toLowerCase().includes(search) ||
+        t.category?.name?.toLowerCase().includes(search) ||
+        t.amount?.toString().includes(search);
+      return isSelected && matchesFilter && matchesSearch;
+    });
+
     // Combine and sort ALL transactions BEFORE calculating running balance
-    const combined = [...filtered, ...filteredInvoices].sort((a, b) => {
+    const combined = [...filtered, ...filteredInvoices, ...filteredOverdueRollover].sort((a, b) => {
       // Ordenação cronológica normal das instâncias
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
@@ -802,7 +841,7 @@ const FinancialTransactionsV2 = () => {
     }
 
     return sortedList;
-  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, totals.previousProjected, currentMonth, invoiceInstances, creditCardAccounts]);
+  }, [monthInstances, selectedAccountIds, filter, searchTerm, totals.confirmed, totals.previousProjected, currentMonth, invoiceInstances, overdueRolloverInstances, creditCardAccounts]);
 
   const toggleSelectTransaction = (key: string, e?: React.MouseEvent | React.ChangeEvent) => {
     if (e) e.stopPropagation();

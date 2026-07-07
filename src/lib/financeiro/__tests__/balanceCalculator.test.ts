@@ -71,4 +71,33 @@ describe('computeAccountBalanceAsOf + computeRunningBalance invariant', () => {
 
     expect(lastBalance).toBe(projected);
   });
+
+  it('a synthetic isOverdueRollover row (lançamento atrasado empurrado pra hoje) never moves the running balance', () => {
+    // Simula FinancialTransactionsV2.tsx: uma despesa de junho, ainda pendente, "empurrada"
+    // visualmente pra hoje (mês corrente) só como alerta — seu valor já foi descontado do
+    // saldo previsto de junho (openingBalance de julho), então contar de novo aqui duplicaria
+    // o desconto. Ver overdueRolloverInstances / computeRunningBalance.
+    const rolledOverdue = instance({
+      id: 'june-overdue', type: 'expense', amount: 250, date: '2026-06-07',
+      instanceDate: '2026-07-07', originalInstanceDate: '2026-06-07',
+      isVirtual: true, isOverdueRollover: true, account_id: 'acc-1', status: 'pending',
+    });
+
+    const combinedWithRollover = [
+      ...allInstances.filter(i => i.account_id === 'acc-1'),
+      rolledOverdue,
+    ].sort((a, b) => a.instanceDate.localeCompare(b.instanceDate));
+
+    const combinedWithoutRollover = allInstances.filter(i => i.account_id === 'acc-1');
+
+    const openingBalance = 1000;
+    const withRollover = computeRunningBalance(combinedWithRollover, openingBalance, new Set(['acc-1']));
+    const withoutRollover = computeRunningBalance(combinedWithoutRollover, openingBalance, new Set(['acc-1']));
+
+    expect(withRollover[withRollover.length - 1].runningBalance).toBe(withoutRollover[withoutRollover.length - 1].runningBalance);
+
+    const rolloverRow = withRollover.find(r => r.id === 'june-overdue')!;
+    const precedingRow = withRollover[withRollover.indexOf(rolloverRow) - 1];
+    expect(rolloverRow.runningBalance).toBe(precedingRow ? precedingRow.runningBalance : openingBalance);
+  });
 });

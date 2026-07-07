@@ -62,6 +62,13 @@ export interface RunningBalanceItem {
   account_id?: string | null;
   destination_account_id?: string | null;
   isInvoiceSummary?: boolean;
+  /**
+   * Linha sintética que "empurra" visualmente pra hoje um lançamento pendente de um mês já
+   * fechado (ver overdueRolloverInstances em FinancialTransactionsV2.tsx). O valor original já
+   * foi descontado do saldo previsto do mês em que ele realmente venceu — contar de novo aqui
+   * duplicaria o desconto. Serve só pra exibição/alerta, nunca afeta o saldo acumulado.
+   */
+  isOverdueRollover?: boolean;
 }
 
 /**
@@ -76,6 +83,9 @@ export function computeRunningBalance<T extends RunningBalanceItem>(
   let runningBalance = openingBalance;
 
   return items.map(t => {
+    if (t.isOverdueRollover) {
+      return { ...t, runningBalance };
+    }
     if (t.isInvoiceSummary) {
       runningBalance -= t.amount;
     } else if (t.type === 'income') {

@@ -51,6 +51,11 @@ export function groupCreditCardInvoices(
   const cardsById = new Map(creditCardAccounts.map(c => [c.id, c]));
 
   const totals = new Map<string, number>(); // key: `${cardId}::${invoiceMonth}`
+  // Fatura sem transferência de pagamento formal, mas cujos lançamentos já foram todos
+  // marcados como pagos individualmente (usuário que paga item a item, em vez de um
+  // "Pagamento Fatura" único), também deve contar como paga — sem isso, essa fatura
+  // fica pendente/amarela pra sempre, mesmo com tudo já quitado.
+  const hasUnpaidItem = new Map<string, boolean>();
 
   for (const t of instances) {
     if (!t.account_id || !cardsById.has(t.account_id)) continue;
@@ -62,6 +67,9 @@ export function groupCreditCardInvoices(
     const adjusted = t.type === 'expense' ? amount : -amount;
     const key = `${t.account_id}::${t.invoice_month}`;
     totals.set(key, (totals.get(key) || 0) + adjusted);
+    if (t.status !== 'paid' && t.status !== 'cancelled') {
+      hasUnpaidItem.set(key, true);
+    }
   }
 
   const realTransfers = instances.filter(i => !i.isVirtual && i.type === 'transfer');
@@ -86,7 +94,7 @@ export function groupCreditCardInvoices(
       linkedAccountName: card.linkedAccountName || null,
       reconciled: !!billTransfer,
       billTransfer,
-      isPaid: billTransfer?.status === 'paid',
+      isPaid: billTransfer?.status === 'paid' || !hasUnpaidItem.get(key),
     });
   }
 

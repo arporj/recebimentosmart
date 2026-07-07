@@ -60,6 +60,11 @@ const FAQ_ITEMS: FAQItem[] = [
         answer: 'Para facilitar o controle financeiro, no dia de "Hoje", os lançamentos são agrupados e ordenados automaticamente de forma inteligente: primeiro são exibidos os lançamentos pagos, seguidos pelos vencidos (em atraso) e, por último, os pendentes. Além disso, os lançamentos que foram pagos no mesmo dia são exibidos em ordem cronológica de pagamento (do primeiro ao último pago).'
     },
     {
+        category: 'funcionalidades',
+        question: 'O que acontece com uma conta que venceu em um mês anterior e ainda não foi paga?',
+        answer: 'Quando você está visualizando o mês atual, qualquer lançamento pendente de um mês já encerrado aparece automaticamente no dia de "Hoje", com a bolinha vermelha de atraso e um selo indicando há quantos dias está vencido — assim você não precisa navegar mês a mês pra encontrar contas esquecidas. Isso é só um alerta visual: o valor continua contando no saldo previsto do mês em que realmente venceu, não no mês atual, então seus totais mensais (Ganhos/Gastos/Resultado) não são afetados. Ao confirmar o pagamento, você pode manter a data original de vencimento (se já pagou e só esqueceu de registrar) ou usar a opção de confirmar com a data de hoje (se está pagando agora).'
+    },
+    {
         category: 'planos',
         question: 'Como funciona o plano gratuito do sistema?',
         answer: 'Todos os novos usuários cadastrados recebem automaticamente o acesso ao nosso plano gratuito de forma vitalícia para gerenciar suas contas. O plano gratuito possui alguns limites de uso, como quantidade máxima de clientes cadastrados por mês. Você pode usar pelo tempo que quiser sem a necessidade de cadastrar cartão de crédito ou dados de pagamento!'

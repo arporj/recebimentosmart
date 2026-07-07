@@ -37,6 +37,7 @@ export interface TransactionInstance extends RawFinancialTransaction {
   originalInstanceDate: string;
   isVirtual: boolean;
   isInvoiceSummary?: boolean;
+  isOverdueRollover?: boolean;
   invoiceData?: {
     cardId: string;
     cardName: string;
