@@ -1487,7 +1487,7 @@ const FinancialTransactionsV2 = () => {
                     } border-b border-slate-50 cursor-pointer hover:bg-slate-100/50 transition-colors group ${isEven ? 'bg-white' : 'bg-slate-100/40'}`}
                   >
                     <div className="w-6 flex items-center justify-center shrink-0">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${t.invoiceData?.isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${t.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     </div>
                     <div className="flex flex-col shrink-0 w-[52px] text-left leading-tight justify-center">
                       <span className="text-[10px] font-bold text-slate-400">
@@ -1896,8 +1896,8 @@ const FinancialTransactionsV2 = () => {
                         {/* Status dot de Fatura */}
                         <div className="w-6 flex items-center justify-center shrink-0">
                           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                            t.invoiceData?.isPaid 
-                              ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' 
+                            t.status === 'paid'
+                              ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
                               : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
                           }`} />
                         </div>
