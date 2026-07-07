@@ -8,6 +8,8 @@ export interface ArtieMessage {
   content: string;
   toolCall?: ArtieToolCall;
   toolResult?: ArtieToolResult;
+  /** Opções clicáveis (chips) exibidas quando o Artie pergunta algo via ask_user */
+  options?: string[];
   createdAt: Date;
 }
 
@@ -81,6 +83,13 @@ export interface ListTransactionsArgs {
   type?: 'income' | 'expense' | 'transfer';
   category_name?: string;
   status?: 'pending' | 'paid';
+}
+
+export interface AskUserArgs {
+  /** Pergunta curta feita ao usuário para coletar um dado que falta */
+  question: string;
+  /** 2 a 6 opções clicáveis (nomes de entidades). Ausente = resposta livre */
+  options?: string[];
 }
 
 export interface GetAccountBalanceArgs {

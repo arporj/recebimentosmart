@@ -165,8 +165,14 @@ export function ArtieDrawer() {
           )}
 
           {/* Mensagens */}
-          {messages.map(msg => (
-            <ArtieMessageBubble key={msg.id} message={msg} />
+          {messages.map((msg, idx) => (
+            <ArtieMessageBubble
+              key={msg.id}
+              message={msg}
+              isLast={idx === messages.length - 1}
+              disabled={isExecuting}
+              onOptionSelect={opt => sendTextMessage(opt)}
+            />
           ))}
 
           {/* Card de escolha de escopo (Recorrente/Parcelado) */}

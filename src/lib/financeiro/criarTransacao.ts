@@ -61,6 +61,15 @@ export async function criarTransacao(input: TransactionInput) {
     ? await fetchAccountConfig(input.account_id)
     : null;
 
+  // Compra em cartão é quitada no pagamento da fatura — nunca nasce 'paid'
+  // (mesmo invariante que o formulário manual já impõe na UI).
+  const isCreditCardPurchase = accountConfig?.type === 'credit_card';
+
+  // Fallback para callers que não calculam o mês de fatura (ex: Artie);
+  // calcularMesFatura retorna null para contas que não são cartão.
+  const defaultInvoiceMonth = input.invoice_month
+    ?? (accountConfig ? calcularMesFatura(input.date, accountConfig) : null);
+
   const baseTransaction = {
     user_id: userData.user.id,
     description: input.description,
@@ -71,8 +80,8 @@ export async function criarTransacao(input: TransactionInput) {
     destination_account_id: input.destination_account_id === 'sem-conta' ? null : (input.destination_account_id || null),
     client_id: input.client_id,
     modalidade: input.modalidade,
-    status: input.status || 'pending',
-    invoice_month: input.invoice_month || null,
+    status: isCreditCardPurchase ? 'pending' : (input.status || 'pending'),
+    invoice_month: defaultInvoiceMonth,
     card_holder_name: input.card_holder_name || null,
     auto_confirm: input.auto_confirm ?? false,
   };
@@ -205,7 +214,7 @@ export async function criarTransacao(input: TransactionInput) {
       ...baseTransaction,
       parent_id: parentData.id,
       date: input.date,
-      status: input.status || 'pending',
+      status: baseTransaction.status,
       installment_current: 1,
       installment_total: 1,
       is_template: false,

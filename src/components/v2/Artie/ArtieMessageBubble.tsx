@@ -7,6 +7,12 @@ import type { ArtieMessage } from '../../../lib/artie/types';
 
 interface ArtieMessageBubbleProps {
   message: ArtieMessage;
+  /** Chips de opções só são clicáveis na última mensagem da conversa */
+  isLast?: boolean;
+  /** Desabilita os chips enquanto o Artie está processando */
+  disabled?: boolean;
+  /** Clicar num chip envia o rótulo como mensagem do usuário */
+  onOptionSelect?: (option: string) => void;
 }
 
 // Renderiza markdown simples (negrito, quebras de linha)
@@ -20,8 +26,10 @@ function renderContent(text: string) {
   });
 }
 
-export function ArtieMessageBubble({ message }: ArtieMessageBubbleProps) {
+export function ArtieMessageBubble({ message, isLast, disabled, onOptionSelect }: ArtieMessageBubbleProps) {
   const isUser = message.role === 'user';
+  const hasOptions = !isUser && !!message.options && message.options.length > 0;
+  const optionsEnabled = hasOptions && !!isLast && !disabled;
 
   return (
     <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -50,6 +58,27 @@ export function ArtieMessageBubble({ message }: ArtieMessageBubbleProps) {
             : <p className="whitespace-pre-wrap">{renderContent(message.content)}</p>
           }
         </div>
+
+        {/* Chips de opções (ask_user) — permanecem visíveis no histórico, mas só a última pergunta é clicável */}
+        {hasOptions && (
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {message.options!.map(opt => (
+              <button
+                key={opt}
+                type="button"
+                disabled={!optionsEnabled}
+                onClick={() => onOptionSelect?.(opt)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors
+                  ${optionsEnabled
+                    ? 'text-teal-700 bg-teal-50 border-teal-200 hover:bg-teal-100 active:scale-95'
+                    : 'text-slate-400 bg-slate-50 border-slate-200 cursor-default opacity-60'}`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+
         <span className="text-[10px] text-slate-400 px-1">
           {format(message.createdAt, 'HH:mm', { locale: ptBR })}
         </span>

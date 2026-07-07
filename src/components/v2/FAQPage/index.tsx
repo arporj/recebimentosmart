@@ -96,8 +96,8 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
-        question: 'O que é a conta "Sem Conta" e como ela funciona com o assistente de voz?',
-        answer: 'Quando você cria um lançamento financeiro utilizando o assistente de voz Artie e não menciona uma conta bancária de origem ou destino, o sistema cria o lançamento silenciosamente em um estado temporário "Sem Conta". Esse lançamento é listado sob a conta virtual "Sem Conta" na sua tela de Lançamentos para que você possa localizá-lo rapidamente, clicar para editar e associar à conta bancária definitiva desejada.'
+        question: 'Como o Artie escolhe a conta e a categoria dos lançamentos criados por voz ou chat?',
+        answer: 'O Artie conduz um fluxo guiado: se você não mencionar a conta ou a categoria, ele pergunta antes de criar o lançamento, exibindo botões clicáveis com as opções disponíveis — e você também pode responder digitando ou falando. Se você disser "cartão" e tiver apenas um cartão de crédito cadastrado, ele usa esse cartão automaticamente e informa qual usou. Para categorias, o Artie sugere a mais provável com base na descrição (por exemplo, "mercado" sugere Alimentação) e pede sua confirmação. Lançamentos em cartão de crédito entram como pendentes na fatura do mês correto, para serem quitados no pagamento da fatura. Lançamentos antigos criados sem conta continuam listados sob a conta virtual "Sem Conta" na tela de Lançamentos, onde podem ser editados.'
     }
 ];
 

@@ -1,15 +1,19 @@
 // Declarações de Tools para o Gemini (Fase 1: Transações)
 // Estas declarações são enviadas ao Gemini para que ele saiba
 // quais ações pode disparar e quais parâmetros cada uma exige.
+//
+// ATENÇÃO: a fonte da verdade em runtime é netlify/functions/artie-shared.cjs
+// (compartilhada entre a Netlify Function e o server.cjs de dev). Este arquivo
+// é a documentação viva em TypeScript — mantenha em sincronia.
 
 export const ARTIE_TOOLS_PHASE_1 = [
   {
     name: 'create_transaction',
-    description: `Cria um novo lançamento financeiro (despesa, receita ou transferência).
+    description: `Cria um novo lançamento financeiro (despesa ou receita).
 Use quando o usuário quiser REGISTRAR, ADICIONAR ou LANÇAR algo novo.
-NUNCA invente valores ou descrições. Se faltar informação essencial (valor ou descrição), pergunte antes de chamar esta tool.
-Se o usuário não mencionar conta, crie sem conta (account_id omitido).
-Se o usuário não mencionar categoria, crie sem categoria (category_id omitido).`,
+NUNCA invente valores, descrições ou IDs.
+account_id e category_id são OBRIGATÓRIOS e devem ser IDs reais do entity_context.
+Se faltar QUALQUER dado obrigatório (conta, categoria, descrição, valor, nº de parcelas de parcelada, periodicidade de recorrente), NÃO chame esta tool — colete o que falta com a tool ask_user, uma pergunta por vez, conforme a regra 7 do prompt.`,
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -32,11 +36,11 @@ Se o usuário não mencionar categoria, crie sem categoria (category_id omitido)
         },
         account_id: {
           type: 'STRING',
-          description: 'ID da conta do usuário (veja entity_context.accounts). Omita se não mencionado.',
+          description: 'ID da conta ou cartão (entity_context.accounts / credit_cards). OBRIGATÓRIO. Nunca invente.',
         },
         category_id: {
           type: 'STRING',
-          description: 'ID da categoria (veja entity_context.categories). Omita se não mencionado.',
+          description: 'ID da categoria (entity_context.categories). OBRIGATÓRIO. Nunca invente.',
         },
         modalidade: {
           type: 'STRING',
@@ -59,10 +63,33 @@ Se o usuário não mencionar categoria, crie sem categoria (category_id omitido)
         status: {
           type: 'STRING',
           enum: ['pending', 'paid'],
-          description: '"paid" se o pagamento já ocorreu, "pending" se é futuro. Padrão: "paid" para despesas passadas.',
+          description: 'Use "pending" para lançamentos em cartão de crédito (pagos na fatura). Para contas comuns com data hoje/passada, "paid".',
         },
       },
-      required: ['description', 'amount', 'type', 'date'],
+      required: ['description', 'amount', 'type', 'date', 'account_id', 'category_id'],
+    },
+  },
+
+  {
+    name: 'ask_user',
+    description: `Faz UMA pergunta ao usuário para coletar um dado que falta antes de criar um lançamento (conta, categoria, descrição, nº de parcelas ou periodicidade).
+Use SEMPRE que faltar um dado obrigatório do fluxo guiado (veja regra 7 do prompt). Faça UMA pergunta por vez.
+Em "options", envie de 2 a 6 rótulos curtos e clicáveis usando os NOMES EXATOS das entidades do usuário (ex: "Nubank", "Alimentação") — nunca IDs. Omita "options" apenas quando a resposta for texto livre (ex: descrição).
+NÃO use esta tool para confirmar exclusões nem quando já tiver todos os dados.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        question: {
+          type: 'STRING',
+          description: 'Pergunta curta em português, recapitulando o pedido. Ex: "Para o lançamento de R$ 10 — em qual cartão devo lançar?"',
+        },
+        options: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: '2 a 6 opções clicáveis. Omita para resposta livre.',
+        },
+      },
+      required: ['question'],
     },
   },
 

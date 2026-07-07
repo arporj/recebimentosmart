@@ -4,6 +4,7 @@
 // A EXECUÇÃO das tools permanece no frontend (preserva RLS do Supabase).
 
 const { createClient } = require('@supabase/supabase-js');
+const { ARTIE_TOOLS, buildSystemPrompt, formatFriendlyGeminiError } = require('./artie-shared.cjs');
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,181 +20,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// ─── Tool Declarations (espelhadas do frontend/lib/artie/tools.ts) ────────────
-// Mantemos aqui para evitar import de TS no runtime do Node.
-const ARTIE_TOOLS = [
-  {
-    name: 'create_transaction',
-    description: `Cria um novo lançamento financeiro (despesa, receita ou transferência).
-Use quando o usuário quiser REGISTRAR, ADICIONAR ou LANÇAR algo novo.
-NUNCA invente valores ou descrições. Se faltar informação essencial (valor ou descrição), pergunte antes de chamar esta tool.
-Se o usuário não mencionar conta, crie sem conta (account_id omitido).
-Se o usuário não mencionar categoria, crie sem categoria (category_id omitido).`,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        description: { type: 'STRING', description: 'Descrição exata do lançamento.' },
-        amount: { type: 'NUMBER', description: 'Valor numérico positivo. NUNCA invente.' },
-        type: { type: 'STRING', enum: ['expense', 'income', 'transfer'] },
-        date: { type: 'STRING', description: 'Data YYYY-MM-DD. Use hoje se não mencionado.' },
-        account_id: { type: 'STRING', description: 'ID da conta (veja entity_context.accounts). Omita se não mencionado.' },
-        category_id: { type: 'STRING', description: 'ID da categoria (veja entity_context.categories). Omita se não mencionado.' },
-        modalidade: { type: 'STRING', enum: ['unica', 'parcelada', 'recorrente'] },
-        installment_total: { type: 'NUMBER' },
-        recurrence_period: { type: 'STRING', enum: ['daily', 'weekly', 'monthly', 'yearly'] },
-        recurrence_interval: { type: 'NUMBER' },
-        status: { type: 'STRING', enum: ['pending', 'paid'] },
-      },
-      required: ['description', 'amount', 'type', 'date'],
-    },
-  },
-  {
-    name: 'confirm_transaction',
-    description: `Dá baixa em um lançamento PENDENTE existente.
-Use quando o usuário disser "confirmei", "paguei", "recebi", "dar baixa".`,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        search_description: { type: 'STRING', description: 'Trecho da descrição para busca.' },
-        search_date: { type: 'STRING', description: 'Data aproximada YYYY-MM-DD. Opcional.' },
-        search_amount: { type: 'NUMBER', description: 'Valor para refinar busca. Opcional.' },
-        confirm_date: { type: 'STRING', description: 'Data da confirmação YYYY-MM-DD. Usa hoje se omitido.' },
-      },
-      required: ['search_description'],
-    },
-  },
-  {
-    name: 'update_transaction',
-    description: `Edita campos (descrição, valor, data, conta, categoria ou STATUS) de um lançamento existente.
-Use quando o usuário quiser ALTERAR, CORRIGIR ou MUDAR O STATUS de um lançamento (ex: marcar como pendente, marcar como pago, alterar valor).`,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        search_description: { type: 'STRING', description: 'Trecho da descrição. Omita se o usuário informar apenas valor/data.' },
-        search_date: { type: 'STRING' },
-        search_amount: { type: 'NUMBER' },
-        update_description: { type: 'STRING' },
-        update_amount: { type: 'NUMBER' },
-        update_date: { type: 'STRING' },
-        update_account_id: { type: 'STRING' },
-        update_category_id: { type: 'STRING' },
-        update_status: { type: 'STRING', enum: ['pending', 'paid'], description: '"pending" para não pago/pendente, "paid" para pago/confirmado.' },
-      },
-    },
-  },
-  {
-    name: 'delete_transaction',
-    description: `Remove um lançamento existente.
-ATENÇÃO: sempre confirme com o usuário antes de emitir esta tool.`,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        search_description: { type: 'STRING' },
-        search_date: { type: 'STRING' },
-        search_amount: { type: 'NUMBER' },
-      },
-      required: ['search_description'],
-    },
-  },
-  {
-    name: 'list_transactions',
-    description: `Busca lançamentos do usuário para responder perguntas sobre GASTOS, RECEITAS ou LISTAGEM de lançamentos, como:
-"Quanto gastei em mercado?", "Quais contas estão pendentes?", "Quais os lançamentos de julho?".
-NÃO use esta tool para perguntas de SALDO (use get_account_balance nesse caso).
-NUNCA invente lançamentos se a resposta desta tool for vazia.`,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        limit: { type: 'NUMBER' },
-        date_from: { type: 'STRING' },
-        date_to: { type: 'STRING' },
-        type: { type: 'STRING', enum: ['income', 'expense', 'transfer'] },
-        category_name: { type: 'STRING' },
-        status: { type: 'STRING', enum: ['pending', 'paid'] },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'get_account_balance',
-    description: `Calcula o saldo de uma ou todas as contas bancárias/carteiras do usuário.
-Use esta tool OBRIGATORIAMENTE para QUALQUER pergunta de saldo, como:
-"Qual meu saldo?", "Qual meu saldo no final do mês?", "Quanto vou ter em Julho?", "Quanto tenho na conta X?".
-Esta tool já aplica toda a regra de negócio (recorrências, parcelas, faturas de cartão pendentes) e retorna o número final pronto — NÃO tente recalcular o saldo você mesmo somando lançamentos de list_transactions.
-Quando account_name for omitido, o retorno traz o saldo da conta principal do usuário (default_account) além do total de todas as contas.`,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        account_name: { type: 'STRING', description: 'Nome da conta (busca parcial). Omita para somar todas as contas.' },
-        as_of_date: { type: 'STRING', description: 'Data de corte YYYY-MM-DD. Padrão: último dia do mês atual (saldo projetado do mês).' },
-        only_confirmed: { type: 'BOOLEAN', description: 'true = considera só lançamentos já pagos. Padrão false (inclui pendentes, ou seja, saldo "projetado").' },
-      },
-      required: [],
-    },
-  },
-];
-
-// ─── System Prompt ────────────────────────────────────────────────────────────
-
-function buildSystemPrompt(entityContext, userMemory, dateToday) {
-  const tone = userMemory?.conversation_tone || 'normal';
-  const toneGuidance = {
-    casual: 'Use linguagem informal, amigável e descontraída. Pode usar emojis com moderação. Seja simpático.',
-    normal: 'Use linguagem clara, direta e profissional.',
-    tecnico: 'Use linguagem técnica. Mencione termos contábeis quando relevante (DRE, fluxo de caixa, competência, caixa). Seja preciso.',
-  };
-
-  const accountsList = entityContext.accounts
-    .map(a => `  - ${a.name} (id: ${a.id}, tipo: ${a.type}${a.is_default ? ', principal' : ''})`)
-    .join('\n') || '  (nenhuma conta cadastrada)';
-
-  const categoriesList = entityContext.categories
-    .map(c => `  - ${c.name} (id: ${c.id})`)
-    .join('\n') || '  (nenhuma categoria cadastrada)';
-
-  const creditCardsList = entityContext.credit_cards
-    .map(c => `  - ${c.name} (id: ${c.id}, fecha dia ${c.closing_day}, vence dia ${c.due_day}, limite: R$${c.limit.toFixed(2)}, usado: R$${c.current_balance.toFixed(2)})`)
-    .join('\n') || '  (nenhum cartão cadastrado)';
-
-  return `Você é o Artie, assistente financeiro inteligente do Recebimento $mart.
-
-## Tom de Conversa
-${toneGuidance[tone]}
-
-## Hoje
-${dateToday} (fuso horário: America/Sao_Paulo)
-
-## Entidades do Usuário
-Use estes dados reais ao emitir tool_calls. NUNCA invente IDs.
-
-### Contas Bancárias/Carteiras
-${accountsList}
-
-### Categorias
-${categoriesList}
-
-### Cartões de Crédito
-${creditCardsList}
-
-## Regras Absolutas de Fidelidade aos Dados (ANTI-ALUCINAÇÃO)
-1. NUNCA INVENTE, ALUCINE OU CRIE lançamentos, valores, datas ou descrições fictícias (ex: se o usuário tiver "Aluguel Aracaju, 275" de R$3.000, NUNCA diga "Aluguel R$ 1.250").
-2. Se a tool list_transactions retornar vazia ou sem lançamentos para o período, DIGA CLARAMENTE: "Não encontrei lançamentos para esse período." NUNCA preencha com exemplos.
-3. Ao listar ou responder sobre lançamentos, use EXATAMENTE a descrição e o valor retornados pela tool list_transactions.
-4. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
-5. Ao responder perguntas de SALDO ("qual meu saldo", "quanto vou ter no fim do mês"), chame get_account_balance OBRIGATORIAMENTE e use o número retornado tal como está — NUNCA some lançamentos de list_transactions manualmente para calcular saldo, pois list_transactions não considera recorrências futuras nem faturas de cartão pendentes. Para perguntas de gasto/receita por categoria ou período ("quanto gastei em X"), chame list_transactions.
-   - Se a pergunta NÃO especificar uma conta, a tool retorna 'default_account' (a conta principal do usuário) e 'has_multiple_accounts'. Use o saldo de 'default_account' como resposta e, se 'has_multiple_accounts' for true, pergunte na sequência se o usuário quer ver o saldo de todas as contas ou de uma conta específica — com liberdade total de fraseado, no tom de conversa configurado, sem necessidade de usar literalmente a palavra "principal" ou qualquer frase fixa. Se 'has_multiple_accounts' for false (só existe uma conta), responda apenas o saldo, sem oferecer a opção de ver outras contas.
-6. Se houver ambiguidade na busca, informe e peça mais detalhes.
-7. Para lançamentos sem conta/categoria mencionados, omita account_id/category_id.
-8. Responda sempre em português do Brasil. Seja conciso.
-9. **Lançamentos Recorrentes e Parcelados:**
-   - Se o usuário disser que um lançamento é parcelado (ex: "em 10x", "parcelado em 6x"), defina modalidade: 'parcelada' e installment_total: <número>.
-   - Se disser que é recorrente (ex: "todo mês", "mensal", "semanal", "anual"), defina modalidade: 'recorrente' e recurrence_period correspondente ('monthly', 'weekly', 'yearly').
-10. **Alteração de Status ("marcar como não pago", "marcar como pendente", "marcar como pago"):**
-   - "não pago", "pendente", "marcar como pendente", "desfazer pagamento" -> Chame a tool update_transaction com update_status: "pending".
-   - "pago", "confirmar", "confirmado", "dar baixa", "já paguei" -> Chame update_transaction ou confirm_transaction com update_status: "paid".
-   - Se o usuário usar números por extenso (ex: "seiscentos e quarenta reais"), converta para valor numérico (ex: 640.00).
-11. **Tamanho da Resposta Proporcional à Pergunta:** Para perguntas objetivas (ex: "qual meu saldo?", "quanto gastei em X?", "quanto tenho pendente?"), responda em 1-2 frases curtas com o valor/resultado final, sem listar cada lançamento que compôs a conta e sem narrar o processo de filtragem interno (ex: NÃO diga "com base nos lançamentos ativos, desconsiderando os cancelados..."; apenas responda com o número). Só detalhe item a item, explique critérios ou seja mais conversacional quando o usuário pedir um detalhamento, fizer uma pergunta aberta, ou quando a resposta curta sozinha for ambígua.`;
-}
+// ─── Tool Declarations + System Prompt ────────────────────────────────────────
+// Fonte da verdade: netlify/functions/artie-shared.cjs (compartilhado com server.cjs).
 
 // ─── Handler Principal ────────────────────────────────────────────────────────
 
@@ -245,9 +73,10 @@ exports.handler = async (event) => {
   const historyMessages = (messages || []).slice(-SLIDING_WINDOW_SIZE);
 
   // Converter para formato Gemini
-  const geminiContents = historyMessages.map((msg) => {
+  const lastHistoryIndex = historyMessages.length - 1;
+  const geminiContents = historyMessages.map((msg, idx) => {
     // Mensagem de áudio: a última mensagem do user pode conter áudio
-    if (msg.role === 'user' && hasAudio && msg === lastMessage) {
+    if (msg.role === 'user' && hasAudio && idx === lastHistoryIndex) {
       return {
         role: 'user',
         parts: [
@@ -371,28 +200,3 @@ exports.handler = async (event) => {
     body: JSON.stringify({ success: false, error: friendlyError }),
   };
 };
-
-function formatFriendlyGeminiError(rawError) {
-  if (!rawError) return 'O Artie não conseguiu responder no momento. Tente novamente em alguns instantes.';
-
-  const str = String(rawError);
-
-  if (str.includes('Quota exceeded') || str.includes('exceeded your current quota') || str.includes('429') || str.includes('RESOURCE_EXHAUSTED')) {
-    const retryMatch = str.match(/retry in ([0-9.]+)\s*s/i);
-    if (retryMatch && retryMatch[1]) {
-      const seconds = Math.ceil(parseFloat(retryMatch[1]));
-      if (seconds >= 60) {
-        const minutes = Math.ceil(seconds / 60);
-        return `O Artie atingiu o limite de cota de chamadas da IA. Por favor, aguarde cerca de ${minutes} minuto(s) antes de tentar novamente.`;
-      }
-      return `O Artie atingiu o limite de cota de chamadas da IA. Por favor, aguarde cerca de ${seconds} segundo(s) antes de tentar novamente.`;
-    }
-    return 'O Artie atingiu o limite temporário de uso da IA. Por favor, aguarde cerca de 1 minuto antes de tentar novamente.';
-  }
-
-  if (str.includes('API_KEY_INVALID') || str.includes('API key not valid')) {
-    return 'O serviço do Artie está com uma chave de API inválida. Verifique sua chave VITE_GEMINI_API_KEY no arquivo .env.';
-  }
-
-  return `O Artie encontrou uma instabilidade temporária. Tente novamente em instantes. (${str})`;
-}

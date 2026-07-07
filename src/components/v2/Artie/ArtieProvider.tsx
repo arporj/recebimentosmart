@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { executeArtieToolCall } from '../../../lib/artie/executor';
+import { resolveCreateTransactionArgs, getAccountInfo } from '../../../lib/artie/slotGuard';
 import type {
   ArtieMessage,
   ArtieChatState,
@@ -14,6 +15,8 @@ import type {
   ArtieUserMemory,
   PendingAction,
   ArtieToolCall,
+  AskUserArgs,
+  CreateTransactionArgs,
 } from '../../../lib/artie/types';
 import type { PendingScopeAction } from './ArtieConfirmCard';
 import { toast } from 'react-hot-toast';
@@ -31,6 +34,7 @@ const TOOL_RISK: Record<string, PendingAction['risk']> = {
 
 const TOOL_LABELS: Record<string, string> = {
   create_transaction: 'Criar lançamento',
+  ask_user: 'Pergunta ao usuário',
   confirm_transaction: 'Confirmar lançamento',
   update_transaction: 'Alterar lançamento',
   delete_transaction: 'Excluir lançamento',
@@ -230,6 +234,33 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   // ─── Gerenciamento de Tool Calls ─────────────────────────────────────────────
 
   const handleToolCall = useCallback(async (toolCall: ArtieToolCall, originalUserText?: string) => {
+    // ask_user (slot filling): renderiza a pergunta com chips clicáveis — nada é executado no banco.
+    // A resposta do usuário (chip, texto ou voz) volta como mensagem comum e a conversa continua.
+    if (toolCall.name === 'ask_user') {
+      const args = toolCall.args as unknown as AskUserArgs;
+      const question = typeof args.question === 'string' && args.question.trim()
+        ? args.question.trim()
+        : 'Pode me dar mais detalhes?';
+      const options = Array.isArray(args.options)
+        ? args.options.filter((o): o is string => typeof o === 'string' && !!o.trim()).slice(0, 6)
+        : [];
+      addMessage({ role: 'model', content: question, options: options.length ? options : undefined, toolCall });
+      setChatState('idle');
+      return;
+    }
+
+    // Guarda dura: conta/categoria obrigatórias mesmo que o modelo ignore o `required`
+    // da declaração; converte nome→id e re-pergunta localmente com chips quando falta algo.
+    if (toolCall.name === 'create_transaction') {
+      const check = resolveCreateTransactionArgs(toolCall.args as unknown as CreateTransactionArgs, entityContext);
+      if (!check.ok) {
+        addMessage({ role: 'model', content: check.question, options: check.options });
+        setChatState('idle');
+        return;
+      }
+      toolCall = { ...toolCall, args: check.args as unknown as Record<string, unknown> };
+    }
+
     setChatState('processing');
     const result = await executeArtieToolCall(user!.id, toolCall);
 
@@ -276,7 +307,10 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
       addMessage({ role: 'model', content: finalReply, toolCall, toolResult: result });
     } else {
       // Criar/confirmar/editar/deletar avulso: mensagem de sucesso direta
-      addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data), toolCall, toolResult: result });
+      const accountInfo = toolCall.name === 'create_transaction'
+        ? getAccountInfo((toolCall.args as { account_id?: string }).account_id, entityContext)
+        : undefined;
+      addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data, accountInfo), toolCall, toolResult: result });
     }
 
     setChatState('idle');
@@ -425,21 +459,29 @@ function buildConfirmationMessage(toolCall: ArtieToolCall): string {
   }
 }
 
-function buildSuccessMessage(toolCall: ArtieToolCall, data: any): string {
+function buildSuccessMessage(
+  toolCall: ArtieToolCall,
+  data: any,
+  accountInfo?: { name: string; isCreditCard: boolean },
+): string {
   const { name, args } = toolCall;
   switch (name) {
     case 'create_transaction': {
       const modalidade = args.modalidade || 'unica';
       const amountStr = Number(args.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const where = accountInfo
+        ? (accountInfo.isCreditCard ? ` no cartão **${accountInfo.name}**` : ` na conta **${accountInfo.name}**`)
+        : '';
+      const invoiceNote = accountInfo?.isCreditCard ? ' Ele entra como pendente na fatura.' : '';
       if (modalidade === 'parcelada' && args.installment_total) {
-        return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} (${args.installment_total}x parceladas) registrado com sucesso!`;
+        return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} (${args.installment_total}x parceladas) registrado${where} com sucesso!${invoiceNote}`;
       }
       if (modalidade === 'recorrente') {
         const periodMap: Record<string, string> = { daily: 'diário', weekly: 'semanal', monthly: 'mensal', yearly: 'anual' };
         const periodLabel = periodMap[String(args.recurrence_period || 'monthly')] || 'recorrente';
-        return `✅ Lançamento recorrente **"${args.description}"** de R$ ${amountStr} (${periodLabel}) registrado com sucesso!`;
+        return `✅ Lançamento recorrente **"${args.description}"** de R$ ${amountStr} (${periodLabel}) registrado${where} com sucesso!${invoiceNote}`;
       }
-      return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} registrado com sucesso!`;
+      return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} registrado${where} com sucesso!${invoiceNote}`;
     }
     case 'confirm_transaction':
       return `✅ Lançamento **"${data?.description || args.search_description}"** marcado como pago com sucesso!`;
