@@ -3,9 +3,17 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Mic } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const MIN_RECORDING_MS = 500;  // Mínimo de 500ms para considerar gravação válida
 const MIN_BLOB_SIZE_BYTES = 1000; // Mínimo de 1KB para considerar áudio com conteúdo
+
+// Nem todo navegador grava audio/webm (ex: Safari usa mp4);
+// o mimeType real é repassado ao backend junto com o áudio.
+function pickSupportedMimeType(): string {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
+  return ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
 
 interface ArtieVoiceInputProps {
   onAudioReady: (blob: Blob, mimeType: string) => void;
@@ -23,13 +31,22 @@ export function ArtieVoiceInput({ onAudioReady, disabled }: ArtieVoiceInputProps
 
   const startRecording = useCallback(async () => {
     if (disabled || isRecording) return;
+
+    // Em contexto inseguro (ex: acesso via IP da rede sem https), o navegador
+    // nem expõe mediaDevices — sem este aviso a falha seria silenciosa.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Microfone indisponível: o navegador só libera o áudio em conexão segura (https) ou localhost.', { id: 'artie-voice-error' });
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
       recordingStartRef.current = Date.now();
 
-      const recorder = new MediaRecorder(stream);
+      const mimeType = pickSupportedMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
@@ -38,11 +55,16 @@ export function ArtieVoiceInput({ onAudioReady, disabled }: ArtieVoiceInputProps
 
       recorder.onstop = () => {
         const elapsed = Date.now() - recordingStartRef.current;
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const effectiveMime = recorder.mimeType || mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: effectiveMime });
 
-        // Ignora silenciosamente cliques rápidos ou áudio vazio
-        if (elapsed >= MIN_RECORDING_MS && blob.size >= MIN_BLOB_SIZE_BYTES) {
-          onAudioReady(blob, 'audio/webm');
+        if (elapsed < MIN_RECORDING_MS) {
+          // Clique rápido: sem dica o usuário acha que o botão não funciona
+          toast('Segure o botão do microfone para gravar e solte para enviar.', { id: 'artie-voice-hint', icon: '🎙️' });
+        } else if (blob.size < MIN_BLOB_SIZE_BYTES) {
+          toast.error('Não captei áudio. Verifique o microfone e tente novamente.', { id: 'artie-voice-error' });
+        } else {
+          onAudioReady(blob, effectiveMime);
         }
 
         stream.getTracks().forEach(t => t.stop());
@@ -63,7 +85,7 @@ export function ArtieVoiceInput({ onAudioReady, disabled }: ArtieVoiceInputProps
         });
       }, 1000);
     } catch {
-      // Permissão negada ou microfone indisponível
+      toast.error('Não consegui acessar o microfone. Verifique a permissão do navegador (ícone de cadeado na barra de endereço).', { id: 'artie-voice-error' });
     }
   }, [disabled, isRecording, onAudioReady]);
 

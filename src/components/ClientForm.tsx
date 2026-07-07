@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../lib/dates';
 import type { Database, PaymentFrequency } from '../types/supabase';
 import { setDate } from 'date-fns';
-import { CurrencyInput } from './ui/CurrencyInput';
 import { AddCustomFieldModal } from './AddCustomFieldModal';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -18,14 +17,6 @@ interface ClientFormProps {
   client?: Client;
   onClose?: () => void;
 }
-
-const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; label: string }[] = [
-  { value: 'monthly', label: 'Mensal' },
-  { value: 'bimonthly', label: 'Bimestral' },
-  { value: 'quarterly', label: 'Trimestral' },
-  { value: 'semiannual', label: 'Semestral' },
-  { value: 'annual', label: 'Anual' }
-];
 
 export function ClientForm({ client, onClose }: ClientFormProps) {
   const { clients, refreshClients } = useClients();
@@ -188,14 +179,6 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     if (value.length <= 11) {
       value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
       setFormData({ ...formData, phone: value });
-    }
-  };
-
-  const handleDueDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    const day = parseInt(value);
-    if (!value || (day >= 1 && day <= 31)) {
-      setFormData({ ...formData, payment_due_day: value });
     }
   };
 

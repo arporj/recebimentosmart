@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { addDays, parseISO, isFuture } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -257,7 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, password: string, referralCode?: string, redirectTo: string = '/login') => {
+  const signUp = async (name: string, email: string, password: string, referralCode?: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({

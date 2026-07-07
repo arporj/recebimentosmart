@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, Repeat, Wallet, Loader2, AlertCircle } from 'lucide-react';
+import { X, Calendar, Repeat, Wallet, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { criarTransacao } from '../../../lib/financeiro/criarTransacao';

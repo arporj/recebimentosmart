@@ -207,7 +207,8 @@ Você pode passar 'scope' se o usuário já especificou no texto (ex: "exclua to
     description: `Busca lançamentos do usuário para responder perguntas sobre GASTOS, RECEITAS ou LISTAGEM de lançamentos, tais como:
 "Quanto gastei em mercado esse mês?", "Quais contas estão pendentes?", "Mostre meus gastos de julho".
 NÃO use esta tool para perguntas de SALDO (use get_account_balance nesse caso).
-Retorna os lançamentos reais encontrados para você formular uma resposta em linguagem natural. NUNCA invente lançamentos.`,
+Retorna os lançamentos reais encontrados para você formular uma resposta em linguagem natural. NUNCA invente lançamentos.
+ATENÇÃO: sem date_from/date_to, o período padrão vai do início do mês ATUAL ao fim do mês QUE VEM — lançamentos atrasados de meses anteriores ficam FORA. Para "contas em atraso/atrasadas/vencidas", use overdue_only: true.`,
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -236,6 +237,10 @@ Retorna os lançamentos reais encontrados para você formular uma resposta em li
           type: 'STRING',
           enum: ['pending', 'paid'],
           description: 'Filtrar por status. Omita para todos.',
+        },
+        overdue_only: {
+          type: 'BOOLEAN',
+          description: 'true = apenas lançamentos PENDENTES com data anterior a hoje (contas em atraso), sem limite inferior de data. Use para "em atraso", "atrasadas", "vencidas".',
         },
       },
       required: [],

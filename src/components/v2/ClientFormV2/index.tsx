@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { UserPlus, X, PlusCircle } from 'lucide-react';
+import { X, PlusCircle } from 'lucide-react';
 import { useClients } from '../../../contexts/ClientContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatToSP, convertToUTC } from '../../../lib/dates';

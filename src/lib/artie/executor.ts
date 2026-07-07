@@ -41,6 +41,9 @@ async function findTransactions(
     .from('financial_transactions')
     .select('id, description, amount, date, type, status, account_id, category_id, modalidade, parent_id, recurrence_enabled, installment_total, financial_accounts!account_id(name)')
     .eq('user_id', userId)
+    // Templates de recorrência são linhas-modelo, não lançamentos reais:
+    // confirmar/editar/excluir deve atingir apenas instâncias físicas.
+    .eq('is_template', false)
     .gte('date', searchDate ? from : '2000-01-01')
     .lte('date', searchDate ? to : '2099-12-31');
 
@@ -227,7 +230,12 @@ async function executeListTransactions(
 ): Promise<ArtieToolResult> {
   try {
     const today = new Date();
-    const dateFrom = args.date_from || format(startOfMonth(today), 'yyyy-MM-dd');
+    const todayStr = format(today, 'yyyy-MM-dd');
+
+    // Contas em atraso: pendentes com data anterior a hoje, sem limite inferior —
+    // o período padrão (mês atual) esconderia atrasos de meses anteriores.
+    const isOverdue = !!args.overdue_only;
+    const dateFrom = args.date_from || (isOverdue ? '2000-01-01' : format(startOfMonth(today), 'yyyy-MM-dd'));
     // Padrão: busca até o fim do MÊS QUE VEM por padrão para responder perguntas sobre o próximo mês
     const dateTo = args.date_to || format(endOfMonth(addMonths(today, 1)), 'yyyy-MM-dd');
 
@@ -239,13 +247,16 @@ async function executeListTransactions(
         financial_categories!category_id(name)
       `)
       .eq('user_id', userId)
+      // Templates de recorrência são linhas-modelo, não lançamentos do extrato
+      .eq('is_template', false)
       .gte('date', dateFrom)
       .lte('date', dateTo)
       .order('date', { ascending: false })
       .limit(args.limit || 200);
 
+    if (isOverdue) query = query.eq('status', 'pending').lt('date', todayStr);
     if (args.type) query = query.eq('type', args.type);
-    if (args.status) query = query.eq('status', args.status);
+    if (args.status && !isOverdue) query = query.eq('status', args.status);
 
     const { data, error } = await query;
     if (error) throw error;

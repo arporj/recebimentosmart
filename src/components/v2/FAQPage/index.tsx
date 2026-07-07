@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, HelpCircle, ChevronDown, ChevronUp, FileText, Settings, UserCheck, Shield, HelpCircle as SupportIcon, MessageSquare } from 'lucide-react';
+import { ArrowLeft, HelpCircle, ChevronDown, ChevronUp, HelpCircle as SupportIcon, MessageSquare } from 'lucide-react';
 
 interface FAQItem {
     question: string;
@@ -166,7 +166,7 @@ const FAQPage = () => {
                 {/* FAQ List */}
                 <div className="space-y-4">
                     {filteredItems.length > 0 ? (
-                        filteredItems.map((item, index) => {
+                        filteredItems.map((item) => {
                             const globalIndex = FAQ_ITEMS.indexOf(item);
                             const isOpen = openIndex === globalIndex;
 

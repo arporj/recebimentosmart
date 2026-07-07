@@ -46,7 +46,7 @@ const generatePixPayload = (amount: number): string => {
   const amountStr = amount.toFixed(2);
   const amountTag = `54${amountStr.length.toString().padStart(2, '0')}${amountStr}`;
   
-  let payload = "000201" + 
+  const payload = "000201" + 
                 `26${merchantAccountInfo.length.toString().padStart(2, '0')}${merchantAccountInfo}` + 
                 "52040000" + 
                 "5303986" + 

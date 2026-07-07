@@ -19,27 +19,7 @@ import type {
   CreateTransactionArgs,
 } from '../../../lib/artie/types';
 import type { PendingScopeAction } from './ArtieConfirmCard';
-import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
-
-// ─── Mapeamento de nível de risco por tool ────────────────────────────────────
-
-const TOOL_RISK: Record<string, PendingAction['risk']> = {
-  create_transaction: 'low',
-  confirm_transaction: 'low',
-  update_transaction: 'medium',
-  delete_transaction: 'high',
-  list_transactions: 'low',
-};
-
-const TOOL_LABELS: Record<string, string> = {
-  create_transaction: 'Criar lançamento',
-  ask_user: 'Pergunta ao usuário',
-  confirm_transaction: 'Confirmar lançamento',
-  update_transaction: 'Alterar lançamento',
-  delete_transaction: 'Excluir lançamento',
-  list_transactions: 'Consultar lançamentos',
-};
 
 // ─── Context Types ────────────────────────────────────────────────────────────
 
@@ -217,7 +197,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
       // Tool call recebida
       if (result.tool_call) {
-        await handleToolCall(result.tool_call, userText);
+        await handleToolCall(result.tool_call);
         return;
       }
 
@@ -233,7 +213,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
   // ─── Gerenciamento de Tool Calls ─────────────────────────────────────────────
 
-  const handleToolCall = useCallback(async (toolCall: ArtieToolCall, originalUserText?: string) => {
+  const handleToolCall = useCallback(async (toolCall: ArtieToolCall, depth = 0) => {
     // ask_user (slot filling): renderiza a pergunta com chips clicáveis — nada é executado no banco.
     // A resposta do usuário (chip, texto ou voz) volta como mensagem comum e a conversa continua.
     if (toolCall.name === 'ask_user') {
@@ -301,6 +281,18 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
         }),
       });
       const finalResult = await resp.json();
+
+      // O modelo pode encadear outra ação após ver o resultado da consulta
+      // (ex: listar as contas em atraso e então confirmar a única encontrada).
+      // Sem isso, o tool_call do follow-up era descartado e caía no fallback.
+      if (finalResult.success && finalResult.tool_call && depth < 3) {
+        if (!isBalance) {
+          addMessage({ role: 'model', content: `🔎 ${formatTransactionsFallback(result.data)}`, toolCall, toolResult: result });
+        }
+        await handleToolCall(finalResult.tool_call, depth + 1);
+        return;
+      }
+
       const finalReply = isBalance
         ? (finalResult.reply || formatBalanceFallback(result.data))
         : formatTransactionsFallback(result.data, finalResult.reply);
@@ -447,18 +439,6 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-function buildConfirmationMessage(toolCall: ArtieToolCall): string {
-  const { name, args } = toolCall;
-  switch (name) {
-    case 'update_transaction':
-      return `Quero alterar o lançamento **"${args.search_description}"**. Confirma?`;
-    case 'delete_transaction':
-      return `⚠️ Vou **excluir** o lançamento **"${args.search_description}"**. Essa ação não poderá ser desfeita. Confirma?`;
-    default:
-      return `Posso prosseguir com a ação **${TOOL_LABELS[name] || name}**?`;
-  }
-}
-
 function buildSuccessMessage(
   toolCall: ArtieToolCall,
   data: any,
@@ -507,10 +487,17 @@ function formatTransactionsFallback(data: any, originalReply?: string): string {
   if (originalReply && originalReply.trim() && !originalReply.includes('Aqui estão os dados solicitados')) {
     return originalReply;
   }
-  if (!Array.isArray(data) || data.length === 0) {
-    return 'Não encontrei nenhum lançamento para o período informado.';
+  // O executor de list_transactions retorna { transactions, total, count, period }
+  const transactions: Array<{ description?: string; amount?: number; date?: string; status?: string }> =
+    Array.isArray(data) ? data : (data?.transactions || []);
+  if (transactions.length === 0) {
+    // Nunca atribuir o período ao usuário: informar qual intervalo foi buscado e oferecer ampliar
+    const period = !Array.isArray(data) && typeof data?.period === 'string'
+      ? ` entre ${formatPeriodBR(data.period)}`
+      : '';
+    return `Não encontrei nenhum lançamento${period}. Quer que eu amplie a busca ou procure entre as contas em atraso?`;
   }
-  const items = data.slice(0, 5).map(tx => {
+  const items = transactions.slice(0, 5).map(tx => {
     const val = Number(Math.abs(tx.amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const st = tx.status === 'paid' ? 'Pago' : 'Pendente';
     const dateStr = tx.date ? tx.date.split('-').reverse().join('/') : '';
@@ -518,4 +505,11 @@ function formatTransactionsFallback(data: any, originalReply?: string): string {
   }).join('\n');
 
   return `Aqui estão os lançamentos encontrados:\n\n${items}\n\nDeseja realizar alguma alteração nesses lançamentos? (ex: marcar como pendente/pago, alterar valor ou excluir)`;
+}
+
+/** 'YYYY-MM-DD a YYYY-MM-DD' → 'DD/MM/YYYY e DD/MM/YYYY' */
+function formatPeriodBR(period: string): string {
+  const [from, to] = period.split(' a ');
+  const br = (d?: string) => (d ? d.split('-').reverse().join('/') : '');
+  return to ? `${br(from)} e ${br(to)}` : br(from);
 }

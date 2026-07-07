@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-import { ClientListV2 } from './components/v2/ClientListV2';
 import { MainLayoutV2 } from './components/v2/MainLayoutV2';
 import { ClientProvider } from './contexts/ClientContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';

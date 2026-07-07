@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
-import { Search, CheckCircle, XCircle, DollarSign, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react';
+import { Search, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useClients } from '../../../contexts/ClientContext';
 import { PaymentModalV2 } from '../PaymentModalV2';
 import { DeleteModalV2 } from '../DeleteModalV2';
@@ -103,7 +103,6 @@ export function ClientListV2() {
     const [financialTransactions, setFinancialTransactions] = useState<FinancialTransaction[]>([]);
 
     const { user } = useAuth();
-    const { checkLimit } = usePlanLimits();
 
     const fetchCustomFields = useCallback(async () => {
         if (!user) return;

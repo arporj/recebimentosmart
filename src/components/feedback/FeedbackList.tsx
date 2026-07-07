@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MessageSquare, AlertCircle, CheckCircle, Search, Clock } from 'lucide-react';
+import { Plus, MessageSquare, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatToSP } from '../../lib/dates';
@@ -13,7 +13,6 @@ export function FeedbackList() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
-  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     if (user) {

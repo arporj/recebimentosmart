@@ -319,7 +319,7 @@ export async function processUserDuePayments(
         `;
     }
 
-    let htmlContent = `
+    const htmlContent = `
   <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #334155; line-height: 1.6; max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
     
     <!-- Header com Logo Lateral (Compacto) -->

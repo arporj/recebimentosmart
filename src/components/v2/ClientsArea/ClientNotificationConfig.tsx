@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Bell, Calendar, Clock, AlertCircle, Loader2, ChevronDown } from 'lucide-react';
+import { X, Bell, Calendar, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';

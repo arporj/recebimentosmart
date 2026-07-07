@@ -68,7 +68,6 @@ export function VoiceFloatingButton() {
   // Exclusão / Confirmação
   const [matchedTransactionToDelete, setMatchedTransactionToDelete] = useState<any | null>(null);
   const [matchedTransactionToConfirm, setMatchedTransactionToConfirm] = useState<any | null>(null);
-  const [matchedTransactionToUpdate, setMatchedTransactionToUpdate] = useState<any | null>(null);
 
   // Listas locais de entidades
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -409,7 +408,7 @@ export function VoiceFloatingButton() {
       let result;
       try {
         result = JSON.parse(responseText);
-      } catch (jsonErr) {
+      } catch {
         console.error('Resposta do servidor não é um JSON válido:', responseText);
         throw new Error('O assistente de voz do Artie está temporariamente indisponível. Por favor, tente novamente.');
       }
@@ -794,19 +793,6 @@ export function VoiceFloatingButton() {
       console.error('Erro ao buscar transação para confirmação:', err);
       setMatchedTransactionToConfirm(null);
     }
-  };
-
-  // Realiza a correspondência de contas e categorias para criação
-  const runMatching = (data: ExtractedData) => {
-    // 1. Mapeamento de conta
-    const suggestedBank = data.banco_carteira || '';
-    const matchedAccId = matchAccount(suggestedBank, accounts);
-    setMatchedAccountId(matchedAccId);
-
-    // 2. Mapeamento de categoria
-    const suggestedCat = data.categoria || '';
-    const matchedCatId = matchCategory(suggestedCat, categories);
-    setMatchedCategoryId(matchedCatId);
   };
 
   const capitalizeDescription = (desc: string): string => {

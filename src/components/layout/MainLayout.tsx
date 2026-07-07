@@ -5,8 +5,6 @@ import UserMenu from '../UserMenu';
 import { Users } from 'lucide-react'; // Adicionado ícone de Configurações
 import { useAuth } from '../../contexts/AuthContext'; // Importar o hook de autenticação
 import { ChatProvider } from '../../contexts/ChatContext';
-import { ChatWidget } from '../chat/ChatWidget';
-import { ChatWindow } from '../chat/ChatWindow';
 import Footer from './Footer'; // Importa o novo componente de rodapé
 
 // Configuração do Toaster (movida para o layout para consistência)

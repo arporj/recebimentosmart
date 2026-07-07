@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, Layers, Hash } from 'lucide-react';
+import { X, Calendar, Hash } from 'lucide-react';
 
 interface ModalOpcaoRecorrenteProps {
   isOpen: boolean;

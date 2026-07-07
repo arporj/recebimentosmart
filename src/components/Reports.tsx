@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Users, Wallet, CircleDollarSign, AlertTriangle, Lock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Users, Wallet, CircleDollarSign, AlertTriangle } from 'lucide-react';
 import { formatToSP, toSPDate, getCurrentSPDate } from '../lib/dates';
 import { isBefore, isSameMonth, startOfMonth, subMonths, addMonths } from 'date-fns';
 import Plot from 'react-plotly.js';

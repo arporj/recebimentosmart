@@ -3,10 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Save, User, Lock } from 'lucide-react'; // Import FileText icon
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase'; // Import supabase
 
 const UserProfileSettings = () => {
-  const { user, loading, updateUserName, fetchReferralInfo } = useAuth(); // Add fetchReferralInfo
+  const { user, loading, updateUserName } = useAuth();
   const [isEditingName, setIsEditingName] = useState(false);
   const [currentName, setCurrentName] = useState('');
   const navigate = useNavigate();

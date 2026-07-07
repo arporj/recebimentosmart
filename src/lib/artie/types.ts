@@ -83,6 +83,8 @@ export interface ListTransactionsArgs {
   type?: 'income' | 'expense' | 'transfer';
   category_name?: string;
   status?: 'pending' | 'paid';
+  /** true = apenas pendentes com data anterior a hoje (contas em atraso), sem limite inferior de data */
+  overdue_only?: boolean;
 }
 
 export interface AskUserArgs {

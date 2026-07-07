@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { AdBanner } from '../AdBanner';
@@ -7,11 +7,11 @@ import { supabase } from '../../../lib/supabase';
 import { ArtieProvider } from '../Artie/ArtieProvider';
 import { ArtieDrawer, ArtieFab } from '../Artie/ArtieDrawer';
 import {
-    Users, CalendarDays, BarChart3,
+    Users, BarChart3,
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    UserCheck, Share2, Mail, Bell, RefreshCw, DollarSign
+    Mail, Bell, RefreshCw, DollarSign
 } from 'lucide-react';
 import { ChangelogDrawer } from '../ChangelogDrawer';
 
@@ -89,7 +89,6 @@ const adminSection: SidebarSection = {
 export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const { user, isAdmin, signOut, originalUser, stopImpersonating, plano } = useAuth();
     const location = useLocation();
-    const navigate = useNavigate();
 
     // Se estivermos impersonificando, a barra lateral ainda mostrará quem nós realmente somos
     const displayUser = originalUser || user;
