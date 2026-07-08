@@ -432,10 +432,13 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 </main>
             </div>
 
-            <ArtieProvider>
-                <ArtieFab />
-                <ArtieDrawer />
-            </ArtieProvider>
+            {/* Artie é exclusivo do plano Premium (admins têm acesso para suporte/testes) */}
+            {(isAdmin || plano === 'premium') && (
+                <ArtieProvider>
+                    <ArtieFab />
+                    <ArtieDrawer />
+                </ArtieProvider>
+            )}
             <ChangelogDrawer
                 isOpen={isChangelogOpen}
                 onClose={() => setIsChangelogOpen(false)}

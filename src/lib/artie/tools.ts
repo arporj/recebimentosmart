@@ -231,7 +231,7 @@ ATENÇÃO: sem date_from/date_to, o período padrão vai do início do mês ATUA
         },
         category_name: {
           type: 'STRING',
-          description: 'Filtrar por nome de categoria (busca parcial). Ex: "mercado", "alimentação".',
+          description: 'Filtrar por nome de categoria (busca parcial, sem acentos). Categoria pai agrega automaticamente as subcategorias. Ex: "mercado", "alimentação".',
         },
         status: {
           type: 'STRING',

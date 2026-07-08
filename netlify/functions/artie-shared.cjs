@@ -108,7 +108,7 @@ ATENÇÃO: sem date_from/date_to, o período padrão vai do início do mês ATUA
         date_from: { type: 'STRING' },
         date_to: { type: 'STRING' },
         type: { type: 'STRING', enum: ['income', 'expense', 'transfer'] },
-        category_name: { type: 'STRING' },
+        category_name: { type: 'STRING', description: 'Nome da categoria (busca parcial, sem acentos). Categoria pai agrega automaticamente as subcategorias.' },
         status: { type: 'STRING', enum: ['pending', 'paid'] },
         overdue_only: { type: 'BOOLEAN', description: 'true = apenas lançamentos PENDENTES com data anterior a hoje (contas em atraso), sem limite inferior de data. Use para "em atraso", "atrasadas", "vencidas".' },
       },
@@ -182,6 +182,7 @@ ${creditCardsList}
 3. Ao listar ou responder sobre lançamentos, use EXATAMENTE a descrição e o valor retornados pela tool list_transactions.
 4. NUNCA execute delete_transaction sem confirmar com o usuário primeiro.
 5. Ao responder perguntas de SALDO ("qual meu saldo", "quanto vou ter no fim do mês"), chame get_account_balance OBRIGATORIAMENTE e use o número retornado tal como está — NUNCA some lançamentos de list_transactions manualmente para calcular saldo, pois list_transactions não considera recorrências futuras nem faturas de cartão pendentes. Para perguntas de gasto/receita por categoria ou período ("quanto gastei em X"), chame list_transactions.
+   - **Gasto por categoria/período** ("quanto gastei em mercado esse mês?"): chame list_transactions com type: 'expense', category_name com o nome citado, e SEMPRE date_from/date_to explícitos do período pedido (ex: "esse mês" = do dia 1º ao último dia do mês ATUAL) — NUNCA confie no período padrão da tool, que avança até o fim do mês seguinte e inflaria o total com lançamentos futuros. O campo 'total' do resultado já soma os lançamentos filtrados; categoria "pai" já agrega as subcategorias automaticamente. Responda com o total e, se houver itens pendentes relevantes, mencione brevemente.
    - Se a pergunta NÃO especificar uma conta, a tool retorna 'default_account' (a conta principal do usuário) e 'has_multiple_accounts'. Use o saldo de 'default_account' como resposta e, se 'has_multiple_accounts' for true, pergunte na sequência se o usuário quer ver o saldo de todas as contas ou de uma conta específica — com liberdade total de fraseado, no tom de conversa configurado, sem necessidade de usar literalmente a palavra "principal" ou qualquer frase fixa. Se 'has_multiple_accounts' for false (só existe uma conta), responda apenas o saldo, sem oferecer a opção de ver outras contas.
 6. Se houver ambiguidade na busca, informe e peça mais detalhes.
 7. **Fluxo guiado para criar lançamentos (create_transaction):** conta e categoria são OBRIGATÓRIAS — NUNCA chame create_transaction sem account_id E category_id válidos (IDs reais do entity_context). Se faltar qualquer dado, colete com a tool ask_user, fazendo UMA pergunta por turno, nesta ordem de prioridade: conta → categoria → descrição → detalhes de modalidade. Pergunte APENAS o que falta — nunca repita algo já respondido nesta conversa. A data é hoje quando não mencionada (não pergunte a data). Ao formular cada pergunta, recapitule brevemente o pedido (ex: "Para o lançamento de R$ 10 — em qual cartão devo lançar?").

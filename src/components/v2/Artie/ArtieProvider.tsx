@@ -84,12 +84,70 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  // ─── Histórico persistente (artie_messages) ─────────────────────────────────
+
+  const HISTORY_LOAD_LIMIT = 30;
+
+  const loadHistory = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('artie_messages')
+        .select('id, role, content, tool_call, tool_result, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LOAD_LIMIT);
+
+      // Só aplica se a conversa ainda estiver vazia (evita clobber se o usuário já digitou)
+      if (data && data.length > 0 && messagesRef.current.length === 0) {
+        const restored: ArtieMessage[] = data.reverse().map((r: any) => ({
+          id: r.id,
+          role: r.role,
+          content: r.content,
+          toolCall: r.tool_call || undefined,
+          toolResult: r.tool_result || undefined,
+          // Chips de ask_user são restaurados a partir dos args do tool_call
+          options: r.tool_call?.name === 'ask_user' && Array.isArray(r.tool_call?.args?.options)
+            ? r.tool_call.args.options
+            : undefined,
+          createdAt: new Date(r.created_at),
+        }));
+        messagesRef.current = restored;
+        setMessages(restored);
+      }
+    } catch {
+      // Histórico é conveniência — falha silenciosa não bloqueia o chat
+    }
+  }, [user]);
+
+  const persistMessage = useCallback((msg: ArtieMessage) => {
+    if (!user) return;
+    // Resultados de consultas podem ser grandes (até 200 lançamentos) e só servem
+    // ao contexto da sessão corrente — não vale persistir.
+    const isQueryResult = msg.toolCall?.name === 'list_transactions' || msg.toolCall?.name === 'get_account_balance';
+    supabase
+      .from('artie_messages')
+      .insert({
+        id: msg.id,
+        user_id: user.id,
+        session_id: sessionId,
+        role: msg.role,
+        content: msg.content,
+        tool_call: msg.toolCall ?? null,
+        tool_result: isQueryResult ? null : (msg.toolResult ?? null),
+      })
+      .then(({ error }) => {
+        if (error) console.warn('[Artie] Falha ao persistir mensagem:', error.message);
+      });
+  }, [user, sessionId]);
+
   useEffect(() => {
     if (user) {
       loadEntityContext();
       loadUserMemory();
+      loadHistory();
     }
-  }, [user, loadEntityContext, loadUserMemory]);
+  }, [user, loadEntityContext, loadUserMemory, loadHistory]);
 
   // Recarregar entidades quando uma transação é criada/alterada
   useEffect(() => {
@@ -98,6 +156,13 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('transaction_created', handler);
   }, [loadEntityContext]);
 
+  // Recarregar memória quando o usuário mudar preferências do Artie (ex: tom de conversa)
+  useEffect(() => {
+    const handler = () => loadUserMemory();
+    window.addEventListener('artie_memory_updated', handler);
+    return () => window.removeEventListener('artie_memory_updated', handler);
+  }, [loadUserMemory]);
+
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
   const addMessage = useCallback((msg: Omit<ArtieMessage, 'id' | 'createdAt'>): ArtieMessage => {
@@ -105,8 +170,9 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     const next = [...messagesRef.current, full];
     messagesRef.current = next;
     setMessages(next);
+    persistMessage(full);
     return full;
-  }, []);
+  }, [persistMessage]);
 
   const buildApiMessages = useCallback((currentUserText?: string) => {
     const list = messagesRef.current
@@ -373,10 +439,21 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   }, [addMessage, callBackend, chatState]);
 
   const clearHistory = useCallback(() => {
+    messagesRef.current = [];
     setMessages([]);
     setPendingAction(null);
     setChatState('idle');
-  }, []);
+    // Limpa também o histórico persistido — senão ele voltaria no próximo reload
+    if (user) {
+      supabase
+        .from('artie_messages')
+        .delete()
+        .eq('user_id', user.id)
+        .then(({ error }) => {
+          if (error) console.warn('[Artie] Falha ao limpar histórico persistido:', error.message);
+        });
+    }
+  }, [user]);
 
   const value: ArtieContextValue = {
     isOpen,

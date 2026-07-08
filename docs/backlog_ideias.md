@@ -43,20 +43,18 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * **Status:** Planejado.
 * **Descrição:** Inclusão de suporte a pagamentos e upgrades de planos via Cartão de Crédito no sistema, definindo um gateway integrado (ex: Stripe ou Asaas) que funcione de forma complementar ao Pix atual.
 
-#### 🌟 Implementação do Plano Premium
-* **Status:** Roadmap (Médio Prazo).
-* **Descrição:** Criação da terceira camada de planos (Premium), somando-se ao Básico e Pró. Esse plano englobará recursos avançados como integrações externas e atendimento via WhatsApp.
-
 ---
 
 ### 1.4. Inteligência Artificial
 
 #### 🎙️ Assistente IA Financeiro Conversacional (Artie Premium)
-* **Status:** Roadmap (Longo Prazo).
-* **Descrição:** Evolução do Artie (assistente por voz) para um modelo conversacional contínuo e contextual de IA (Gemini Pro):
-  * **Categorização Inteligente:** Categorização automática de despesas e receitas baseando-se no histórico anterior.
-  * **Tons de Conversa Customizáveis:** Escolha entre tom Casual (amigável e informal), Normal ( prático e equilibrado) ou Técnico (focado em contabilidade, DRE e termos matemáticos).
-  * **Operações Inline Contextuais:** Geração de transações e agendamentos executados silenciosamente em segundo plano a partir da conversa, sem necessidade de formulários.
+* **Status:** Em andamento (acesso exclusivo do plano Premium; admins têm acesso para suporte/testes).
+* **Descrição:** Evolução do Artie (assistente por voz) para um modelo conversacional contínuo e contextual de IA (Gemini Flash, com cascata de fallback de modelos):
+  * ✅ **Operações Inline Contextuais:** criação (única/parcelada/recorrente), confirmação, edição, exclusão e consultas (saldo, gastos por categoria/período, contas em atraso) executadas por conversa ou voz, sem formulários, com fluxo guiado de conta/categoria por chips clicáveis.
+  * ✅ **Tons de Conversa Customizáveis:** Casual, Normal ou Técnico — seletor nas Preferências do usuário (grava em `artie_user_memory`).
+  * ✅ **Conversa contínua:** histórico persistido em `artie_messages`; o contexto sobrevive ao reload da página.
+  * ⬜ **Categorização Inteligente por histórico:** hoje o Artie sugere categoria pela descrição (sugerir + confirmar); falta sugerir com base no histórico de classificações do próprio usuário.
+  * ⬜ **Transferências entre contas via Artie:** a tool `create_transaction` ainda não tem conta de destino; o Artie orienta usar a tela de Lançamentos.
 
 ---
 

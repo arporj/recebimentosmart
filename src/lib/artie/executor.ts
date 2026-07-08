@@ -242,7 +242,7 @@ async function executeListTransactions(
     let query = supabase
       .from('financial_transactions')
       .select(`
-        id, description, amount, date, type, status,
+        id, description, amount, date, type, status, category_id,
         financial_accounts!account_id(name),
         financial_categories!category_id(name)
       `)
@@ -263,12 +263,29 @@ async function executeListTransactions(
 
     let results = data || [];
 
-    // Filtro por categoria (client-side para busca parcial)
+    // Filtro por categoria (client-side para busca parcial).
+    // Categoria "pai" agrega as subcategorias: "quanto gastei em Alimentação"
+    // deve incluir lançamentos classificados em "Restaurante" (filha).
     if (args.category_name) {
       const catNorm = normalize(args.category_name);
-      results = results.filter((tx: any) =>
-        tx.financial_categories?.name && normalize(tx.financial_categories.name).includes(catNorm),
-      );
+      const { data: cats } = await supabase
+        .from('financial_categories')
+        .select('id, name, parent_id')
+        .eq('user_id', userId);
+
+      if (cats && cats.length > 0) {
+        const matchedIds = new Set(
+          cats.filter((c: any) => normalize(c.name).includes(catNorm)).map((c: any) => c.id),
+        );
+        cats.forEach((c: any) => {
+          if (c.parent_id && matchedIds.has(c.parent_id)) matchedIds.add(c.id);
+        });
+        results = results.filter((tx: any) => tx.category_id && matchedIds.has(tx.category_id));
+      } else {
+        results = results.filter((tx: any) =>
+          tx.financial_categories?.name && normalize(tx.financial_categories.name).includes(catNorm),
+        );
+      }
     }
 
     const total = results.reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);

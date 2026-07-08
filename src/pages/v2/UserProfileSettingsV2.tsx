@@ -6,9 +6,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 export default function UserProfileSettingsV2() {
-    const { 
-        user, 
-        plano, 
+    const {
+        user,
+        plano,
+        isAdmin,
         updateUserName,
         themePreference,
         setThemePreference,
@@ -51,6 +52,37 @@ export default function UserProfileSettingsV2() {
             setLocalPredictedLayout('column');
         }
     }, [rowDensity]);
+
+    // Tom de conversa do Artie (exclusivo Premium) — gravado em artie_user_memory
+    const hasArtie = isAdmin || plano === 'premium';
+    const [artieTone, setArtieTone] = useState<'casual' | 'normal' | 'tecnico'>('normal');
+
+    useEffect(() => {
+        if (!user || !hasArtie) return;
+        supabase
+            .from('artie_user_memory')
+            .select('conversation_tone')
+            .eq('user_id', user.id)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (data?.conversation_tone) setArtieTone(data.conversation_tone as 'casual' | 'normal' | 'tecnico');
+            });
+    }, [user, hasArtie]);
+
+    const handleArtieToneChange = async (tone: 'casual' | 'normal' | 'tecnico') => {
+        if (!user) return;
+        setArtieTone(tone);
+        const { error } = await supabase
+            .from('artie_user_memory')
+            .upsert({ user_id: user.id, conversation_tone: tone }, { onConflict: 'user_id' });
+        if (error) {
+            toast.error('Erro ao salvar o tom de conversa do Artie.');
+            return;
+        }
+        // Avisa o ArtieProvider para recarregar a memória sem precisar de refresh
+        window.dispatchEvent(new CustomEvent('artie_memory_updated'));
+        toast.success('Tom de conversa do Artie atualizado!');
+    };
 
     // Email alert preferences
     const [dueEmailNotifyEnabled, setDueEmailNotifyEnabled] = useState(true);
@@ -877,6 +909,47 @@ export default function UserProfileSettingsV2() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Assistente Artie: tom de conversa (exclusivo Premium) */}
+                                {hasArtie && (
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <h3 className="font-extrabold text-sm text-slate-900 mb-1">Assistente Artie</h3>
+                                        <p className="text-[11px] text-slate-500 font-medium mb-4">Escolha como o Artie conversa com você no chat e por voz.</p>
+                                        <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-300 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Tom de Conversa</label>
+                                                <div className="flex bg-slate-200 border border-slate-300/60 p-1 rounded-xl gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleArtieToneChange('casual')}
+                                                        className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${artieTone === 'casual' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                    >
+                                                        Casual
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleArtieToneChange('normal')}
+                                                        className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${artieTone === 'normal' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                    >
+                                                        Normal
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleArtieToneChange('tecnico')}
+                                                        className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all uppercase ${artieTone === 'tecnico' ? 'bg-white text-custom shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                    >
+                                                        Técnico
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 font-medium">
+                                                    {artieTone === 'casual' && 'Amigável e informal, pode usar emojis.'}
+                                                    {artieTone === 'normal' && 'Prático, claro e equilibrado.'}
+                                                    {artieTone === 'tecnico' && 'Focado em contabilidade e termos técnicos (DRE, competência).'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="border-t border-slate-100 pt-6">
                                     <h3 className="font-extrabold text-sm text-slate-900 mb-4">Personalização Visual</h3>

@@ -96,6 +96,11 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
+        question: 'O que é o assistente Artie e quem pode usá-lo?',
+        answer: 'O Artie é o assistente financeiro de IA do Recebimento $mart, exclusivo do plano Premium. Pelo chat ou por voz (segure o botão do microfone para falar), ele cria lançamentos (únicos, parcelados ou recorrentes), confirma pagamentos, edita e exclui registros e responde consultas como saldo projetado, gastos por categoria no mês e contas em atraso. A conversa fica salva e continua de onde parou mesmo se você recarregar a página, e você pode escolher o tom de conversa do Artie (Casual, Normal ou Técnico) na aba Preferências do seu perfil.'
+    },
+    {
+        category: 'funcionalidades',
         question: 'Como o Artie escolhe a conta e a categoria dos lançamentos criados por voz ou chat?',
         answer: 'O Artie conduz um fluxo guiado: se você não mencionar a conta ou a categoria, ele pergunta antes de criar o lançamento, exibindo botões clicáveis com as opções disponíveis — e você também pode responder digitando ou falando. Se você disser "cartão" e tiver apenas um cartão de crédito cadastrado, ele usa esse cartão automaticamente e informa qual usou. Para categorias, o Artie sugere a mais provável com base na descrição (por exemplo, "mercado" sugere Alimentação) e pede sua confirmação. Lançamentos em cartão de crédito entram como pendentes na fatura do mês correto, para serem quitados no pagamento da fatura. Lançamentos antigos criados sem conta continuam listados sob a conta virtual "Sem Conta" na tela de Lançamentos, onde podem ser editados.'
     }
