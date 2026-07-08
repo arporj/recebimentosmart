@@ -255,8 +255,11 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
       // (ex: listar as contas em atraso e então confirmar a única encontrada).
       // Sem isso, o tool_call do follow-up era descartado e caía no fallback.
       if (finalResult.success && finalResult.tool_call && depth < 3) {
-        if (!isBalance) {
-          addMessage({ role: 'model', content: `🔎 ${formatTransactionsFallback(result.data)}`, toolCall, toolResult: result });
+        // Passo intermediário: mostrar apenas o que foi encontrado, sem a pergunta
+        // de fechamento — a próxima ação já vem em seguida, nada está sendo perguntado.
+        const foundItems = !isBalance ? formatTransactionItems(result.data) : '';
+        if (foundItems) {
+          addMessage({ role: 'model', content: `🔎 Encontrei:\n\n${foundItems}`, toolCall, toolResult: result });
         }
         await handleToolCall(finalResult.tool_call, depth + 1);
         return;
@@ -452,27 +455,31 @@ function formatBalanceFallback(data: any): string {
   return `Seu saldo${data?.only_confirmed ? ' confirmado' : ' projetado'} é de R$ ${total}.`;
 }
 
+/** Lista formatada (até 5 itens) do resultado de list_transactions; '' se vazio */
+function formatTransactionItems(data: any): string {
+  // O executor de list_transactions retorna { transactions, total, count, period }
+  const transactions: Array<{ description?: string; amount?: number; date?: string; status?: string }> =
+    Array.isArray(data) ? data : (data?.transactions || []);
+  return transactions.slice(0, 5).map(tx => {
+    const val = Number(Math.abs(tx.amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const st = tx.status === 'paid' ? 'Pago' : 'Pendente';
+    const dateStr = tx.date ? tx.date.split('-').reverse().join('/') : '';
+    return `• **${tx.description}**: R$ ${val} (${dateStr}) — *${st}*`;
+  }).join('\n');
+}
+
 function formatTransactionsFallback(data: any, originalReply?: string): string {
   if (originalReply && originalReply.trim() && !originalReply.includes('Aqui estão os dados solicitados')) {
     return originalReply;
   }
-  // O executor de list_transactions retorna { transactions, total, count, period }
-  const transactions: Array<{ description?: string; amount?: number; date?: string; status?: string }> =
-    Array.isArray(data) ? data : (data?.transactions || []);
-  if (transactions.length === 0) {
+  const items = formatTransactionItems(data);
+  if (!items) {
     // Nunca atribuir o período ao usuário: informar qual intervalo foi buscado e oferecer ampliar
     const period = !Array.isArray(data) && typeof data?.period === 'string'
       ? ` entre ${formatPeriodBR(data.period)}`
       : '';
     return `Não encontrei nenhum lançamento${period}. Quer que eu amplie a busca ou procure entre as contas em atraso?`;
   }
-  const items = transactions.slice(0, 5).map(tx => {
-    const val = Number(Math.abs(tx.amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const st = tx.status === 'paid' ? 'Pago' : 'Pendente';
-    const dateStr = tx.date ? tx.date.split('-').reverse().join('/') : '';
-    return `• **${tx.description}**: R$ ${val} (${dateStr}) — *${st}*`;
-  }).join('\n');
-
   return `Aqui estão os lançamentos encontrados:\n\n${items}\n\nDeseja realizar alguma alteração nesses lançamentos? (ex: marcar como pendente/pago, alterar valor ou excluir)`;
 }
 
