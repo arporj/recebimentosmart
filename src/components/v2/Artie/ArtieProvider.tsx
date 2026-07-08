@@ -424,16 +424,15 @@ function buildSuccessMessage(
       const where = accountInfo
         ? (accountInfo.isCreditCard ? ` no cartão **${accountInfo.name}**` : ` na conta **${accountInfo.name}**`)
         : '';
-      const invoiceNote = accountInfo?.isCreditCard ? ' Ele entra como pendente na fatura.' : '';
       if (modalidade === 'parcelada' && args.installment_total) {
-        return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} (${args.installment_total}x parceladas) registrado${where} com sucesso!${invoiceNote}`;
+        return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} (${args.installment_total}x parceladas) registrado${where} com sucesso!`;
       }
       if (modalidade === 'recorrente') {
         const periodMap: Record<string, string> = { daily: 'diário', weekly: 'semanal', monthly: 'mensal', yearly: 'anual' };
         const periodLabel = periodMap[String(args.recurrence_period || 'monthly')] || 'recorrente';
-        return `✅ Lançamento recorrente **"${args.description}"** de R$ ${amountStr} (${periodLabel}) registrado${where} com sucesso!${invoiceNote}`;
+        return `✅ Lançamento recorrente **"${args.description}"** de R$ ${amountStr} (${periodLabel}) registrado${where} com sucesso!`;
       }
-      return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} registrado${where} com sucesso!${invoiceNote}`;
+      return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} registrado${where} com sucesso!`;
     }
     case 'confirm_transaction':
       return `✅ Lançamento **"${data?.description || args.search_description}"** marcado como pago com sucesso!`;
