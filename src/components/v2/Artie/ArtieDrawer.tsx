@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { Bot, X, Trash2, Send, Loader2, Sparkles } from 'lucide-react';
-import { useArtie } from './ArtieProvider';
+import { useArtie } from './ArtieContext';
 import { ArtieMessageBubble } from './ArtieMessageBubble';
 import { ArtieConfirmCard, ArtieScopeCard } from './ArtieConfirmCard';
 import { ArtieVoiceInput } from './ArtieVoiceInput';

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Search, UserPlus, Bell, Plus, Filter, AlertTriangle,
-  CheckCircle2, Users, TrendingUp, Clock, Globe, MoreVertical,
-  Pencil, Trash2, Eye, User, Phone, Mail, BellOff
+  Search, UserPlus, Bell, Plus, AlertTriangle,
+  CheckCircle2, Users, TrendingUp, Clock, Globe,
+  Trash2, Eye, User, Phone, BellOff
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,7 +16,6 @@ import { QuickTransactionModal } from '../../../components/v2/ClientsArea/QuickT
 import { ClientNotificationConfig } from '../../../components/v2/ClientsArea/ClientNotificationConfig';
 import { GlobalNotificationSettings } from '../../../components/v2/ClientsArea/GlobalNotificationSettings';
 import ClientStatementModalV2 from '../../../components/v2/ClientStatementModalV2';
-import { gerarOcorrencias } from '../../../lib/financeiro/gerarOcorrencias';
 import type { Database } from '../../../types/supabase';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -226,7 +225,6 @@ export default function GestaoClientesV2() {
   const totalOverdue = summaries.filter(s => s.overdueCount > 0).length;
   const totalIncomeAll = summaries.reduce((sum, s) => sum + s.totalIncomePending, 0);
   const totalExpenseAll = summaries.reduce((sum, s) => sum + s.totalExpensePending, 0);
-  const totalWithNotif = Object.keys(notifConfigs).length;
 
   const formatCurrency = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

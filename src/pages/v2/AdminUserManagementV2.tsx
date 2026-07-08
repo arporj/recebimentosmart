@@ -3,11 +3,10 @@ import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import {
     Users, UserPlus, CheckCircle, Search,
-    ArrowUp, ArrowDown, MoreVertical, Mail, TrendingUp, CalendarCheck
+    ArrowUp, ArrowDown, MoreVertical, TrendingUp
 } from 'lucide-react';
 import UserDetailsModalV2 from '../../components/v2/UserDetailsModalV2';
 import { UserProfile } from '../../components/admin/UserTable';
-import ConfirmModal from '../../components/v2/ConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface KpiData {

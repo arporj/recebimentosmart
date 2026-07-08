@@ -89,7 +89,39 @@ interface TransactionData {
   instanceDate?: string;
   originalInstanceDate?: string;
   isVirtual?: boolean;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente';
+  due_day?: number;
+  is_total_value?: boolean;
+  installment_total?: number;
+  start_installment?: number;
+  parent_id?: string | null;
+  installment_current?: number;
+  paid_date?: string | null;
 }
+
+type TransactionPayload = {
+  description: string;
+  amount: number;
+  type: 'income' | 'expense' | 'transfer';
+  date: string;
+  client_id?: string;
+  category_id?: string;
+  account_id?: string;
+  destination_account_id?: string;
+  modalidade: 'unica' | 'parcelada' | 'recorrente';
+  installment_total?: number;
+  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  start_installment?: number;
+  is_total_value?: boolean;
+  due_day?: number;
+  recurrence_interval?: number;
+  auto_confirm: boolean;
+  invoice_month?: string;
+  card_holder_name?: string;
+  tags: string[];
+  status?: 'pending' | 'paid';
+  paid_date?: string | null;
+};
 
 interface FinancialTransactionModalProps {
   isOpen: boolean;
@@ -149,6 +181,7 @@ const FinancialTransactionModalV2 = ({
   const [dueDay, setDueDay] = useState(new Date().getDate());
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [scopeType, setScopeType] = useState<'edit' | 'delete'>('edit');
+  const [, setTempFormData] = useState<Record<string, unknown> | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [periodicidade, setPeriodicidade] = useState<'diaria' | 'semanal' | 'mensal' | 'anual'>('mensal');
   const [startInstallment, setStartInstallment] = useState<string>('1');
@@ -164,7 +197,7 @@ const FinancialTransactionModalV2 = ({
   const [status, setStatus] = useState<'pending' | 'paid'>('pending');
 
   const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
-  const isRecurring = !!transaction && (transaction.modalidade === 'recorrente' || transaction.modalidade === 'parcelada' || !!(transaction as any).parent_id || !!transaction.recurrence_enabled);
+  const isRecurring = !!transaction && (transaction.modalidade === 'recorrente' || transaction.modalidade === 'parcelada' || !!transaction.parent_id || !!transaction.recurrence_enabled);
   const [loading, setLoading] = useState(false);
   
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -354,26 +387,26 @@ const FinancialTransactionModalV2 = ({
       }
 
       // Novos campos
-      setModalidade((transaction as any).modalidade || 'unica');
-      setDueDay((transaction as any).due_day || new Date().getDate());
+      setModalidade(transaction.modalidade || 'unica');
+      setDueDay(transaction.due_day || new Date().getDate());
       if (transaction.invoice_month) {
         setInvoiceMonth(transaction.invoice_month);
       }
       if (transaction.card_holder_name) {
         setCardHolderName(transaction.card_holder_name);
       }
-      setIsTotalValue((transaction as any).is_total_value || false);
-      if ((transaction as any).installment_total) {
-        setInstallmentTotal(String((transaction as any).installment_total));
+      setIsTotalValue(transaction.is_total_value || false);
+      if (transaction.installment_total) {
+        setInstallmentTotal(String(transaction.installment_total));
       }
-      if ((transaction as any).start_installment) {
-        setStartInstallment(String((transaction as any).start_installment));
+      if (transaction.start_installment) {
+        setStartInstallment(String(transaction.start_installment));
       }
-      if ((transaction as any).recurrence_interval) {
-        setRecurrenceInterval(String((transaction as any).recurrence_interval));
+      if (transaction.recurrence_interval) {
+        setRecurrenceInterval(String(transaction.recurrence_interval));
       }
-      if ((transaction as any).recurrence_period) {
-        const period = (transaction as any).recurrence_period;
+      if (transaction.recurrence_period) {
+        const period = transaction.recurrence_period;
         setPeriodicidade(period === 'daily' ? 'diaria' : period === 'weekly' ? 'semanal' : period === 'yearly' ? 'anual' : 'mensal');
       }
     } else if (isOpen && !transaction) {
@@ -448,7 +481,7 @@ const FinancialTransactionModalV2 = ({
       if (account) {
         if (account.main_card_name) holders.push(account.main_card_name);
         if (Array.isArray(account.secondary_cards)) {
-          (account.secondary_cards as any[]).forEach((c) => {
+          account.secondary_cards.forEach((c) => {
             const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
             if (name) holders.push(name);
           });
@@ -648,7 +681,7 @@ const FinancialTransactionModalV2 = ({
         const holders: string[] = [];
         if (account.main_card_name) holders.push(account.main_card_name);
         if (Array.isArray(account.secondary_cards)) {
-          (account.secondary_cards as any[]).forEach((c) => {
+          account.secondary_cards.forEach((c) => {
             const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
             if (name) holders.push(name);
           });
@@ -735,7 +768,7 @@ const FinancialTransactionModalV2 = ({
       if (account) {
         if (account.main_card_name) holders.push(account.main_card_name);
         if (Array.isArray(account.secondary_cards)) {
-          (account.secondary_cards as any[]).forEach((c) => {
+          account.secondary_cards.forEach((c) => {
             const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
             if (name) holders.push(name);
           });
@@ -755,7 +788,7 @@ const FinancialTransactionModalV2 = ({
 
       const mappedRecurrencePeriod = periodicidade === 'diaria' ? 'daily' : periodicidade === 'semanal' ? 'weekly' : periodicidade === 'anual' ? 'yearly' : 'monthly';
 
-      const payload: any = {
+      const payload: TransactionPayload = {
         description,
         amount: parsedAmount,
         type,
@@ -804,7 +837,7 @@ const FinancialTransactionModalV2 = ({
         
         // Se for uma instância virtual (gerada pela recorrência mas que não existe no BD) 
         // e o escopo for 'this', precisamos INSERIR um novo registro físico (filho)
-        if ((transaction as any).isVirtual && scope === 'this') {
+        if (transaction!.isVirtual && scope === 'this') {
           const { tags: virtualTags, ...dbPayload } = payload;
           const chosenDate = payload.date;
 
@@ -815,7 +848,7 @@ const FinancialTransactionModalV2 = ({
             parent_id: transaction!.parent_id || transaction!.id,
             modalidade: 'unica', // a instância filha não carrega as regras de recorrência do pai
             is_customized: true,
-            installment_current: (transaction as any).installment_current || 1,
+            installment_current: transaction!.installment_current || 1,
             recurrence_enabled: false
           };
           const { data: newChild, error } = await supabase
@@ -847,8 +880,8 @@ const FinancialTransactionModalV2 = ({
       toast.success(isEditing ? 'Lançamento atualizado!' : 'Lançamento criado!');
       onSuccess();
       handleClose();
-    } catch (err: any) {
-      toast.error('Erro ao salvar: ' + err.message);
+    } catch (err) {
+      toast.error('Erro ao salvar: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }
@@ -874,7 +907,7 @@ const FinancialTransactionModalV2 = ({
         transactionId: transaction.id,
         scope: scope || 'this',
         instanceDate: transaction.originalInstanceDate || transaction.instanceDate || transaction.date,
-        installmentCurrent: (transaction as any).installment_current,
+        installmentCurrent: transaction.installment_current,
       });
       if (error) throw error;
       toast.success('Excluído!');
@@ -1032,14 +1065,14 @@ const FinancialTransactionModalV2 = ({
                     <button
                       type="button"
                       onClick={() => {
-                        if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                        if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                           setIsRecurrenceWarningOpen(true);
                           return;
                         }
                         setIsModalidadeDropdownOpen(!isModalidadeDropdownOpen);
                       }}
                       className={`w-full px-4 py-2.5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-slate-500/20 text-sm font-extrabold flex items-center justify-between text-slate-700 transition-all ${
-                        isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                        isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                           ? 'opacity-70 cursor-not-allowed'
                           : 'hover:bg-slate-100/75'
                       }`}
@@ -1116,7 +1149,7 @@ const FinancialTransactionModalV2 = ({
                         <div 
                           className="space-y-1.5 cursor-pointer"
                           onClick={() => {
-                            if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                            if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                               setIsRecurrenceWarningOpen(true);
                             }
                           }}
@@ -1125,10 +1158,10 @@ const FinancialTransactionModalV2 = ({
                           <div className="relative">
                             <select
                               value={periodicidade}
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               onChange={(e) => setPeriodicidade(e.target.value as 'diaria' | 'semanal' | 'mensal' | 'anual')}
                               className={`w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold appearance-none pr-8 text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-none ${
-                                isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                                   ? 'cursor-not-allowed opacity-70'
                                   : 'cursor-pointer'
                               }`}
@@ -1147,22 +1180,22 @@ const FinancialTransactionModalV2 = ({
                         <div 
                           className="space-y-1.5 cursor-pointer"
                           onClick={() => {
-                            if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                            if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                               setIsRecurrenceWarningOpen(true);
                             }
                           }}
                         >
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Total Parcelas</label>
                           <div className={`flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 ${
-                            isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                            isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                               ? 'opacity-70'
                               : ''
                           }`}>
                             <button
                               type="button"
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               onClick={() => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   setIsRecurrenceWarningOpen(true);
                                   return;
                                 }
@@ -1178,16 +1211,16 @@ const FinancialTransactionModalV2 = ({
                             <input 
                               type="number"
                               min="2"
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               value={installmentTotal}
                               onChange={(e) => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   return;
                                 }
                                 setInstallmentTotal(e.target.value);
                               }}
                               onBlur={() => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   return;
                                 }
                                 const val = parseInt(installmentTotal);
@@ -1199,16 +1232,16 @@ const FinancialTransactionModalV2 = ({
                               }}
                               placeholder="Ex: 12"
                               className={`w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                                   ? 'cursor-not-allowed'
                                   : ''
                               }`}
                             />
                             <button
                               type="button"
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               onClick={() => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   setIsRecurrenceWarningOpen(true);
                                   return;
                                 }
@@ -1225,22 +1258,22 @@ const FinancialTransactionModalV2 = ({
                         <div 
                           className="space-y-1.5 cursor-pointer"
                           onClick={() => {
-                            if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                            if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                               setIsRecurrenceWarningOpen(true);
                             }
                           }}
                         >
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Parc. Inicial</label>
                           <div className={`flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 ${
-                            isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                            isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                               ? 'opacity-70'
                               : ''
                           }`}>
                             <button
                               type="button"
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               onClick={() => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   setIsRecurrenceWarningOpen(true);
                                   return;
                                 }
@@ -1256,17 +1289,17 @@ const FinancialTransactionModalV2 = ({
                             <input 
                               type="number"
                               min="1"
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               max={parseInt(installmentTotal) || 1}
                               value={startInstallment}
                               onChange={(e) => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   return;
                                 }
                                 setStartInstallment(e.target.value);
                               }}
                               onBlur={() => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   return;
                                 }
                                 const val = parseInt(startInstallment);
@@ -1281,16 +1314,16 @@ const FinancialTransactionModalV2 = ({
                               }}
                               placeholder="Ex: 1"
                               className={`w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                                isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                                   ? 'cursor-not-allowed'
                                   : ''
                               }`}
                             />
                             <button
                               type="button"
-                              disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                              disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                               onClick={() => {
-                                if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                                if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                   setIsRecurrenceWarningOpen(true);
                                   return;
                                 }
@@ -1341,7 +1374,7 @@ const FinancialTransactionModalV2 = ({
                       <div 
                         className="space-y-1.5 cursor-pointer"
                         onClick={() => {
-                          if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                          if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                             setIsRecurrenceWarningOpen(true);
                           }
                         }}
@@ -1350,10 +1383,10 @@ const FinancialTransactionModalV2 = ({
                         <div className="relative">
                           <select
                             value={periodicidade}
-                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                            disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                             onChange={(e) => setPeriodicidade(e.target.value as 'diaria' | 'semanal' | 'mensal' | 'anual')}
                             className={`w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold appearance-none pr-8 text-slate-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-none ${
-                              isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                              isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                                 ? 'cursor-not-allowed opacity-70'
                                 : 'cursor-pointer'
                             }`}
@@ -1372,7 +1405,7 @@ const FinancialTransactionModalV2 = ({
                       <div 
                         className="space-y-1.5 cursor-pointer"
                         onClick={() => {
-                          if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                          if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                             setIsRecurrenceWarningOpen(true);
                           }
                         }}
@@ -1381,15 +1414,15 @@ const FinancialTransactionModalV2 = ({
                           Repetir a cada
                         </label>
                         <div className={`flex items-center justify-between bg-white rounded-xl border border-slate-200 p-1 relative ${
-                          isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                          isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                             ? 'opacity-70'
                             : ''
                         }`}>
                           <button
                             type="button"
-                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                            disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                             onClick={() => {
-                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                 setIsRecurrenceWarningOpen(true);
                                 return;
                               }
@@ -1405,16 +1438,16 @@ const FinancialTransactionModalV2 = ({
                           <input 
                             type="number"
                             min="1"
-                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                            disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                             value={recurrenceInterval}
                             onChange={(e) => {
-                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                 return;
                               }
                               setRecurrenceInterval(e.target.value);
                             }}
                             onBlur={() => {
-                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                 return;
                               }
                               const val = parseInt(recurrenceInterval);
@@ -1426,16 +1459,16 @@ const FinancialTransactionModalV2 = ({
                             }}
                             placeholder="Ex: 1"
                             className={`w-10 text-center bg-transparent border-0 text-xs font-semibold focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                              isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'
+                              isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'
                                 ? 'cursor-not-allowed'
                                 : ''
                             }`}
                           />
                           <button
                             type="button"
-                            disabled={isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica'}
+                            disabled={isEditing && transaction?.modalidade && transaction.modalidade !== 'unica'}
                             onClick={() => {
-                              if (isEditing && (transaction as any)?.modalidade && (transaction as any).modalidade !== 'unica') {
+                              if (isEditing && transaction?.modalidade && transaction.modalidade !== 'unica') {
                                 setIsRecurrenceWarningOpen(true);
                                 return;
                               }
@@ -1782,7 +1815,7 @@ const FinancialTransactionModalV2 = ({
                           const holders = [];
                           if (account.main_card_name) holders.push(account.main_card_name);
                           if (Array.isArray(account.secondary_cards)) {
-                            (account.secondary_cards as any[]).forEach((c) => {
+                            account.secondary_cards.forEach((c) => {
                               const name = typeof c === 'string' ? c : (c && typeof c === 'object' && 'name' in c ? c.name : '');
                               if (name) holders.push(name);
                             });
@@ -2479,13 +2512,13 @@ const FinancialTransactionModalV2 = ({
           setIsScopeModalOpen(false);
           // Re-disparar a ação passando o escopo selecionado como argumento para evitar closures estáticas com estado assíncrono
           if (scopeType === 'delete') {
-            handleDelete(scope as any);
+            handleDelete(scope);
           } else {
-            handleSubmit(undefined, scope as any);
+            handleSubmit(undefined, scope);
           }
         }}
         type={scopeType}
-        modalidade={(transaction as any)?.modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
+        modalidade={transaction?.modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
       />
 
       {/* Confirmação de exclusão para lançamentos únicos */}

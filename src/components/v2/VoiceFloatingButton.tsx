@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Mic, Square, Loader2, Check, X, Pencil, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { criarTransacao } from '../../lib/financeiro/criarTransacao';
+import { criarTransacao, type TransactionInput } from '../../lib/financeiro/criarTransacao';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
-import { editarTransacao } from '../../lib/financeiro/editarTransacao';
+import { editarTransacao, type TransactionUpdate } from '../../lib/financeiro/editarTransacao';
 import { toast } from 'react-hot-toast';
 import FinancialTransactionModalV2 from './FinancialTransactionModalV2';
 import { format, subDays, addDays, parseISO } from 'date-fns';
@@ -30,13 +30,42 @@ interface ExtractedData {
   };
 }
 
+interface VoiceAccount {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface VoiceCategory {
+  id: string;
+  name: string;
+}
+
+interface MatchedTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  type: 'income' | 'expense' | 'transfer';
+  account_id?: string | null;
+  category_id?: string | null;
+  status?: string | null;
+  accountName: string;
+}
+
 interface SuccessDetails {
   actionType: 'create' | 'delete' | 'confirm' | 'update';
   message: string;
   createdTransactionId?: string;
-  deletedTransactionBackup?: any;
+  deletedTransactionBackup?: TransactionInput;
   confirmedTransactionBackup?: { id: string; originalStatus: string; originalDate: string };
-  updatedTransactionBackup?: { id: string; originalFields: any };
+  updatedTransactionBackup?: { id: string; originalFields: TransactionUpdate };
+}
+
+function getJoinedAccountName(row: { financial_accounts?: unknown }): string {
+  const fa = row.financial_accounts as { name?: string } | { name?: string }[] | null | undefined;
+  const first = Array.isArray(fa) ? fa[0] : fa;
+  return first?.name || 'Conta não especificada';
 }
 
 export function VoiceFloatingButton() {
@@ -66,12 +95,12 @@ export function VoiceFloatingButton() {
   const [matchedCategoryId, setMatchedCategoryId] = useState('');
   
   // Exclusão / Confirmação
-  const [matchedTransactionToDelete, setMatchedTransactionToDelete] = useState<any | null>(null);
-  const [matchedTransactionToConfirm, setMatchedTransactionToConfirm] = useState<any | null>(null);
+  const [matchedTransactionToDelete, setMatchedTransactionToDelete] = useState<MatchedTransaction | null>(null);
+  const [matchedTransactionToConfirm, setMatchedTransactionToConfirm] = useState<MatchedTransaction | null>(null);
 
   // Listas locais de entidades
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<VoiceAccount[]>([]);
+  const [categories, setCategories] = useState<VoiceCategory[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -165,7 +194,7 @@ export function VoiceFloatingButton() {
         const { error } = await editarTransacao(
           successDetails.confirmedTransactionBackup.id, 
           {
-            status: successDetails.confirmedTransactionBackup.originalStatus as any,
+            status: successDetails.confirmedTransactionBackup.originalStatus,
             date: successDetails.confirmedTransactionBackup.originalDate
           }, 
           'this'
@@ -185,7 +214,7 @@ export function VoiceFloatingButton() {
 
       window.dispatchEvent(new CustomEvent('transaction_created'));
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao desfazer ação:', err);
       toast.error('Não foi possível desfazer a ação.');
     } finally {
@@ -196,7 +225,7 @@ export function VoiceFloatingButton() {
   };
 
   // Busca direta de transações para exclusão
-  const findTransactionToDeleteDirect = async (data: ExtractedData): Promise<any | null> => {
+  const findTransactionToDeleteDirect = async (data: ExtractedData): Promise<MatchedTransaction | null> => {
     if (!user) return null;
     try {
       const targetDate = parseISO(data.data);
@@ -214,7 +243,7 @@ export function VoiceFloatingButton() {
 
       const matches = (txList || []).filter(tx => {
         const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
-        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descClean = (tx.description || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         return valMatch && (descClean.includes(searchClean) || searchClean.includes(descClean));
       });
@@ -222,13 +251,13 @@ export function VoiceFloatingButton() {
       if (matches.length === 1) {
         return {
           id: matches[0].id,
-          description: matches[0].description,
+          description: matches[0].description || '',
           amount: matches[0].amount,
           date: matches[0].date,
-          type: matches[0].type,
+          type: matches[0].type as 'income' | 'expense' | 'transfer',
           account_id: matches[0].account_id,
           category_id: matches[0].category_id,
-          accountName: (matches[0] as any).financial_accounts?.name || 'Conta não especificada'
+          accountName: getJoinedAccountName(matches[0])
         };
       }
       return null;
@@ -238,7 +267,7 @@ export function VoiceFloatingButton() {
   };
 
   // Busca direta de transações para confirmação / alteração
-  const findTransactionToConfirmDirect = async (data: ExtractedData): Promise<any | null> => {
+  const findTransactionToConfirmDirect = async (data: ExtractedData): Promise<MatchedTransaction | null> => {
     if (!user) return null;
     try {
       const targetDate = parseISO(data.data);
@@ -268,7 +297,7 @@ export function VoiceFloatingButton() {
       const matches = (txList || []).filter(tx => {
         const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const isGeneric = isGenericDescription(data.descricao);
-        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descClean = (tx.description || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = isGeneric || descClean.includes(searchClean) || searchClean.includes(descClean);
         return valMatch && descMatch;
@@ -278,28 +307,28 @@ export function VoiceFloatingButton() {
       if (pendingMatches.length === 1) {
         return {
           id: pendingMatches[0].id,
-          description: pendingMatches[0].description,
+          description: pendingMatches[0].description || '',
           amount: pendingMatches[0].amount,
           date: pendingMatches[0].date,
-          type: pendingMatches[0].type,
+          type: pendingMatches[0].type as 'income' | 'expense' | 'transfer',
           account_id: pendingMatches[0].account_id,
           category_id: pendingMatches[0].category_id,
           status: pendingMatches[0].status,
-          accountName: (pendingMatches[0] as any).financial_accounts?.name || 'Conta não especificada'
+          accountName: getJoinedAccountName(pendingMatches[0])
         };
       }
 
       if (matches.length === 1) {
         return {
           id: matches[0].id,
-          description: matches[0].description,
+          description: matches[0].description || '',
           amount: matches[0].amount,
           date: matches[0].date,
-          type: matches[0].type,
+          type: matches[0].type as 'income' | 'expense' | 'transfer',
           account_id: matches[0].account_id,
           category_id: matches[0].category_id,
           status: matches[0].status,
-          accountName: (matches[0] as any).financial_accounts?.name || 'Conta não especificada'
+          accountName: getJoinedAccountName(matches[0])
         };
       }
 
@@ -350,7 +379,7 @@ export function VoiceFloatingButton() {
         });
       }, 1000);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao acessar microfone:', err);
       toast.error('Não foi possível acessar o microfone. Verifique as permissões do seu navegador.');
       setRecordingState('idle');
@@ -433,7 +462,7 @@ export function VoiceFloatingButton() {
       }
 
       // Se for comando de confirmação por voz na tela de confirmação
-      if (wasConfirming && (data.acao as any) === 'confirm') {
+      if (wasConfirming && data.acao === 'confirm') {
         if (previousExtractedData) {
           if (previousExtractedData.acao === 'delete') {
             setExtractedData(previousExtractedData);
@@ -450,7 +479,7 @@ export function VoiceFloatingButton() {
       }
 
       // Se for comando de cancelamento por voz
-      if (wasConfirming && (data.acao as any) === 'cancel') {
+      if (wasConfirming && data.acao === 'cancel') {
         handleCancel();
         return;
       }
@@ -488,13 +517,13 @@ export function VoiceFloatingButton() {
         if (matched) {
           // Executa exclusão silenciosa!
           try {
-            const backupInput = {
+            const backupInput: TransactionInput = {
               description: matched.description,
               amount: matched.amount,
               type: matched.type,
               date: matched.date,
-              category_id: matched.category_id,
-              account_id: matched.account_id,
+              category_id: matched.category_id || undefined,
+              account_id: matched.account_id || undefined,
               modalidade: 'unica' as const,
               status: 'paid' as const
             };
@@ -556,8 +585,8 @@ export function VoiceFloatingButton() {
         if (matched && newFields && (newFields.descricao || newFields.valor || newFields.data || newFields.banco_carteira || newFields.categoria)) {
           // Executa alteração silenciosa!
           try {
-            const updatePayload: any = {};
-            const originalFields: any = {};
+            const updatePayload: TransactionUpdate = {};
+            const originalFields: TransactionUpdate = {};
 
             if (newFields.descricao) {
               updatePayload.description = newFields.descricao;
@@ -575,14 +604,14 @@ export function VoiceFloatingButton() {
               const matchedAccId = matchAccount(newFields.banco_carteira, accounts);
               if (matchedAccId) {
                 updatePayload.account_id = matchedAccId;
-                originalFields.account_id = matched.account_id;
+                originalFields.account_id = matched.account_id || undefined;
               }
             }
             if (newFields.categoria) {
               const matchedCatId = matchCategory(newFields.categoria, categories);
               if (matchedCatId) {
                 updatePayload.category_id = matchedCatId;
-                originalFields.category_id = matched.category_id;
+                originalFields.category_id = matched.category_id || undefined;
               }
             }
 
@@ -633,7 +662,7 @@ export function VoiceFloatingButton() {
         } else {
           // Não há dúvidas! Executa criação silenciosa (aceitando conta/categoria como nulas se não mencionadas)
           try {
-            const transacaoInput = {
+            const transacaoInput: TransactionInput = {
               description: data.descricao,
               amount: data.valor,
               type: data.tipo,
@@ -668,9 +697,9 @@ export function VoiceFloatingButton() {
         }
       }
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro no processamento da IA:', err);
-      toast.error(err.message || 'Erro ao enviar ou interpretar o áudio.');
+      toast.error(err instanceof Error ? err.message : 'Erro ao enviar ou interpretar o áudio.');
       if (wasConfirming) {
         setExtractedData(previousExtractedData);
         setRecordingState('confirming');
@@ -702,7 +731,7 @@ export function VoiceFloatingButton() {
       // Fuzzy matching na lista
       const match = (txList || []).find(tx => {
         const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
-        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descClean = (tx.description || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = descClean.includes(searchClean) || searchClean.includes(descClean);
         return valMatch && descMatch;
@@ -711,11 +740,11 @@ export function VoiceFloatingButton() {
       if (match) {
         setMatchedTransactionToDelete({
           id: match.id,
-          description: match.description,
+          description: match.description || '',
           amount: match.amount,
           date: match.date,
-          type: match.type,
-          accountName: (match as any).financial_accounts?.name || 'Conta não especificada'
+          type: match.type as 'income' | 'expense' | 'transfer',
+          accountName: getJoinedAccountName(match)
         });
       } else {
         setMatchedTransactionToDelete(null);
@@ -761,7 +790,7 @@ export function VoiceFloatingButton() {
       const pendingMatch = (txList || []).find(tx => {
         const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const isGeneric = isGenericDescription(data.descricao);
-        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descClean = (tx.description || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = isGeneric || descClean.includes(searchClean) || searchClean.includes(descClean);
         return valMatch && descMatch && tx.status === 'pending';
@@ -770,7 +799,7 @@ export function VoiceFloatingButton() {
       const match = pendingMatch || (txList || []).find(tx => {
         const valMatch = !data.valor || data.valor === 0 || Math.abs(Math.abs(tx.amount) - Math.abs(data.valor)) < 0.05;
         const isGeneric = isGenericDescription(data.descricao);
-        const descClean = tx.description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const descClean = (tx.description || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const searchClean = data.descricao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const descMatch = isGeneric || descClean.includes(searchClean) || searchClean.includes(descClean);
         return valMatch && descMatch;
@@ -779,11 +808,11 @@ export function VoiceFloatingButton() {
       if (match) {
         setMatchedTransactionToConfirm({
           id: match.id,
-          description: match.description,
+          description: match.description || '',
           amount: match.amount,
           date: match.date,
-          type: match.type,
-          accountName: (match as any).financial_accounts?.name || 'Conta não especificada'
+          type: match.type as 'income' | 'expense' | 'transfer',
+          accountName: getJoinedAccountName(match)
         });
       } else {
         setMatchedTransactionToConfirm(null);
@@ -812,7 +841,7 @@ export function VoiceFloatingButton() {
       .join(' ');
   };
 
-  const matchAccount = (suggestedBank: string, accountsList: any[]): string => {
+  const matchAccount = (suggestedBank: string, accountsList: VoiceAccount[]): string => {
     if (accountsList.length === 0) return '';
 
     const creditCards = accountsList.filter(a => a.type === 'credit_card');
@@ -871,7 +900,7 @@ export function VoiceFloatingButton() {
     return '';
   };
 
-  const matchCategory = (suggestedCategory: string, categoriesList: any[]): string => {
+  const matchCategory = (suggestedCategory: string, categoriesList: VoiceCategory[]): string => {
     if (categoriesList.length === 0) return '';
     if (!suggestedCategory) return categoriesList[0]?.id || '';
 
@@ -891,7 +920,7 @@ export function VoiceFloatingButton() {
     try {
       setRecordingState('processing');
 
-      const transacaoInput = {
+      const transacaoInput: TransactionInput = {
         description: localDescription || extractedData.descricao,
         amount: localAmount || extractedData.valor,
         type: extractedData.tipo,
@@ -917,7 +946,7 @@ export function VoiceFloatingButton() {
       setRecordingState('idle');
       setExtractedData(null);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao criar transação via IA:', err);
       toast.error('Erro ao persistir o lançamento no banco de dados.');
       setRecordingState('confirming');
@@ -943,7 +972,7 @@ export function VoiceFloatingButton() {
       setExtractedData(null);
       setMatchedTransactionToDelete(null);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao excluir transação via voz:', err);
       toast.error('Erro ao excluir o lançamento do banco.');
       setRecordingState('confirming');
@@ -972,7 +1001,7 @@ export function VoiceFloatingButton() {
       setExtractedData(null);
       setMatchedTransactionToConfirm(null);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao confirmar transação via voz:', err);
       toast.error('Erro ao confirmar o lançamento no banco.');
       setRecordingState('confirming');
@@ -1244,7 +1273,7 @@ export function VoiceFloatingButton() {
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Modalidade</label>
                         <select
                           value={localModalidade}
-                          onChange={(e) => setLocalModalidade(e.target.value as any)}
+                          onChange={(e) => setLocalModalidade(e.target.value as 'unica' | 'parcelada' | 'recorrente')}
                           className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:border-[#14b8a6] outline-none"
                         >
                           <option value="unica">📅 Única</option>
@@ -1279,7 +1308,7 @@ export function VoiceFloatingButton() {
                             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Frequência</label>
                             <select
                               value={localPeriodicidade}
-                              onChange={(e) => setLocalPeriodicidade(e.target.value as any)}
+                              onChange={(e) => setLocalPeriodicidade(e.target.value as 'diaria' | 'semanal' | 'mensal' | 'anual')}
                               className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-1.5 py-1 focus:border-[#14b8a6] outline-none"
                             >
                               <option value="diaria">Diária</option>

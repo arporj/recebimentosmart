@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, ArrowRight, User, Phone, Search, UserCheck, UserMinus } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Phone, Search, UserCheck, UserMinus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanLimits } from '../../hooks/usePlanLimits';

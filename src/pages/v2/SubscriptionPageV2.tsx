@@ -8,7 +8,7 @@ import { CheckCircle, Info, Shield, Copy, Check, MessageSquare, Sparkles, AlertC
 import { supabase } from '../../lib/supabase';
 import axios from 'axios';
 
-import { PLAN_ORDER, PLAN_MAPPING, INITIAL_PLANS_CONFIG, getPlanFeatures, getPlanDescription, PlanSlug } from '../../lib/plans';
+import { PLAN_ORDER, PLAN_MAPPING, getPlanFeatures, getPlanDescription, PlanSlug } from '../../lib/plans';
 
 type PlanName = PlanSlug;
 

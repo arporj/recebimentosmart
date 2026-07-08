@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { addMonths, format, startOfMonth, endOfMonth, isBefore, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isBefore, parseISO } from 'date-fns';
 
 /**
  * Esta função garante que todas as transações recorrentes 'mãe' tenham uma ocorrência

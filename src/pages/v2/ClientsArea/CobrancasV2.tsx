@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Search, TrendingUp, AlertTriangle, CheckCircle2, Clock,
-  DollarSign, Bell, Filter, Calendar, Loader2, Send
+  Search, AlertTriangle, CheckCircle2, Clock,
+  DollarSign, Loader2, Send
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
+import { format, parseISO, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -390,7 +390,7 @@ export default function CobrancasV2() {
       <ConfirmModal
         isOpen={!!markPaidTx}
         onClose={() => setMarkPaidTx(null)}
-        onConfirm={() => markPaidTx && handleMarkPaid(markPaidTx)}
+        onConfirm={() => markPaidTx && handleMarkAsPaid()}
         title="Confirmar Recebimento"
         message={
           <div className="space-y-1">

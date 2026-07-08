@@ -17,8 +17,8 @@ interface TransactionInstance {
   isOpeningBalance?: boolean;
   isInvoiceSummary?: boolean;
   recurrence_enabled?: boolean;
-  parent_id?: string;
-  modalidade?: 'parcelada' | 'recorrente';
+  parent_id?: string | null;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_current?: number;
   installment_total?: number;
   account?: { name: string };
@@ -33,7 +33,7 @@ interface TransactionSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
   transaction: TransactionInstance | null;
-  onEdit: (transaction: any) => void;
+  onEdit: (transaction: TransactionInstance) => void;
 }
 
 export const TransactionSummaryModal: React.FC<TransactionSummaryModalProps> = ({

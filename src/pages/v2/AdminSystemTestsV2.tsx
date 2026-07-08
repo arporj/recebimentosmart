@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { 
-    FlaskConical, Users, Mail, CalendarCheck, AlertTriangle, 
-    Trash2, Play, Terminal, ChevronRight, CheckCircle, ShieldAlert,
+import {
+    FlaskConical, Users, Mail, CalendarCheck,
+    Play, Terminal, CheckCircle, ShieldAlert,
     Search, ChevronDown, CreditCard, UserCheck
 } from 'lucide-react';
 
@@ -34,7 +33,6 @@ interface LogEntry {
 }
 
 export default function AdminSystemTestsV2() {
-    const { user: adminUser } = useAuth();
     const [users, setUsers] = useState<UserSelectOption[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
     const [userClients, setUserClients] = useState<ClientSelectOption[]>([]);

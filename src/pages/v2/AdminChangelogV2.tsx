@@ -246,24 +246,6 @@ ${parseMarkdownToHtml(changelog.description)}
         });
     };
 
-    const getCategoryStyles = (cat: string) => {
-        switch (cat) {
-            case 'feature': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-            case 'bugfix': return 'bg-amber-50 text-amber-700 border-amber-100';
-            case 'improvement': return 'bg-sky-50 text-sky-700 border-sky-100';
-            default: return 'bg-slate-50 text-slate-700 border-slate-100';
-        }
-    };
-
-    const getCategoryLabel = (cat: string) => {
-        switch (cat) {
-            case 'feature': return 'Novidade';
-            case 'bugfix': return 'Correção de Bug';
-            case 'improvement': return 'Melhoria';
-            default: return cat;
-        }
-    };
-
     return (
         <div className="w-full max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
             {/* Header */}

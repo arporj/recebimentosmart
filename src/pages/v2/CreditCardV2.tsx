@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, CalendarDays, Pencil, Search,
-  MoreVertical, Trash2, CheckCircle2, CreditCard,
+  MoreVertical, Trash2, CreditCard,
   ChevronDown, Repeat,
   Plus, ArrowRight
 } from 'lucide-react';
@@ -238,7 +238,6 @@ const CreditCardV2 = () => {
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
 
   const [isCloseBillModalOpen, setIsCloseBillModalOpen] = useState(false);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
@@ -653,11 +652,6 @@ const CreditCardV2 = () => {
     }
     return true;
   }, [invoicePeriod, billPaymentTransaction]);
-
-  const statusDot: Record<string, string> = {
-    default: 'bg-slate-300',
-    overdue: 'bg-rose-500',
-  };
 
   // Handlers
 

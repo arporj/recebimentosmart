@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Users, 
-  Check, 
-  X, 
-  FileText, 
-  Clock, 
-  TrendingUp, 
-  TrendingDown, 
-  Mail, 
-  Shield, 
-  HelpCircle, 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar,
+import {
+  Users,
+  Check,
+  X,
+  FileText,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Mail,
+  Shield,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -1421,7 +1419,6 @@ export default function SharedWithMeV2() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {sentShares.map((share) => {
-                    const isPending = share.status === 'pending';
                     const isAccepted = share.status === 'accepted';
                     const isRejected = share.status === 'rejected';
 

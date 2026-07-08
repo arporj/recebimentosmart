@@ -84,11 +84,93 @@ interface FinancialTransaction {
   account_type?: string;
 }
 
+interface ViewTransactionRow {
+  id: string;
+  type: 'income' | 'expense' | 'transfer';
+  amount: number;
+  date: string;
+  description: string;
+  status: 'pending' | 'paid' | 'partial' | 'cancelled';
+  paid_amount?: number | null;
+  paid_date?: string | null;
+  recurrence_enabled?: boolean | null;
+  recurrence_period?: string | null;
+  recurrence_interval?: number | null;
+  recurrence_end_date?: string | null;
+  client_id?: string | null;
+  account_id?: string | null;
+  destination_account_id?: string | null;
+  category_id?: string | null;
+  parent_id?: string | null;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente' | null;
+  installment_total?: number | null;
+  installment_current?: number | null;
+  auto_confirm?: boolean | null;
+  invoice_month?: string | null;
+  is_template?: boolean | null;
+  user_id?: string;
+  account_name?: string | null;
+  account_type?: string | null;
+  destination_account_name?: string | null;
+  destination_account_type?: string | null;
+  client_name?: string | null;
+  category_name?: string | null;
+  category_icon?: string | null;
+  category_parent_id?: string | null;
+}
+
+interface AccountRow {
+  id: string;
+  name: string;
+  type: string;
+  initial_balance?: number | string | null;
+  is_active?: boolean;
+  user_id?: string;
+}
+
+interface CreditCardAccountRow {
+  id: string;
+  name: string;
+  type: string;
+  due_day?: number | null;
+  closing_days_before?: number | null;
+  invoice_payment_account_id?: string | null;
+  linkedAccountName?: string | null;
+}
+
+interface TransactionInsertPayload {
+  user_id: string;
+  type: 'income' | 'expense' | 'transfer';
+  amount: number;
+  date: string;
+  description: string;
+  account_id?: string | null;
+  category_id?: string | null;
+  client_id?: string | null;
+  status: string;
+  paid_date?: string;
+  parent_id?: string | null;
+  modalidade: string;
+  is_customized?: boolean;
+  installment_current?: number;
+  recurrence_enabled?: boolean;
+  auto_confirm?: boolean;
+  invoice_month?: string | null;
+}
+
+interface TransactionUpdatePayload {
+  status?: string;
+  paid_date?: string;
+  date?: string;
+  invoice_month?: string | null;
+}
+
 interface TransactionInstance extends FinancialTransaction {
   instanceDate: string;
   originalInstanceDate?: string;
   isVirtual: boolean;
   isInvoiceSummary?: boolean;
+  isOpeningBalance?: boolean;
   invoiceData?: {
     cardId: string;
     cardName: string;
@@ -105,8 +187,8 @@ const FinancialTransactionsV2 = () => {
   const [templates, setTemplates] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [creditCardAccounts, setCreditCardAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [creditCardAccounts, setCreditCardAccounts] = useState<CreditCardAccountRow[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -174,7 +256,7 @@ const FinancialTransactionsV2 = () => {
   const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
 
   // Estados para o modal de resumo
-  const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<any | null>(null);
+  const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<TransactionInstance | null>(null);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
   // Estado para o modal de compartilhamento
@@ -204,16 +286,16 @@ const FinancialTransactionsV2 = () => {
     if (!user) return;
     try {
       setLoading(true);
-      const { data, error } = await (supabase as any)
-        .from('v_financial_transactions')
+      const { data, error } = await supabase
+        .from('v_financial_transactions' as never)
         .select('*')
         .eq('user_id', user.id)
         .eq('is_template', false)
         .order('date', { ascending: true });
 
       if (error) throw error;
-      
-      const mappedData = (data || []).map((t: any) => ({
+
+      const mappedData = ((data || []) as ViewTransactionRow[]).map((t) => ({
         ...t,
         account_id: t.account_id || 'sem-conta',
         account: t.account_name ? { name: t.account_name, type: t.account_type } : { name: 'Sem Conta', type: 'checking' },
@@ -235,7 +317,7 @@ const FinancialTransactionsV2 = () => {
 
       if (templateError) throw templateError;
 
-      const mappedTemplates = (templateData || []).map((t: any) => ({
+      const mappedTemplates = (templateData || []).map((t) => ({
         ...t,
         account_id: t.account_id || 'sem-conta',
         account: t.account ? { name: t.account.name, type: t.account.type } : { name: 'Sem Conta', type: 'checking' },
@@ -461,12 +543,12 @@ const FinancialTransactionsV2 = () => {
     const todayIso = new Date().toISOString();
 
     try {
-      const cardConfig = t.account_id ? creditCardAccounts.find((c: any) => c.id === t.account_id) : null;
+      const cardConfig = t.account_id ? creditCardAccounts.find((c) => c.id === t.account_id) : null;
       const isCreditCard = t.account_type === 'credit_card' || (cardConfig && cardConfig.type === 'credit_card');
       const calculatedInvoiceMonth = cardConfig ? calcularMesFatura(todayStr, cardConfig) : null;
 
       if (t.isVirtual) {
-        const newChildPayload: any = {
+        const newChildPayload: TransactionInsertPayload = {
           user_id: user!.id,
           type: t.type,
           amount: t.amount,
@@ -495,7 +577,7 @@ const FinancialTransactionsV2 = () => {
         if (insertError) throw insertError;
 
         if (t.tags && t.tags.length > 0 && newChild) {
-          const tagIds = t.tags.map((tagObj: any) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+          const tagIds = t.tags.map((tagObj: { tag?: { id: string }; id?: string }) => tagObj.tag?.id || tagObj.id).filter(Boolean);
           if (tagIds.length > 0) {
             const junctionRows = tagIds.map((tagId: string) => ({
               transaction_id: newChild.id,
@@ -505,7 +587,7 @@ const FinancialTransactionsV2 = () => {
           }
         }
       } else {
-        const updatePayload: any = {
+        const updatePayload: TransactionUpdatePayload = {
           status: 'paid',
           paid_date: todayIso,
           date: todayStr,
@@ -522,7 +604,7 @@ const FinancialTransactionsV2 = () => {
 
       toast.success('Lançamento confirmado para hoje!');
       fetchTransactions();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao confirmar hoje:', err);
       toast.error('Erro ao confirmar lançamento.');
     }
@@ -825,7 +907,7 @@ const FinancialTransactionsV2 = () => {
     // Inject opening balance if no search filter is active
     if (searchTerm === '') {
       const lastDayPrevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 0);
-      const openingBalanceInstance = {
+      const openingBalanceInstance: TransactionInstance = {
         id: `opening-balance-${format(currentMonth, 'yyyy-MM')}`,
         type: 'income',
         amount: 0,
@@ -836,7 +918,7 @@ const FinancialTransactionsV2 = () => {
         isVirtual: true,
         isOpeningBalance: true,
         runningBalance: openingBalance,
-      } as any;
+      };
       return [openingBalanceInstance, ...sortedList];
     }
 
@@ -932,7 +1014,7 @@ const FinancialTransactionsV2 = () => {
         const targetDate = bulkConfirmDateMode === 'original' ? origDate : bulkConfirmSpecificDate;
         const paidDate = targetDate;
 
-        const cardConfig = t.account_id ? creditCardAccounts.find((c: any) => c.id === t.account_id) : null;
+        const cardConfig = t.account_id ? creditCardAccounts.find((c) => c.id === t.account_id) : null;
         const isCreditCard = t.account_type === 'credit_card' || (cardConfig && cardConfig.type === 'credit_card');
         const calculatedInvoiceMonth = cardConfig ? calcularMesFatura(targetDate, cardConfig) : null;
 
@@ -968,7 +1050,7 @@ const FinancialTransactionsV2 = () => {
 
           // Copiar tags se houver
           if (t.tags && t.tags.length > 0 && newChild) {
-            const tagIds = t.tags.map((tagObj: any) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+            const tagIds = t.tags.map((tagObj: { tag?: { id: string }; id?: string }) => tagObj.tag?.id || tagObj.id).filter(Boolean);
             if (tagIds.length > 0) {
               const junctionRows = tagIds.map((tagId: string) => ({
                 transaction_id: newChild.id,
@@ -979,7 +1061,7 @@ const FinancialTransactionsV2 = () => {
           }
         } else {
           // Atualizar transação física existente
-          const updatePayload: any = {
+          const updatePayload: TransactionUpdatePayload = {
             status: 'paid',
             paid_date: paidDate,
             date: targetDate, // AQUI: atualiza a data de cadastro para a data do pagamento!
@@ -1000,9 +1082,9 @@ const FinancialTransactionsV2 = () => {
       setSelectedTransactionKeys(new Set());
       setIsBulkConfirmOpen(false);
       fetchTransactions();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro na confirmação em lote:', err);
-      toast.error('Erro ao confirmar lançamentos: ' + err.message);
+      toast.error('Erro ao confirmar lançamentos: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setBulkConfirmLoading(false);
     }
@@ -1039,9 +1121,9 @@ const FinancialTransactionsV2 = () => {
       toast.success(`${physicalPaid.length} lançamentos desconfirmados!`);
       setSelectedTransactionKeys(new Set());
       fetchTransactions();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao desconfirmar em lote:', err);
-      toast.error('Erro ao desconfirmar lançamentos: ' + err.message);
+      toast.error('Erro ao desconfirmar lançamentos: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -1077,9 +1159,9 @@ const FinancialTransactionsV2 = () => {
       setSelectedTransactionKeys(new Set());
       setIsBulkDeleteConfirmOpen(false);
       fetchTransactions();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao excluir em lote:', err);
-      toast.error('Erro ao excluir lançamentos: ' + err.message);
+      toast.error('Erro ao excluir lançamentos: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setBulkDeleteLoading(false);
     }
@@ -2322,9 +2404,9 @@ const FinancialTransactionsV2 = () => {
         <ModalOpcaoRecorrente
           isOpen={isDeleteScopeModalOpen}
           onClose={() => setIsDeleteScopeModalOpen(false)}
-          onSelect={(scope) => handleDelete(itemToDelete, scope as any)}
+          onSelect={(scope) => handleDelete(itemToDelete, scope)}
           type="delete"
-          modalidade={(itemToDelete as any).modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
+          modalidade={itemToDelete.modalidade === 'parcelada' ? 'parcelada' : 'recorrente'}
         />
       )}
 

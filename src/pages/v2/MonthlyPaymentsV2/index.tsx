@@ -48,14 +48,6 @@ type PaymentListItem = {
     vencimento: string | null;
 };
 
-const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
-    monthly: 'Mensal',
-    bimonthly: 'Bimestral',
-    quarterly: 'Trimestral',
-    semiannual: 'Semestral',
-    annual: 'Anual',
-};
-
 export function MonthlyPaymentsV2() {
     const { clients, refreshClients } = useClients();
     const [selectedDate, setSelectedDate] = useState(getCurrentSPDate());
@@ -66,7 +58,7 @@ export function MonthlyPaymentsV2() {
     const [expectedRevenue, setExpectedRevenue] = useState(0);
     const [receivedRevenue, setReceivedRevenue] = useState(0);
     const [lateRevenue, setLateRevenue] = useState(0);
-    const [activeClientsCount, setActiveClientsCount] = useState(0);
+    const [, setActiveClientsCount] = useState(0);
     const [lateClientsCount, setLateClientsCount] = useState(0);
     const [paymentsList, setPaymentsList] = useState<PaymentListItem[]>([]);
     const [pagosNoMes, setPagosNoMes] = useState<PaymentWithClient[]>([]);

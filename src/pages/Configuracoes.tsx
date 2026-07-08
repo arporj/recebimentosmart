@@ -4,7 +4,6 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { supabase } from '../lib/supabase';
 import TestPaymentButton from '../components/TestPaymentButton';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
-import { FileText } from 'lucide-react'; // Import FileText icon
 
 interface PlanPrices {
   basico: number;
@@ -17,7 +16,7 @@ const normalizePlanName = (name: string) =>
   name.toLowerCase().normalize("NFD").replace(/[^\w\s]/gi, '');
 
 const Configuracoes = () => {
-  const { user, fetchReferralInfo } = useAuth(); // Use useAuth to get user info
+  const { user } = useAuth(); // Use useAuth to get user info
   const [prices, setPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
   const [initialPrices, setInitialPrices] = useState<PlanPrices>({ basico: 0, pro: 0, premium: 0 });
   const [loading, setLoading] = useState(true);

@@ -2,7 +2,7 @@
 // Responsável por: histórico de mensagens, estado do chat, entidades do usuário,
 // comunicação com o backend e dispatch das execuções de tools.
 
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -19,39 +19,8 @@ import type {
   CreateTransactionArgs,
 } from '../../../lib/artie/types';
 import type { PendingScopeAction } from './ArtieConfirmCard';
+import { ArtieContext, type ArtieContextValue } from './ArtieContext';
 import { v4 as uuidv4 } from 'uuid';
-
-// ─── Context Types ────────────────────────────────────────────────────────────
-
-interface ArtieContextValue {
-  isOpen: boolean;
-  openArtie: () => void;
-  closeArtie: () => void;
-  toggleArtie: () => void;
-
-  messages: ArtieMessage[];
-  chatState: ArtieChatState;
-  pendingAction: PendingAction | null;
-  pendingScopeAction: PendingScopeAction | null;
-
-  sendTextMessage: (text: string) => Promise<void>;
-  sendAudio: (audioBlob: Blob, mimeType: string) => Promise<void>;
-  confirmPendingAction: () => Promise<void>;
-  confirmScopeAction: (scope: 'this' | 'following') => Promise<void>;
-  cancelPendingAction: () => void;
-  clearHistory: () => void;
-
-  entityContext: ArtieEntityContext;
-  userMemory: Partial<ArtieUserMemory> | null;
-}
-
-const ArtieContext = createContext<ArtieContextValue | null>(null);
-
-export function useArtie(): ArtieContextValue {
-  const ctx = useContext(ArtieContext);
-  if (!ctx) throw new Error('useArtie deve ser usado dentro de <ArtieProvider>');
-  return ctx;
-}
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 

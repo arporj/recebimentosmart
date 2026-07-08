@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  CalendarDays, 
-  Search, 
-  Filter, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
-  DatabaseZap, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  FileText, 
-  User, 
+import {
+  Search,
+  Filter,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  DatabaseZap,
+  ArrowUpRight,
+  ArrowDownRight,
+  FileText,
+  User,
   Phone,
   CheckCircle2,
   RefreshCw,
@@ -22,20 +21,18 @@ import {
   ChevronRight,
   Calendar
 } from 'lucide-react';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  parseISO, 
-  isBefore, 
-  isSameDay, 
-  isAfter, 
-  addDays, 
-  addWeeks, 
-  addMonths, 
-  addYears, 
-  subMonths, 
-  startOfDay 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  parseISO,
+  isBefore,
+  isAfter,
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  startOfDay
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../lib/supabase';
@@ -638,7 +635,7 @@ export default function RecurrenceV2() {
     try {
       setSubmittingShare(true);
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('client_shares')
         .insert({
           sender_id: user.id,

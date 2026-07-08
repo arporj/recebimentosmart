@@ -123,8 +123,6 @@ const FinancialCategoriesV2 = () => {
     setSaving(false);
   };
 
-  const emojiOptions = ['🏠','🍽️','🚗','🏥','📚','🎮','👕','📱','🌐','📋','💰','💻','📈','🔄','📦','🎉','✈️','🏋️','🎬','🎵','🐾','💊','🛒','🏦','⚡'];
-
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
       <div className="flex justify-between items-center">

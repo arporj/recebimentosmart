@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  AlertCircle,
+import {
+  Plus,
+  ArrowUpCircle,
+  ArrowDownCircle,
   TrendingUp,
   ChevronRight,
   ChevronLeft,
@@ -13,7 +12,6 @@ import {
   BarChart2,
   PieChart,
   Wallet,
-  ArrowRightLeft,
   Lock,
   X,
   CheckCircle2
@@ -83,7 +81,7 @@ interface MonthlyStat {
 
 const DashboardV2 = () => {
   const { user, plano, isAdmin, dashboardWidgets, updateDashboardWidgets, themePreference } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
   // Abas

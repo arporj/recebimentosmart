@@ -11,7 +11,6 @@ import { ClientFormV2 } from '../ClientFormV2';
 import type { Database } from '../../../types/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
-import { usePlanLimits } from '../../../hooks/usePlanLimits';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 type CustomField = Database['public']['Tables']['custom_fields']['Row'];

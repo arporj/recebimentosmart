@@ -32,7 +32,7 @@ export async function deletarTransacao(
 
   if (fetchError || !current) throw new Error('Erro ao buscar transação');
 
-  const { modalidade, parent_id, date: currentDate, recurrence_enabled } = current as any;
+  const { modalidade, parent_id, date: currentDate } = current as any;
 
   // Helper: determine the reference (parent) id for the recurrence chain
   const refId = parent_id || current.id;

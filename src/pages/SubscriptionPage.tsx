@@ -2,7 +2,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CreditCard, CheckCircle, Gift, Copy } from 'lucide-react';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { useAuth } from '../contexts/AuthContext'; // Importa o useAuth
 import { format, parseISO, isFuture } from 'date-fns';
 import { formatCurrency } from '../lib/utils';
 import { generatePixCopyPaste } from '../lib/pix';
@@ -12,8 +11,7 @@ import toast from 'react-hot-toast';
 type PlanName = 'basico' | 'pro' | 'premium';
 
 const SubscriptionPage = () => {
-  const { loading, pageData, paymentStatus, fetchData } = useSubscription();
-  const { user } = useAuth(); // Obtém o usuário do AuthContext
+  const { loading, pageData, paymentStatus } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);

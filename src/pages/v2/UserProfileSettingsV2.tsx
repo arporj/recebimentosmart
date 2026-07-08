@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout, Mail, AlertTriangle } from 'lucide-react';
+import { User, Lock, Key, Shield, Star, CheckCircle, BadgeCheck, Eye, EyeOff, X, Layout, Mail, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -16,7 +16,6 @@ export default function UserProfileSettingsV2() {
         setRowDensity,
         removeBoldList,
         setRemoveBoldList,
-        predictedLayout,
         setPredictedLayout
     } = useAuth();
 

@@ -180,11 +180,11 @@ export default function AdminFeedbackPageV2() {
                                         <div>
                                             <p className="flex items-center text-sm text-slate-500 font-medium">
                                                 <span className="font-bold text-slate-600 mr-1">Usuário:</span>
-                                                {/* @ts-ignore - Supabase join returns user object */}
+                                                {/* @ts-expect-error - Supabase join returns user object */}
                                                 {feedback.user?.user_metadata?.name || feedback.user?.email || 'Desconhecido'}
                                             </p>
                                             <p className="text-xs text-slate-400 font-medium">
-                                                {/* @ts-ignore */}
+                                                {/* @ts-expect-error - Supabase join returns user object */}
                                                 {feedback.user?.email}
                                             </p>
                                         </div>

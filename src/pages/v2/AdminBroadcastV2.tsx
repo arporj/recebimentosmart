@@ -377,7 +377,7 @@ CORPO: [Escreva aqui o corpo aprimorado, utilizando a formatação HTML conforme
             setShowConfirmModal(false);
 
             // 1. Inserir o registro de disparo na tabela como pendente
-            const { data: newBroadcast, error: insertError } = await supabase
+            const { error: insertError } = await supabase
                 .from('email_broadcasts')
                 .insert({
                     subject: subject.trim(),
