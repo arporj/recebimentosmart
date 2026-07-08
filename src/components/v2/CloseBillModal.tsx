@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { format, addMonths, parseISO } from 'date-fns';
+import { pagarFatura, lancarDiferencaProximoMes } from '../../lib/financeiro/pagarFatura';
 
 interface CloseBillModalProps {
   isOpen: boolean;
@@ -20,8 +21,6 @@ interface Account {
   name: string;
   bank_icon?: string | null;
 }
-
-const ACERTO_SALDO_CATEGORY_NAME = 'Acerto de Saldo';
 
 const formatCurrencyInput = (value: string) => {
   const cleanValue = value.replace(/\D/g, '');
@@ -93,35 +92,6 @@ export default function CloseBillModal({
     }
   };
 
-  const getAcertoSaldoCategoryId = async (): Promise<string | null> => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('financial_categories')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('name', ACERTO_SALDO_CATEGORY_NAME)
-      .is('parent_id', null)
-      .maybeSingle();
-
-    if (error) {
-      console.error(error);
-      return null;
-    }
-    if (data) return data.id;
-
-    const { data: created, error: createError } = await supabase
-      .from('financial_categories')
-      .insert({ user_id: user.id, name: ACERTO_SALDO_CATEGORY_NAME, icon: '⚖️' })
-      .select('id')
-      .single();
-
-    if (createError) {
-      console.error(createError);
-      return null;
-    }
-    return created.id;
-  };
-
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAmountInput(formatCurrencyInput(e.target.value));
   };
@@ -139,49 +109,21 @@ export default function CloseBillModal({
     }
 
     const finalAmount = parseCurrencyInput(amountInput);
-    // Positivo = fatura foi reduzida (sobra crédito); negativo = fatura foi aumentada
-    const diff = Math.round((totalAmount - finalAmount) * 100) / 100;
 
     setLoading(true);
     try {
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const isFutureDate = paymentDate > todayStr;
-
-      const { error: transferError } = await supabase.from('financial_transactions').insert({
-        user_id: user.id,
-        type: 'transfer',
+      const { data: paymentResult, diff, error } = await pagarFatura({
+        cardId,
+        invoiceMonth,
+        invoiceTotal: totalAmount,
         amount: finalAmount,
-        date: paymentDate,
-        description: `Pagamento Fatura - ${invoiceMonth}`,
-        account_id: paymentAccountId, // Origin
-        destination_account_id: cardId, // Destination (Credit Card)
-        status: isFutureDate ? 'pending' : 'paid',
-        paid_date: isFutureDate ? null : paymentDate,
-        auto_confirm: isFutureDate,
-        invoice_month: invoiceMonth
+        paymentDate,
+        paymentAccountId,
       });
 
-      if (transferError) throw transferError;
+      if (error || !paymentResult) throw error || new Error('Falha ao fechar a fatura');
 
-      if (Math.abs(diff) >= 0.01) {
-        const categoryId = await getAcertoSaldoCategoryId();
-        const { error: adjustError } = await supabase.from('financial_transactions').insert({
-          user_id: user.id,
-          type: diff > 0 ? 'income' : 'expense',
-          amount: Math.abs(diff),
-          date: paymentDate,
-          description: ACERTO_SALDO_CATEGORY_NAME,
-          account_id: cardId,
-          category_id: categoryId,
-          status: 'paid',
-          paid_date: paymentDate,
-          invoice_month: invoiceMonth
-        });
-
-        if (adjustError) throw adjustError;
-      }
-
-      toast.success(isFutureDate ? 'Fatura fechada e pagamento agendado!' : 'Fatura fechada e confirmada!');
+      toast.success(paymentResult.isFutureDate ? 'Fatura fechada e pagamento agendado!' : 'Fatura fechada e confirmada!');
 
       if (diff >= 0.01) {
         const invoiceDate = parseISO(`${invoiceMonth}-01`);
@@ -210,19 +152,7 @@ export default function CloseBillModal({
     if (!user || !pendingDiff) return;
     setLoading(true);
     try {
-      const categoryId = await getAcertoSaldoCategoryId();
-      const { error } = await supabase.from('financial_transactions').insert({
-        user_id: user.id,
-        type: 'expense',
-        amount: pendingDiff.amount,
-        date: `${pendingDiff.nextInvoiceMonth}-01`,
-        description: `Acerto de conta do mês ${pendingDiff.monthLabel}`,
-        account_id: cardId,
-        category_id: categoryId,
-        status: 'pending',
-        invoice_month: pendingDiff.nextInvoiceMonth
-      });
-
+      const { error } = await lancarDiferencaProximoMes(cardId, pendingDiff.amount, invoiceMonth);
       if (error) throw error;
       toast.success('Lançamento criado na fatura do mês seguinte!');
       onSuccess();

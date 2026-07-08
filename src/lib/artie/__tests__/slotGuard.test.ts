@@ -97,6 +97,76 @@ describe('resolveCreateTransactionArgs', () => {
   });
 });
 
+describe('resolveCreateTransactionArgs — transferências', () => {
+  const transferArgs: CreateTransactionArgs = {
+    ...baseArgs,
+    type: 'transfer',
+    description: 'Transferência',
+    account_id: 'acc-principal',
+    destination_account_id: 'acc-poupanca',
+  };
+  const ctxComPoupanca: ArtieEntityContext = {
+    ...ctx,
+    accounts: [...ctx.accounts, { id: 'acc-poupanca', name: 'Poupança', type: 'savings' }],
+  };
+
+  it('aceita transferência válida entre contas comuns', () => {
+    const result = resolveCreateTransactionArgs(transferArgs, ctxComPoupanca);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.args.destination_account_id).toBe('acc-poupanca');
+  });
+
+  it('resolve destino enviado como nome (sem acento)', () => {
+    const result = resolveCreateTransactionArgs(
+      { ...transferArgs, destination_account_id: 'poupanca' },
+      ctxComPoupanca,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.args.destination_account_id).toBe('acc-poupanca');
+  });
+
+  it('re-pergunta o destino quando ausente, sem oferecer cartões', () => {
+    const result = resolveCreateTransactionArgs(
+      { ...transferArgs, destination_account_id: undefined },
+      ctxComPoupanca,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.question).toContain('transferir');
+      expect(result.options).toContain('Poupança');
+      expect(result.options).not.toContain('Nubank');
+      expect(result.options).not.toContain('Conta Principal'); // origem excluída
+    }
+  });
+
+  it('bloqueia destino cartão de crédito, orientando o fluxo de fatura', () => {
+    const result = resolveCreateTransactionArgs(
+      { ...transferArgs, destination_account_id: 'acc-nubank' },
+      ctxComPoupanca,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.question).toContain('fatura');
+  });
+
+  it('bloqueia origem cartão de crédito', () => {
+    const result = resolveCreateTransactionArgs(
+      { ...transferArgs, account_id: 'acc-nubank' },
+      ctxComPoupanca,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.question).toContain('não pode sair de um cartão');
+  });
+
+  it('re-pergunta quando destino === origem', () => {
+    const result = resolveCreateTransactionArgs(
+      { ...transferArgs, destination_account_id: 'acc-principal' },
+      ctxComPoupanca,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.question).toContain('diferente da de origem');
+  });
+});
+
 describe('getAccountInfo', () => {
   it('identifica cartão de crédito pelo tipo da conta', () => {
     expect(getAccountInfo('acc-nubank', ctx)).toEqual({ name: 'Nubank', isCreditCard: true });

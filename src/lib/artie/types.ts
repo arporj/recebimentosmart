@@ -42,6 +42,8 @@ export interface CreateTransactionArgs {
   type: 'income' | 'expense' | 'transfer';
   date: string; // YYYY-MM-DD
   account_id?: string;
+  /** Conta de destino — obrigatória (via guarda dura) quando type === 'transfer' */
+  destination_account_id?: string;
   category_id?: string;
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_total?: number;
@@ -85,6 +87,26 @@ export interface ListTransactionsArgs {
   status?: 'pending' | 'paid';
   /** true = apenas pendentes com data anterior a hoje (contas em atraso), sem limite inferior de data */
   overdue_only?: boolean;
+}
+
+export interface GetInvoiceSummaryArgs {
+  /** Nome do cartão (busca parcial). Com um único cartão cadastrado, pode omitir */
+  card_name?: string;
+  /** 'YYYY-MM'. Default: fatura corrente do cartão */
+  invoice_month?: string;
+}
+
+export interface PayCreditCardInvoiceArgs {
+  card_name?: string;
+  invoice_month?: string;
+  /** Valor efetivamente pago (pode diferir do total da fatura) */
+  amount: number;
+  /** 'YYYY-MM-DD' — hoje/passado = pago; futura = agendado com confirmação automática */
+  payment_date: string;
+  /** Nome da conta bancária pagadora (busca parcial) */
+  payment_account_name?: string;
+  /** Obrigatório quando amount < total: o que fazer com a diferença */
+  difference_action?: 'discard' | 'next_month';
 }
 
 export interface AskUserArgs {
@@ -133,6 +155,8 @@ export interface ArtieUserMemory {
 export interface ArtieEntityContext {
   accounts: Array<{ id: string; name: string; type: string; is_default?: boolean }>;
   categories: Array<{ id: string; name: string; type?: string }>;
+  /** Dicas aprendidas do histórico: descrição normalizada → categoria mais usada */
+  category_hints?: Array<{ description: string; category: string }>;
   credit_cards: Array<{
     id: string;
     name: string;

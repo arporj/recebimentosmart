@@ -6,6 +6,8 @@ import { supabase } from '../supabase';
 import { criarTransacao } from '../financeiro/criarTransacao';
 import { editarTransacao } from '../financeiro/editarTransacao';
 import { deletarTransacao } from '../financeiro/deletarTransacao';
+import { pagarFatura, lancarDiferencaProximoMes } from '../financeiro/pagarFatura';
+import { calcularMesFatura } from '../financeiro/faturaUtils';
 import { format, subDays, addDays, parseISO, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { expandTransactionInstances } from '../financeiro/instanceExpansion';
 import { groupCreditCardInvoices } from '../financeiro/invoiceGrouping';
@@ -19,6 +21,8 @@ import type {
   ConfirmTransactionArgs,
   ListTransactionsArgs,
   GetAccountBalanceArgs,
+  GetInvoiceSummaryArgs,
+  PayCreditCardInvoiceArgs,
 } from './types';
 
 // ─── Utilitários de busca ─────────────────────────────────────────────────────
@@ -78,6 +82,7 @@ async function executeCreateTransaction(
       date: args.date,
       category_id: args.category_id,
       account_id: args.account_id,
+      destination_account_id: args.destination_account_id,
       modalidade: args.modalidade || 'unica',
       installment_total: args.installment_total,
       recurrence_period: args.recurrence_period as any,
@@ -385,6 +390,222 @@ async function executeGetAccountBalance(
   }
 }
 
+// ─── Fatura de cartão de crédito ──────────────────────────────────────────────
+
+/** Carrega instâncias expandidas + grupos de fatura (mesmo pipeline das telas/saldo) */
+async function loadInvoiceGroups(userId: string) {
+  const [txRes, templatesRes, cardsRes] = await Promise.all([
+    (supabase as any).from('v_financial_transactions').select('*').eq('user_id', userId).eq('is_template', false),
+    supabase.from('financial_transactions').select('*, account:account_id(type)').eq('user_id', userId).eq('is_template', true).eq('recurrence_enabled', true),
+    supabase.from('financial_accounts').select('id, name, due_day, closing_days_before, invoice_payment_account_id').eq('user_id', userId).eq('type', 'credit_card').eq('is_active', true),
+  ]);
+
+  if (txRes.error) throw txRes.error;
+  if (templatesRes.error) throw templatesRes.error;
+  if (cardsRes.error) throw cardsRes.error;
+
+  const mappedTemplates = ((templatesRes.data as any[]) || []).map((t: any) => ({
+    ...t,
+    account_type: t.account?.type || 'checking',
+  }));
+
+  const instances = expandTransactionInstances((txRes.data as any) || [], mappedTemplates, {
+    horizonEnd: endOfMonth(addMonths(new Date(), 2)),
+  });
+  const cards: any[] = cardsRes.data || [];
+  const invoiceGroups = groupCreditCardInvoices(instances, cards, {});
+
+  return { cards, invoiceGroups };
+}
+
+/** Resolve o cartão pelo nome (parcial); com um único cartão cadastrado, assume-o */
+function resolveCard(cardName: string | undefined, cards: any[]): { card: any | null; error?: string } {
+  if (cards.length === 0) return { card: null, error: 'Nenhum cartão de crédito cadastrado.' };
+  if (!cardName || !cardName.trim()) {
+    if (cards.length === 1) return { card: cards[0] };
+    return { card: null, error: `Existem ${cards.length} cartões: ${cards.map(c => c.name).join(', ')}. Pergunte ao usuário qual deles (ask_user).` };
+  }
+  const nameNorm = normalize(cardName.trim());
+  const matches = cards.filter(c => normalize(c.name).includes(nameNorm) || nameNorm.includes(normalize(c.name)));
+  if (matches.length === 1) return { card: matches[0] };
+  if (matches.length === 0) {
+    return { card: null, error: `Não encontrei um cartão chamado "${cardName}". Cartões disponíveis: ${cards.map(c => c.name).join(', ')}.` };
+  }
+  return { card: null, error: `Mais de um cartão corresponde a "${cardName}": ${matches.map(c => c.name).join(', ')}. Pergunte ao usuário qual deles (ask_user).` };
+}
+
+/** Fatura corrente do cartão (mesma regra de janela do lançamento de compras) */
+function defaultInvoiceMonthForCard(card: any): string {
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  return (
+    calcularMesFatura(todayStr, {
+      type: 'credit_card',
+      due_day: card.due_day,
+      closing_days_before: card.closing_days_before,
+    }) || todayStr.slice(0, 7)
+  );
+}
+
+async function executeGetInvoiceSummary(
+  userId: string,
+  args: GetInvoiceSummaryArgs,
+): Promise<ArtieToolResult> {
+  try {
+    const { cards, invoiceGroups } = await loadInvoiceGroups(userId);
+    const { card, error } = resolveCard(args.card_name, cards);
+    if (!card) return { success: false, error };
+
+    const invoiceMonth = args.invoice_month || defaultInvoiceMonthForCard(card);
+    const group = invoiceGroups.find(g => g.cardId === card.id && g.invoiceMonth === invoiceMonth);
+    if (!group) {
+      const openMonths = invoiceGroups
+        .filter(g => g.cardId === card.id && !g.reconciled)
+        .map(g => g.invoiceMonth)
+        .sort();
+      return {
+        success: false,
+        error: `Não encontrei lançamentos na fatura ${invoiceMonth} do cartão ${card.name}.${openMonths.length ? ` Faturas em aberto: ${openMonths.join(', ')}.` : ''}`,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        card_name: card.name,
+        invoice_month: invoiceMonth,
+        total: Math.round(group.total * 100) / 100,
+        due_date: group.dueDate,
+        reconciled: group.reconciled,
+        is_paid: group.isPaid,
+        payment_status: group.billTransfer?.status ?? null,
+        payment_amount: group.billTransfer?.amount ?? null,
+        payment_date: group.billTransfer?.date ?? null,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Erro ao consultar a fatura.' };
+  }
+}
+
+async function executePayCreditCardInvoice(
+  userId: string,
+  args: PayCreditCardInvoiceArgs,
+): Promise<ArtieToolResult> {
+  try {
+    if (!args.amount || args.amount <= 0) {
+      return { success: false, error: 'Informe um valor de pagamento válido (maior que zero).' };
+    }
+    if (!args.payment_date) {
+      return { success: false, error: 'Informe a data do pagamento (YYYY-MM-DD).' };
+    }
+
+    const { cards, invoiceGroups } = await loadInvoiceGroups(userId);
+    const { card, error } = resolveCard(args.card_name, cards);
+    if (!card) return { success: false, error };
+
+    const invoiceMonth = args.invoice_month || defaultInvoiceMonthForCard(card);
+    const group = invoiceGroups.find(g => g.cardId === card.id && g.invoiceMonth === invoiceMonth);
+    if (!group) {
+      return { success: false, error: `Não encontrei lançamentos na fatura ${invoiceMonth} do cartão ${card.name}.` };
+    }
+    if (group.reconciled) {
+      const statusLabel = group.billTransfer?.status === 'paid' ? 'paga' : 'com pagamento agendado';
+      return {
+        success: false,
+        error: `A fatura ${invoiceMonth} do cartão ${card.name} já está fechada (${statusLabel}). Para alterar, reabra a fatura na tela de Cartões.`,
+      };
+    }
+
+    // Total sempre recalculado aqui — nunca confiar no valor vindo do modelo
+    const total = Math.round(group.total * 100) / 100;
+
+    // Conta pagadora: mesma regra do CloseBillModal (corrente/poupança ativas)
+    const { data: bankAccounts, error: accError } = await supabase
+      .from('financial_accounts')
+      .select('id, name')
+      .eq('user_id', userId)
+      .in('type', ['checking', 'savings'])
+      .eq('is_active', true)
+      .order('name');
+    if (accError) throw accError;
+
+    const banks: any[] = bankAccounts || [];
+    if (banks.length === 0) {
+      return { success: false, error: 'Nenhuma conta bancária (corrente/poupança) ativa para pagar a fatura.' };
+    }
+
+    let paymentAccount: any | null = null;
+    if (args.payment_account_name && args.payment_account_name.trim()) {
+      const n = normalize(args.payment_account_name.trim());
+      const matches = banks.filter(b => normalize(b.name).includes(n) || n.includes(normalize(b.name)));
+      if (matches.length === 1) {
+        paymentAccount = matches[0];
+      } else {
+        return {
+          success: false,
+          error: `Não identifiquei a conta "${args.payment_account_name}". Contas disponíveis: ${banks.map(b => b.name).join(', ')}. Pergunte ao usuário qual usar (ask_user).`,
+        };
+      }
+    } else if (banks.length === 1) {
+      paymentAccount = banks[0];
+    } else {
+      return {
+        success: false,
+        error: `De qual conta sai o pagamento? Contas disponíveis: ${banks.map(b => b.name).join(', ')}. Pergunte ao usuário (ask_user).`,
+      };
+    }
+
+    const expectedDiff = Math.round((total - args.amount) * 100) / 100;
+    if (expectedDiff >= 0.01 && !args.difference_action) {
+      return {
+        success: false,
+        error: `O valor informado (R$ ${args.amount.toFixed(2)}) é menor que o total da fatura (R$ ${total.toFixed(2)}). Pergunte ao usuário (ask_user) se quer descartar a diferença de R$ ${expectedDiff.toFixed(2)} ou lançá-la na fatura do mês seguinte, e chame novamente com difference_action.`,
+      };
+    }
+
+    const { data: payResult, diff, error: payError } = await pagarFatura({
+      cardId: card.id,
+      invoiceMonth,
+      invoiceTotal: total,
+      amount: args.amount,
+      paymentDate: args.payment_date,
+      paymentAccountId: paymentAccount.id,
+    });
+    if (payError || !payResult) throw payError || new Error('Falha ao pagar a fatura.');
+
+    let differenceApplied: 'discard' | 'next_month' | null = null;
+    if (diff >= 0.01) {
+      differenceApplied = args.difference_action || 'discard';
+      if (differenceApplied === 'next_month') {
+        const { error: diffError } = await lancarDiferencaProximoMes(card.id, diff, invoiceMonth);
+        if (diffError) {
+          return {
+            success: false,
+            error: `A fatura foi fechada, mas não consegui lançar a diferença de R$ ${diff.toFixed(2)} na fatura do mês seguinte: ${diffError.message}. Oriente o usuário a lançá-la manualmente.`,
+          };
+        }
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('transaction_created'));
+    return {
+      success: true,
+      data: {
+        card_name: card.name,
+        invoice_month: invoiceMonth,
+        amount: args.amount,
+        payment_date: args.payment_date,
+        account_name: paymentAccount.name,
+        scheduled: payResult.isFutureDate,
+        diff,
+        difference_action: differenceApplied,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Erro ao pagar a fatura.' };
+  }
+}
+
 // ─── Entry point: executa qualquer tool pelo nome ─────────────────────────────
 
 export async function executeArtieToolCall(
@@ -406,6 +627,10 @@ export async function executeArtieToolCall(
       return executeListTransactions(userId, args as ListTransactionsArgs);
     case 'get_account_balance':
       return executeGetAccountBalance(userId, args as GetAccountBalanceArgs);
+    case 'get_invoice_summary':
+      return executeGetInvoiceSummary(userId, args as GetInvoiceSummaryArgs);
+    case 'pay_credit_card_invoice':
+      return executePayCreditCardInvoice(userId, args as unknown as PayCreditCardInvoiceArgs);
     default:
       return { success: false, error: `Tool desconhecida: ${name}` };
   }

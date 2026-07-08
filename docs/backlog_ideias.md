@@ -47,14 +47,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 ### 1.4. Inteligência Artificial
 
-#### 🎙️ Assistente IA Financeiro Conversacional (Artie Premium)
-* **Status:** Em andamento (acesso exclusivo do plano Premium; admins têm acesso para suporte/testes).
-* **Descrição:** Evolução do Artie (assistente por voz) para um modelo conversacional contínuo e contextual de IA (Gemini Flash, com cascata de fallback de modelos):
-  * ✅ **Operações Inline Contextuais:** criação (única/parcelada/recorrente), confirmação, edição, exclusão e consultas (saldo, gastos por categoria/período, contas em atraso) executadas por conversa ou voz, sem formulários, com fluxo guiado de conta/categoria por chips clicáveis.
-  * ✅ **Tons de Conversa Customizáveis:** Casual, Normal ou Técnico — seletor nas Preferências do usuário (grava em `artie_user_memory`).
-  * ✅ **Conversa contínua:** histórico persistido em `artie_messages`; o contexto sobrevive ao reload da página.
-  * ⬜ **Categorização Inteligente por histórico:** hoje o Artie sugere categoria pela descrição (sugerir + confirmar); falta sugerir com base no histórico de classificações do próprio usuário.
-  * ⬜ **Transferências entre contas via Artie:** a tool `create_transaction` ainda não tem conta de destino; o Artie orienta usar a tela de Lançamentos.
+*(O Assistente IA Financeiro Conversacional — Artie Premium — foi concluído em Jul/2026; ver item 25 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
 
 ---
 

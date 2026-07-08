@@ -97,7 +97,7 @@ const FAQ_ITEMS: FAQItem[] = [
     {
         category: 'funcionalidades',
         question: 'O que é o assistente Artie e quem pode usá-lo?',
-        answer: 'O Artie é o assistente financeiro de IA do Recebimento $mart, exclusivo do plano Premium. Pelo chat ou por voz (segure o botão do microfone para falar), ele cria lançamentos (únicos, parcelados ou recorrentes), confirma pagamentos, edita e exclui registros e responde consultas como saldo projetado, gastos por categoria no mês e contas em atraso. A conversa fica salva e continua de onde parou mesmo se você recarregar a página, e você pode escolher o tom de conversa do Artie (Casual, Normal ou Técnico) na aba Preferências do seu perfil.'
+        answer: 'O Artie é o assistente financeiro de IA do Recebimento $mart, exclusivo do plano Premium. Pelo chat ou por voz (segure o botão do microfone para falar), ele cria lançamentos (únicos, parcelados ou recorrentes), faz transferências entre contas, confirma pagamentos, edita e exclui registros e responde consultas como saldo projetado, gastos por categoria no mês e contas em atraso. Ele também fecha e paga a fatura do cartão de crédito por conversa, com as mesmas opções da tela de Cartões: valor integral ou diferente (com Acerto de Saldo), descarte ou lançamento da diferença no mês seguinte, e pagamento hoje ou agendado com confirmação automática na data. As sugestões de categoria aprendem com o seu histórico de classificações, a conversa fica salva e continua de onde parou mesmo se você recarregar a página, e você pode escolher o tom de conversa (Casual, Normal ou Técnico) na aba Preferências do seu perfil.'
     },
     {
         category: 'funcionalidades',

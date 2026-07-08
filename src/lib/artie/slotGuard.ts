@@ -49,6 +49,15 @@ function buildAccountOptions(ctx: ArtieEntityContext): string[] {
   return sorted.slice(0, MAX_OPTIONS).map(a => a.name);
 }
 
+/** Contas que não são cartão de crédito (opcionalmente excluindo uma), p/ transferências */
+function buildNonCardAccountOptions(ctx: ArtieEntityContext, excludeId?: string): string[] {
+  return [...ctx.accounts]
+    .filter(a => a.type !== 'credit_card' && a.id !== excludeId)
+    .sort((a, b) => Number(!!b.is_default) - Number(!!a.is_default))
+    .slice(0, MAX_OPTIONS)
+    .map(a => a.name);
+}
+
 function buildCategoryOptions(ctx: ArtieEntityContext): string[] {
   return ctx.categories.slice(0, MAX_OPTIONS).map(c => c.name);
 }
@@ -81,6 +90,45 @@ export function resolveCreateTransactionArgs(
     };
   }
   resolved.account_id = accountId;
+
+  // Transferência: origem e destino obrigatórios, nenhum pode ser cartão de crédito
+  // (transfer com destino cartão é pagamento de fatura, que tem fluxo próprio com
+  // invoice_month — sem ele há dupla dedução no saldo e o lançamento some do extrato).
+  if (resolved.type === 'transfer') {
+    const sourceInfo = getAccountInfo(accountId, ctx);
+    if (sourceInfo?.isCreditCard) {
+      return {
+        ok: false,
+        question: 'Transferência não pode sair de um cartão de crédito. De qual conta devo transferir?',
+        options: buildNonCardAccountOptions(ctx),
+      };
+    }
+
+    const destinationId = resolveEntityId(resolved.destination_account_id, ctx.accounts);
+    if (!destinationId) {
+      return {
+        ok: false,
+        question: 'Para qual conta devo transferir?',
+        options: buildNonCardAccountOptions(ctx, accountId),
+      };
+    }
+    const destinationInfo = getAccountInfo(destinationId, ctx);
+    if (destinationInfo?.isCreditCard) {
+      return {
+        ok: false,
+        question: `Para pagar a fatura do cartão, é só me pedir: "paga a fatura do cartão ${destinationInfo.name}". Se for outra transferência, escolha a conta de destino:`,
+        options: buildNonCardAccountOptions(ctx, accountId),
+      };
+    }
+    if (destinationId === accountId) {
+      return {
+        ok: false,
+        question: 'A conta de destino precisa ser diferente da de origem. Para qual conta devo transferir?',
+        options: buildNonCardAccountOptions(ctx, accountId),
+      };
+    }
+    resolved.destination_account_id = destinationId;
+  }
 
   // Categoria obrigatória (aceita ID ou nome)
   const categoryId = resolveEntityId(resolved.category_id, ctx.categories);

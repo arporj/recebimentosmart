@@ -38,6 +38,10 @@ Se faltar QUALQUER dado obrigatório (conta, categoria, descrição, valor, nº 
           type: 'STRING',
           description: 'ID da conta ou cartão (entity_context.accounts / credit_cards). OBRIGATÓRIO. Nunca invente.',
         },
+        destination_account_id: {
+          type: 'STRING',
+          description: 'ID da conta de DESTINO (entity_context.accounts). Obrigatório apenas para type transfer. NUNCA um cartão de crédito — pagamento de fatura tem fluxo próprio (pay_credit_card_invoice).',
+        },
         category_id: {
           type: 'STRING',
           description: 'ID da categoria (entity_context.categories). OBRIGATÓRIO. Nunca invente.',
@@ -244,6 +248,65 @@ ATENÇÃO: sem date_from/date_to, o período padrão vai do início do mês ATUA
         },
       },
       required: [],
+    },
+  },
+
+  {
+    name: 'get_invoice_summary',
+    description: `Consulta a fatura de um cartão de crédito: total atual, vencimento e se já está fechada/paga.
+Use para perguntas sobre fatura ("quanto está a fatura?", "quando vence?") e SEMPRE como primeiro passo do fluxo de pagamento de fatura (regra 12) — os valores apresentados ao usuário devem vir desta tool, nunca de memória.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        card_name: {
+          type: 'STRING',
+          description: 'Nome do cartão (busca parcial). Omita se o usuário tiver um único cartão.',
+        },
+        invoice_month: {
+          type: 'STRING',
+          description: 'Mês da fatura YYYY-MM. Omita para a fatura corrente.',
+        },
+      },
+      required: [],
+    },
+  },
+
+  {
+    name: 'pay_credit_card_invoice',
+    description: `Fecha e paga (ou agenda o pagamento de) a fatura de um cartão de crédito — mesmo fluxo da tela de Cartões.
+Chame APENAS depois de coletar tudo pelo fluxo da regra 12 (valor, decisão sobre diferença quando o valor for menor, data e conta pagadora).
+O total da fatura é recalculado internamente; se o valor pago for menor, é criado um Acerto de Saldo e a diferença é descartada ou lançada na fatura seguinte conforme difference_action.
+Data futura = pagamento agendado (confirmado automaticamente na data); hoje/passado = pago.`,
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        card_name: {
+          type: 'STRING',
+          description: 'Nome do cartão (busca parcial). Omita se houver um único cartão.',
+        },
+        invoice_month: {
+          type: 'STRING',
+          description: 'Mês da fatura YYYY-MM. Omita para a fatura corrente.',
+        },
+        amount: {
+          type: 'NUMBER',
+          description: 'Valor a pagar. NUNCA invente — confirme com o usuário (integral = total retornado por get_invoice_summary).',
+        },
+        payment_date: {
+          type: 'STRING',
+          description: 'Data do pagamento YYYY-MM-DD.',
+        },
+        payment_account_name: {
+          type: 'STRING',
+          description: 'Conta bancária de onde sai o pagamento (busca parcial). Omita se houver uma única conta.',
+        },
+        difference_action: {
+          type: 'STRING',
+          enum: ['discard', 'next_month'],
+          description: 'Obrigatório quando amount < total: "discard" descarta a diferença, "next_month" lança na fatura do mês seguinte.',
+        },
+      },
+      required: ['amount', 'payment_date'],
     },
   },
 

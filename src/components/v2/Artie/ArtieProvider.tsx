@@ -8,6 +8,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { executeArtieToolCall } from '../../../lib/artie/executor';
 import { resolveCreateTransactionArgs, getAccountInfo } from '../../../lib/artie/slotGuard';
+import { buildCategoryHints } from '../../../lib/artie/categoryHints';
 import type {
   ArtieMessage,
   ArtieChatState,
@@ -44,16 +45,22 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   const loadEntityContext = useCallback(async () => {
     if (!user) return;
     try {
-      const [accountsRes, categoriesRes, cardsRes] = await Promise.all([
+      const [accountsRes, categoriesRes, cardsRes, historyRes] = await Promise.all([
         supabase.from('financial_accounts').select('id, name, type, is_default').eq('user_id', user.id).eq('is_active', true),
         supabase.from('financial_categories').select('id, name').eq('user_id', user.id),
         supabase.from('financial_accounts').select('id, name, credit_limit, due_day, closing_days_before')
           .eq('user_id', user.id).eq('type', 'credit_card').eq('is_active', true),
+        // Base da categorização inteligente: últimos lançamentos já categorizados
+        supabase.from('financial_transactions').select('description, category_id')
+          .eq('user_id', user.id).eq('is_template', false).not('category_id', 'is', null)
+          .order('date', { ascending: false }).limit(400),
       ]);
+
+      const categories = categoriesRes.data || [];
 
       setEntityContext({
         accounts: accountsRes.data || [],
-        categories: categoriesRes.data || [],
+        categories,
         credit_cards: (cardsRes.data || []).map(c => ({
           id: c.id,
           name: c.name,
@@ -62,6 +69,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
           limit: c.credit_limit || 0,
           current_balance: 0, // Calculado separadamente se necessário
         })),
+        category_hints: buildCategoryHints(historyRes.data || [], categories),
       });
     } catch (err) {
       console.error('[Artie] Erro ao carregar entidades:', err);
@@ -293,16 +301,22 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
     }
 
     // Para consultas, devolver o resultado ao Gemini para formular resposta
-    if (toolCall.name === 'list_transactions' || toolCall.name === 'get_account_balance') {
+    const isQueryTool = toolCall.name === 'list_transactions'
+      || toolCall.name === 'get_account_balance'
+      || toolCall.name === 'get_invoice_summary';
+    if (isQueryTool) {
       const isBalance = toolCall.name === 'get_account_balance';
+      const isInvoice = toolCall.name === 'get_invoice_summary';
+      const followUpInstruction = isBalance
+        ? 'Use este saldo exatamente como retornado (não recalcule) para responder de forma direta e curta.'
+        : isInvoice
+          ? 'Use estes dados reais da fatura. Se o usuário pediu para pagar/fechar a fatura, conduza o fluxo da regra 12 (ask_user para valor integral/outro valor, diferença, data e conta pagadora). Se foi só uma consulta, responda de forma direta e curta com total e vencimento.'
+          : 'Se o objetivo do usuário for alterar, deletar ou mudar o status de um lançamento (ex: "marcar como não pago", "alterar para pendente", "mudar valor"), chame a tool correspondente (ex: update_transaction). Se for apenas uma dúvida ou consulta, formule uma resposta clara em português.';
+
       const followUp = buildApiMessages();
       followUp.push({
         role: 'user',
-        content: `[RESULTADO DA TOOL ${toolCall.name}]: ${JSON.stringify(result.data)}. ${
-          isBalance
-            ? 'Use este saldo exatamente como retornado (não recalcule) para responder de forma direta e curta.'
-            : 'Se o objetivo do usuário for alterar, deletar ou mudar o status de um lançamento (ex: "marcar como não pago", "alterar para pendente", "mudar valor"), chame a tool correspondente (ex: update_transaction). Se for apenas uma dúvida ou consulta, formule uma resposta clara em português.'
-        }`,
+        content: `[RESULTADO DA TOOL ${toolCall.name}]: ${JSON.stringify(result.data)}. ${followUpInstruction}`,
       });
 
       const resp = await fetch('/api/artie/chat', {
@@ -318,12 +332,13 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
       const finalResult = await resp.json();
 
       // O modelo pode encadear outra ação após ver o resultado da consulta
-      // (ex: listar as contas em atraso e então confirmar a única encontrada).
+      // (ex: listar as contas em atraso e então confirmar a única encontrada,
+      // ou consultar a fatura e emitir o ask_user do fluxo de pagamento).
       // Sem isso, o tool_call do follow-up era descartado e caía no fallback.
       if (finalResult.success && finalResult.tool_call && depth < 3) {
         // Passo intermediário: mostrar apenas o que foi encontrado, sem a pergunta
         // de fechamento — a próxima ação já vem em seguida, nada está sendo perguntado.
-        const foundItems = !isBalance ? formatTransactionItems(result.data) : '';
+        const foundItems = toolCall.name === 'list_transactions' ? formatTransactionItems(result.data) : '';
         if (foundItems) {
           addMessage({ role: 'model', content: `🔎 Encontrei:\n\n${foundItems}`, toolCall, toolResult: result });
         }
@@ -333,14 +348,20 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
       const finalReply = isBalance
         ? (finalResult.reply || formatBalanceFallback(result.data))
-        : formatTransactionsFallback(result.data, finalResult.reply);
+        : isInvoice
+          ? (finalResult.reply || formatInvoiceSummaryFallback(result.data))
+          : formatTransactionsFallback(result.data, finalResult.reply);
       addMessage({ role: 'model', content: finalReply, toolCall, toolResult: result });
     } else {
       // Criar/confirmar/editar/deletar avulso: mensagem de sucesso direta
-      const accountInfo = toolCall.name === 'create_transaction'
-        ? getAccountInfo((toolCall.args as { account_id?: string }).account_id, entityContext)
+      const createArgs = toolCall.name === 'create_transaction'
+        ? (toolCall.args as { account_id?: string; destination_account_id?: string; type?: string })
         : undefined;
-      addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data, accountInfo), toolCall, toolResult: result });
+      const accountInfo = createArgs ? getAccountInfo(createArgs.account_id, entityContext) : undefined;
+      const destinationName = createArgs?.type === 'transfer'
+        ? getAccountInfo(createArgs.destination_account_id, entityContext)?.name
+        : undefined;
+      addMessage({ role: 'model', content: buildSuccessMessage(toolCall, result.data, accountInfo, destinationName), toolCall, toolResult: result });
     }
 
     setChatState('idle');
@@ -492,12 +513,17 @@ function buildSuccessMessage(
   toolCall: ArtieToolCall,
   data: any,
   accountInfo?: { name: string; isCreditCard: boolean },
+  destinationName?: string,
 ): string {
   const { name, args } = toolCall;
   switch (name) {
     case 'create_transaction': {
       const modalidade = args.modalidade || 'unica';
       const amountStr = Number(args.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (args.type === 'transfer' && accountInfo && destinationName) {
+        const recurrenceLabel = modalidade === 'recorrente' ? ' recorrente' : (modalidade === 'parcelada' ? ' parcelada' : '');
+        return `🔁 Transferência${recurrenceLabel} de R$ ${amountStr} de **${accountInfo.name}** para **${destinationName}** registrada com sucesso!`;
+      }
       const where = accountInfo
         ? (accountInfo.isCreditCard ? ` no cartão **${accountInfo.name}**` : ` na conta **${accountInfo.name}**`)
         : '';
@@ -510,6 +536,20 @@ function buildSuccessMessage(
         return `✅ Lançamento recorrente **"${args.description}"** de R$ ${amountStr} (${periodLabel}) registrado${where} com sucesso!`;
       }
       return `✅ Lançamento **"${args.description}"** de R$ ${amountStr} registrado${where} com sucesso!`;
+    }
+    case 'pay_credit_card_invoice': {
+      const amountStr = Number(data?.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const monthLabel = formatInvoiceMonthBR(String(data?.invoice_month || ''));
+      const dateLabel = data?.payment_date ? String(data.payment_date).split('-').reverse().join('/') : '';
+      const diffNote = Number(data?.diff || 0) >= 0.01
+        ? (data?.difference_action === 'next_month'
+          ? ` A diferença de R$ ${Number(data.diff).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} foi lançada na fatura do mês seguinte.`
+          : ` A diferença de R$ ${Number(data.diff).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} foi descartada com um Acerto de Saldo.`)
+        : '';
+      if (data?.scheduled) {
+        return `📅 Fatura de ${monthLabel} do cartão **${data?.card_name}** fechada: pagamento de R$ ${amountStr} agendado para ${dateLabel} pela conta **${data?.account_name}** (confirmação automática na data).${diffNote}`;
+      }
+      return `✅ Fatura de ${monthLabel} do cartão **${data?.card_name}** (R$ ${amountStr}) paga pela conta **${data?.account_name}**!${diffNote}`;
     }
     case 'confirm_transaction':
       return `✅ Lançamento **"${data?.description || args.search_description}"** marcado como pago com sucesso!`;
@@ -564,4 +604,20 @@ function formatPeriodBR(period: string): string {
   const [from, to] = period.split(' a ');
   const br = (d?: string) => (d ? d.split('-').reverse().join('/') : '');
   return to ? `${br(from)} e ${br(to)}` : br(from);
+}
+
+/** 'YYYY-MM' → 'MM/YYYY' */
+function formatInvoiceMonthBR(invoiceMonth: string): string {
+  const [y, m] = invoiceMonth.split('-');
+  return m && y ? `${m}/${y}` : invoiceMonth;
+}
+
+function formatInvoiceSummaryFallback(data: any): string {
+  if (!data?.card_name) return 'Não consegui consultar a fatura no momento.';
+  const total = Number(data.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dueLabel = data.due_date ? String(data.due_date).split('-').reverse().join('/') : '';
+  const statusNote = data.reconciled
+    ? (data.payment_status === 'paid' ? ' Esta fatura já está paga.' : ' Esta fatura já está fechada, com pagamento agendado.')
+    : '';
+  return `A fatura de ${formatInvoiceMonthBR(String(data.invoice_month || ''))} do cartão **${data.card_name}** está em R$ ${total}${dueLabel ? ` (vence em ${dueLabel})` : ''}.${statusNote}`;
 }
