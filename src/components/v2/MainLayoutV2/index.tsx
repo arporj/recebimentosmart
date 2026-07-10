@@ -25,6 +25,7 @@ interface SidebarItem {
     icon: any;
     href?: string;
     subItems?: SidebarItem[];
+    tourId?: string;
 }
 
 interface SidebarSection {
@@ -49,16 +50,17 @@ const sidebarSections: SidebarSection[] = [
     {
         title: 'Gestão Financeira',
         items: [
-            { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos' },
+            { label: 'Lançamentos', icon: CreditCard, href: '/v2/financeiro/lancamentos', tourId: 'tour-menu-lancamentos' },
             { label: 'Cartão de Crédito', icon: CreditCard, href: '/v2/financeiro/cartoes' },
             { label: 'Relatórios', icon: BarChart3, href: '/v2/relatorios' },
             {
                 label: 'Cadastros',
                 icon: FormInput,
+                tourId: 'tour-menu-cadastros-toggle',
                 subItems: [
                     { label: 'Clientes', icon: Users, href: '/v2/financeiro/clientes' },
-                    { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas' },
-                    { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias' },
+                    { label: 'Contas', icon: Wallet, href: '/v2/financeiro/contas', tourId: 'tour-menu-contas' },
+                    { label: 'Categorias', icon: FolderOpen, href: '/v2/financeiro/categorias', tourId: 'tour-menu-categorias' },
                     { label: 'Tags', icon: Tag, href: '/v2/financeiro/tags' },
                 ]
             },
@@ -68,7 +70,7 @@ const sidebarSections: SidebarSection[] = [
         title: 'Configurações',
         items: [
             { label: 'Campos Personalizados', icon: FormInput, href: '/v2/campos-personalizados' },
-            { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil' },
+            { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil', tourId: 'tour-menu-config' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
             { label: 'Novidades', icon: Bell },
             { label: 'Tutorial Inicial', icon: HelpCircle },
@@ -221,6 +223,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             return (
                 <div key={item.label} className="space-y-0.5">
                     <button
+                        data-tour={item.tourId}
                         onClick={() => toggleExpand(item.label)}
                         className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-colors ${
                             isChildActive 
@@ -276,6 +279,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             <Link
                 key={item.href + item.label}
                 to={item.href!}
+                data-tour={item.tourId}
                 className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${isActive
                     ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -396,6 +400,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 }`}>
                     {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}
                     <button
+                        data-tour="tour-mobile-menu-btn"
                         onClick={() => setIsSidebarOpen(true)}
                         className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#14b8a6]/20 outline-none flex-shrink-0"
                     >

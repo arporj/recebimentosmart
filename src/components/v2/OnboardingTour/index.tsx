@@ -9,6 +9,9 @@ type OnboardingGate = 'account_created' | 'settings_visited' | 'transaction_crea
 
 interface TourStep {
     route?: string;
+    /** Item do menu lateral que leva até `route` — destacado antes de navegar, pra ensinar o caminho. */
+    menuSelector?: string;
+    menuLabel?: string;
     selector?: string;
     gate?: OnboardingGate;
     title: string;
@@ -22,25 +25,35 @@ const STEPS: TourStep[] = [
     },
     {
         route: '/v2/financeiro/contas',
+        menuSelector: '[data-tour="tour-menu-contas"]',
+        menuLabel: 'Cadastros → Contas',
         selector: '[data-tour="tour-new-account-btn"]',
         gate: 'account_created',
         title: 'Crie sua primeira conta',
         description: 'Pode ser conta corrente, poupança, cartão de crédito ou investimento. É por ela que seus lançamentos entram e saem.',
     },
     {
-        // Sem "gate" de propósito: o avanço desse passo é feito manualmente no onNextClick
-        // (com um pequeno delay), não pelo efeito de auto-avanço — ver comentário abaixo.
+        // Sem selector de ação (a própria visita já conta) e sem "gate" no efeito de auto-avanço:
+        // o avanço desse passo é feito manualmente no onNextClick da fase de menu, com um pequeno
+        // delay — ver comentário mais abaixo.
+        route: '/v2/perfil',
+        menuSelector: '[data-tour="tour-menu-config"]',
+        menuLabel: 'Configurações → Configurações da Conta',
         title: 'Ajuste suas configurações',
         description: 'Em Configurações da Conta você define notificações por e-mail, o tom do assistente Artie e como os valores aparecem nas telas. Dê uma olhada — o tour continua sozinho em alguns segundos.',
     },
     {
         route: '/v2/financeiro/categorias',
+        menuSelector: '[data-tour="tour-menu-categorias"]',
+        menuLabel: 'Cadastros → Categorias',
         selector: '[data-tour="tour-new-category-btn"]',
         title: 'Conheça suas categorias',
         description: 'Você já começa com categorias padrão prontas pra usar. Se quiser, crie novas por aqui a qualquer momento.',
     },
     {
         route: '/v2/financeiro/lancamentos',
+        menuSelector: '[data-tour="tour-menu-lancamentos"]',
+        menuLabel: 'Gestão Financeira → Lançamentos',
         selector: '[data-tour="tour-new-transaction-btn"]',
         gate: 'transaction_created',
         title: 'Faça seu primeiro lançamento',
@@ -57,8 +70,8 @@ function resumeStepIndex(progress: Record<string, boolean>): number {
     return STEPS.length;
 }
 
-// Algumas telas têm mais de um botão com o mesmo data-tour (variantes responsivas
-// mobile/tablet/desktop escondidas via classes Tailwind) — pega só a que está visível.
+// Algumas telas têm mais de um elemento com o mesmo data-tour (variantes responsivas
+// mobile/tablet/desktop escondidas via classes Tailwind) — pega só o que está visível.
 function findVisibleElement(selector: string): Element | null {
     const candidates = document.querySelectorAll(selector);
     for (const el of candidates) {
@@ -79,6 +92,26 @@ function waitForElement(selector: string, timeoutMs = 3000, intervalMs = 100): P
         };
         check();
     });
+}
+
+function wait(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// O link do menu pode estar escondido atrás do hambúrguer (mobile) ou de um submenu
+// colapsado ("Cadastros"). Tenta revelar antes de desistir.
+async function revealMenuTarget(selector: string): Promise<Element | null> {
+    let el = findVisibleElement(selector);
+    if (el) return el;
+
+    (document.querySelector('[data-tour="tour-mobile-menu-btn"]') as HTMLElement | null)?.click();
+    await wait(150);
+    el = findVisibleElement(selector);
+    if (el) return el;
+
+    (document.querySelector('[data-tour="tour-menu-cadastros-toggle"]') as HTMLElement | null)?.click();
+    await wait(150);
+    return waitForElement(selector, 2000);
 }
 
 export function OnboardingTour() {
@@ -129,15 +162,55 @@ export function OnboardingTour() {
     useEffect(() => {
         if (!active || stepIndex === null) return;
         const step = STEPS[stepIndex];
-
-        if (step.route && location.pathname !== step.route) {
-            navigate(step.route);
-            return;
-        }
+        const progressLabel = stepIndex === 0 ? '' : `Passo ${stepIndex} de ${STEPS.length - 1} · `;
+        const needsMenuPhase = !!step.menuSelector && !!step.route && location.pathname !== step.route;
 
         let cancelled = false;
 
         (async () => {
+            if (!driverRef.current) {
+                driverRef.current = driver({ animate: true, overlayOpacity: 0.6, stagePadding: 6, allowClose: false });
+            }
+
+            // ── Fase 1: mostra onde no menu fica a próxima tela, antes de ir pra lá ──
+            if (needsMenuPhase) {
+                const menuEl = await revealMenuTarget(step.menuSelector!);
+                if (cancelled) return;
+
+                driverRef.current.highlight({
+                    element: menuEl ?? undefined,
+                    popover: {
+                        title: `${progressLabel}${step.title}`,
+                        description: `Isso fica em ${step.menuLabel}. Clique abaixo pra ir até lá.`,
+                        showButtons: ['next', 'close'],
+                        nextBtnText: 'Ir até lá',
+                        onNextClick: () => {
+                            if (stepIndex === 2) {
+                                // Configurações: conta como concluído ao visitar a tela. Navega e dá um
+                                // respiro antes de avançar sozinho, pra não arrancar o usuário da tela
+                                // assim que ele chega.
+                                markOnboardingStep('settings_visited');
+                                driverRef.current?.destroy();
+                                driverRef.current = null;
+                                navigate(step.route!);
+                                setTimeout(() => goToStep(stepIndex + 1), 4000);
+                            } else {
+                                driverRef.current?.destroy();
+                                driverRef.current = null;
+                                navigate(step.route!);
+                            }
+                        },
+                        onCloseClick: finishOnboarding,
+                    },
+                });
+                return;
+            }
+
+            // Passo de configurações já foi todo resolvido na fase de menu (marcar visitado +
+            // navegar + agendar avanço) — nada mais pra destacar nessa página.
+            if (stepIndex === 2) return;
+
+            // ── Fase 2: já na tela certa — destaca a ação em si ──
             const element = step.selector ? await waitForElement(step.selector) : null;
             if (cancelled) return;
 
@@ -157,7 +230,6 @@ export function OnboardingTour() {
             }
 
             const isLast = stepIndex === STEPS.length - 1;
-            const progressLabel = stepIndex === 0 ? '' : `Passo ${stepIndex} de ${STEPS.length - 1} · `;
 
             // Passos "obrigatórios" (conta e lançamento) só avançam quando a ação é concluída,
             // então não mostram botão de avançar manual — só o de fechar/pular.
@@ -168,18 +240,6 @@ export function OnboardingTour() {
             if (stepIndex === 0) {
                 showButtons = ['next', 'close'];
                 nextBtnText = 'Vamos lá';
-            } else if (stepIndex === 2) {
-                // Configurações: conta como concluído ao visitar a tela. Navega e dá um respiro
-                // antes de avançar sozinho, pra não arrancar o usuário da tela assim que ele chega.
-                showButtons = ['next', 'close'];
-                nextBtnText = 'Ver Configurações';
-                onNextClick = () => {
-                    markOnboardingStep('settings_visited');
-                    navigate('/v2/perfil');
-                    driverRef.current?.destroy();
-                    driverRef.current = null;
-                    setTimeout(() => goToStep(stepIndex + 1), 4000);
-                };
             } else if (stepIndex === 3) {
                 // Categoria: informativo, não bloqueia — avança com o botão normal
                 showButtons = ['next', 'close'];
