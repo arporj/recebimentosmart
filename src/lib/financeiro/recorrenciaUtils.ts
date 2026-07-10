@@ -16,20 +16,30 @@ export const parseLocalDate = (dateStr: string) => {
   return new Date(year, month - 1, day);
 };
 
+/** Horizonte padrão de geração física: hoje + 3 meses. */
+export const defaultRecurrenceHorizon = () => addMonths(new Date(), 3);
+
+// Trava de segurança: mesmo com um horizonte mal configurado (ex.: recorrência
+// diária com horizonte de vários anos), nunca gera mais que isso numa chamada.
+const MAX_OCCURRENCES_PER_CALL = 400;
+
 export async function gerarInstanciasRecorrentes(
   parentData: any,
   baseTransaction: any,
   periodicidade: string,
   intervalo: number,
-  quantidade: number = 12,
+  horizonEnd: Date = defaultRecurrenceHorizon(),
   accountConfig?: AccountInvoiceConfig | null,
   tags?: string[]
 ) {
   const occurrences = [];
   const startDate = parseLocalDate(parentData.date);
+  const safeIntervalo = intervalo && intervalo > 0 ? intervalo : 1;
 
-  for (let i = 1; i <= quantidade; i++) {
-    const occurrenceDate = addPeriod(startDate, i * intervalo, periodicidade);
+  let i = 1;
+  let occurrenceDate = addPeriod(startDate, i * safeIntervalo, periodicidade);
+
+  while (occurrenceDate.getTime() <= horizonEnd.getTime() && i <= MAX_OCCURRENCES_PER_CALL) {
     const occurrenceDateStr = format(occurrenceDate, 'yyyy-MM-dd');
 
     // Dynamically calculate invoice_month for each occurrence
@@ -48,6 +58,9 @@ export async function gerarInstanciasRecorrentes(
       installment_current: (parentData.installment_current || 1) + i,
       installment_total: 1,
     });
+
+    i++;
+    occurrenceDate = addPeriod(startDate, i * safeIntervalo, periodicidade);
   }
 
   if (occurrences.length > 0) {

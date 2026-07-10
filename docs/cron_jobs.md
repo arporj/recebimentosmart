@@ -16,6 +16,7 @@
 | 2 | 8 | process-email-broadcast-queue-job | `*/5 * * * *` | A cada 5 minutos | ❌ Desativado |
 | 3 | 13 | weekly-due-notification-sunday | `0 3 * * 0` | Domingos à meia-noite (00h BRT) | ✅ Ativo |
 | 4 | 11 | auto-confirm-daily | `0 3 * * *` | Meia-noite (00h BRT) | ✅ Ativo |
+| 5 | 21 | replenish-recurring-occurrences-daily | `0 2 * * *` | 23h BRT (véspera) | ✅ Ativo |
 
 > **Nota:** O Supabase usa UTC internamente. Os horários BRT (UTC-3) são aproximados e podem variar com horário de verão.
 
@@ -147,6 +148,34 @@ Para todos os lançamentos encontrados, executa:
 
 ---
 
+### 5. Reposição de Ocorrências Recorrentes
+
+| Campo | Valor |
+|-------|-------|
+| **Job ID** | 21 |
+| **Nome** | replenish-recurring-occurrences-daily |
+| **Cron** | `0 2 * * *` (todo dia às 02:00 UTC, 1h antes dos jobs 4 e 3) |
+| **Função** | `public.fn_replenish_recurring_occurrences()` |
+
+**O que faz:**
+
+As ocorrências físicas futuras de uma recorrência (`modalidade = 'recorrente'`) eram geradas uma única vez, na criação ou numa edição que reconstrói a série, até um horizonte fixo. Nada repunha essa janela conforme o tempo passava. Como o job 4 (auto-confirm) e o job 3 (notificação de vencimento) só leem linhas físicas da tabela — nunca as ocorrências virtuais que a tela projeta apenas para exibição — uma recorrência parava de ser auto-confirmada e de notificar vencimento silenciosamente assim que a janela física acabava.
+
+Diariamente, para cada template ativo (`is_template = true`, `recurrence_enabled = true`, não encerrado por `recurrence_end_date`), garante que existam linhas físicas até **hoje + 3 meses**, calculando a próxima data via `fn_add_recurrence_period()` (espelha `addPeriod()` do TypeScript) e evitando duplicatas por data ou número de ocorrência.
+
+**Tabelas envolvidas:**
+- `public.financial_transactions` — leitura de templates, escrita de novas ocorrências físicas
+- `public.transaction_tags` — cópia das tags do template para cada ocorrência nova
+
+**Log:** Se alguma ocorrência for criada, gera um log no formato:
+```
+[replenish_recurring] X ocorrência(s) física(s) repostas em YYYY-MM-DD
+```
+
+**Migração de origem:** `20260710120000_replenish_recurring_occurrences_cron.sql`
+
+---
+
 ## Como Gerenciar os Jobs
 
 ### Listar todos os jobs
@@ -184,3 +213,4 @@ SELECT * FROM cron.job_run_details WHERE jobid = <ID> ORDER BY start_time DESC L
 | 20/05/2026 | Job 1 → Job 12: horário corrigido de 00:00 UTC para 03:00 UTC (00:00 BRT) |
 | 20/05/2026 | Job 9 → Job 13: corrigido erro de autenticação (JSON inválido) e horário para 03:00 UTC |
 | 20/05/2026 | Job 8 desativado: polling desnecessário, será substituído por envio sob demanda |
+| 10/07/2026 | Criado job 21 (replenish-recurring-occurrences-daily): repõe fisicamente as ocorrências de recorrências ativas, que antes paravam de ser geradas após um horizonte fixo |

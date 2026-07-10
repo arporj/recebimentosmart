@@ -49,6 +49,10 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 *(O Assistente IA Financeiro Conversacional — Artie Premium — foi concluído em Jul/2026; ver item 25 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
 
+#### 🔄 Troca de Modalidade via Artie e Comando de Voz
+* **Status:** Ideia (Prioridade Baixa).
+* **Descrição:** Desde Jul/2026 a troca de modalidade (única/parcelada/recorrente) de um lançamento existente é suportada corretamente pelo backend (`editarTransacao`/`mudarModalidadeTransacao`, com reconstrução completa da série preservando histórico pago). Hoje essa troca só é exposta na tela manual (`FinancialTransactionModalV2`) — nem o Artie (`src/lib/artie/executor.ts`) nem o comando de voz (`VoiceFloatingButton.tsx`) permitem alterar a modalidade de um lançamento já existente via chat/voz. Adicionar esse campo às ferramentas de atualização de ambos.
+
 ---
 
 ### 1.5. Relatórios, Extratos e Conciliação (Premium)

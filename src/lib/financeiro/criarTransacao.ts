@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { format } from 'date-fns';
-import { addPeriod, parseLocalDate, gerarInstanciasRecorrentes } from './recorrenciaUtils';
+import { addPeriod, parseLocalDate, gerarInstanciasRecorrentes, defaultRecurrenceHorizon } from './recorrenciaUtils';
 import { calcularMesFatura, type AccountInvoiceConfig } from './faturaUtils';
 
 export interface TransactionInput {
@@ -14,7 +14,7 @@ export interface TransactionInput {
   client_id?: string;
   modalidade: 'unica' | 'parcelada' | 'recorrente';
   installment_total?: number;
-  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   start_installment?: number;
   is_total_value?: boolean;
   due_day?: number;
@@ -50,7 +50,8 @@ export async function criarTransacao(input: TransactionInput) {
   const installmentTotal = input.installment_total || 1;
   const startInstallment = input.start_installment || 1;
   const recurrencePeriod = input.recurrence_period || 'monthly';
-  
+  const recurrenceInterval = input.recurrence_interval || 1;
+
   // Adjust value if total was provided
   const finalAmount = input.is_total_value 
     ? Number((input.amount / installmentTotal).toFixed(2))
@@ -117,7 +118,7 @@ export async function criarTransacao(input: TransactionInput) {
 
     for (let i = startInstallment; i <= installmentTotal; i++) {
         const indexOffset = i - startInstallment;
-        const dueDate = addPeriod(startDate, indexOffset, recurrencePeriod);
+        const dueDate = addPeriod(startDate, indexOffset * recurrenceInterval, recurrencePeriod);
         const dueDateStr = format(dueDate, 'yyyy-MM-dd');
         
         // Dynamically calculate invoice_month for each installment
@@ -241,14 +242,14 @@ export async function criarTransacao(input: TransactionInput) {
       if (tagError) console.error('Erro ao salvar tags do primeiro lançamento físico:', tagError);
     }
 
-    // 4. Gerar as 12 ocorrências subsequentes físicas futuras
+    // 4. Gerar as ocorrências subsequentes físicas futuras até o horizonte padrão
     try {
       await gerarInstanciasRecorrentes(
         parentData,
         baseTransaction,
         recurrencePeriod,
         recurrenceInterval,
-        12,
+        defaultRecurrenceHorizon(),
         accountConfig,
         input.tags
       );

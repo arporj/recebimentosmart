@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
-import { gerarInstanciasRecorrentes, addPeriod } from './recorrenciaUtils';
+import { gerarInstanciasRecorrentes, addPeriod, defaultRecurrenceHorizon } from './recorrenciaUtils';
 import { format, subDays, parseISO } from 'date-fns';
+import { mudarModalidadeTransacao } from './mudarModalidade';
 
 function ajustarDiaDaData(dateStr: string, diaAlvo: number): string {
   const [year, month, _] = dateStr.split('-');
@@ -26,7 +27,7 @@ export interface TransactionUpdate {
   date?: string;
   status?: string;
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
-  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   recurrence_interval?: number;
   due_day?: number;
   installment_total?: number;
@@ -62,6 +63,14 @@ export async function editarTransacao(
   if (fetchError || !current) throw new Error('Erro ao buscar transação');
 
   const { modalidade: currentModalidade, parent_id, date: currentDate, type } = current as any;
+
+  // ── MUDANÇA ESTRUTURAL DE MODALIDADE ────────────────────────────────
+  // Qualquer troca de modalidade é uma operação estrutural: ignora o
+  // parâmetro scope (this/following/all não fazem sentido aqui) e
+  // generaliza o que antes só existia como caso especial unica→recorrente.
+  if (cleanUpdate.modalidade && cleanUpdate.modalidade !== currentModalidade) {
+    return mudarModalidadeTransacao(transactionId, current, cleanUpdate);
+  }
 
   // Se for única ou escopo 'este', apenas atualiza uma
   if (currentModalidade === 'unica' || scope === 'this') {
@@ -130,75 +139,6 @@ export async function editarTransacao(
         const { error: tagError } = await supabase.from('transaction_tags').insert(junctionRows);
         if (tagError) console.error('Erro ao atualizar tags para escopo this:', tagError);
       }
-    }
-
-    // LÓGICA ESPECIAL: Se mudou de única para recorrente, configura o template e gera os filhos
-    if (currentModalidade === 'unica' && cleanUpdate.modalidade === 'recorrente') {
-      // 1. Atualizar o registro original para se tornar template
-      await supabase.from('financial_transactions').update({ 
-        is_template: true,
-        recurrence_enabled: true,
-        recurrence_period: cleanUpdate.recurrence_period || 'monthly',
-        recurrence_interval: cleanUpdate.recurrence_interval || 1,
-        due_day: cleanUpdate.due_day || parseISO(currentDate).getDate(),
-      }).eq('id', data.id);
-
-      const baseTransaction = {
-        user_id: current.user_id,
-        description: cleanUpdate.description || current.description,
-        amount: cleanUpdate.amount || current.amount,
-        type: cleanUpdate.type || type,
-        category_id: cleanUpdate.category_id || current.category_id,
-        account_id: cleanUpdate.account_id || current.account_id,
-        destination_account_id: cleanUpdate.destination_account_id || current.destination_account_id,
-        modalidade: 'recorrente',
-        status: 'pending',
-      };
-
-      // 2. Criar o primeiro filho físico correspondente para a data original
-      const firstChildPayload = {
-        ...baseTransaction,
-        parent_id: data.id,
-        date: currentDate,
-        status: current.status || 'pending',
-        installment_current: 1,
-        installment_total: 1,
-        is_template: false,
-      };
-
-      const { data: firstChildData, error: firstChildError } = await supabase
-        .from('financial_transactions')
-        .insert(firstChildPayload)
-        .select()
-        .single();
-
-      if (firstChildError) {
-        console.error('Erro ao criar o primeiro filho na mudança de modalidade:', firstChildError);
-      } else if (inputTags && firstChildData) {
-        const junctionRows = inputTags.map(tagId => ({
-          transaction_id: firstChildData.id,
-          tag_id: tagId
-        }));
-        await supabase.from('transaction_tags').insert(junctionRows);
-      }
-
-      // 3. Gerar instâncias futuras
-      try {
-        const parentData = (await supabase.from('financial_transactions').select('*').eq('id', data.id).single()).data;
-        await gerarInstanciasRecorrentes(
-          parentData,
-          baseTransaction,
-          cleanUpdate.recurrence_period || 'monthly',
-          cleanUpdate.recurrence_interval || 1,
-          12,
-          null,
-          inputTags || undefined
-        );
-      } catch (genError: any) {
-        console.error('Erro ao gerar instâncias recorrentes:', genError);
-      }
-
-      return { data: firstChildData || data, error: null };
     }
 
     return { data, error: null };
@@ -364,7 +304,7 @@ export async function editarTransacao(
         }
       }
 
-      // 5. Gerar as 12 próximas ocorrências físicas do novo template
+      // 5. Gerar as próximas ocorrências físicas do novo template até o horizonte padrão
       try {
         await gerarInstanciasRecorrentes(
           newMother,
@@ -382,7 +322,7 @@ export async function editarTransacao(
           },
           current.recurrence_period || 'monthly',
           current.recurrence_interval || 1,
-          12,
+          defaultRecurrenceHorizon(),
           null,
           inputTags || undefined
         );

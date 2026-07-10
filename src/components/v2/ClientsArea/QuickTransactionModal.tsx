@@ -24,10 +24,16 @@ interface QuickTransactionModalProps {
 const PERIOD_OPTIONS = [
   { value: 'monthly', label: 'Mensal' },
   { value: 'weekly', label: 'Semanal' },
-  { value: 'quarterly', label: 'Trimestral' },
   { value: 'yearly', label: 'Anual' },
   { value: 'daily', label: 'Diária' },
 ] as const;
+
+const PERIOD_UNIT_LABEL: Record<typeof PERIOD_OPTIONS[number]['value'], string> = {
+  daily: 'dias',
+  weekly: 'semanas',
+  monthly: 'meses',
+  yearly: 'anos',
+};
 
 const INSTALLMENT_OPTIONS = [
   { value: 0, label: 'Recorrente (sem fim)' },
@@ -43,7 +49,8 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
-  const [period, setPeriod] = useState<'monthly' | 'weekly' | 'quarterly' | 'yearly' | 'daily'>('monthly');
+  const [period, setPeriod] = useState<'monthly' | 'weekly' | 'yearly' | 'daily'>('monthly');
+  const [periodInterval, setPeriodInterval] = useState(1);
   const [installments, setInstallments] = useState(0);
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -100,7 +107,7 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
           account_id: resolvedAccountId,
           modalidade: 'recorrente',
           recurrence_period: period,
-          recurrence_interval: 1,
+          recurrence_interval: periodInterval,
         });
         if (error) throw error;
       } else if (installments === 1) {
@@ -125,6 +132,7 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
           modalidade: 'parcelada',
           installment_total: installments,
           recurrence_period: period,
+          recurrence_interval: periodInterval,
         });
         if (error) throw error;
       }
@@ -250,6 +258,21 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
               </select>
             </div>
           </div>
+
+          {installments !== 1 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                A cada quantos {PERIOD_UNIT_LABEL[period]}?
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={periodInterval}
+                onChange={e => setPeriodInterval(Math.max(1, Number(e.target.value) || 1))}
+                className={inputClass}
+              />
+            </div>
+          )}
 
           {/* Conta */}
           <div className="space-y-1.5">
