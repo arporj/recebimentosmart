@@ -39,7 +39,7 @@ import { ShareTransactionsModalV2 } from '../../components/v2/ShareTransactionsM
 import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
 import { expandTransactionInstances, type TransactionInstance as FinanceiroTransactionInstance } from '../../lib/financeiro/instanceExpansion';
 import { groupCreditCardInvoices, buildInvoiceSummaryInstances } from '../../lib/financeiro/invoiceGrouping';
-import { computeAccountBalanceAsOf, computeRunningBalance } from '../../lib/financeiro/balanceCalculator';
+import { computeAccountBalanceAsOf, computeRunningBalanceWithTodayRollover } from '../../lib/financeiro/balanceCalculator';
 
 
 const getDaysDifference = (original: string, current: string): number => {
@@ -858,9 +858,12 @@ const FinancialTransactionsV2 = () => {
       return isSelected && matchesFilter && matchesSearch;
     });
 
-    // Combine and sort ALL transactions BEFORE calculating running balance
-    const combined = [...filtered, ...filteredInvoices, ...filteredOverdueRollover].sort((a, b) => {
-      // Ordenação cronológica normal das instâncias
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    // Comparador cronológico "de verdade" (nunca usa data movida pra hoje) — usado pra calcular
+    // o saldo acumulado na ordem real dos lançamentos, e reaproveitado depois pra ordenar a
+    // lista final de exibição.
+    const chronologicalCompare = (a: TransactionInstance, b: TransactionInstance) => {
       const dateCompare = a.instanceDate.localeCompare(b.instanceDate);
       if (dateCompare !== 0) return dateCompare;
 
@@ -873,7 +876,6 @@ const FinancialTransactionsV2 = () => {
       }
 
       // Se a data for hoje, aplica a ordenação especial: pagos -> em atraso -> pendentes
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
       if (a.instanceDate === todayStr) {
         const getHojeCategory = (t: TransactionInstance) => {
           if (t.status === 'paid') return 0;
@@ -890,19 +892,32 @@ const FinancialTransactionsV2 = () => {
 
       if (aIsRolled && !bIsRolled) return 1;
       if (!aIsRolled && bIsRolled) return -1;
-      
+
       if (aIsRolled && bIsRolled) {
          const origCompare = a.originalInstanceDate!.localeCompare(b.originalInstanceDate!);
          if (origCompare !== 0) return origCompare;
       }
 
       return (a.id ?? '').localeCompare(b.id ?? '');
-    });
+    };
 
     // Início do saldo acumulado para as contas selecionadas no início do mês (usando saldo previsto)
     const openingBalance = totals.previousProjected;
 
-    const sortedList = computeRunningBalance(combined, openingBalance, selectedAccountIds);
+    // Contas pendentes/em atraso do MÊS VISUALIZADO migram pra hoje na exibição — mesmo
+    // tratamento visual que contas de meses já fechados recebem via overdueRolloverInstances,
+    // mas aqui é a própria linha que muda de posição (sem duplicar). O saldo é calculado na
+    // ordem cronológica real ANTES de mover qualquer linha (ver computeRunningBalanceWithTodayRollover),
+    // pra nunca repetir o bug que corrompeu o Resumo Mensal 3x no histórico deste projeto.
+    const chronological = [...filtered, ...filteredInvoices].sort(chronologicalCompare);
+    const sortedList = computeRunningBalanceWithTodayRollover(
+      chronological,
+      filteredOverdueRollover,
+      openingBalance,
+      selectedAccountIds,
+      todayStr,
+      chronologicalCompare,
+    );
 
     // Inject opening balance if no search filter is active
     if (searchTerm === '') {

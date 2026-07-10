@@ -101,3 +101,58 @@ export function computeRunningBalance<T extends RunningBalanceItem>(
     return { ...t, runningBalance };
   });
 }
+
+interface TodayRolloverItem extends RunningBalanceItem {
+  instanceDate: string;
+  status: string;
+  account_type?: string;
+  runningBalance?: number;
+}
+
+/**
+ * Calcula o saldo acumulado na ORDEM CRONOLÓGICA REAL (`chronologicalItems`, já ordenados
+ * pela data real de vencimento) e só DEPOIS "empurra" visualmente pra hoje qualquer lançamento
+ * pendente/atrasado (exceto cartão de crédito, que usa a linha-resumo de fatura) — sem tocar
+ * no saldo já fixado por linha no passo 1.
+ *
+ * Existe pra evitar repetir o bug que corrompeu o Resumo Mensal/saldo previsto 3x no histórico
+ * deste projeto (ver overdueRollover.test.ts): mudar a data de exibição de uma linha E
+ * recalcular o saldo na nova posição ao mesmo tempo. Aqui as duas coisas são passos separados —
+ * mover onde a linha aparece nunca desloca quando o valor é de fato descontado/somado.
+ *
+ * `reminderItems` (ex.: overdueRolloverInstances de meses já fechados) nunca passam pelo
+ * cálculo de saldo: herdam o saldo da linha anterior na ordem final (`finalSort`).
+ */
+export function computeRunningBalanceWithTodayRollover<T extends TodayRolloverItem>(
+  chronologicalItems: T[],
+  reminderItems: T[],
+  openingBalance: number,
+  selectedAccountIds: Set<string>,
+  todayStr: string,
+  finalSort: (a: T, b: T) => number,
+): Array<T & { runningBalance: number }> {
+  const withBalance = computeRunningBalance(chronologicalItems, openingBalance, selectedAccountIds);
+
+  const withTodayOverride = withBalance.map(t => {
+    if (
+      t.status !== 'paid' &&
+      t.status !== 'cancelled' &&
+      t.instanceDate < todayStr &&
+      t.account_type !== 'credit_card'
+    ) {
+      return { ...t, instanceDate: todayStr };
+    }
+    return t;
+  });
+
+  const combined = [...withTodayOverride, ...reminderItems].sort(finalSort);
+
+  let lastBalance = openingBalance;
+  return combined.map(t => {
+    if (t.runningBalance !== undefined) {
+      lastBalance = t.runningBalance;
+      return t;
+    }
+    return { ...t, runningBalance: lastBalance };
+  });
+}

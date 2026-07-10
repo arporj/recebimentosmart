@@ -71,8 +71,8 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
-        question: 'O que acontece com uma conta que venceu em um mês anterior e ainda não foi paga?',
-        answer: 'Quando você está visualizando o mês atual, qualquer lançamento pendente de um mês já encerrado aparece automaticamente no dia de "Hoje", com a bolinha vermelha de atraso e um selo indicando há quantos dias está vencido — assim você não precisa navegar mês a mês pra encontrar contas esquecidas. Isso é só um alerta visual: o valor continua contando no saldo previsto do mês em que realmente venceu, não no mês atual, então seus totais mensais (Ganhos/Gastos/Resultado) não são afetados. Ao confirmar o pagamento, você pode manter a data original de vencimento (se já pagou e só esqueceu de registrar) ou usar a opção de confirmar com a data de hoje (se está pagando agora).'
+        question: 'O que acontece com uma conta vencida e ainda não paga?',
+        answer: 'Qualquer lançamento pendente com vencimento no passado — seja do mês que você está visualizando ou de um mês já encerrado — aparece automaticamente no dia de "Hoje", com a bolinha vermelha de atraso e um selo indicando há quantos dias está vencido, assim você não precisa navegar mês a mês nem vasculhar a lista pra encontrar contas esquecidas. A data original de vencimento continua visível abaixo da data de hoje. Isso é só reposicionamento visual: o saldo previsto e o Resumo Mensal continuam calculados com base na data real de vencimento, não na data em que a linha aparece, então seus totais não são afetados. Ao confirmar o pagamento, você pode manter a data original de vencimento (se já pagou e só esqueceu de registrar) ou usar a opção de confirmar com a data de hoje (se está pagando agora).'
     },
     {
         category: 'planos',

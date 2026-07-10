@@ -4,6 +4,11 @@
 // previsto ao mudar instanceDate sem excluir a linha dos totais. Ver overdueRolloverInstances
 // em FinancialTransactionsV2.tsx: reusa o rollover já testado de instanceExpansion.ts, mas
 // filtrado só para itens de meses JÁ FECHADOS e nunca incluído em monthInstances/totals.
+//
+// Itens em atraso do MESMO mês visualizado usam um mecanismo IRMÃO, não este: eles migram de
+// verdade (sem duplicar linha) pra hoje via computeRunningBalanceWithTodayRollover, em
+// balanceCalculator.ts — o saldo é fixado ANTES de mover a linha, então mover onde ela aparece
+// nunca desloca quando o valor é descontado/somado. Ver balanceCalculator.test.ts.
 import { describe, it, expect } from 'vitest';
 import { parseISO, isSameMonth } from 'date-fns';
 import { expandTransactionInstances } from '../instanceExpansion';
