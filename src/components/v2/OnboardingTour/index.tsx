@@ -33,14 +33,13 @@ const STEPS: TourStep[] = [
         description: 'Pode ser conta corrente, poupança, cartão de crédito ou investimento. É por ela que seus lançamentos entram e saem.',
     },
     {
-        // Sem selector de ação (a própria visita já conta) e sem "gate" no efeito de auto-avanço:
-        // o avanço desse passo é feito manualmente no onNextClick da fase de menu, com um pequeno
-        // delay — ver comentário mais abaixo.
+        // Sem selector de ação aqui: esse passo é conduzido inteiramente pelo passeio de abas
+        // (SETTINGS_SUBSTEPS, mais abaixo), que marca "settings_visited" só ao final.
         route: '/v2/perfil',
         menuSelector: '[data-tour="tour-menu-config"]',
         menuLabel: 'Configurações → Configurações da Conta',
         title: 'Ajuste suas configurações',
-        description: 'Em Configurações da Conta você define notificações por e-mail, o tom do assistente Artie e como os valores aparecem nas telas. Dê uma olhada — o tour continua sozinho em alguns segundos.',
+        description: '',
     },
     {
         route: '/v2/financeiro/categorias',
@@ -58,6 +57,55 @@ const STEPS: TourStep[] = [
         gate: 'transaction_created',
         title: 'Faça seu primeiro lançamento',
         description: 'Registre uma receita ou despesa usando a conta que você acabou de criar.',
+    },
+];
+
+interface SettingsSubStep {
+    tab: 'profile' | 'security' | 'preferences';
+    selector: string;
+    title: string;
+    description: string;
+}
+
+// Passeio guiado pelas abas de Configurações da Conta — cada item troca de aba (se preciso),
+// rola até o elemento e explica o que dá pra fazer ali. Os 3 últimos ficam dentro de
+// "Preferências" de propósito, pra forçar a rolagem por toda a tela antes de liberar o "Próximo".
+const SETTINGS_SUBSTEPS: SettingsSubStep[] = [
+    {
+        tab: 'profile',
+        selector: '[data-tour="tour-tab-profile"]',
+        title: 'Informações Pessoais',
+        description: 'Aqui você edita seu nome e confere o e-mail cadastrado na conta.',
+    },
+    {
+        tab: 'security',
+        selector: '[data-tour="tour-tab-security"]',
+        title: 'Segurança',
+        description: 'Aqui você troca a senha de acesso à plataforma.',
+    },
+    {
+        tab: 'preferences',
+        selector: '[data-tour="tour-tab-preferences"]',
+        title: 'Preferências',
+        description: 'É aqui que fica a maior parte dos ajustes do sistema. Vamos dar uma olhada no que dá pra configurar.',
+    },
+    {
+        tab: 'preferences',
+        selector: '[data-tour="tour-pref-alerts"]',
+        title: 'Alertas por e-mail',
+        description: 'Configure lembretes automáticos de contas a vencer e do fechamento da fatura do cartão.',
+    },
+    {
+        tab: 'preferences',
+        selector: '[data-tour="tour-pref-visual"]',
+        title: 'Personalização visual',
+        description: 'Escolha o tema, a densidade das linhas e como os valores aparecem nas telas.',
+    },
+    {
+        tab: 'preferences',
+        selector: '[data-tour="tour-pref-layout"]',
+        title: 'Disposição das linhas',
+        description: 'E aqui você escolhe o layout de exibição dos seus lançamentos. Viu tudo? Pode seguir em frente.',
     },
 ];
 
@@ -81,36 +129,40 @@ function findVisibleElement(selector: string): Element | null {
     return null;
 }
 
-function waitForElement(selector: string, timeoutMs = 3000, intervalMs = 100): Promise<Element | null> {
-    return new Promise((resolve) => {
-        const start = Date.now();
-        const check = () => {
-            const el = findVisibleElement(selector);
-            if (el) return resolve(el);
-            if (Date.now() - start >= timeoutMs) return resolve(null);
-            setTimeout(check, intervalMs);
-        };
-        check();
-    });
-}
-
 function wait(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Espera o elemento existir e ficar visível e, quando encontra, rola até ele — tanto a
+// página quanto qualquer contêiner com scroll próprio (ex: o menu lateral com overflow-y-auto),
+// já que scrollIntoView lida com contêineres aninhados, diferente do scroll do driver.js sozinho.
+async function waitForElement(selector: string, timeoutMs = 3000, intervalMs = 100): Promise<Element | null> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        const el = findVisibleElement(selector);
+        if (el) {
+            el.scrollIntoView({ block: 'center', behavior: 'auto' });
+            await wait(150);
+            return el;
+        }
+        await wait(intervalMs);
+    }
+    return null;
 }
 
 // O link do menu pode estar escondido atrás do hambúrguer (mobile) ou de um submenu
 // colapsado ("Cadastros"). Tenta revelar antes de desistir.
 async function revealMenuTarget(selector: string): Promise<Element | null> {
     let el = findVisibleElement(selector);
-    if (el) return el;
-
-    (document.querySelector('[data-tour="tour-mobile-menu-btn"]') as HTMLElement | null)?.click();
-    await wait(150);
-    el = findVisibleElement(selector);
-    if (el) return el;
-
-    (document.querySelector('[data-tour="tour-menu-cadastros-toggle"]') as HTMLElement | null)?.click();
-    await wait(150);
+    if (!el) {
+        (document.querySelector('[data-tour="tour-mobile-menu-btn"]') as HTMLElement | null)?.click();
+        await wait(150);
+        el = findVisibleElement(selector);
+    }
+    if (!el) {
+        (document.querySelector('[data-tour="tour-menu-cadastros-toggle"]') as HTMLElement | null)?.click();
+        await wait(150);
+    }
     return waitForElement(selector, 2000);
 }
 
@@ -121,6 +173,7 @@ export function OnboardingTour() {
     const driverRef = useRef<Driver | null>(null);
     const [active, setActive] = useState(false);
     const [stepIndex, setStepIndex] = useState<number | null>(null);
+    const [settingsSubIndex, setSettingsSubIndex] = useState(0);
 
     useEffect(() => {
         if (user && !onboardingCompleted && !active) {
@@ -155,6 +208,7 @@ export function OnboardingTour() {
             toast.success('Tudo pronto! Você já sabe o essencial por aqui. 🎉');
             return;
         }
+        setSettingsSubIndex(0);
         setStepIndex(index);
     };
 
@@ -169,7 +223,7 @@ export function OnboardingTour() {
 
         (async () => {
             if (!driverRef.current) {
-                driverRef.current = driver({ animate: true, overlayOpacity: 0.6, stagePadding: 6, allowClose: false });
+                driverRef.current = driver({ animate: true, smoothScroll: true, overlayOpacity: 0.6, stagePadding: 6, allowClose: false });
             }
 
             // ── Fase 1: mostra onde no menu fica a próxima tela, antes de ir pra lá ──
@@ -185,20 +239,9 @@ export function OnboardingTour() {
                         showButtons: ['next', 'close'],
                         nextBtnText: 'Ir até lá',
                         onNextClick: () => {
-                            if (stepIndex === 2) {
-                                // Configurações: conta como concluído ao visitar a tela. Navega e dá um
-                                // respiro antes de avançar sozinho, pra não arrancar o usuário da tela
-                                // assim que ele chega.
-                                markOnboardingStep('settings_visited');
-                                driverRef.current?.destroy();
-                                driverRef.current = null;
-                                navigate(step.route!);
-                                setTimeout(() => goToStep(stepIndex + 1), 4000);
-                            } else {
-                                driverRef.current?.destroy();
-                                driverRef.current = null;
-                                navigate(step.route!);
-                            }
+                            driverRef.current?.destroy();
+                            driverRef.current = null;
+                            navigate(step.route!);
                         },
                         onCloseClick: finishOnboarding,
                     },
@@ -206,9 +249,39 @@ export function OnboardingTour() {
                 return;
             }
 
-            // Passo de configurações já foi todo resolvido na fase de menu (marcar visitado +
-            // navegar + agendar avanço) — nada mais pra destacar nessa página.
-            if (stepIndex === 2) return;
+            // ── Configurações é um caso especial: passeio guiado pelas 3 abas em vez de um
+            // único destaque, forçando o usuário a rolar toda a aba Preferências antes de avançar.
+            if (stepIndex === 2) {
+                const sub = SETTINGS_SUBSTEPS[settingsSubIndex];
+
+                (document.querySelector(`[data-tour="tour-tab-${sub.tab}"]`) as HTMLElement | null)?.click();
+                await wait(150);
+
+                const el = await waitForElement(sub.selector);
+                if (cancelled) return;
+
+                const isLastSub = settingsSubIndex === SETTINGS_SUBSTEPS.length - 1;
+
+                driverRef.current.highlight({
+                    element: el ?? undefined,
+                    popover: {
+                        title: `Configurações · ${sub.title}`,
+                        description: sub.description,
+                        showButtons: ['next', 'close'],
+                        nextBtnText: 'Próximo',
+                        onNextClick: () => {
+                            if (isLastSub) {
+                                markOnboardingStep('settings_visited');
+                                goToStep(stepIndex + 1);
+                            } else {
+                                setSettingsSubIndex(settingsSubIndex + 1);
+                            }
+                        },
+                        onCloseClick: finishOnboarding,
+                    },
+                });
+                return;
+            }
 
             // ── Fase 2: já na tela certa — destaca a ação em si ──
             const element = step.selector ? await waitForElement(step.selector) : null;
@@ -223,10 +296,6 @@ export function OnboardingTour() {
                     driverRef.current?.destroy();
                     driverRef.current = null;
                 }, { once: true });
-            }
-
-            if (!driverRef.current) {
-                driverRef.current = driver({ animate: true, overlayOpacity: 0.6, stagePadding: 6, allowClose: false });
             }
 
             const isLast = stepIndex === STEPS.length - 1;
@@ -262,7 +331,7 @@ export function OnboardingTour() {
 
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [active, stepIndex, location.pathname]);
+    }, [active, stepIndex, location.pathname, settingsSubIndex]);
 
     // Avança sozinho quando o passo obrigatório atual é concluído em background
     useEffect(() => {

@@ -430,7 +430,8 @@ export default function UserProfileSettingsV2() {
                 {/* Sidebar Navigation */}
                 <aside className="w-full lg:w-64 flex-shrink-0">
                     <nav className="space-y-1 bg-white rounded-xl border border-slate-200 overflow-hidden">
-                        <button 
+                        <button
+                            data-tour="tour-tab-profile"
                             onClick={() => setActiveTab('profile')}
                             className={`w-full flex items-center gap-3 px-4 py-4 text-sm font-semibold border-r-4 transition-all ${
                                 activeTab === 'profile'
@@ -441,7 +442,8 @@ export default function UserProfileSettingsV2() {
                             <User className="w-5 h-5" />
                             Informações Pessoais
                         </button>
-                        <button 
+                        <button
+                            data-tour="tour-tab-security"
                             onClick={() => setActiveTab('security')}
                             className={`w-full flex items-center gap-3 px-4 py-4 text-sm font-medium border-r-4 transition-all ${
                                 activeTab === 'security'
@@ -452,7 +454,8 @@ export default function UserProfileSettingsV2() {
                             <Shield className="w-5 h-5" />
                             Segurança
                         </button>
-                        <button 
+                        <button
+                            data-tour="tour-tab-preferences"
                             onClick={() => setActiveTab('preferences')}
                             className={`w-full flex items-center gap-3 px-4 py-4 text-sm font-medium border-r-4 transition-all ${
                                 activeTab === 'preferences'
@@ -590,7 +593,7 @@ export default function UserProfileSettingsV2() {
 
                             <div className="p-6 space-y-6">
                                 {/* Seção Premium: Alertas por E-mail (NO TOPO) */}
-                                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                                <div data-tour="tour-pref-alerts" className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-custom/10 rounded-lg text-custom">
                                             <Mail className="w-5 h-5" />
@@ -957,7 +960,7 @@ export default function UserProfileSettingsV2() {
                                     </div>
                                 )}
 
-                                <div className="border-t border-slate-100 pt-6">
+                                <div data-tour="tour-pref-visual" className="border-t border-slate-100 pt-6">
                                     <h3 className="font-extrabold text-sm text-slate-900 mb-4">Personalização Visual</h3>
                                     <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-300 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                                         {/* Opção Tema */}
@@ -1201,7 +1204,7 @@ export default function UserProfileSettingsV2() {
                                     </div>
                                 </div>
 
-                                <div className="border-t border-slate-100 pt-6">
+                                <div data-tour="tour-pref-layout" className="border-t border-slate-100 pt-6">
                                     <h3 className="font-extrabold text-sm text-slate-900 mb-4">Disposição Visiva das Linhas</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         {/* CARD 1: Padrão */}
