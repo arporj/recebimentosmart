@@ -158,7 +158,7 @@ const FinancialTransactionModalV2 = ({
   transaction = null,
   isConfirming = false
 }: FinancialTransactionModalProps) => {
-  const { user } = useAuth();
+  const { user, markOnboardingStep } = useAuth();
   const { checkLimit } = usePlanLimits();
   const isEditing = !!transaction;
 
@@ -886,6 +886,7 @@ const FinancialTransactionModalV2 = ({
       }
 
       toast.success(isEditing ? 'Lançamento atualizado!' : 'Lançamento criado!');
+      if (!isEditing) markOnboardingStep('transaction_created');
       onSuccess();
       handleClose();
     } catch (err) {

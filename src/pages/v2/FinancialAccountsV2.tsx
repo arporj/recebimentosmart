@@ -87,7 +87,7 @@ const parsePushMask = (formatted: string): number =>
   parseFloat(formatted.replace(/\./g, '').replace(',', '.')) || 0;
 
 const FinancialAccountsV2 = () => {
-  const { user } = useAuth();
+  const { user, markOnboardingStep } = useAuth();
   const { checkLimit } = usePlanLimits();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,6 +332,7 @@ const FinancialAccountsV2 = () => {
 
     if (error) { toast.error('Erro: ' + error.message); setSaving(false); return; }
     toast.success(editing ? 'Conta atualizada!' : 'Conta criada!');
+    if (!editing) markOnboardingStep('account_created');
     setIsModalOpen(false);
     resetForm();
     fetchAccounts();
@@ -348,7 +349,7 @@ const FinancialAccountsV2 = () => {
           <h1 className="text-2xl font-bold text-slate-900 font-manrope">Contas Financeiras</h1>
           <p className="text-slate-500 text-sm">Gerencie suas contas bancárias e cartões.</p>
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20">
+        <button data-tour="tour-new-account-btn" onClick={openNew} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20">
           <Plus size={18} /> Nova Conta
         </button>
       </div>

@@ -11,9 +11,10 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    Mail, Bell, RefreshCw, DollarSign
+    Mail, Bell, RefreshCw, DollarSign, HelpCircle
 } from 'lucide-react';
 import { ChangelogDrawer } from '../ChangelogDrawer';
+import { OnboardingTour } from '../OnboardingTour';
 
 interface MainLayoutV2Props {
     children: React.ReactNode;
@@ -70,6 +71,7 @@ const sidebarSections: SidebarSection[] = [
             { label: 'Configurações da Conta', icon: Settings, href: '/v2/perfil' },
             { label: 'Sua Assinatura', icon: CreditCard, href: '/payment' },
             { label: 'Novidades', icon: Bell },
+            { label: 'Tutorial Inicial', icon: HelpCircle },
         ],
     },
 ];
@@ -87,7 +89,7 @@ const adminSection: SidebarSection = {
 };
 
 export function MainLayoutV2({ children }: MainLayoutV2Props) {
-    const { user, isAdmin, signOut, originalUser, stopImpersonating, plano } = useAuth();
+    const { user, isAdmin, signOut, originalUser, stopImpersonating, plano, restartOnboarding } = useAuth();
     const location = useLocation();
 
     // Se estivermos impersonificando, a barra lateral ainda mostrará quem nós realmente somos
@@ -196,6 +198,11 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         setUnreadChangelogCount(0); // Zera o contador de forma otimista imediatamente
     };
 
+    const handleRestartTour = () => {
+        // O próprio OnboardingTour detecta onboarding_completed=false e assume a navegação do passo 1.
+        restartOnboarding();
+    };
+
     const toggleExpand = (label: string) => {
         setExpandedItems(prev =>
             prev.includes(label)
@@ -248,6 +255,19 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                             {unreadChangelogCount}
                         </span>
                     )}
+                </button>
+            );
+        }
+
+        if (item.label === 'Tutorial Inicial') {
+            return (
+                <button
+                    key={item.label}
+                    onClick={handleRestartTour}
+                    className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                    <item.icon size={16} />
+                    <span className="flex-1 text-left">{item.label}</span>
                 </button>
             );
         }
@@ -446,6 +466,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
                 isAdmin={!!isAdmin}
                 onReadComplete={checkUnreadChangelogs}
             />
+            <OnboardingTour />
             <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

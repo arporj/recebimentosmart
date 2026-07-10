@@ -34,6 +34,11 @@ interface AuthContextType {
   updateDashboardWidgets: (widgets: Record<string, boolean>) => Promise<void>;
   collapsedAccountGroups: string[];
   updateCollapsedAccountGroups: (groups: string[]) => Promise<void>;
+  onboardingCompleted: boolean;
+  onboardingProgress: Record<string, boolean>;
+  markOnboardingStep: (step: 'account_created' | 'settings_visited' | 'transaction_created') => Promise<void>;
+  completeOnboarding: () => Promise<void>;
+  restartOnboarding: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,6 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     despesasCategoria: true,
   });
   const [collapsedAccountGroups, setCollapsedAccountGroups] = useState<string[]>([]);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true);
+  const [onboardingProgress, setOnboardingProgress] = useState<Record<string, boolean>>({});
 
   // Effect para injetar as classes de tema, densidade e bold na tag html
   useEffect(() => {
@@ -130,6 +137,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setHasFullAccess(false);
         setIsAdmin(false);
         setPlano(null);
+        setOnboardingCompleted(true);
+        setOnboardingProgress({});
         setLoading(false);
         return;
       }
@@ -195,6 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.collapsed_account_groups) {
             setCollapsedAccountGroups(profile.collapsed_account_groups);
           }
+          setOnboardingCompleted(profile.onboarding_completed ?? true);
+          setOnboardingProgress(profile.onboarding_progress || {});
         }
 
         // Verificação mais robusta de validade
@@ -459,6 +470,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const markOnboardingStep = async (step: 'account_created' | 'settings_visited' | 'transaction_created') => {
+    if (!user || onboardingCompleted) return;
+    const updatedProgress = { ...onboardingProgress, [step]: true };
+    setOnboardingProgress(updatedProgress);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_progress: updatedProgress })
+        .eq('id', user.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro ao atualizar progresso do onboarding:', error);
+    }
+  };
+
+  const completeOnboarding = async () => {
+    if (!user) return;
+    setOnboardingCompleted(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', user.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro ao concluir onboarding:', error);
+    }
+  };
+
+  const restartOnboarding = async () => {
+    if (!user) return;
+    setOnboardingCompleted(false);
+    setOnboardingProgress({});
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_completed: false, onboarding_progress: {} })
+        .eq('id', user.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro ao reiniciar onboarding:', error);
+    }
+  };
+
   const updateUserName = async (name: string) => {
     if (!user) return;
     try {
@@ -558,6 +613,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateDashboardWidgets,
         collapsedAccountGroups,
         updateCollapsedAccountGroups,
+        onboardingCompleted,
+        onboardingProgress,
+        markOnboardingStep,
+        completeOnboarding,
+        restartOnboarding,
       }}
     >
       {children}

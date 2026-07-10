@@ -21,6 +21,16 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
+        question: 'Existe um tutorial para começar a usar o sistema?',
+        answer: 'Sim. Ao criar sua conta, um tour guiado aparece automaticamente mostrando o essencial: criar sua primeira conta financeira (corrente, poupança, cartão de crédito ou investimento), ajustar suas configurações, conhecer as categorias já cadastradas e fazer seu primeiro lançamento. Você pode pular o tour a qualquer momento clicando no "X".'
+    },
+    {
+        category: 'funcionalidades',
+        question: 'Fechei o tutorial inicial sem terminar. Como faço pra vê-lo de novo?',
+        answer: 'Basta clicar em "Tutorial Inicial", no menu lateral, dentro da seção Configurações. Ele reinicia o tour guiado do começo, mesmo que você já tenha concluído ou pulado antes.'
+    },
+    {
+        category: 'funcionalidades',
         question: 'Como funciona o controle de clientes?',
         answer: 'O sistema permite que você cadastre seus clientes com nome, e-mail, telefone e observações. É possível definir campos personalizados de acordo com a necessidade do seu modelo de negócio e acompanhar todo o histórico de pagamentos e cobranças mensais ou recorrentes daquele cliente.'
     },

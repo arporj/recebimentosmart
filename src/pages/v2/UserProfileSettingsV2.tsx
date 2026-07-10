@@ -17,8 +17,14 @@ export default function UserProfileSettingsV2() {
         setRowDensity,
         removeBoldList,
         setRemoveBoldList,
-        setPredictedLayout
+        setPredictedLayout,
+        markOnboardingStep
     } = useAuth();
+
+    // Visitar essa tela já conta como o passo "Configurações" do tour de onboarding
+    useEffect(() => {
+        markOnboardingStep('settings_visited');
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const lastSavedPrefs = useRef<{
         themePreference?: string;

@@ -130,7 +130,7 @@ const FinancialCategoriesV2 = () => {
           <h1 className="text-2xl font-bold text-slate-900 font-manrope">Categorias</h1>
           <p className="text-slate-500 text-sm">Organize suas transações por categorias e subcategorias.</p>
         </div>
-        <button onClick={() => openNew()} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20">
+        <button data-tour="tour-new-category-btn" onClick={() => openNew()} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-600/20">
           <Plus size={18} /> Nova Categoria
         </button>
       </div>

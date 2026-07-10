@@ -1413,6 +1413,7 @@ const FinancialTransactionsV2 = () => {
             </div>
 
             <button
+              data-tour="tour-new-transaction-btn"
               onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
               className="flex items-center gap-1 bg-[#0d9488] text-white px-2 py-1.5 rounded-xl text-[9px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider shrink-0"
             >
@@ -1472,6 +1473,7 @@ const FinancialTransactionsV2 = () => {
 
              {/* 3. Button Criar (Far Right) */}
              <button
+               data-tour="tour-new-transaction-btn"
                onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                className="flex items-center gap-1.5 bg-[#0d9488] text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-md hover:bg-[#0f766e] transition-all uppercase tracking-wider shrink-0"
              >
@@ -1891,6 +1893,7 @@ const FinancialTransactionsV2 = () => {
                 )}
                 <div className="relative group">
                   <button
+                    data-tour="tour-new-transaction-btn"
                     onClick={() => { setModalType('expense'); setEditingTransaction(null); setIsModalOpen(true); }}
                     className="flex items-center gap-2 bg-[#0d9488] text-white px-5 py-2.5 rounded-2xl text-[10px] font-black shadow-lg hover:bg-[#0f766e] hover:scale-105 transition-all uppercase tracking-wider"
                   >
