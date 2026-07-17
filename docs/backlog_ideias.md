@@ -81,6 +81,11 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 ### 1.6. Gestão Multiusuário e Compartilhamento
 
+#### 🏷️ Campos Personalizados na Tela de Gestão de Clientes
+* **Status:** Planejado.
+* **Descrição:** Na tela de Gestão de Clientes (`GestaoClientesV2.tsx`), exibir os **campos personalizados** cadastrados para cada cliente. Esses campos já existem no banco de dados, mas não estão sendo apresentados na listagem/card do cliente nem no modal de detalhes. A exibição pode ser feita como chips ou linhas adicionais abaixo dos dados principais do cliente, respeitando os tipos de campo (texto, número, data, booleano).
+* **Impacto:** Apenas frontend — sem alteração de schema ou queries, somente leitura e renderização dos dados já retornados.
+
 #### 🤝 Reativação de Lançamentos Compartilhados
 * **Status:** Adiado (Pendente de reavaliação de produto).
 * **Descrição:** Reativação e readequação de layout do menu de compartilhamento de lançamentos por e-mail com parceiros, com alertas sonoros (Web Audio API) e badges de notificação em tempo real. As tabelas (`client_shares`, etc.) e triggers permanecem ativas no banco.
@@ -112,6 +117,11 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 #### 📱 Otimização Mobile da Tela de Lançamentos
 * **Status:** Planejado.
 * **Descrição:** Otimizar o aproveitamento de espaço em celulares, reduzindo fontes de valores e descrições para a mesma dimensão menor das datas, aumentando o número de lançamentos visíveis simultaneamente na tela sem precisar de rolagem profunda.
+
+#### 💳 Total Previsto no Agrupamento de Contas (Tela de Lançamentos)
+* **Status:** Planejado.
+* **Descrição:** No card de agrupamento por contas da tela de Lançamentos (`FinancialTransactionsV2`), o total exibido no cabeçalho do grupo deve ser o **somatório previsto até o final do mês**, e não apenas o total dos lançamentos já lançados/filtrados. Isso permite ao usuário ter uma visão de projeção mensal real de cada conta, sem precisar navegar até o dashboard.
+* **Impacto:** Apenas visual/query no agrupamento — sem alteração no comportamento dos lançamentos individuais.
 
 #### 🍿 Painel de Controle de Assinaturas Pessoais (Streaming/SaaS)
 * **Status:** Roadmap.
