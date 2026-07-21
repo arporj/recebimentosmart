@@ -64,8 +64,8 @@ const QuickAddCategoryModal: React.FC<QuickAddCategoryModalProps> = ({ isOpen, o
       toast.success('Categoria criada com sucesso!');
       onSuccess(data.id);
       onClose();
-    } catch (error: any) {
-      toast.error('Erro ao criar categoria: ' + error.message);
+    } catch (error) {
+      toast.error('Erro ao criar categoria: ' + (error instanceof Error ? error.message : 'erro desconhecido'));
     } finally {
       setSaving(false);
     }

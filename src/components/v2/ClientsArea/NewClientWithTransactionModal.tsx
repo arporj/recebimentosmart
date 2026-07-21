@@ -151,8 +151,8 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
         setDescription(clientName.trim());
       }
       setStep('transaction');
-    } catch (err: any) {
-      toast.error(err?.message || 'Erro ao criar cliente.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao criar cliente.');
     } finally {
       setSaving(false);
     }
@@ -210,8 +210,8 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
       toast.success('Cliente e lançamento criados com sucesso!');
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || 'Erro ao criar lançamento.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao criar lançamento.');
     } finally {
       setSaving(false);
     }

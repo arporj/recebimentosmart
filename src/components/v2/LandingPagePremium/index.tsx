@@ -2,11 +2,28 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { formatCurrency } from '../../../lib/utils';
-import { INITIAL_PLANS_CONFIG, PLAN_ORDER, getPlanFeatures, getPlanDescription } from '../../../lib/plans';
+import { INITIAL_PLANS_CONFIG, PLAN_ORDER, getPlanFeatures, getPlanDescription, type PlanFeature, type PlanData } from '../../../lib/plans';
+
+interface PricingTier {
+    slug: string;
+    name: string;
+    price: string;
+    description: string;
+    features: PlanFeature[];
+    popular: boolean;
+    cta: string;
+    ctaLink: string;
+    disabled: boolean;
+}
+
+interface RpcPlanRow extends PlanData {
+    slug: string;
+    price_monthly: number;
+}
 
 export const LandingPagePremium: React.FC = () => {
     // Inicializa a UI usando as configurações padrão do arquivo unificado
-    const [pricingTiers, setPricingTiers] = useState<any[]>(INITIAL_PLANS_CONFIG.map(p => ({
+    const [pricingTiers, setPricingTiers] = useState<PricingTier[]>(INITIAL_PLANS_CONFIG.map(p => ({
         ...p,
         price: p.priceDefault,
         features: p.featuresDefault,
@@ -27,7 +44,7 @@ export const LandingPagePremium: React.FC = () => {
                 console.error("Erro ao resgatar os planos na landing page:", error);
             } else if (data) {
                 const updatedTiers = PLAN_ORDER.map(slug => {
-                    const planData = data.find((p: any) => p.slug === slug);
+                    const planData = (data as RpcPlanRow[]).find((p) => p.slug === slug);
                     const baseTier = INITIAL_PLANS_CONFIG.find(t => t.slug === slug)!;
 
                     if (!planData) {

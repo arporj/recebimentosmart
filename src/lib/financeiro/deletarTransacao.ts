@@ -32,7 +32,11 @@ export async function deletarTransacao(
 
   if (fetchError || !current) throw new Error('Erro ao buscar transação');
 
-  const { modalidade, parent_id, date: currentDate } = current as any;
+  const { modalidade, parent_id, date: currentDate } = current as unknown as {
+    modalidade: 'unica' | 'parcelada' | 'recorrente';
+    parent_id: string | null;
+    date: string;
+  };
 
   // Helper: determine the reference (parent) id for the recurrence chain
   const refId = parent_id || current.id;
@@ -74,7 +78,7 @@ export async function deletarTransacao(
 
       if (!parentRecord) throw new Error('Registro pai não encontrado');
 
-      const { id, created_at, updated_at, ...parentFields } = parentRecord as any;
+      const { id: _id, created_at: _created_at, updated_at: _updated_at, ...parentFields } = parentRecord as unknown as Record<string, unknown>;
 
       return supabase.from('financial_transactions').insert({
         ...parentFields,

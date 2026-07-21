@@ -75,9 +75,9 @@ export function CreateFeedbackModal({ onClose, onSuccess }: CreateFeedbackModalP
       onSuccess();
       onClose();
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao enviar feedback:', error);
-      toast.error('Erro ao enviar feedback: ' + (error.message || 'Erro desconhecido'));
+      toast.error('Erro ao enviar feedback: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }

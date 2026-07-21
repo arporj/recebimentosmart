@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 interface TagModalV2Props {
   onClose: () => void;
-  onSuccess: (newTag: any) => void;
+  onSuccess: (newTag: { id: string; name: string; color: string | null }) => void;
 }
 
 const COLORS = [
@@ -51,8 +51,8 @@ export function TagModalV2({ onClose, onSuccess }: TagModalV2Props) {
       toast.success('Tag criada com sucesso!');
       onSuccess(data);
       onClose();
-    } catch (err: any) {
-      toast.error('Erro ao criar tag: ' + err.message);
+    } catch (err) {
+      toast.error('Erro ao criar tag: ' + (err instanceof Error ? err.message : 'erro desconhecido'));
     } finally {
       setLoading(false);
     }

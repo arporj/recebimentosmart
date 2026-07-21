@@ -20,12 +20,20 @@ function formatDate(dateStr: string): string {
   return `${d}/${m}/${y}`;
 }
 
-function buildEmailHtml(clientName: string, transactions: any[], userName: string): string {
-  const total = transactions.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+interface NotificationTx {
+  id: string;
+  description?: string | null;
+  amount: number;
+  date: string;
+  status: string;
+}
+
+function buildEmailHtml(clientName: string, transactions: NotificationTx[], userName: string): string {
+  const total = transactions.reduce((sum, t) => sum + Number(t.amount), 0);
   const today = new Date();
   const todayStr = today.toLocaleDateString('pt-BR');
 
-  const rows = transactions.map((t: any) => `
+  const rows = transactions.map((t) => `
     <tr>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155;">
         ${t.description || 'Sem descrição'}
@@ -145,7 +153,7 @@ serve(async (req) => {
     const userName = profile?.name || 'Recebimento Smart';
 
     let client: { name: string; email: string; phone?: string | null } | null = null;
-    let transactions: any[] = [];
+    let transactions: NotificationTx[] = [];
 
     if (clientId) {
       // 2a. Buscar dados do cliente específico
@@ -205,7 +213,7 @@ serve(async (req) => {
 
       if (firstClientWithTx && firstClientWithTx.length > 0) {
         const foundClientId = firstClientWithTx[0].client_id;
-        const fetchedClient = (firstClientWithTx[0] as any).clients;
+        const fetchedClient = (firstClientWithTx[0] as unknown as { clients: { name: string; email: string } }).clients;
         if (fetchedClient) client = fetchedClient;
         const { data: txData } = await supabase
           .from('financial_transactions')
@@ -302,10 +310,10 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro em send-client-notification-manual:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Erro interno' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

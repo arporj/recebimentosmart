@@ -5,6 +5,27 @@ export const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface TxLike {
+    id: string;
+    type: string;
+    amount: number;
+    date: string;
+    status: string;
+    description?: string;
+    client_id?: string | null;
+    client?: { name?: string; deleted_at?: string | null } | null;
+    account_id?: string;
+    account?: { type?: string; name?: string; due_day?: number } | null;
+    destination_account_id?: string | null;
+    invoice_month?: string | null;
+    recurrence_enabled?: boolean;
+    recurrence_end_date?: string | null;
+    parent_id?: string | null;
+    installment_current?: number | null;
+    installment_total?: number | null;
+    modalidade?: string;
+}
+
 export async function processUserDuePayments(
     userId: string,
     supabaseUrl: string,
@@ -66,14 +87,14 @@ export async function processUserDuePayments(
     }
 
     // 4. Separar transações normais das de cartão de crédito e pagamentos de fatura
-    const normalTxs: any[] = [];
-    const creditCardTxs: any[] = [];
-    const invoicePayments: any[] = [];
+    const normalTxs: TxLike[] = [];
+    const creditCardTxs: TxLike[] = [];
+    const invoicePayments: TxLike[] = [];
 
-    const isRecurrenceParentWithPaidOrCancelledChild = (tx: any, allTxs: any[]) => {
+    const isRecurrenceParentWithPaidOrCancelledChild = (tx: TxLike, allTxs: TxLike[]) => {
         if (tx.recurrence_enabled !== true || tx.parent_id) return false;
-        
-        return allTxs.some((child: any) => {
+
+        return allTxs.some((child) => {
             if (child.parent_id !== tx.id) return false;
             if (child.status !== 'paid' && child.status !== 'cancelled') return false;
             
@@ -92,7 +113,7 @@ export async function processUserDuePayments(
         });
     };
 
-    txs.forEach((tx: any) => {
+    (txs as TxLike[]).forEach((tx) => {
         const isCreditCard = tx.account?.type === 'credit_card';
         if (isCreditCard) {
             if (tx.type === 'expense') {
@@ -100,7 +121,7 @@ export async function processUserDuePayments(
             }
         } else if (tx.type === 'transfer' && tx.destination_account_id && tx.invoice_month) {
             // Verificar se a conta de destino é um cartão de crédito
-            const isDestCreditCard = txs.some((otherTx: any) => otherTx.account_id === tx.destination_account_id && otherTx.account?.type === 'credit_card');
+            const isDestCreditCard = (txs as TxLike[]).some((otherTx) => otherTx.account_id === tx.destination_account_id && otherTx.account?.type === 'credit_card');
             if (isDestCreditCard) {
                 invoicePayments.push(tx);
             } else {
@@ -118,7 +139,7 @@ export async function processUserDuePayments(
     // 5. Agrupar despesas de cartão de crédito por conta e por mês de fatura (invoice_month)
     const invoiceGroups = new Map<string, { accountId: string; cardName: string; invoiceMonth: string; total: number; dueDay: number }>();
 
-    creditCardTxs.forEach((tx: any) => {
+    creditCardTxs.forEach((tx) => {
         const invoiceMonth = tx.invoice_month;
         if (!invoiceMonth) return;
 
@@ -141,7 +162,7 @@ export async function processUserDuePayments(
     });
 
     // 6. Gerar lançamentos virtuais consolidados de faturas pendentes (não pagas)
-    const consolidatedInvoices: any[] = [];
+    const consolidatedInvoices: TxLike[] = [];
 
     for (const group of invoiceGroups.values()) {
         const [yearStr, monthStr] = group.invoiceMonth.split('-');
@@ -153,7 +174,7 @@ export async function processUserDuePayments(
         const dueDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
 
         // Uma fatura está paga se houver alguma transferência destinada a esse cartão naquele mês de fatura
-        const isPaid = invoicePayments.some((pay: any) => 
+        const isPaid = invoicePayments.some((pay) =>
             pay.destination_account_id === group.accountId && 
             pay.invoice_month === group.invoiceMonth
         );
@@ -174,7 +195,7 @@ export async function processUserDuePayments(
     // 7. Combinar transações normais com faturas pendentes, aplicar limite de data e exclusão lógica de clientes
     const allPendingItems = [...normalTxs, ...consolidatedInvoices];
 
-    const activeTxs = allPendingItems.filter((item: any) => {
+    const activeTxs = allPendingItems.filter((item) => {
         // Filtrar limite temporal (atrasadas e vencendo nos próximos 7 dias)
         if (item.date > sevenDaysFromNowStr) {
             return false;
@@ -195,13 +216,13 @@ export async function processUserDuePayments(
     }
 
     // 8. Ordenar transações sempre pela data
-    activeTxs.sort((a: any, b: any) => a.date.localeCompare(b.date));
+    activeTxs.sort((a, b) => a.date.localeCompare(b.date));
 
     // Categorizar em Atrasados e Próximos 7 dias
-    const overdueTxs: any[] = [];
-    const upcomingTxs: any[] = [];
+    const overdueTxs: TxLike[] = [];
+    const upcomingTxs: TxLike[] = [];
 
-    activeTxs.forEach((tx: any) => {
+    activeTxs.forEach((tx) => {
         if (tx.date < todayStr) {
             overdueTxs.push(tx);
         } else {
@@ -236,7 +257,7 @@ export async function processUserDuePayments(
     };
 
     // Função para tratar a Descrição (Cliente) sem duplicar se forem idênticos
-    const getFormattedDescription = (tx: any) => {
+    const getFormattedDescription = (tx: TxLike) => {
         const desc = tx.description || 'Sem descrição';
         const clientName = tx.client?.name;
         if (clientName && clientName.trim() !== '' && clientName.toLowerCase() !== desc.toLowerCase()) {

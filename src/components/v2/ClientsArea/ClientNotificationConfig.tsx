@@ -116,8 +116,8 @@ export function ClientNotificationConfig({ client, onClose }: ClientNotification
 
       toast.success('Configuração de notificação salva!');
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || 'Erro ao salvar.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar.');
     } finally {
       setSaving(false);
     }

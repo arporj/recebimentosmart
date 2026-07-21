@@ -253,7 +253,7 @@ const FinancialTransactionsV2 = () => {
 
   // Estados para exclusão em cadeia
   const [isDeleteScopeModalOpen, setIsDeleteScopeModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<TransactionInstance | null>(null);
 
   // Estados para o modal de resumo
   const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<TransactionInstance | null>(null);
@@ -305,7 +305,7 @@ const FinancialTransactionsV2 = () => {
         category: t.category_name ? { name: t.category_name, icon: t.category_icon, parent_id: t.category_parent_id } : null
       }));
 
-      setTransactions(mappedData);
+      setTransactions(mappedData as unknown as FinancialTransaction[]);
 
       // 2. Buscar os templates de recorrência ativos do usuário (para projeção virtual futura)
       const { data: templateData, error: templateError } = await supabase
@@ -327,7 +327,7 @@ const FinancialTransactionsV2 = () => {
         category: t.category ? { name: t.category.name, icon: t.category.icon, parent_id: t.category.parent_id } : null
       }));
 
-      setTemplates(mappedTemplates);
+      setTemplates(mappedTemplates as unknown as FinancialTransaction[]);
     } catch (err) {
       console.error('Erro ao buscar transações:', err);
       toast.error('Erro ao carregar transações');
@@ -360,7 +360,7 @@ const FinancialTransactionsV2 = () => {
       };
       
       const accountsWithVirtual = [...fetchedAccounts, semContaVirtual];
-      setAccounts(accountsWithVirtual);
+      setAccounts(accountsWithVirtual as unknown as AccountRow[]);
 
       const allAccountIds = [...fetchedAccounts.map(a => a.id), 'sem-conta'];
       const savedUnselected = localStorage.getItem(`recebimento_smart_unselected_accounts_${user.id}`);
@@ -577,7 +577,7 @@ const FinancialTransactionsV2 = () => {
         if (insertError) throw insertError;
 
         if (t.tags && t.tags.length > 0 && newChild) {
-          const tagIds = t.tags.map((tagObj: { tag?: { id: string }; id?: string }) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+          const tagIds = t.tags.map((tagObj: { tag?: { id: string }; id?: string }) => tagObj.tag?.id || tagObj.id).filter((id): id is string => Boolean(id));
           if (tagIds.length > 0) {
             const junctionRows = tagIds.map((tagId: string) => ({
               transaction_id: newChild.id,
@@ -1065,7 +1065,7 @@ const FinancialTransactionsV2 = () => {
 
           // Copiar tags se houver
           if (t.tags && t.tags.length > 0 && newChild) {
-            const tagIds = t.tags.map((tagObj: { tag?: { id: string }; id?: string }) => tagObj.tag?.id || tagObj.id).filter(Boolean);
+            const tagIds = t.tags.map((tagObj: { tag?: { id: string }; id?: string }) => tagObj.tag?.id || tagObj.id).filter((id): id is string => Boolean(id));
             if (tagIds.length > 0) {
               const junctionRows = tagIds.map((tagId: string) => ({
                 transaction_id: newChild.id,
@@ -1567,8 +1567,8 @@ const FinancialTransactionsV2 = () => {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={`font-normal text-xs ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
-                        {formatRunningBalance(t.runningBalance)}
+                      <p className={`font-normal text-xs ${(t.runningBalance ?? 0) >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                        {formatRunningBalance(t.runningBalance ?? 0)}
                       </p>
                     </div>
                     <div className="relative shrink-0 w-6"></div>
@@ -1977,8 +1977,8 @@ const FinancialTransactionsV2 = () => {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className={`font-normal text-base ${t.runningBalance >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
-                            {formatRunningBalance(t.runningBalance)}
+                          <p className={`font-normal text-base ${(t.runningBalance ?? 0) >= 0 ? 'text-previsto-positivo' : 'text-previsto-negativo'}`}>
+                            {formatRunningBalance(t.runningBalance ?? 0)}
                           </p>
                         </div>
                         <div className="relative w-10"></div>

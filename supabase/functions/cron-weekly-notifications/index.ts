@@ -52,7 +52,7 @@ serve(async (req) => {
         }
 
         // Deduplicate user IDs
-        const uniqueUserIds = [...new Set(userIds.map((u: any) => u.user_id))]
+        const uniqueUserIds = [...new Set(userIds.map((u) => u.user_id))]
         console.log(`Found ${uniqueUserIds.length} candidate users (with due clients).`)
 
         if (uniqueUserIds.length === 0) {
@@ -73,11 +73,11 @@ serve(async (req) => {
 
         // Filter users who have 'pro' or 'premium' (case insensitive)
         const eligibleUserIds = profiles
-            .filter((p: any) => {
+            .filter((p) => {
                 const plan = p.plan_name ? p.plan_name.toLowerCase() : ''
                 return plan === 'pro' || plan === 'premium'
             })
-            .map((p: any) => p.id)
+            .map((p) => p.id)
 
         console.log(`Filtered to ${eligibleUserIds.length} eligible users (Pro/Premium).`)
 
@@ -103,9 +103,9 @@ serve(async (req) => {
                     BREVO_API_KEY
                 )
                 results.push({ userId, ...result })
-            } catch (err: any) {
+            } catch (err) {
                 console.error(`Failed to process user ${userId}:`, err)
-                results.push({ userId, success: false, error: err.message })
+                results.push({ userId, success: false, error: err instanceof Error ? err.message : String(err) })
             }
         }
 
@@ -118,10 +118,10 @@ serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         )
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Critical Error in cron job:', error)
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         )
     }

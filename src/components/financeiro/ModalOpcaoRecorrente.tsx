@@ -62,7 +62,7 @@ export const ModalOpcaoRecorrente: React.FC<ModalOpcaoRecorrenteProps> = ({
           {options.map((opt) => (
             <button
               key={opt.id}
-              onClick={() => onSelect(opt.id as any)}
+              onClick={() => onSelect(opt.id as 'this' | 'following')}
               className="w-full flex items-start p-4 rounded-xl border border-gray-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all group text-left"
             >
               <div className="p-2 bg-gray-50 dark:bg-slate-800 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">

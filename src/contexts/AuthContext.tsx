@@ -184,11 +184,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (profile.theme_preference) {
             localStorage.setItem('theme_preference', profile.theme_preference);
-            setThemePreference(profile.theme_preference as any);
+            setThemePreference(profile.theme_preference as 'original' | 'light' | 'dark');
           }
           if (profile.row_density) {
             localStorage.setItem('row_density', profile.row_density);
-            setRowDensity(profile.row_density as any);
+            setRowDensity(profile.row_density as 'original' | 'compact' | 'expanded');
           }
           if (profile.remove_bold_list !== undefined && profile.remove_bold_list !== null) {
             localStorage.setItem('remove_bold_list', String(profile.remove_bold_list));
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (profile.predicted_layout) {
             localStorage.setItem('predicted_layout', profile.predicted_layout);
-            setPredictedLayout(profile.predicted_layout as any);
+            setPredictedLayout(profile.predicted_layout as 'below' | 'column');
           }
           if (profile.dashboard_widgets) {
             setDashboardWidgets(profile.dashboard_widgets);

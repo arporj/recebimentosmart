@@ -222,10 +222,10 @@ export default function UserProfileSettingsV2() {
                 const savedSidebarCollapsed = localStorage.getItem('sidebar_desktop_collapsed');
 
                 lastSavedPrefs.current = {
-                    themePreference: (profileData.theme_preference as any) || 'original',
-                    rowDensity: (profileData.row_density as any) || 'original',
+                    themePreference: (profileData.theme_preference as 'original' | 'light' | 'dark') || 'original',
+                    rowDensity: (profileData.row_density as 'original' | 'compact' | 'expanded') || 'original',
                     removeBoldList: !!profileData.remove_bold_list,
-                    localPredictedLayout: (profileData.predicted_layout as any) || 'below',
+                    localPredictedLayout: (profileData.predicted_layout as 'below' | 'column') || 'below',
                     layoutPreference: savedPref || 'default',
                     showCurrencySymbol: savedShowCurrency !== 'false',
                     showNegativeSign: savedShowNegative !== 'false',

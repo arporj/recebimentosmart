@@ -21,7 +21,7 @@ export default function LoginV2() {
     setRememberMe(remember);
 
     try {
-      const from = (location.state as any)?.from;
+      const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from;
       const redirectUrl = from ? (from.pathname + from.search) : '/v2/clientes';
       await signIn(email, password, redirectUrl);
     } catch (error) {

@@ -304,7 +304,7 @@ export function OnboardingTour() {
             // então não mostram botão de avançar manual — só o de fechar/pular.
             let showButtons: Array<'next' | 'previous' | 'close'> = ['close'];
             let nextBtnText = 'Próximo';
-            let onNextClick = () => goToStep(stepIndex + 1);
+            const onNextClick = () => goToStep(stepIndex + 1);
 
             if (stepIndex === 0) {
                 showButtons = ['next', 'close'];

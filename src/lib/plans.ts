@@ -111,7 +111,20 @@ export function generateFeaturesFromLimits(clients: number, transactions: number
   ];
 }
 
-export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
+export interface PlanData {
+  limit_clients?: number;
+  limit_clientes?: number;
+  limit_transactions?: number;
+  limit_transacoes?: number;
+  limit_accounts?: number;
+  limit_contas?: number;
+  limit_tags?: number;
+  email_notification_enabled?: boolean;
+  email_notification_frequency?: string;
+  description?: string;
+}
+
+export function getPlanFeatures(slug: PlanSlug, planData: PlanData | null | undefined): PlanFeature[] {
   // Resgata os limites (com fallbacks dos limites padrão se planData estiver ausente)
   let clients = 15;
   let transactions = 30;
@@ -199,7 +212,7 @@ export function getPlanFeatures(slug: PlanSlug, planData: any): PlanFeature[] {
   return limitFeatures;
 }
 
-export function getPlanDescription(slug: PlanSlug, planData: any): string {
+export function getPlanDescription(slug: PlanSlug, planData: PlanData | null | undefined): string {
   // Prioriza a descrição do banco de dados
   if (planData && planData.description) {
     return planData.description;

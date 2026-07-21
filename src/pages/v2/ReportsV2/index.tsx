@@ -40,8 +40,8 @@ export function ReportsV2() {
             setLoading(true);
             const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', user.id);
             const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
-            setClients((clientsData as any) || []);
-            setPayments((paymentsData as any) || []);
+            setClients((clientsData as unknown as Client[]) || []);
+            setPayments((paymentsData as unknown as Payment[]) || []);
             setLoading(false);
         }
         fetchData();

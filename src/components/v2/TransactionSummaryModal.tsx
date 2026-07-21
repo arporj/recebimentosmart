@@ -9,11 +9,11 @@ interface TransactionInstance {
   amount: number;
   date: string;
   description: string;
-  status: 'paid' | 'pending' | 'overdue' | 'partial' | 'cancelled';
+  status: 'paid' | 'pending' | 'partial' | 'cancelled';
   account_id?: string;
   destination_account_id?: string;
   instanceDate: string;
-  isVirtual?: boolean;
+  isVirtual: boolean;
   isOpeningBalance?: boolean;
   isInvoiceSummary?: boolean;
   recurrence_enabled?: boolean;
@@ -21,9 +21,9 @@ interface TransactionInstance {
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_current?: number;
   installment_total?: number;
-  account?: { name: string };
-  destination_account?: { name: string };
-  category?: { name: string };
+  account?: { name: string; type: string };
+  destination_account?: { name: string; type: string };
+  category?: { name: string; icon: string | null; parent_id: string | null };
   client?: { name: string };
   auto_confirm?: boolean;
   runningBalance?: number;

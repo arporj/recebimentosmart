@@ -30,7 +30,7 @@ export interface ArtieToolCall {
 export interface ArtieToolResult {
   success: boolean;
   requiresScope?: boolean;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
 }
 

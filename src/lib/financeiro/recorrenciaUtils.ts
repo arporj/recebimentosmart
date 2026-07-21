@@ -23,9 +23,20 @@ export const defaultRecurrenceHorizon = () => addMonths(new Date(), 3);
 // diária com horizonte de vários anos), nunca gera mais que isso numa chamada.
 const MAX_OCCURRENCES_PER_CALL = 400;
 
+interface RecurrenceParentData {
+  id: string;
+  date: string;
+  installment_current?: number | null;
+}
+
+interface RecurrenceBaseTransaction {
+  invoice_month?: string | null;
+  [key: string]: unknown;
+}
+
 export async function gerarInstanciasRecorrentes(
-  parentData: any,
-  baseTransaction: any,
+  parentData: RecurrenceParentData,
+  baseTransaction: RecurrenceBaseTransaction,
   periodicidade: string,
   intervalo: number,
   horizonEnd: Date = defaultRecurrenceHorizon(),
@@ -66,7 +77,7 @@ export async function gerarInstanciasRecorrentes(
   if (occurrences.length > 0) {
     const { data: createdOccurrences, error } = await supabase
       .from('financial_transactions')
-      .insert(occurrences)
+      .insert(occurrences as never)
       .select('id');
     if (error) throw error;
 

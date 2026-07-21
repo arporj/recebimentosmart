@@ -140,8 +140,8 @@ export function QuickTransactionModal({ client, onClose, onSuccess }: QuickTrans
       toast.success('Lançamento criado com sucesso!');
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || 'Erro ao criar lançamento.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao criar lançamento.');
     } finally {
       setSaving(false);
     }

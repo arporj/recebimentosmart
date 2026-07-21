@@ -21,8 +21,8 @@ export interface TransactionUpdate {
   description?: string;
   amount?: number;
   category_id?: string;
-  account_id?: string;
-  destination_account_id?: string;
+  account_id?: string | null;
+  destination_account_id?: string | null;
   client_id?: string;
   date?: string;
   status?: string;
@@ -36,6 +36,9 @@ export interface TransactionUpdate {
   is_customized?: boolean;
   invoice_month?: string | null;
   card_holder_name?: string | null;
+  // Campos exclusivos de criação de parcelas: chegam no payload mas não existem na tabela.
+  start_installment?: number;
+  is_total_value?: boolean;
   tags?: string[];
 }
 
@@ -45,7 +48,7 @@ export async function editarTransacao(
   scope: EditScope = 'this'
 ) {
   // Higienizar payload removendo propriedades exclusivas de criação de parcelas que não existem na tabela
-  const { start_installment, is_total_value, ...cleanUpdate } = update as any;
+  const { start_installment: _start_installment, is_total_value: _is_total_value, ...cleanUpdate } = update;
 
   if (cleanUpdate.account_id === 'sem-conta') {
     cleanUpdate.account_id = null;
@@ -62,7 +65,12 @@ export async function editarTransacao(
 
   if (fetchError || !current) throw new Error('Erro ao buscar transação');
 
-  const { modalidade: currentModalidade, parent_id, date: currentDate, type } = current as any;
+  const { modalidade: currentModalidade, parent_id, date: currentDate, type } = current as unknown as {
+    modalidade: 'unica' | 'parcelada' | 'recorrente';
+    parent_id: string | null;
+    date: string;
+    type: 'income' | 'expense' | 'transfer';
+  };
 
   // ── MUDANÇA ESTRUTURAL DE MODALIDADE ────────────────────────────────
   // Qualquer troca de modalidade é uma operação estrutural: ignora o

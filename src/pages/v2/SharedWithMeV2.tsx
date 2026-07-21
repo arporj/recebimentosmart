@@ -58,6 +58,46 @@ interface SharedItem {
   };
 }
 
+interface SharedTransactionRow {
+  id: string;
+  client_id: string;
+  type: 'income' | 'expense' | 'transfer';
+  amount: number;
+  date: string;
+  description: string;
+  status: string;
+  recurrence_enabled?: boolean;
+  recurrence_period?: string;
+  recurrence_interval?: number;
+  recurrence_end_date?: string | null;
+  parent_id?: string | null;
+  modalidade?: string;
+  installment_total?: number;
+  installment_current?: number;
+}
+
+interface SentShareRow {
+  id: string;
+  client_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  receiver_email: string;
+  client: { id: string; name: string } | null;
+}
+
+interface PendingUpdateRow {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  status: string;
+  transaction_id?: string | null;
+  original_transaction_id?: string | null;
+  [key: string]: unknown;
+  sender?: { id: string; name: string; email: string };
+  transaction_description?: string;
+  client_name?: string;
+}
+
 interface CategoryDropdownProps {
   value: string;
   onChange: (val: string) => void;
@@ -212,7 +252,7 @@ function AccountDropdown({ value, onChange, accounts, placeholder = "Selecione c
 export default function SharedWithMeV2() {
   const { user } = useAuth();
   const [shares, setShares] = useState<SharedItem[]>([]);
-  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<SharedTransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
@@ -229,14 +269,14 @@ export default function SharedWithMeV2() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [associationType, setAssociationType] = useState<'new' | 'existing' | 'none'>('new');
   const [selectedReceiverClientId, setSelectedReceiverClientId] = useState('');  // Novos estados para Abas e Notificações de Alteração/Exclusão bilaterais
-  const [sentShares, setSentShares] = useState<any[]>([]);
+  const [sentShares, setSentShares] = useState<SentShareRow[]>([]);
   const [activeTab, setActiveTab] = useState<'shares' | 'sent' | 'updates'>('shares');
-  const [pendingUpdates, setPendingUpdates] = useState<any[]>([]);
-  const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
+  const [pendingUpdates, setPendingUpdates] = useState<PendingUpdateRow[]>([]);
+  const [pendingTransactions, setPendingTransactions] = useState<SharedTransactionRow[]>([]);
   const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
 
   // Acompanhamento do Enviado e Sub-abas
-  const [selectedSentShare, setSelectedSentShare] = useState<{ id: string; clientName: string; receiverEmail: string; status: any; clientId: string } | null>(null);
+  const [selectedSentShare, setSelectedSentShare] = useState<{ id: string; clientName: string; receiverEmail: string; status: 'pending' | 'accepted' | 'rejected'; clientId: string } | null>(null);
   const [isSentStatementOpen, setIsSentStatementOpen] = useState(false);
   const [subTab, setSubTab] = useState<'pending' | 'completed'>('pending');
 
@@ -318,7 +358,7 @@ export default function SharedWithMeV2() {
 
       if (sharesError) throw sharesError;
 
-      let items = (sharesData || []) as any as SharedItem[];
+      let items = (sharesData || []) as unknown as SharedItem[];
 
       // Filtra compartilhamentos rejeitados (não exibir na interface de recebidos)
       items = items.filter(item => item.status !== 'rejected');
@@ -337,7 +377,7 @@ export default function SharedWithMeV2() {
         .eq('sender_id', user?.id)
         .order('created_at', { ascending: false });
 
-      let activeSentShares: any[] = [];
+      let activeSentShares: SentShareRow[] = [];
       if (!sentSharesError && sentSharesData) {
         if (sentSharesData.length > 0) {
           const sentClientIds = sentSharesData.map(s => s.client_id);
@@ -351,7 +391,7 @@ export default function SharedWithMeV2() {
             ? new Set(sentTxData.map(tx => tx.client_id))
             : new Set();
           
-          activeSentShares = sentSharesData.filter(s => clientsWithActiveTx.has(s.client_id));
+          activeSentShares = (sentSharesData as unknown as SentShareRow[]).filter(s => clientsWithActiveTx.has(s.client_id));
         }
       } else if (sentSharesError) {
         console.error('Erro ao buscar compartilhamentos enviados:', sentSharesError);
@@ -359,7 +399,7 @@ export default function SharedWithMeV2() {
       setSentShares(activeSentShares);
 
       // Buscar transações dos itens pendentes para mostrar o extrato antes de aceitar
-      let localPendingTxData: any[] = [];
+      let localPendingTxData: SharedTransactionRow[] = [];
       const pendingItems = items.filter(item => item.status === 'pending');
       if (pendingItems.length > 0) {
         const pendingClientIds = pendingItems.map(item => item.client_id);
@@ -371,7 +411,7 @@ export default function SharedWithMeV2() {
           .is('parent_id', null);
 
         if (!pendingTxError && pendingTxData) {
-          localPendingTxData = pendingTxData;
+          localPendingTxData = pendingTxData as unknown as SharedTransactionRow[];
           setPendingTransactions(localPendingTxData);
         } else {
           setPendingTransactions([]);
@@ -381,7 +421,7 @@ export default function SharedWithMeV2() {
       }
 
       // 2. Para itens aceitos, buscar transações físicas ativas para expansão local de recorrências
-      let localTxData: any[] = [];
+      let localTxData: SharedTransactionRow[] = [];
       const acceptedItems = items.filter(item => item.status === 'accepted');
       
       if (acceptedItems.length > 0) {
@@ -395,12 +435,12 @@ export default function SharedWithMeV2() {
           .in('client_id', clientIds);
 
         if (txError) throw txError;
-        localTxData = txData || [];
+        localTxData = (txData as unknown as SharedTransactionRow[]) || [];
         setRawTransactions(localTxData);
 
         // Define o mês inicial baseado na transação compartilhada mais antiga
         if (localTxData && localTxData.length > 0) {
-          const earliestDate = localTxData.reduce((minDate: Date, tx: any) => {
+          const earliestDate = localTxData.reduce((minDate: Date, tx) => {
             const txDate = parseISO(tx.date);
             return isBefore(txDate, minDate) ? txDate : minDate;
           }, parseISO(localTxData[0].date));
@@ -414,9 +454,9 @@ export default function SharedWithMeV2() {
       setShares(items);
 
       // 3. Buscar atualizações pendentes bilaterais de forma robusta e à prova de falhas de PostgREST joins
-      let localUpdatesData: any[] = [];
+      let localUpdatesData: PendingUpdateRow[] = [];
       if (user) {
-        const { data: updatesData, error: updatesError } = await supabase
+        const { data: rawUpdatesData, error: updatesError } = await supabase
           .from('shared_transaction_updates')
           .select('*')
           .eq('receiver_id', user.id)
@@ -424,23 +464,25 @@ export default function SharedWithMeV2() {
           .order('created_at', { ascending: false });
 
         if (updatesError) throw updatesError;
+        const updatesData = rawUpdatesData as unknown as PendingUpdateRow[] | null;
 
-        let updatesWithSenders: any[] = [];
+        let updatesWithSenders: PendingUpdateRow[] = [];
         if (updatesData && updatesData.length > 0) {
           localUpdatesData = updatesData;
           const senderIds = Array.from(new Set(updatesData.map(u => u.sender_id)));
-          const { data: profilesData } = await supabase
+          const { data: rawProfilesData } = await supabase
             .from('profiles')
             .select('id, name, email')
             .in('id', senderIds);
-            
+          const profilesData = rawProfilesData as unknown as Array<{ id: string; name: string; email: string }> | null;
+
           const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
           // Buscar detalhes das transações (descrição e nome do cliente) para exibição enriquecida
           const txIds = Array.from(new Set([
             ...updatesData.map(u => u.transaction_id),
             ...updatesData.map(u => u.original_transaction_id)
-          ].filter(Boolean)));
+          ].filter((id): id is string => Boolean(id))));
 
           const { data: txInfoData } = await supabase
             .from('financial_transactions')
@@ -453,10 +495,10 @@ export default function SharedWithMeV2() {
             `)
             .in('id', txIds);
 
-          const txInfoMap = new Map(txInfoData?.map((t: any) => [t.id, t]) || []);
+          const txInfoMap = new Map((txInfoData as unknown as Array<{ id: string; description: string; date: string; amount: number; client: { name: string } | null }> | null)?.map((t) => [t.id, t]) || []);
 
           updatesWithSenders = updatesData.map(u => {
-            const txInfo = txInfoMap.get(u.transaction_id) || txInfoMap.get(u.original_transaction_id);
+            const txInfo = txInfoMap.get(u.transaction_id || '') || txInfoMap.get(u.original_transaction_id || '');
             return {
               ...u,
               sender: profilesMap.get(u.sender_id) || { id: u.sender_id, name: 'Usuário', email: '' },
@@ -528,7 +570,7 @@ export default function SharedWithMeV2() {
   };
 
   const processedShares = useMemo((): SharedItem[] => {
-    const instances: any[] = [];
+    const instances: Array<SharedTransactionRow & { instanceDate: string; isVirtual: boolean }> = [];
     const maxDate = endOfMonth(currentMonth);
 
     // Identificar registros físicos daquela cadeia por cliente para evitar duplicações

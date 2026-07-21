@@ -277,8 +277,8 @@ const FinancialAccountsV2 = () => {
       await definirContaPadrao(accountId);
       toast.success('Conta principal atualizada!');
       fetchAccounts();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao definir conta principal.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao definir conta principal.');
     }
   };
 
@@ -307,12 +307,12 @@ const FinancialAccountsV2 = () => {
     const payload = {
       user_id: user!.id,
       name: name.trim(),
-      type: type as any,
+      type: type as 'checking' | 'savings' | 'credit_card' | 'investment',
       initial_balance: parsedBalance,
       credit_limit: isCC ? parsePushMask(creditLimit) : null,
       closing_day: null,
       due_day: isCC && dueDay ? parseInt(dueDay) : null,
-      limit_type: (isCC ? limitType : null) as any,
+      limit_type: (isCC ? limitType : null) as 'total' | 'monthly' | 'undefined' | null,
       first_invoice_due_date: isCC && firstInvoiceDueDate ? firstInvoiceDueDate : null,
       closing_days_before: isCC && closingDaysBefore ? parseInt(closingDaysBefore) : null,
       invoice_payment_account_id: isCC && invoicePaymentAccountId ? invoicePaymentAccountId : null,

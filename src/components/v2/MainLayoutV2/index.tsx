@@ -11,7 +11,8 @@ import {
     MessageCircle, FormInput, CreditCard,
     Shield, Settings, LogOut, Eye, Menu, X,
     Wallet, FolderOpen, Tag, ChevronDown, ChevronRight,
-    Mail, Bell, RefreshCw, DollarSign, HelpCircle
+    Mail, Bell, RefreshCw, DollarSign, HelpCircle,
+    type LucideIcon
 } from 'lucide-react';
 import { ChangelogDrawer } from '../ChangelogDrawer';
 import { OnboardingTour } from '../OnboardingTour';
@@ -22,7 +23,7 @@ interface MainLayoutV2Props {
 
 interface SidebarItem {
     label: string;
-    icon: any;
+    icon: LucideIcon;
     href?: string;
     subItems?: SidebarItem[];
     tourId?: string;

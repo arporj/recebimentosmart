@@ -18,8 +18,8 @@ interface TransactionInstance {
   isOpeningBalance?: boolean;
   isInvoiceSummary?: boolean;
   recurrence_enabled?: boolean;
-  parent_id?: string;
-  modalidade?: 'parcelada' | 'recorrente';
+  parent_id?: string | null;
+  modalidade?: 'unica' | 'parcelada' | 'recorrente';
   installment_current?: number;
   installment_total?: number;
   account?: { name: string };

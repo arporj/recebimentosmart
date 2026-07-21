@@ -16,6 +16,7 @@ import type {
   ArtieUserMemory,
   PendingAction,
   ArtieToolCall,
+  ArtieToolResult,
   AskUserArgs,
   CreateTransactionArgs,
 } from '../../../lib/artie/types';
@@ -108,12 +109,20 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
       // Só aplica se a conversa ainda estiver vazia (evita clobber se o usuário já digitou)
       if (data && data.length > 0 && messagesRef.current.length === 0) {
-        const restored: ArtieMessage[] = data.reverse().map((r: any) => ({
+        const rows = data as unknown as Array<{
+          id: string;
+          role: 'user' | 'model';
+          content: string;
+          tool_call?: ArtieToolCall & { args?: { options?: string[] } };
+          tool_result?: unknown;
+          created_at: string;
+        }>;
+        const restored: ArtieMessage[] = rows.reverse().map((r) => ({
           id: r.id,
           role: r.role,
           content: r.content,
           toolCall: r.tool_call || undefined,
-          toolResult: r.tool_result || undefined,
+          toolResult: (r.tool_result as ArtieToolResult | undefined) || undefined,
           // Chips de ask_user são restaurados a partir dos args do tool_call
           options: r.tool_call?.name === 'ask_user' && Array.isArray(r.tool_call?.args?.options)
             ? r.tool_call.args.options
@@ -183,7 +192,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
   }, [persistMessage]);
 
   const buildApiMessages = useCallback((currentUserText?: string) => {
-    const list = messagesRef.current
+    const list: Array<{ role: 'user' | 'model'; content: string; tool_call?: ArtieToolCall; tool_result?: ArtieToolResult }> = messagesRef.current
       .filter(m => m.role === 'user' || m.role === 'model')
       .map(m => ({
         role: m.role,
@@ -247,7 +256,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
       // Resposta textual
       addMessage({ role: 'model', content: result.reply });
       setChatState('idle');
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Artie] Erro na chamada ao backend:', err);
       addMessage({ role: 'model', content: 'Não consegui me conectar. Verifique sua conexão.' });
       setChatState('idle');
@@ -295,7 +304,7 @@ export function ArtieProvider({ children }: { children: ReactNode }) {
 
     // Se for deleção de lançamento recorrente/parcelado que exige escolha de escopo
     if (result.requiresScope && result.data) {
-      setPendingScopeAction(result.data);
+      setPendingScopeAction(result.data as unknown as PendingScopeAction);
       setChatState('awaiting_confirm');
       return;
     }
@@ -511,7 +520,7 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 function buildSuccessMessage(
   toolCall: ArtieToolCall,
-  data: any,
+  data: Record<string, unknown> | undefined,
   accountInfo?: { name: string; isCreditCard: boolean },
   destinationName?: string,
 ): string {
@@ -543,8 +552,8 @@ function buildSuccessMessage(
       const dateLabel = data?.payment_date ? String(data.payment_date).split('-').reverse().join('/') : '';
       const diffNote = Number(data?.diff || 0) >= 0.01
         ? (data?.difference_action === 'next_month'
-          ? ` A diferença de R$ ${Number(data.diff).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} foi lançada na fatura do mês seguinte.`
-          : ` A diferença de R$ ${Number(data.diff).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} foi descartada com um Acerto de Saldo.`)
+          ? ` A diferença de R$ ${Number(data?.diff).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} foi lançada na fatura do mês seguinte.`
+          : ` A diferença de R$ ${Number(data?.diff).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} foi descartada com um Acerto de Saldo.`)
         : '';
       if (data?.scheduled) {
         return `📅 Fatura de ${monthLabel} do cartão **${data?.card_name}** fechada: pagamento de R$ ${amountStr} agendado para ${dateLabel} pela conta **${data?.account_name}** (confirmação automática na data).${diffNote}`;
@@ -566,16 +575,16 @@ function buildSuccessMessage(
   }
 }
 
-function formatBalanceFallback(data: any): string {
+function formatBalanceFallback(data: Record<string, unknown> | undefined): string {
   const total = Number(data?.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return `Seu saldo${data?.only_confirmed ? ' confirmado' : ' projetado'} é de R$ ${total}.`;
 }
 
 /** Lista formatada (até 5 itens) do resultado de list_transactions; '' se vazio */
-function formatTransactionItems(data: any): string {
+function formatTransactionItems(data: Record<string, unknown> | undefined): string {
   // O executor de list_transactions retorna { transactions, total, count, period }
-  const transactions: Array<{ description?: string; amount?: number; date?: string; status?: string }> =
-    Array.isArray(data) ? data : (data?.transactions || []);
+  const transactions = (data?.transactions || []) as
+    Array<{ description?: string; amount?: number; date?: string; status?: string }>;
   return transactions.slice(0, 5).map(tx => {
     const val = Number(Math.abs(tx.amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const st = tx.status === 'paid' ? 'Pago' : 'Pendente';
@@ -584,14 +593,14 @@ function formatTransactionItems(data: any): string {
   }).join('\n');
 }
 
-function formatTransactionsFallback(data: any, originalReply?: string): string {
+function formatTransactionsFallback(data: Record<string, unknown> | undefined, originalReply?: string): string {
   if (originalReply && originalReply.trim() && !originalReply.includes('Aqui estão os dados solicitados')) {
     return originalReply;
   }
   const items = formatTransactionItems(data);
   if (!items) {
     // Nunca atribuir o período ao usuário: informar qual intervalo foi buscado e oferecer ampliar
-    const period = !Array.isArray(data) && typeof data?.period === 'string'
+    const period = typeof data?.period === 'string'
       ? ` entre ${formatPeriodBR(data.period)}`
       : '';
     return `Não encontrei nenhum lançamento${period}. Quer que eu amplie a busca ou procure entre as contas em atraso?`;
@@ -612,7 +621,7 @@ function formatInvoiceMonthBR(invoiceMonth: string): string {
   return m && y ? `${m}/${y}` : invoiceMonth;
 }
 
-function formatInvoiceSummaryFallback(data: any): string {
+function formatInvoiceSummaryFallback(data: Record<string, unknown> | undefined): string {
   if (!data?.card_name) return 'Não consegui consultar a fatura no momento.';
   const total = Number(data.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dueLabel = data.due_date ? String(data.due_date).split('-').reverse().join('/') : '';

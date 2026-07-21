@@ -26,7 +26,18 @@ export async function gerarOcorrencias(targetDate: Date = new Date()) {
 
   const newOccurrences = [];
 
-  for (const parent of parents as any[]) {
+  for (const parent of parents as unknown as Array<{
+    id: string;
+    client_id: string | null;
+    description: string;
+    amount: number;
+    type: string;
+    category_id: string | null;
+    account_id: string | null;
+    due_day: number | null;
+    date: string;
+    auto_confirm: boolean | null;
+  }>) {
     // Verificar se já existe ocorrência para este mês
     const { data: exists } = await supabase
       .from('financial_transactions')

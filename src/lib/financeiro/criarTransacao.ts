@@ -254,7 +254,7 @@ export async function criarTransacao(input: TransactionInput) {
         input.tags
       );
       return { data: firstChildData, error: null };
-    } catch (error: any) {
+    } catch (error) {
       return { data: firstChildData, error };
     }
   }

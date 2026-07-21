@@ -55,7 +55,7 @@ const QuickAddAccountModal: React.FC<QuickAddAccountModalProps> = ({ isOpen, onC
         .insert({
           user_id: user.id,
           name: name.trim(),
-          type: type as any,
+          type: type as 'checking' | 'savings' | 'credit_card' | 'investment',
           initial_balance: 0,
           bank_name: bankName || null,
           bank_icon: bankIcon || null,
@@ -69,8 +69,8 @@ const QuickAddAccountModal: React.FC<QuickAddAccountModalProps> = ({ isOpen, onC
       toast.success('Conta criada com sucesso!');
       onSuccess(data.id);
       onClose();
-    } catch (error: any) {
-      toast.error('Erro ao criar conta: ' + error.message);
+    } catch (error) {
+      toast.error('Erro ao criar conta: ' + (error instanceof Error ? error.message : 'erro desconhecido'));
     } finally {
       setSaving(false);
     }

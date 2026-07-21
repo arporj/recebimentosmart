@@ -266,7 +266,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
             throw new Error('Você não pode compartilhar um cliente com seu próprio e-mail.');
           }
 
-          const shareData: any = {
+          const shareData: { client_id: string; sender_id: string; receiver_email: string; status: string; id?: string } = {
             client_id: clientResult.id,
             sender_id: user.id,
             receiver_email: cleanEmail,

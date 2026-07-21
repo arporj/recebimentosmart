@@ -61,9 +61,9 @@ export function ManageCustomFieldModalV2({ fieldToEdit, onClose, onSuccess }: Ma
 
             onSuccess();
             onClose();
-        } catch (error: any) {
+        } catch (error) {
             console.error('Erro na submissão de field:', error);
-            toast.error(`Falha: ${error.message}`);
+            toast.error(`Falha: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
         } finally {
             setLoading(false);
         }

@@ -114,9 +114,10 @@ export default function SignUpV2() {
             }
  
             navigate('/v2/login');
-        } catch (error: any) {
+        } catch (error) {
             console.error('Erro no processo de signUp:', error);
-            const errMsg = error?.message || error?.error_description || JSON.stringify(error) || 'Erro desconhecido ao processar cadastro';
+            const errObj = error as { message?: string; error_description?: string } | null;
+            const errMsg = errObj?.message || errObj?.error_description || JSON.stringify(error) || 'Erro desconhecido ao processar cadastro';
             setSubmitError(errMsg);
             toast.error('Ocorreu um erro no cadastro. Veja os detalhes abaixo.');
         } finally {

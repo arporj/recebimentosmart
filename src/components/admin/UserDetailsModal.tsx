@@ -124,9 +124,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       } else {
         toast.error('Erro ao registrar pagamento: ' + data.error);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao registrar pagamento:', error);
-      toast.error('Erro ao registrar pagamento: ' + (error.message || 'Erro desconhecido'));
+      toast.error('Erro ao registrar pagamento: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setUpdating(false);
     }
@@ -163,9 +163,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUs
       } else {
         onClose();
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao excluir usuário:', error);
-      toast.error('Erro ao excluir usuário: ' + (error.message || 'Erro desconhecido'));
+      toast.error('Erro ao excluir usuário: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setUpdating(false);
     }

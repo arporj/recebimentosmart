@@ -87,8 +87,8 @@ export function GlobalNotificationSettings({ onClose }: GlobalNotificationSettin
       }
       toast.success('Configuração global salva!');
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || 'Erro ao salvar.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar.');
     } finally {
       setSaving(false);
     }

@@ -4,13 +4,13 @@
 
 import { supabase } from '../supabase';
 import { criarTransacao } from '../financeiro/criarTransacao';
-import { editarTransacao } from '../financeiro/editarTransacao';
+import { editarTransacao, type TransactionUpdate } from '../financeiro/editarTransacao';
 import { deletarTransacao } from '../financeiro/deletarTransacao';
 import { pagarFatura, lancarDiferencaProximoMes } from '../financeiro/pagarFatura';
 import { calcularMesFatura } from '../financeiro/faturaUtils';
 import { format, subDays, addDays, parseISO, startOfMonth, endOfMonth, addMonths } from 'date-fns';
-import { expandTransactionInstances } from '../financeiro/instanceExpansion';
-import { groupCreditCardInvoices } from '../financeiro/invoiceGrouping';
+import { expandTransactionInstances, type RawFinancialTransaction } from '../financeiro/instanceExpansion';
+import { groupCreditCardInvoices, type CreditCardAccountLike } from '../financeiro/invoiceGrouping';
 import { computeAccountBalanceAsOf } from '../financeiro/balanceCalculator';
 import type {
   ArtieToolCall,
@@ -25,10 +25,38 @@ import type {
   PayCreditCardInvoiceArgs,
 } from './types';
 
+interface BalanceAccountRow {
+  id: string;
+  name: string;
+  type: string;
+  initial_balance?: number | null;
+  is_default?: boolean | null;
+}
+
+interface CardRow {
+  id: string;
+  name: string;
+  due_day?: number | null;
+  closing_days_before?: number | null;
+  invoice_payment_account_id?: string | null;
+}
+
+interface BankAccountRow {
+  id: string;
+  name: string;
+}
+
 // ─── Utilitários de busca ─────────────────────────────────────────────────────
 
 const normalize = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/** Extrai o nome de uma rela\u00e7\u00e3o joined do Supabase, que pode vir como objeto \u00fanico ou array. */
+function getJoinedName(joined: unknown): string | undefined {
+  const value = joined as { name?: string } | { name?: string }[] | null | undefined;
+  const first = Array.isArray(value) ? value[0] : value;
+  return first?.name;
+}
 
 async function findTransactions(
   userId: string,
@@ -85,7 +113,7 @@ async function executeCreateTransaction(
       destination_account_id: args.destination_account_id,
       modalidade: args.modalidade || 'unica',
       installment_total: args.installment_total,
-      recurrence_period: args.recurrence_period as any,
+      recurrence_period: args.recurrence_period as 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined,
       recurrence_interval: args.recurrence_interval,
       status: args.status || 'paid',
     });
@@ -93,8 +121,8 @@ async function executeCreateTransaction(
     if (error) throw error;
     window.dispatchEvent(new CustomEvent('transaction_created'));
     return { success: true, data: { id: data?.id, description: args.description, amount: args.amount } };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao criar lançamento.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao criar lançamento.' };
   }
 }
 
@@ -122,8 +150,8 @@ async function executeConfirmTransaction(
 
     window.dispatchEvent(new CustomEvent('transaction_created'));
     return { success: true, data: { id: tx.id, description: tx.description, amount: tx.amount } };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao confirmar lançamento.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao confirmar lançamento.' };
   }
 }
 
@@ -146,7 +174,7 @@ async function executeUpdateTransaction(
     }
 
     const tx = matches[0];
-    const updatePayload: Record<string, unknown> = {};
+    const updatePayload: TransactionUpdate = {};
     if (args.update_description) updatePayload.description = args.update_description;
     if (args.update_amount) updatePayload.amount = args.update_amount;
     if (args.update_date) updatePayload.date = args.update_date;
@@ -158,13 +186,13 @@ async function executeUpdateTransaction(
       return { success: false, error: 'Nenhum campo para atualizar foi informado.' };
     }
 
-    const { error } = await editarTransacao(tx.id, updatePayload as any, 'this');
+    const { error } = await editarTransacao(tx.id, updatePayload, 'this');
     if (error) throw error;
 
     window.dispatchEvent(new CustomEvent('transaction_created'));
     return { success: true, data: { id: tx.id, description: tx.description, updated: updatePayload } };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao atualizar lançamento.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao atualizar lançamento.' };
   }
 }
 
@@ -224,8 +252,8 @@ async function executeDeleteTransaction(
         scope: scopeToUse
       }
     };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao excluir lançamento.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao excluir lançamento.' };
   }
 }
 
@@ -280,33 +308,33 @@ async function executeListTransactions(
 
       if (cats && cats.length > 0) {
         const matchedIds = new Set(
-          cats.filter((c: any) => normalize(c.name).includes(catNorm)).map((c: any) => c.id),
+          cats.filter((c) => normalize(c.name).includes(catNorm)).map((c) => c.id),
         );
-        cats.forEach((c: any) => {
+        cats.forEach((c) => {
           if (c.parent_id && matchedIds.has(c.parent_id)) matchedIds.add(c.id);
         });
-        results = results.filter((tx: any) => tx.category_id && matchedIds.has(tx.category_id));
+        results = results.filter((tx) => tx.category_id && matchedIds.has(tx.category_id));
       } else {
-        results = results.filter((tx: any) =>
-          tx.financial_categories?.name && normalize(tx.financial_categories.name).includes(catNorm),
+        results = results.filter((tx) =>
+          getJoinedName(tx.financial_categories) && normalize(getJoinedName(tx.financial_categories)!).includes(catNorm),
         );
       }
     }
 
-    const total = results.reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
-    const summary = results.map((tx: any) => ({
+    const total = results.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const summary = results.map((tx) => ({
       description: tx.description,
       amount: tx.amount,
       date: tx.date,
       type: tx.type,
       status: tx.status,
-      account: (tx as any).financial_accounts?.name,
-      category: (tx as any).financial_categories?.name,
+      account: getJoinedName(tx.financial_accounts),
+      category: getJoinedName(tx.financial_categories),
     }));
 
     return { success: true, data: { transactions: summary, total, count: results.length, period: `${dateFrom} a ${dateTo}` } };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao buscar lançamentos.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao buscar lançamentos.' };
   }
 }
 
@@ -320,7 +348,7 @@ async function executeGetAccountBalance(
 
     const [accountsRes, txRes, templatesRes, cardsRes] = await Promise.all([
       supabase.from('financial_accounts').select('id, name, type, initial_balance, is_default').eq('user_id', userId).eq('is_active', true).neq('type', 'credit_card'),
-      (supabase as any).from('v_financial_transactions').select('*').eq('user_id', userId).eq('is_template', false),
+      supabase.from('v_financial_transactions' as never).select('*').eq('user_id', userId).eq('is_template', false),
       // Precisa do join com account_id para obter account_type — sem ele, o recalculo do mes
       // da fatura de recorrencias em cartao de credito (dentro de expandTransactionInstances)
       // nao consegue reconhecer o cartao e usa o invoice_month original do template, gerando
@@ -334,7 +362,7 @@ async function executeGetAccountBalance(
     if (templatesRes.error) throw templatesRes.error;
     if (cardsRes.error) throw cardsRes.error;
 
-    const accounts: any[] = accountsRes.data || [];
+    const accounts = (accountsRes.data as unknown as BalanceAccountRow[]) || [];
     if (accounts.length === 0) {
       return { success: false, error: 'Nenhuma conta bancária encontrada.' };
     }
@@ -348,15 +376,15 @@ async function executeGetAccountBalance(
       }
     }
 
-    const mappedTemplates = ((templatesRes.data as any[]) || []).map((t: any) => ({
+    const mappedTemplates = ((templatesRes.data as unknown as (RawFinancialTransaction & { account?: { type?: string } })[]) || []).map((t) => ({
       ...t,
       account_type: t.account?.type || 'checking',
     }));
 
-    const instances = expandTransactionInstances((txRes.data as any) || [], mappedTemplates, {
+    const instances = expandTransactionInstances((txRes.data as unknown as RawFinancialTransaction[]) || [], mappedTemplates, {
       horizonEnd: endOfMonth(asOfDate),
     });
-    const invoiceGroups = groupCreditCardInvoices(instances, (cardsRes.data as any) || [], { onlyConfirmed });
+    const invoiceGroups = groupCreditCardInvoices(instances, (cardsRes.data as unknown as CreditCardAccountLike[]) || [], { onlyConfirmed });
 
     const perAccount = matchedAccounts.map(acc => ({
       account: acc.name,
@@ -385,8 +413,8 @@ async function executeGetAccountBalance(
         has_multiple_accounts: matchedAccounts.length > 1,
       },
     };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao calcular saldo.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao calcular saldo.' };
   }
 }
 
@@ -395,7 +423,7 @@ async function executeGetAccountBalance(
 /** Carrega instâncias expandidas + grupos de fatura (mesmo pipeline das telas/saldo) */
 async function loadInvoiceGroups(userId: string) {
   const [txRes, templatesRes, cardsRes] = await Promise.all([
-    (supabase as any).from('v_financial_transactions').select('*').eq('user_id', userId).eq('is_template', false),
+    supabase.from('v_financial_transactions' as never).select('*').eq('user_id', userId).eq('is_template', false),
     supabase.from('financial_transactions').select('*, account:account_id(type)').eq('user_id', userId).eq('is_template', true).eq('recurrence_enabled', true),
     supabase.from('financial_accounts').select('id, name, due_day, closing_days_before, invoice_payment_account_id').eq('user_id', userId).eq('type', 'credit_card').eq('is_active', true),
   ]);
@@ -404,22 +432,22 @@ async function loadInvoiceGroups(userId: string) {
   if (templatesRes.error) throw templatesRes.error;
   if (cardsRes.error) throw cardsRes.error;
 
-  const mappedTemplates = ((templatesRes.data as any[]) || []).map((t: any) => ({
+  const mappedTemplates = ((templatesRes.data as unknown as (RawFinancialTransaction & { account?: { type?: string } })[]) || []).map((t) => ({
     ...t,
     account_type: t.account?.type || 'checking',
   }));
 
-  const instances = expandTransactionInstances((txRes.data as any) || [], mappedTemplates, {
+  const instances = expandTransactionInstances((txRes.data as unknown as RawFinancialTransaction[]) || [], mappedTemplates, {
     horizonEnd: endOfMonth(addMonths(new Date(), 2)),
   });
-  const cards: any[] = cardsRes.data || [];
+  const cards = (cardsRes.data as unknown as CardRow[]) || [];
   const invoiceGroups = groupCreditCardInvoices(instances, cards, {});
 
   return { cards, invoiceGroups };
 }
 
 /** Resolve o cartão pelo nome (parcial); com um único cartão cadastrado, assume-o */
-function resolveCard(cardName: string | undefined, cards: any[]): { card: any | null; error?: string } {
+function resolveCard(cardName: string | undefined, cards: CardRow[]): { card: CardRow | null; error?: string } {
   if (cards.length === 0) return { card: null, error: 'Nenhum cartão de crédito cadastrado.' };
   if (!cardName || !cardName.trim()) {
     if (cards.length === 1) return { card: cards[0] };
@@ -435,7 +463,7 @@ function resolveCard(cardName: string | undefined, cards: any[]): { card: any | 
 }
 
 /** Fatura corrente do cartão (mesma regra de janela do lançamento de compras) */
-function defaultInvoiceMonthForCard(card: any): string {
+function defaultInvoiceMonthForCard(card: CardRow): string {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   return (
     calcularMesFatura(todayStr, {
@@ -482,8 +510,8 @@ async function executeGetInvoiceSummary(
         payment_date: group.billTransfer?.date ?? null,
       },
     };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao consultar a fatura.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao consultar a fatura.' };
   }
 }
 
@@ -529,12 +557,12 @@ async function executePayCreditCardInvoice(
       .order('name');
     if (accError) throw accError;
 
-    const banks: any[] = bankAccounts || [];
+    const banks: BankAccountRow[] = bankAccounts || [];
     if (banks.length === 0) {
       return { success: false, error: 'Nenhuma conta bancária (corrente/poupança) ativa para pagar a fatura.' };
     }
 
-    let paymentAccount: any | null = null;
+    let paymentAccount: BankAccountRow | null = null;
     if (args.payment_account_name && args.payment_account_name.trim()) {
       const n = normalize(args.payment_account_name.trim());
       const matches = banks.filter(b => normalize(b.name).includes(n) || n.includes(normalize(b.name)));
@@ -601,8 +629,8 @@ async function executePayCreditCardInvoice(
         difference_action: differenceApplied,
       },
     };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Erro ao pagar a fatura.' };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao pagar a fatura.' };
   }
 }
 
