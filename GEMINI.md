@@ -134,7 +134,6 @@ O projeto é o "recebimento-smart", um sistema híbrido que serve tanto para con
     - `src/pages/v2/FinancialTransactionsV2.tsx` — Lista principal de lançamentos
     - `src/pages/v2/DashboardV2.tsx` — Dashboard / painel principal
     - `src/pages/v2/CreditCardV2.tsx` — Cartões de crédito e faturas
-    - `src/pages/v2/RecurrenceV2.tsx` — Recorrências por cliente
     - `src/pages/v2/ClientsArea/CobrancasV2.tsx` — Cobranças de clientes (já tinha filtro correto)
     - `src/pages/v2/ClientsArea/GestaoClientesV2.tsx` — Gestão de clientes (já tinha filtro correto)
     - `src/pages/v2/ReportsV2/index.tsx` — Relatórios (usa tabela `payments` legado — verificar se ainda é relevante)

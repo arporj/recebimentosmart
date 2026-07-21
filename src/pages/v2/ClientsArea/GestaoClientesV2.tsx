@@ -19,6 +19,7 @@ import ClientStatementModalV2 from '../../../components/v2/ClientStatementModalV
 import type { Database } from '../../../types/supabase';
 
 type Client = Database['public']['Tables']['clients']['Row'];
+type CustomField = Database['public']['Tables']['custom_fields']['Row'];
 
 interface ClientSummary {
   client: Client;
@@ -29,6 +30,7 @@ interface ClientSummary {
   netPending: number;
   nextDueDate: string | null;
   hasNotificationConfig: boolean;
+  customFieldValues: { field: CustomField; value: string }[];
 }
 
 type PaymentFilter = 'all' | 'ok' | 'overdue' | 'none';
@@ -42,6 +44,8 @@ export default function GestaoClientesV2() {
   const [clients, setClients] = useState<Client[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [notifConfigs, setNotifConfigs] = useState<Record<string, boolean>>({});
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customFieldValuesByClient, setCustomFieldValuesByClient] = useState<Record<string, Record<string, string>>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -159,6 +163,33 @@ export default function GestaoClientesV2() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('custom_fields')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true })
+      .then(({ data }) => setCustomFields(data || []));
+  }, [user]);
+
+  useEffect(() => {
+    if (clients.length === 0) { setCustomFieldValuesByClient({}); return; }
+    supabase
+      .from('client_custom_field_values')
+      .select('client_id, field_id, value')
+      .in('client_id', clients.map(c => c.id))
+      .then(({ data }) => {
+        const map: Record<string, Record<string, string>> = {};
+        (data || []).forEach(row => {
+          if (!row.client_id || !row.field_id || !row.value) return;
+          if (!map[row.client_id]) map[row.client_id] = {};
+          map[row.client_id][row.field_id] = row.value;
+        });
+        setCustomFieldValuesByClient(map);
+      });
+  }, [clients]);
+
   const handleDeleteClient = async (client: Client) => {
     try {
       const { error } = await supabase
@@ -195,6 +226,11 @@ export default function GestaoClientesV2() {
     const netPending = totalIncomePending - totalExpensePending;
     const sorted = [...pending].sort((a, b) => a.date.localeCompare(b.date));
 
+    const valuesForClient = customFieldValuesByClient[client.id] || {};
+    const customFieldValues = customFields
+      .filter(field => valuesForClient[field.id])
+      .map(field => ({ field, value: valuesForClient[field.id] }));
+
     return {
       client,
       pendingCount: pending.length,
@@ -204,6 +240,7 @@ export default function GestaoClientesV2() {
       netPending,
       nextDueDate: sorted[0]?.date || null,
       hasNotificationConfig: !!notifConfigs[client.id],
+      customFieldValues,
     };
   });
 
@@ -361,7 +398,7 @@ export default function GestaoClientesV2() {
           <>
             {/* ── MOBILE: cards empilhados ── */}
             <div className="md:hidden divide-y divide-slate-800/80">
-              {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
+              {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig, customFieldValues }) => (
                 <div key={client.id} className="p-4 space-y-3">
                   {/* Linha 1: avatar + nome + badge status */}
                   <div className="flex items-center gap-3">
@@ -388,6 +425,15 @@ export default function GestaoClientesV2() {
                           </span>
                         )}
                       </div>
+                      {customFieldValues.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          {customFieldValues.map(({ field, value }) => (
+                            <span key={field.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                              <span className="text-slate-500">{field.name}:</span> {value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {/* Status badge */}
                     <div className="shrink-0">
@@ -487,7 +533,7 @@ export default function GestaoClientesV2() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
-                  {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig }) => (
+                  {filtered.map(({ client, pendingCount, overdueCount, totalIncomePending, totalExpensePending, nextDueDate, hasNotificationConfig, customFieldValues }) => (
                     <tr key={client.id} className="hover:bg-[#2d3b4f] transition-colors duration-150 group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -514,6 +560,15 @@ export default function GestaoClientesV2() {
                                 </span>
                               )}
                             </div>
+                            {customFieldValues.length > 0 && (
+                              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                {customFieldValues.map(({ field, value }) => (
+                                  <span key={field.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700 group-hover:border-slate-600">
+                                    <span className="text-slate-500">{field.name}:</span> {value}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>

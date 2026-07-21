@@ -38,7 +38,6 @@ import FinancialAccountsV2 from './pages/v2/FinancialAccountsV2';
 import FinancialCategoriesV2 from './pages/v2/FinancialCategoriesV2';
 import FinancialTagsV2 from './pages/v2/FinancialTagsV2';
 import CreditCardV2 from './pages/v2/CreditCardV2';
-import RecurrenceV2 from './pages/v2/RecurrenceV2';
 import SharedWithMeV2 from './pages/v2/SharedWithMeV2';
 import ClientsV2 from './pages/v2/ClientsV2';
 import AdminBroadcastV2 from './pages/v2/AdminBroadcastV2';
@@ -123,7 +122,6 @@ function AppRoutes() {
           <Route path="/v2/perfil" element={<ProtectedRoute><MainLayoutV2><UserProfileSettingsV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/indicacoes" element={<ProtectedRoute><MainLayoutV2><ReferralPageV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/assinatura" element={<ProtectedRoute><MainLayoutV2><SubscriptionPageV2 /></MainLayoutV2></ProtectedRoute>} />
-          <Route path="/v2/recorrencia" element={<ProtectedRoute><MainLayoutV2><RecurrenceV2 /></MainLayoutV2></ProtectedRoute>} />
           <Route path="/v2/compartilhado" element={<ProtectedRoute><MainLayoutV2><SharedWithMeV2 /></MainLayoutV2></ProtectedRoute>} />
           
           {/* Novas Rotas Financeiras */}

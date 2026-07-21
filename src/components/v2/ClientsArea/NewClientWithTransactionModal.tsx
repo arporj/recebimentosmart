@@ -377,9 +377,9 @@ export function NewClientWithTransactionModal({ onClose, onSuccess }: NewClientW
                   className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {saving ? (
-                    <><Loader2 size={16} className="animate-spin" /> Criando...</>
+                    <><Loader2 size={16} className="animate-spin" /> Salvando...</>
                   ) : (
-                    <>Próximo <ArrowRight size={16} /></>
+                    <>Salvar e Continuar <ArrowRight size={16} /></>
                   )}
                 </button>
               </div>

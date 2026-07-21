@@ -11,6 +11,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 ### 1.1. Indicações e Afiliados
 
 #### 🤝 Novo Sistema de Indicações e Afiliados (Cashback Integral)
+
 * **Status:** Planejado (Prioridade Média).
 * **Descrição:** Substituição do desconto fixo de indicação de 20% por um programa de cashback integral. O usuário indicador recebe o valor cheio (integral) da primeira mensalidade paga pelo indicado.
 * **Regras de Negócio:**
@@ -24,14 +25,17 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 ### 1.2. Canais de Atendimento e Notificações
 
 #### 💬 Chat de Suporte Administrativo (AdminChatPageV2)
+
 * **Status:** Temporariamente desativado para readequação.
 * **Descrição:** Reimplementação da interface do chat de suporte (tempo real entre cliente final e administrador) como `AdminChatPageV2.tsx`, adotando os padrões visuais premium V2 (cantos arredondados, sombras suaves e sidebar de canais ativos). O design deve se basear na tela `FeedbackDetailsV2.tsx`.
 
 #### 🔔 Sistema de Notificações Mobile (PWA Web Push)
+
 * **Status:** Planejado para Testes.
 * **Descrição:** Permitir que o administrador e os usuários recebam notificações de chat e novos feedbacks em tempo real na tela de bloqueio do celular (Android e iOS 16.4+) configurando a plataforma como um Progressive Web App (PWA) instalável com Service Workers e Edge Functions no Supabase.
 
 #### 📲 Régua de Cobrança e Notificações via WhatsApp (API Business)
+
 * **Status:** Roadmap (Médio Prazo).
 * **Descrição:** Integração com a WhatsApp Business API para envio automatizado de lembretes de vencimento amigáveis (reembolsos e cobranças) e mensagens de confirmação de pagamento. Facilita o envio do Pix Copia e Cola diretamente no celular de amigos ou clientes sem atrito pessoal.
 
@@ -40,6 +44,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 ### 1.3. Modelos de Assinatura e Planos
 
 #### 💳 Integração de Cartão de Crédito para Assinaturas
+
 * **Status:** Planejado.
 * **Descrição:** Inclusão de suporte a pagamentos e upgrades de planos via Cartão de Crédito no sistema, definindo um gateway integrado (ex: Stripe ou Asaas) que funcione de forma complementar ao Pix atual.
 
@@ -50,6 +55,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 *(O Assistente IA Financeiro Conversacional — Artie Premium — foi concluído em Jul/2026; ver item 25 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
 
 #### 🔄 Troca de Modalidade via Artie e Comando de Voz
+
 * **Status:** Ideia (Prioridade Baixa).
 * **Descrição:** Desde Jul/2026 a troca de modalidade (única/parcelada/recorrente) de um lançamento existente é suportada corretamente pelo backend (`editarTransacao`/`mudarModalidadeTransacao`, com reconstrução completa da série preservando histórico pago). Hoje essa troca só é exposta na tela manual (`FinancialTransactionModalV2`) — nem o Artie (`src/lib/artie/executor.ts`) nem o comando de voz (`VoiceFloatingButton.tsx`) permitem alterar a modalidade de um lançamento já existente via chat/voz. Adicionar esse campo às ferramentas de atualização de ambos.
 
@@ -58,6 +64,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 ### 1.5. Relatórios, Extratos e Conciliação (Premium)
 
 #### 📊 Relatórios Financeiros Híbridos e DRE (Pessoal + Reembolsos)
+
 * **Status:** Roadmap (Médio Prazo).
 * **Descrição:** Nova tela inicial e relatórios avançados desenhados para o modelo híbrido:
   * **Segregação de Despesas:** Gráficos que separam o custo de vida pessoal real de adiantamentos/reembolsos a receber de terceiros, impedindo a distorção do orçamento real.
@@ -66,14 +73,17 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
   * **Regime de Caixa vs. Competência:** Visualização do impacto das parcelas de cartões de crédito no mês de compra (decisão) vs. mês de pagamento (saída).
 
 #### 📑 Extrato Unificado com Filtros e Badges
+
 * **Status:** Roadmap (Médio Prazo).
 * **Descrição:** Exibição do extrato de transações de forma unificada para bater centavo por centavo com a conta do banco (Verdade do Banco), mas incluindo filtros rápidos (`[Tudo] [Apenas Pessoal] [Apenas Reembolsos]`) e tags visuais indicadoras contendo o nome do familiar/cliente atrelado à despesa dividida.
 
 #### 🔗 Open Finance e Conciliação Bancária Automática
+
 * **Status:** Roadmap (Longo Prazo).
 * **Descrição:** Conectividade de contas bancárias em tempo real via Open Finance (usando APIs como Pluggy ou Belvo) para importação, categorização e conciliação de extratos de forma automática e integrada ao dashboard do usuário.
 
 #### 📁 Gestão de Documentos e Comprovantes
+
 * **Status:** Planejado.
 * **Descrição:** Possibilidade de upload e anexo de documentos (contratos, notas fiscais, fotos de recibos e comprovantes de transferência) diretamente atrelados a transações ou clientes, armazenando-os de forma segura no Supabase Storage.
 
@@ -81,28 +91,30 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 ### 1.6. Gestão Multiusuário e Compartilhamento
 
-#### 🏷️ Campos Personalizados na Tela de Gestão de Clientes
-* **Status:** Planejado.
-* **Descrição:** Na tela de Gestão de Clientes (`GestaoClientesV2.tsx`), exibir os **campos personalizados** cadastrados para cada cliente. Esses campos já existem no banco de dados, mas não estão sendo apresentados na listagem/card do cliente nem no modal de detalhes. A exibição pode ser feita como chips ou linhas adicionais abaixo dos dados principais do cliente, respeitando os tipos de campo (texto, número, data, booleano).
-* **Impacto:** Apenas frontend — sem alteração de schema ou queries, somente leitura e renderização dos dados já retornados.
+*(A exibição de campos personalizados na Gestão de Clientes, a auditoria de migração V1→V2, a remoção do módulo órfão `RecurrenceV2` e a correção crítica de RLS ausente em `clients`/`payments` foram concluídas em Jul/2026; ver itens 26, 27 e 28 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
 
 #### 🤝 Reativação de Lançamentos Compartilhados
+
 * **Status:** Adiado (Pendente de reavaliação de produto).
 * **Descrição:** Reativação e readequação de layout do menu de compartilhamento de lançamentos por e-mail com parceiros, com alertas sonoros (Web Audio API) e badges de notificação em tempo real. As tabelas (`client_shares`, etc.) e triggers permanecem ativas no banco.
 
 #### 💸 Split de Despesas Pessoais (Viagens e Jantares)
+
 * **Status:** Roadmap (Longo Prazo).
 * **Descrição:** Ferramenta dedicada a divisão rápida de custos de despesas pontuais e de lazer (jantares, viagens em grupo), dividindo os custos de forma igual ou proporcional entre os participantes e gerando as pendências de reembolsos Pix correspondentes.
 
 #### ⚙️ Ajuste e Descontos de Pontualidade para Reembolsos
+
 * **Status:** Roadmap.
 * **Descrição:** Configuração opcional de juros amigáveis para acertos atrasados de contas ou abonos e descontos para depósitos antecipados.
 
 #### 👥 Multi-empresa e Permissões Granulares (RBAC)
+
 * **Status:** Roadmap (Médio Prazo).
 * **Descrição:** Gestão de múltiplas contas comerciais/pessoais (CNPJs diferentes) sob o mesmo perfil, com controle estrito de acessos baseado em cargos (RBAC) para colaboradores ou contadores.
 
 #### 📊 Integração Contábil Simplificada para Contadores
+
 * **Status:** Roadmap.
 * **Descrição:** Módulo de exportação de dados em formatos compatíveis com os principais softwares contábeis nacionais (OFX, CSV customizados) e API segura de extração autorizada de dados financeiros por contadores externos.
 
@@ -111,18 +123,17 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 ### 1.7. Interface e Mobile
 
 #### 📱 Aplicativo Mobile do Sistema (Híbrido)
+
 * **Status:** Roadmap (Longo Prazo).
 * **Descrição:** Aplicativo nativo ou híbrido (Capacitor/React Native) para iOS e Android com login biométrico (FaceID/TouchID), experiência focada em dispositivos móveis e notificações push nativas de faturas e lembretes.
 
-#### 📱 Otimização Mobile da Tela de Lançamentos
-* **Status:** Planejado.
-* **Descrição:** Otimizar o aproveitamento de espaço em celulares, reduzindo fontes de valores e descrições para a mesma dimensão menor das datas, aumentando o número de lançamentos visíveis simultaneamente na tela sem precisar de rolagem profunda.
-
 #### 💳 Total Previsto no Agrupamento de Contas (Tela de Lançamentos)
+
 * **Status:** Planejado.
 * **Descrição:** No card de agrupamento por contas da tela de Lançamentos (`FinancialTransactionsV2`), o total exibido no cabeçalho do grupo deve ser o **somatório previsto até o final do mês**, e não apenas o total dos lançamentos já lançados/filtrados. Isso permite ao usuário ter uma visão de projeção mensal real de cada conta, sem precisar navegar até o dashboard.
 * **Impacto:** Apenas visual/query no agrupamento — sem alteração no comportamento dos lançamentos individuais.
 
 #### 🍿 Painel de Controle de Assinaturas Pessoais (Streaming/SaaS)
+
 * **Status:** Roadmap.
 * **Descrição:** Painel para o usuário centralizar o acompanhamento de custos fixos pessoais recorrentes (Netflix, Spotify, academia, plano de celular), com alertas de reajuste anual e projeção de impacto desses custos a longo prazo.
