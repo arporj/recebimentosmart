@@ -3,7 +3,7 @@ import {
   Search, AlertTriangle, CheckCircle2, Clock,
   DollarSign, Loader2, Send
 } from 'lucide-react';
-import { format, parseISO, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -38,6 +38,8 @@ export default function CobrancasV2() {
     if (!user) return;
     setLoading(true);
     try {
+      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
       const [{ data: txData, error: txError }, { data: templateData, error: tmplError }] = await Promise.all([
         supabase
           .from('financial_transactions')

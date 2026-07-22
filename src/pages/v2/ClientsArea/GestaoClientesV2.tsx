@@ -709,6 +709,7 @@ export default function GestaoClientesV2() {
 
       {statementClient && (
         <ClientStatementModalV2
+          isOpen={!!statementClient}
           clientId={statementClient.id}
           clientName={statementClient.name}
           onClose={() => setStatementClient(null)}
