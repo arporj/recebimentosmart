@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 import { format, parseISO, endOfMonth, addMonths } from 'date-fns';
 import { expandTransactionInstances } from '../../lib/financeiro/instanceExpansion';
+import ConfirmModal from './ConfirmModal';
 
 interface ClientBankStatementModalProps {
   isOpen: boolean;
@@ -56,6 +58,9 @@ export default function ClientBankStatementModalV2({
   const [rawTransactions, setRawTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [payingTx, setPayingTx] = useState<TransactionInstance | null>(null);
+  const [paymentDate, setPaymentDate] = useState('');
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +107,51 @@ export default function ClientBankStatementModalV2({
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
+  const openPaymentModal = (t: TransactionInstance) => {
+    setPayingTx(t);
+    setPaymentDate(todayStr);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!payingTx || !user || !paymentDate) return;
+    setConfirmingPayment(true);
+    try {
+      if (payingTx.isVirtual) {
+        // Ocorrência ainda não materializada: cria o filho físico já pago,
+        // mesmo padrão usado em FinancialTransactionsV2/CobrancasV2.
+        const { error } = await supabase.from('financial_transactions').insert({
+          user_id: user.id,
+          type: payingTx.type,
+          amount: payingTx.amount,
+          date: payingTx.originalInstanceDate,
+          description: payingTx.description,
+          client_id: clientId,
+          status: 'paid',
+          paid_date: paymentDate,
+          parent_id: payingTx.parent_id || payingTx.id,
+          modalidade: 'unica',
+          is_customized: true,
+          recurrence_enabled: false,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({ status: 'paid', paid_date: paymentDate })
+          .eq('id', payingTx.id);
+        if (error) throw error;
+      }
+      toast.success('Pagamento confirmado!');
+      setPayingTx(null);
+      fetchStatement();
+    } catch (err) {
+      console.error('Erro ao confirmar pagamento:', err);
+      toast.error('Erro ao confirmar pagamento.');
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   // Extrato bancário: mostra o histórico inteiro do cliente (não travado a um mês),
   // ordenado da data mais nova para a mais antiga. Pendências vencidas são "roladas"
   // para hoje (rollOverUnpaidToToday) para nunca ficarem perdidas num mês antigo que
@@ -136,9 +186,12 @@ export default function ClientBankStatementModalV2({
     t.status === 'pending' && t.originalInstanceDate < todayStr;
 
   // Coluna "Em Atraso": cobre TODA a história do cliente, não só o que está
-  // visível na rolagem atual.
+  // visível na rolagem atual. Ordem cronológica decrescente pelo vencimento
+  // original (o mais recente primeiro).
   const overdueInstances = useMemo(
-    () => allInstances.filter(t => isOverdue(t)),
+    () => allInstances
+      .filter(t => isOverdue(t))
+      .sort((a, b) => b.originalInstanceDate.localeCompare(a.originalInstanceDate)),
     [allInstances, todayStr]
   );
 
@@ -309,8 +362,8 @@ export default function ClientBankStatementModalV2({
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-28">Data</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Descrição</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 w-36">Data</th>
+                      <th className="px-2 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Descrição</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right w-36">Valor</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 text-center w-32">Situação</th>
                     </tr>
@@ -324,14 +377,27 @@ export default function ClientBankStatementModalV2({
                       return (
                         <tr key={t.id} className={`transition-colors ${getRowClass(t)}`}>
                           <td className="px-4 py-3 text-xs font-bold text-slate-400 whitespace-nowrap">
-                            {formattedDate}
-                            {overdue && (
-                              <span className="block text-[9px] font-bold text-rose-500 mt-0.5">
-                                Venceu em {format(parseISO(t.originalInstanceDate), 'dd/MM/yyyy')}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {t.status === 'pending' && (
+                                <button
+                                  onClick={() => openPaymentModal(t)}
+                                  title="Confirmar pagamento"
+                                  className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all shrink-0"
+                                >
+                                  <CheckCircle2 size={15} />
+                                </button>
+                              )}
+                              <div>
+                                {formattedDate}
+                                {overdue && (
+                                  <span className="block text-[9px] font-bold text-rose-500 mt-0.5">
+                                    Venceu em {format(parseISO(t.originalInstanceDate), 'dd/MM/yyyy')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-3">
                             <span className="text-xs font-black text-slate-700 block truncate max-w-[320px]">
                               {t.description || 'Sem descrição'}
                             </span>
@@ -363,18 +429,15 @@ export default function ClientBankStatementModalV2({
               {/* Coluna secundária - Em Atraso (histórico completo, só aparece se houver contas atrasadas) */}
               {overdueInstances.length > 0 && (
                 <div className="bg-rose-50/60 border border-rose-200 rounded-3xl shadow-sm shrink-0 w-full md:w-72 overflow-hidden">
-                  <div className="px-4 py-3.5 border-b border-rose-200/70 bg-rose-100/50 flex items-center justify-between">
+                  <div className="px-4 py-3.5 border-b border-rose-200/70 bg-rose-100/50 flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-black text-rose-700 uppercase tracking-wide">
                       <AlertTriangle size={14} />
                       Em Atraso
+                      <span className="bg-rose-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                        {overdueInstances.length}
+                      </span>
                     </span>
-                    <span className="bg-rose-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
-                      {overdueInstances.length}
-                    </span>
-                  </div>
-
-                  <div className="px-4 py-2.5 border-b border-rose-200/70 text-right">
-                    <span className="text-sm font-black text-rose-700 font-manrope">
+                    <span className="text-sm font-black text-rose-700 font-manrope whitespace-nowrap">
                       {formatCurrency(overdueTotal)}
                     </span>
                   </div>
@@ -402,6 +465,37 @@ export default function ClientBankStatementModalV2({
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!payingTx}
+        onClose={() => setPayingTx(null)}
+        onConfirm={handleConfirmPayment}
+        loading={confirmingPayment}
+        title="Confirmar Pagamento"
+        confirmLabel="Confirmar Pagamento"
+        confirmColor="green"
+        message={
+          <div className="space-y-3">
+            <div>
+              <p className="font-bold text-slate-100">{payingTx?.description || 'Sem descrição'}</p>
+              <p className="text-teal-400 font-black text-lg mt-0.5">
+                {payingTx ? formatCurrency(payingTx.amount) : ''}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Data do pagamento
+              </label>
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-100 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+              />
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 }
