@@ -15,7 +15,7 @@ import { NewClientWithTransactionModal } from '../../../components/v2/ClientsAre
 import { QuickTransactionModal } from '../../../components/v2/ClientsArea/QuickTransactionModal';
 import { ClientNotificationConfig } from '../../../components/v2/ClientsArea/ClientNotificationConfig';
 import { GlobalNotificationSettings } from '../../../components/v2/ClientsArea/GlobalNotificationSettings';
-import ClientStatementModalV2 from '../../../components/v2/ClientStatementModalV2';
+import ClientBankStatementModalV2 from '../../../components/v2/ClientBankStatementModalV2';
 import type { Database } from '../../../types/supabase';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -708,7 +708,7 @@ export default function GestaoClientesV2() {
       )}
 
       {statementClient && (
-        <ClientStatementModalV2
+        <ClientBankStatementModalV2
           isOpen={!!statementClient}
           clientId={statementClient.id}
           clientName={statementClient.name}
