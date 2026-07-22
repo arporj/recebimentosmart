@@ -178,6 +178,10 @@ export default function ClientBankStatementModalV2({
     return rolled.sort((a, b) => {
       const dateCompare = b.instanceDate.localeCompare(a.instanceDate);
       if (dateCompare !== 0) return dateCompare;
+      // Várias pendências atrasadas podem "empatar" na mesma data (hoje, após
+      // o rollover) — desempata pelo vencimento original, mais recente primeiro.
+      const originalCompare = b.originalInstanceDate.localeCompare(a.originalInstanceDate);
+      if (originalCompare !== 0) return originalCompare;
       return (b.id ?? '').localeCompare(a.id ?? '');
     });
   }, [rawTransactions, todayStr]);
