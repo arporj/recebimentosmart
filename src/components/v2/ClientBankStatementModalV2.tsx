@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   TrendingUp,
   TrendingDown,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   CheckCircle2,
   AlertTriangle,
@@ -13,15 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  format,
-  parseISO,
-  endOfMonth,
-  isSameMonth,
-  subMonths,
-  addMonths
-} from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, parseISO, endOfMonth, addMonths } from 'date-fns';
 import { expandTransactionInstances } from '../../lib/financeiro/instanceExpansion';
 
 interface ClientBankStatementModalProps {
@@ -29,7 +19,6 @@ interface ClientBankStatementModalProps {
   onClose: () => void;
   clientId: string;
   clientName: string;
-  selectedMonth?: Date;
 }
 
 interface FinancialTransaction {
@@ -51,23 +40,29 @@ interface FinancialTransaction {
 
 interface TransactionInstance extends FinancialTransaction {
   instanceDate: string;
+  originalInstanceDate: string;
   isVirtual: boolean;
 }
+
+const PAGE_SIZE = 60;
 
 export default function ClientBankStatementModalV2({
   isOpen,
   onClose,
   clientId,
-  clientName,
-  selectedMonth
+  clientName
 }: ClientBankStatementModalProps) {
   const { user } = useAuth();
   const [rawTransactions, setRawTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(selectedMonth || new Date());
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isOpen && clientId && user) {
+      setVisibleCount(PAGE_SIZE);
       fetchStatement();
     }
   }, [isOpen, clientId, user]);
@@ -105,34 +100,59 @@ export default function ClientBankStatementModalV2({
     }
   };
 
-  // Expansão de recorrências e parcelamento localmente para o mês atual (fonte compartilhada
-  // com FinancialTransactionsV2/DashboardV2). rawTransactions mistura o registro-mãe recorrente
-  // (recurrence_enabled=true, sem parent_id) com as ocorrências físicas materializadas —
-  // separamos os dois papéis antes de chamar o expansor compartilhado.
-  const monthInstances = useMemo((): TransactionInstance[] => {
+  const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  // Extrato bancário: mostra o histórico inteiro do cliente (não travado a um mês),
+  // ordenado da data mais nova para a mais antiga. Pendências vencidas são "roladas"
+  // para hoje (rollOverUnpaidToToday) para nunca ficarem perdidas num mês antigo que
+  // ninguém mais visita — mesma regra usada pelo DashboardV2.
+  const allInstances = useMemo((): TransactionInstance[] => {
     const templates = rawTransactions.filter(t => t.recurrence_enabled && !t.parent_id);
     const materialized = rawTransactions.filter(t => !(t.recurrence_enabled && !t.parent_id));
 
     const expanded = expandTransactionInstances(materialized as any, templates as any, {
-      horizonEnd: endOfMonth(currentMonth),
+      horizonEnd: endOfMonth(addMonths(new Date(), 1)),
+      rollOverUnpaidToToday: true,
     }) as unknown as TransactionInstance[];
 
-    const filtered = expanded.filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth));
+    // rollOverUnpaidToToday só rola ocorrências físicas (Fase 1 do expansor);
+    // ocorrências virtuais atrasadas (gaps nunca materializados) saem com sua
+    // data original. Força o rollover aqui também para cumprir a regra em
+    // qualquer caso: pendência vencida sempre aparece na data de hoje.
+    const rolled = expanded.map(t =>
+      t.status === 'pending' && t.instanceDate < todayStr
+        ? { ...t, instanceDate: todayStr }
+        : t
+    );
 
-    // Extrato bancário: da data mais nova para a mais antiga.
-    return filtered.sort((a, b) => {
+    return rolled.sort((a, b) => {
       const dateCompare = b.instanceDate.localeCompare(a.instanceDate);
       if (dateCompare !== 0) return dateCompare;
       return (b.id ?? '').localeCompare(a.id ?? '');
     });
-  }, [rawTransactions, currentMonth]);
+  }, [rawTransactions, todayStr]);
+
+  const isOverdue = (t: TransactionInstance) =>
+    t.status === 'pending' && t.originalInstanceDate < todayStr;
+
+  // Coluna "Em Atraso": cobre TODA a história do cliente, não só o que está
+  // visível na rolagem atual.
+  const overdueInstances = useMemo(
+    () => allInstances.filter(t => isOverdue(t)),
+    [allInstances, todayStr]
+  );
+
+  const overdueTotal = useMemo(
+    () => overdueInstances.reduce((acc, cur) => acc + Number(cur.amount), 0),
+    [overdueInstances]
+  );
 
   const totals = useMemo(() => {
-    const income = monthInstances
+    const income = allInstances
       .filter(t => t.type === 'income')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
 
-    const expense = monthInstances
+    const expense = allInstances
       .filter(t => t.type === 'expense')
       .reduce((acc, cur) => acc + Number(cur.amount), 0);
 
@@ -141,23 +161,28 @@ export default function ClientBankStatementModalV2({
       expense,
       net: income - expense
     };
-  }, [monthInstances]);
+  }, [allInstances]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const visibleInstances = allInstances.slice(0, visibleCount);
+  const hasMore = visibleCount < allInstances.length;
 
-  const isOverdue = (t: TransactionInstance) =>
-    t.status === 'pending' && new Date(t.instanceDate + 'T00:00:00') < today;
+  useEffect(() => {
+    if (!hasMore) return;
+    const sentinel = sentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
 
-  const overdueInstances = useMemo(
-    () => monthInstances.filter(t => isOverdue(t)),
-    [monthInstances]
-  );
-
-  const overdueTotal = useMemo(
-    () => overdueInstances.reduce((acc, cur) => acc + Number(cur.amount), 0),
-    [overdueInstances]
-  );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(c => Math.min(c + PAGE_SIZE, allInstances.length));
+        }
+      },
+      { root, rootMargin: '300px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, allInstances.length]);
 
   const getStatusBadge = (t: TransactionInstance) => {
     if (t.status === 'paid') {
@@ -202,8 +227,6 @@ export default function ClientBankStatementModalV2({
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  const monthLabel = format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
-
   if (!isOpen) return null;
 
   return (
@@ -215,7 +238,7 @@ export default function ClientBankStatementModalV2({
       <div className="relative bg-slate-50 w-full h-full md:max-w-5xl md:h-[85vh] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
 
         {/* Modal Header */}
-        <div className="bg-white border-b border-slate-100 px-6 py-5 shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-white border-b border-slate-100 px-6 py-5 shrink-0 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-teal-50 p-2.5 rounded-2xl text-teal-600 border border-teal-100/50">
               <FileText className="w-6 h-6" />
@@ -226,38 +249,18 @@ export default function ClientBankStatementModalV2({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {/* Seletor Mensal Premium */}
-            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200/60 flex items-center gap-2">
-              <button
-                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-1.5 hover:bg-white active:scale-95 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-100"
-              >
-                <ChevronLeft size={16} className="text-slate-600" />
-              </button>
-              <span className="text-xs font-black text-slate-700 capitalize min-w-[110px] text-center">
-                {monthLabel}
-              </span>
-              <button
-                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-1.5 hover:bg-white active:scale-95 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-100"
-              >
-                <ChevronRight size={16} className="text-slate-600" />
-              </button>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-100 active:scale-95 rounded-xl transition-all border border-slate-200/60 bg-white"
-            >
-              <X size={20} className="text-slate-500" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 active:scale-95 rounded-xl transition-all border border-slate-200/60 bg-white shrink-0"
+          >
+            <X size={20} className="text-slate-500" />
+          </button>
         </div>
 
         {/* Cards de Totais */}
         <div className="bg-white border-b border-slate-100 px-6 py-5 grid grid-cols-3 gap-4 shrink-0">
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">A Receber (Mês)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Total a Receber</span>
             <span className="text-base sm:text-lg font-black text-emerald-600 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1 text-emerald-500" />
               {formatCurrency(totals.income)}
@@ -265,7 +268,7 @@ export default function ClientBankStatementModalV2({
           </div>
 
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">A Pagar (Mês)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Total a Pagar</span>
             <span className="text-base sm:text-lg font-black text-rose-600 flex items-center">
               <TrendingDown className="w-4 h-4 mr-1 text-rose-500" />
               {formatCurrency(totals.expense)}
@@ -273,7 +276,7 @@ export default function ClientBankStatementModalV2({
           </div>
 
           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Saldo do Mês</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Saldo Geral</span>
             <span className={`text-base sm:text-lg font-black tracking-tight ${
               totals.net < 0 ? 'text-rose-600' : totals.net > 0 ? 'text-emerald-600' : 'text-slate-500'
             }`}>
@@ -282,21 +285,21 @@ export default function ClientBankStatementModalV2({
           </div>
         </div>
 
-        {/* Corpo - Extrato estilo bancário */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Corpo - Extrato estilo bancário, rolagem contínua */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <div className="w-10 h-10 border-4 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
               <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Carregando Histórico...</span>
             </div>
-          ) : monthInstances.length === 0 ? (
+          ) : allInstances.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-12 bg-white rounded-3xl border border-slate-200 border-dashed px-6">
               <div className="bg-slate-50 p-4 rounded-full mb-4">
                 <Calendar className="w-8 h-8 text-slate-400" />
               </div>
-              <h4 className="text-sm font-black text-slate-700 mb-1">Nenhum lançamento no mês</h4>
+              <h4 className="text-sm font-black text-slate-700 mb-1">Nenhum lançamento</h4>
               <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                Não existem transações correspondentes a este mês de referência.
+                Não existem transações registradas para este cliente.
               </p>
             </div>
           ) : (
@@ -313,14 +316,20 @@ export default function ClientBankStatementModalV2({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {monthInstances.map((t) => {
+                    {visibleInstances.map((t) => {
                       const isIncome = t.type === 'income';
+                      const overdue = isOverdue(t);
                       const formattedDate = format(parseISO(t.instanceDate), 'dd/MM/yyyy');
 
                       return (
                         <tr key={t.id} className={`transition-colors ${getRowClass(t)}`}>
                           <td className="px-4 py-3 text-xs font-bold text-slate-400 whitespace-nowrap">
                             {formattedDate}
+                            {overdue && (
+                              <span className="block text-[9px] font-bold text-rose-500 mt-0.5">
+                                Venceu em {format(parseISO(t.originalInstanceDate), 'dd/MM/yyyy')}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <span className="text-xs font-black text-slate-700 block truncate max-w-[320px]">
@@ -342,9 +351,16 @@ export default function ClientBankStatementModalV2({
                     })}
                   </tbody>
                 </table>
+
+                {hasMore && (
+                  <div ref={sentinelRef} className="py-5 flex items-center justify-center gap-2 text-slate-400">
+                    <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-400 rounded-full animate-spin" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Carregando mais...</span>
+                  </div>
+                )}
               </div>
 
-              {/* Coluna secundária - Em Atraso (só aparece se houver contas atrasadas) */}
+              {/* Coluna secundária - Em Atraso (histórico completo, só aparece se houver contas atrasadas) */}
               {overdueInstances.length > 0 && (
                 <div className="bg-rose-50/60 border border-rose-200 rounded-3xl shadow-sm shrink-0 w-full md:w-72 overflow-hidden">
                   <div className="px-4 py-3.5 border-b border-rose-200/70 bg-rose-100/50 flex items-center justify-between">
@@ -368,7 +384,7 @@ export default function ClientBankStatementModalV2({
                       <div key={t.id} className="px-4 py-3">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[10px] font-bold text-rose-500 whitespace-nowrap">
-                            {format(parseISO(t.instanceDate), 'dd/MM/yyyy')}
+                            Venceu em {format(parseISO(t.originalInstanceDate), 'dd/MM/yyyy')}
                           </span>
                           <span className="text-xs font-black text-rose-700 font-manrope whitespace-nowrap">
                             {formatCurrency(t.amount)}

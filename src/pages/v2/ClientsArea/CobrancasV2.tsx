@@ -1,32 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search, AlertTriangle, CheckCircle2, Clock,
   DollarSign, Loader2, Send
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, addDays, addWeeks, addYears, isBefore, isSameDay, isAfter, isSameMonth } from 'date-fns';
+import { format, parseISO, isSameMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../../components/v2/ConfirmModal';
+import { expandTransactionInstances } from '../../../lib/financeiro/instanceExpansion';
 
 interface Transaction {
   id: string;
   amount: number;
   date: string;
+  originalDate: string;
   description: string | null;
   status: 'paid' | 'pending' | 'cancelled';
   client_id: string;
   client_name: string;
   client_email: string | null;
   type: 'income' | 'expense';
+  isVirtual: boolean;
+  parentId: string | null;
 }
 
 type TxStatus = 'all' | 'pending' | 'paid' | 'overdue';
 
 export default function CobrancasV2() {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [rawTx, setRawTx] = useState<any[]>([]);
+  const [rawTemplates, setRawTemplates] = useState<any[]>([]);
+  const [clientMeta, setClientMeta] = useState<Map<string, { name: string }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<TxStatus>('all');
@@ -34,12 +40,13 @@ export default function CobrancasV2() {
   const [sendingNotifFor, setSendingNotifFor] = useState<string | null>(null);
   const [markPaidTx, setMarkPaidTx] = useState<Transaction | null>(null);
 
+  // Busca independente do mês navegado: pendências atrasadas de qualquer mês
+  // antigo precisam "rolar" para hoje (rollOverUnpaidToToday) e continuar
+  // visíveis — nunca ficar perdidas num mês que ninguém mais visita.
   const fetchTransactions = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
       const [{ data: txData, error: txError }, { data: templateData, error: tmplError }] = await Promise.all([
         supabase
           .from('financial_transactions')
@@ -48,10 +55,7 @@ export default function CobrancasV2() {
           .not('client_id', 'is', null)
           .neq('status', 'cancelled')
           .eq('is_template', false)
-          .eq('type', 'income')
-          .gte('date', start)
-          .lte('date', end)
-          .order('date', { ascending: true }),
+          .eq('type', 'income'),
         supabase
           .from('financial_transactions')
           .select('id, amount, date, description, status, client_id, type, recurrence_period, recurrence_interval, recurrence_end_date, client:clients!financial_transactions_client_id_fkey(name)')
@@ -66,83 +70,65 @@ export default function CobrancasV2() {
       if (txError) throw txError;
       if (tmplError) throw tmplError;
 
-      const mappedPhysical: Transaction[] = (txData || []).map((t: any) => ({
-        id: t.id,
-        amount: Number(t.amount),
-        date: t.date,
-        description: t.description,
-        status: t.status,
-        client_id: t.client_id,
-        client_name: t.client?.name || 'Cliente desconhecido',
-        client_email: null,
-        type: t.type,
-      }));
-
-      const endMonthDate = endOfMonth(currentMonth);
-      const physicalMonthsByParent = new Map<string, Set<string>>();
-      (txData || []).forEach((t: any) => {
-        if (t.parent_id) {
-          if (!physicalMonthsByParent.has(t.parent_id)) physicalMonthsByParent.set(t.parent_id, new Set());
-          physicalMonthsByParent.get(t.parent_id)!.add(t.date.substring(0, 7));
+      const meta = new Map<string, { name: string }>();
+      [...(txData || []), ...(templateData || [])].forEach((t: any) => {
+        if (t.client_id && !meta.has(t.client_id)) {
+          meta.set(t.client_id, { name: t.client?.name || 'Cliente desconhecido' });
         }
       });
 
-      const virtualOccurrences: Transaction[] = [];
-      (templateData || []).forEach((tmpl: any) => {
-        const interval = tmpl.recurrence_interval || 1;
-        const period = tmpl.recurrence_period || 'monthly';
-        const recEndDate = tmpl.recurrence_end_date ? parseISO(tmpl.recurrence_end_date) : null;
-        let cursor = parseISO(tmpl.date);
-        const parentId = tmpl.id;
-
-        while (isBefore(cursor, endMonthDate) || isSameDay(cursor, endMonthDate)) {
-          if (recEndDate && isAfter(cursor, recEndDate)) break;
-
-          const dateStr = format(cursor, 'yyyy-MM-dd');
-          const monthKey = dateStr.substring(0, 7);
-          if (isSameMonth(cursor, currentMonth)) {
-            const alreadyHasPhysicalInMonth = physicalMonthsByParent.get(parentId)?.has(monthKey);
-            if (!alreadyHasPhysicalInMonth) {
-              virtualOccurrences.push({
-                id: `virtual-${tmpl.id}-${dateStr}`,
-                amount: Number(tmpl.amount),
-                date: dateStr,
-                description: tmpl.description,
-                status: 'pending',
-                client_id: tmpl.client_id,
-                client_name: tmpl.client?.name || 'Cliente desconhecido',
-                client_email: null,
-                type: tmpl.type,
-              });
-            }
-          }
-
-          switch (period) {
-            case 'daily': cursor = addDays(cursor, interval); break;
-            case 'weekly': cursor = addWeeks(cursor, interval); break;
-            case 'monthly': cursor = addMonths(cursor, interval); break;
-            case 'yearly': cursor = addYears(cursor, interval); break;
-            default: cursor = addMonths(cursor, interval);
-          }
-        }
-      });
-
-      const allTxs = [...mappedPhysical, ...virtualOccurrences].sort((a, b) => a.date.localeCompare(b.date));
-      setTransactions(allTxs);
+      setRawTx(txData || []);
+      setRawTemplates(templateData || []);
+      setClientMeta(meta);
     } catch {
       toast.error('Erro ao carregar cobranças.');
     } finally {
       setLoading(false);
     }
-  }, [user, currentMonth]);
+  }, [user]);
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const isOverdue = (tx: Transaction) =>
-    tx.status === 'pending' && new Date(tx.date + 'T00:00:00') < today;
+    tx.status === 'pending' && tx.originalDate < todayStr;
+
+  // Expande recorrências com rollover, depois recorta para o mês navegado —
+  // um item atrasado de um mês antigo aparece rolado para hoje, no mês corrente.
+  const transactions = useMemo((): Transaction[] => {
+    const expanded = expandTransactionInstances(rawTx as any, rawTemplates as any, {
+      horizonEnd: endOfMonth(addMonths(currentMonth, 1)),
+      rollOverUnpaidToToday: true,
+    });
+
+    // rollOverUnpaidToToday só rola ocorrências físicas; ocorrências virtuais
+    // atrasadas (gaps nunca materializados) saem com a data original. Força o
+    // rollover aqui também: pendência vencida sempre aparece na data de hoje.
+    const rolled = expanded.map(t =>
+      t.status === 'pending' && t.instanceDate < todayStr
+        ? { ...t, instanceDate: todayStr }
+        : t
+    );
+
+    return rolled
+      .filter(t => isSameMonth(parseISO(t.instanceDate), currentMonth))
+      .map((t: any) => ({
+        id: t.id,
+        amount: Number(t.amount),
+        date: t.instanceDate,
+        originalDate: t.originalInstanceDate,
+        description: t.description,
+        status: t.status,
+        client_id: t.client_id,
+        client_name: clientMeta.get(t.client_id)?.name || 'Cliente desconhecido',
+        client_email: null,
+        type: t.type,
+        isVirtual: !!t.isVirtual,
+        parentId: t.parent_id || null,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [rawTx, rawTemplates, clientMeta, currentMonth]);
 
   const filtered = transactions.filter(tx => {
     const matchesSearch = tx.client_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -182,13 +168,33 @@ export default function CobrancasV2() {
   };
 
   const handleMarkAsPaid = async () => {
-    if (!markPaidTx) return;
+    if (!markPaidTx || !user) return;
     try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update({ status: 'paid' })
-        .eq('id', markPaidTx.id);
-      if (error) throw error;
+      if (markPaidTx.isVirtual) {
+        // Ocorrência ainda não materializada: cria o filho físico já pago,
+        // em vez de atualizar o template (mesmo padrão de FinancialTransactionsV2).
+        const { error } = await supabase.from('financial_transactions').insert({
+          user_id: user.id,
+          type: markPaidTx.type,
+          amount: markPaidTx.amount,
+          date: markPaidTx.date,
+          description: markPaidTx.description,
+          client_id: markPaidTx.client_id,
+          status: 'paid',
+          paid_date: markPaidTx.date,
+          parent_id: markPaidTx.parentId || markPaidTx.id,
+          modalidade: 'unica',
+          is_customized: true,
+          recurrence_enabled: false,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('financial_transactions')
+          .update({ status: 'paid' })
+          .eq('id', markPaidTx.id);
+        if (error) throw error;
+      }
       toast.success('Cobrança marcada como paga!');
       setMarkPaidTx(null);
       fetchTransactions();
@@ -325,7 +331,9 @@ export default function CobrancasV2() {
                           {format(parseISO(tx.date), 'dd/MM/yyyy')}
                         </p>
                         {overdue && (
-                          <p className="text-xs text-rose-400 font-medium">Vencido</p>
+                          <p className="text-xs text-rose-400 font-medium">
+                            Venceu em {format(parseISO(tx.originalDate), 'dd/MM/yyyy')}
+                          </p>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
