@@ -122,6 +122,8 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 ### 1.7. Interface e Mobile
 
+*(O total previsto no agrupamento de contas da tela de Lançamentos foi concluído em Jul/2026; ver item 30 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
+
 #### 📱 Aplicativo Mobile do Sistema (Híbrido)
 
 * **Status:** Roadmap (Longo Prazo).
