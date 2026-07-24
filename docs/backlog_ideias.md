@@ -201,7 +201,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 ### 1.7. Interface e Mobile
 
-*(O total previsto no agrupamento de contas da tela de Lançamentos foi concluído em Jul/2026; ver item 30 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
+*(O total previsto no agrupamento de contas da tela de Lançamentos e a mudança de "Clonar Lançamento" para abrir a tela de criação (mobile e desktop) foram concluídos em Jul/2026; ver itens 30 e 31 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
 
 #### 1.7.1. 📱 Aplicativo Mobile do Sistema (Híbrido)
 
@@ -212,9 +212,3 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 * **Status:** Roadmap.
 * **Descrição:** Painel para o usuário centralizar o acompanhamento de custos fixos pessoais recorrentes (Netflix, Spotify, academia, plano de celular), com alertas de reajuste anual e projeção de impacto desses custos a longo prazo.
-
-#### 1.7.3. 📋 Clonar Lançamento Deve Abrir a Tela de Criação, Não Salvar Direto
-
-* **Status:** Planejado.
-* **Descrição:** Hoje o botão "Clonar" (`handleClone` em `FinancialTransactionsV2.tsx`) insere um novo lançamento pendente diretamente no banco, com a mesma data e descrição "(cópia)" do original, sem qualquer tela intermediária. O comportamento correto é abrir a tela/modal de criação de lançamento (`FinancialTransactionModalV2`) já pré-preenchida com os dados do lançamento clicado (descrição, valor, conta, categoria, modalidade etc.), permitindo ao usuário revisar e ajustar (ex: mudar a data, o valor) antes de confirmar a criação — igual a um "novo lançamento a partir deste", nunca uma duplicação automática e silenciosa.
-* **Impacto:** Reaproveita o modal de criação já existente, só muda o gatilho de `handleClone` (que hoje faz `insert` direto) para abrir o modal com valores iniciais. Vale também alinhar o item "Clonar um lançamento existente" do checklist do Artie (1.4.1) para seguir a mesma regra — quando via chat/voz, o Artie deve apresentar os dados clonados para confirmação antes de criar, nunca criar direto.

@@ -196,6 +196,7 @@ const FinancialTransactionsV2 = () => {
   const [modalType, setModalType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down');
 
@@ -520,6 +521,7 @@ const FinancialTransactionsV2 = () => {
     const transactionToEdit = { ...t, date: t.originalInstanceDate || t.instanceDate || t.date };
     setEditingTransaction(transactionToEdit);
     setIsConfirming(false);
+    setIsCloning(false);
     setIsModalOpen(true);
     setOpenDropdown(null);
   };
@@ -533,6 +535,7 @@ const FinancialTransactionsV2 = () => {
     const transactionToEdit = { ...t, date: dateToSet };
     setEditingTransaction(transactionToEdit);
     setIsConfirming(true);
+    setIsCloning(false);
     setIsModalOpen(true);
     setOpenDropdown(null);
   };
@@ -612,30 +615,21 @@ const FinancialTransactionsV2 = () => {
 
 
 
-  const handleClone = async (t: FinancialTransaction) => {
-    try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .insert({
-          user_id: user!.id,
-          type: t.type,
-          amount: t.amount,
-          date: t.date,
-          description: `${t.description || ''} (cópia)`,
-          status: 'pending',
-          client_id: t.client_id || null,
-          account_id: t.account_id || null,
-          category_id: t.category_id || null,
-          recurrence_enabled: t.recurrence_enabled,
-          recurrence_period: t.recurrence_period,
-          recurrence_interval: t.recurrence_interval
-        });
-      if (error) throw error;
-      toast.success('Lançamento clonado!');
-      fetchTransactions();
-    } catch {
-      toast.error('Erro ao clonar.');
-    }
+  const handleClone = (t: TransactionInstance) => {
+    // Abre a modal de criação pré-preenchida com os dados do lançamento original,
+    // permitindo revisar/ajustar antes de confirmar (nunca cria direto no banco).
+    const originalDate = t.originalInstanceDate || t.instanceDate || t.date;
+    const transactionToClone = {
+      ...t,
+      date: originalDate,
+      status: 'pending' as const,
+      paid_date: undefined,
+      auto_confirm: false,
+    };
+    setEditingTransaction(transactionToClone);
+    setIsConfirming(false);
+    setIsCloning(true);
+    setIsModalOpen(true);
     setOpenDropdown(null);
   };
 
@@ -2401,9 +2395,9 @@ const FinancialTransactionsV2 = () => {
         </main>
       </div>
 
-      <FinancialTransactionModalV2 
-        isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchTransactions}
-        initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming}
+      <FinancialTransactionModalV2
+        isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setIsCloning(false); }} onSuccess={fetchTransactions}
+        initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming} isCloning={isCloning}
       />
 
       <TransactionSummaryModal

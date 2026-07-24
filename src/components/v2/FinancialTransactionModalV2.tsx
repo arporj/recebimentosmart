@@ -139,11 +139,12 @@ interface FinancialTransactionModalProps {
   initialRecurrenceInterval?: string | number;
   transaction?: TransactionData | null;
   isConfirming?: boolean;
+  isCloning?: boolean;
 }
 
-const FinancialTransactionModalV2 = ({ 
-  isOpen, 
-  onClose, 
+const FinancialTransactionModalV2 = ({
+  isOpen,
+  onClose,
   onSuccess,
   initialType = 'income',
   initialAccountId = '',
@@ -156,11 +157,12 @@ const FinancialTransactionModalV2 = ({
   initialPeriodicidade = 'mensal',
   initialRecurrenceInterval = '1',
   transaction = null,
-  isConfirming = false
+  isConfirming = false,
+  isCloning = false
 }: FinancialTransactionModalProps) => {
   const { user, markOnboardingStep } = useAuth();
   const { checkLimit } = usePlanLimits();
-  const isEditing = !!transaction;
+  const isEditing = !!transaction && !isCloning;
 
   const [type, setType] = useState<'income' | 'expense' | 'transfer'>(initialType);
   const [amount, setAmount] = useState('');
@@ -450,7 +452,7 @@ const FinancialTransactionModalV2 = ({
       setIsTotalValue(false);
       setRecurrenceInterval(String(initialRecurrenceInterval || '1'));
     }
-  }, [isOpen, transaction, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate, initialModalidade, initialInstallmentTotal, initialPeriodicidade, initialRecurrenceInterval]);
+  }, [isOpen, transaction, isCloning, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate, initialModalidade, initialInstallmentTotal, initialPeriodicidade, initialRecurrenceInterval]);
 
 
   useEffect(() => {
