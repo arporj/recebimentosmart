@@ -54,10 +54,88 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 *(O Assistente IA Financeiro Conversacional — Artie Premium — foi concluído em Jul/2026; ver item 25 do [historico_tarefas_concluidas.md](file:///c:/Projetos/MEGAsync/Projetos/gemini-cli/recebimento-smart/docs/historico_tarefas_concluidas.md).)*
 
-#### 🔄 Troca de Modalidade via Artie e Comando de Voz
+#### 🤖 Artie Full-Control — Cobertura de Todas as Ações do Sistema
 
-* **Status:** Ideia (Prioridade Baixa).
-* **Descrição:** Desde Jul/2026 a troca de modalidade (única/parcelada/recorrente) de um lançamento existente é suportada corretamente pelo backend (`editarTransacao`/`mudarModalidadeTransacao`, com reconstrução completa da série preservando histórico pago). Hoje essa troca só é exposta na tela manual (`FinancialTransactionModalV2`) — nem o Artie (`src/lib/artie/executor.ts`) nem o comando de voz (`VoiceFloatingButton.tsx`) permitem alterar a modalidade de um lançamento já existente via chat/voz. Adicionar esse campo às ferramentas de atualização de ambos.
+* **Status:** Em andamento (Prioridade Alta).
+* **Objetivo:** o Artie (chat e comando de voz, `src/lib/artie/executor.ts` + `tools.ts`, espelhado em `netlify/functions/artie-shared.cjs`) deve ser capaz de executar qualquer ação que hoje só existe manualmente nas telas do sistema, não só criar/consultar lançamentos. A lista abaixo cobre todas as telas do usuário Premium (não-admin) e serve de checklist de progresso — marcar `[x]` conforme cada ação for implementada como tool.
+* **Fora de escopo por ora (não marcar aqui):**
+  * Painel **Admin** (`/v2/admin/*`) — ações administrativas (gestão de usuários, broadcast, testes de sistema) não devem ser expostas a um assistente conversacional por risco de segurança, mesmo para admins.
+  * **Lançamentos Compartilhados** (`SharedWithMeV2`) — módulo adiado (ver 1.6), não faz sentido automatizar antes da reavaliação de produto.
+  * **Cashback/PIX de Indicações** — depende do novo sistema de cashback (ver 1.1), que ainda não foi construído; hoje o programa de indicação é só desconto automático.
+
+**✅ Já suportado (Fase 1 — lançamentos, fatura e saldo):**
+* [x] Criar lançamento (única, parcelada, recorrente, transferência entre contas)
+* [x] Confirmar (dar baixa) em lançamento pendente
+* [x] Editar lançamento (descrição, valor, data, conta, categoria, status)
+* [x] Excluir lançamento (com escolha de escopo: este/próximos/todos)
+* [x] Listar/consultar lançamentos (gastos, receitas, pendências, atrasados)
+* [x] Consultar saldo de conta (atual, projetado, por data de corte)
+* [x] Consultar resumo de fatura de cartão de crédito
+* [x] Fechar/pagar fatura de cartão (integral, parcial com Acerto de Saldo, agendada)
+
+**⬜ Lançamentos — ações que faltam:**
+* [ ] Trocar modalidade de um lançamento existente (única ↔ parcelada ↔ recorrente) — backend já suporta via `mudarModalidadeTransacao`, só falta expor como tool
+* [ ] Clonar um lançamento existente
+* [ ] Confirmar com a data de hoje (distinto de confirmar na data original)
+* [ ] Desconfirmar (reverter para pendente) um lançamento já pago
+* [ ] Ações em lote (confirmar/desconfirmar/excluir vários lançamentos de uma vez)
+* [ ] Atribuir/remover tags de um lançamento
+
+**⬜ Contas Bancárias (`FinancialAccountsV2`):**
+* [ ] Criar conta (corrente/poupança/investimento/cartão de crédito)
+* [ ] Editar conta (nome, saldo inicial, tipo)
+* [ ] Excluir conta
+* [ ] Definir conta como principal
+* [ ] Vincular/editar cartão secundário de uma conta
+
+**⬜ Categorias (`FinancialCategoriesV2`):**
+* [ ] Criar categoria e subcategoria
+* [ ] Editar categoria/subcategoria
+* [ ] Excluir categoria/subcategoria
+
+**⬜ Tags (`FinancialTagsV2`):**
+* [ ] Criar tag (nome + cor)
+* [ ] Editar tag
+* [ ] Excluir tag
+
+**⬜ Cartões de Crédito (`CreditCardV2`) — além do pagamento de fatura já suportado:**
+* [ ] Fechar fatura manualmente antes do vencimento
+* [ ] Reabrir fatura já fechada
+
+**⬜ Clientes e Cobranças (módulo de reembolsos/gestão comercial — `GestaoClientesV2`, `CobrancasV2`):**
+* [ ] Criar cliente
+* [ ] Editar cliente
+* [ ] Excluir cliente
+* [ ] Lançamento rápido vinculado a um cliente
+* [ ] Consultar extrato de um cliente
+* [ ] Marcar cobrança de cliente como paga
+* [ ] Enviar notificação/lembrete de cobrança a um cliente
+* [ ] Configurar notificações automáticas (individuais por cliente ou globais)
+
+**⬜ Campos Personalizados (`CamposPersonalizadosV2`):**
+* [ ] Criar/editar/excluir campo personalizado
+* [ ] Preencher valor de campo personalizado para um cliente
+
+**⬜ Relatórios (`ReportsV2`):**
+* [ ] Consultar relatórios (clientes ativos/atrasados/pagos no mês)
+* [ ] Exportar base de clientes
+
+**⬜ Indicações (`ReferralPageV2`):**
+* [ ] Consultar estatísticas de indicados e desconto acumulado
+* [ ] Gerar/compartilhar link de indicação
+
+**⬜ Assinatura (`SubscriptionPageV2`):**
+* [ ] Consultar plano atual e limites de uso
+* [ ] Trocar de plano
+
+**⬜ Perfil e Preferências (`UserProfileSettingsV2`):**
+* [ ] Editar dados de perfil
+* [ ] Ajustar preferências de exibição (tema, densidade, símbolo de moeda, layout de valores)
+* [ ] Trocar o próprio tom de conversa do Artie (casual/normal/técnico)
+* [ ] Ativar/desativar notificações por e-mail (vencimento, fatura)
+
+**⬜ Feedback e Suporte (`FeedbackV2`):**
+* [ ] Abrir um novo feedback/chamado de suporte via chat
 
 ---
 
