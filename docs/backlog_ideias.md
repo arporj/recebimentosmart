@@ -80,6 +80,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * [ ] Desconfirmar (reverter para pendente) um lançamento já pago
 * [ ] Ações em lote (confirmar/desconfirmar/excluir vários lançamentos de uma vez)
 * [ ] Atribuir/remover tags de um lançamento
+* [ ] Aplicar filtro na tela de Lançamentos (tipo, status, conta, busca por texto, mês) — hoje `list_transactions` só responde a pergunta em texto, não altera o estado visual dos filtros da tela como o usuário faria manualmente
 
 **⬜ Contas Bancárias (`FinancialAccountsV2`):**
 * [ ] Criar conta (corrente/poupança/investimento/cartão de crédito)
