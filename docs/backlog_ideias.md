@@ -212,3 +212,9 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 * **Status:** Roadmap.
 * **Descrição:** Painel para o usuário centralizar o acompanhamento de custos fixos pessoais recorrentes (Netflix, Spotify, academia, plano de celular), com alertas de reajuste anual e projeção de impacto desses custos a longo prazo.
+
+#### 📋 Clonar Lançamento Deve Abrir a Tela de Criação, Não Salvar Direto
+
+* **Status:** Planejado.
+* **Descrição:** Hoje o botão "Clonar" (`handleClone` em `FinancialTransactionsV2.tsx`) insere um novo lançamento pendente diretamente no banco, com a mesma data e descrição "(cópia)" do original, sem qualquer tela intermediária. O comportamento correto é abrir a tela/modal de criação de lançamento (`FinancialTransactionModalV2`) já pré-preenchida com os dados do lançamento clicado (descrição, valor, conta, categoria, modalidade etc.), permitindo ao usuário revisar e ajustar (ex: mudar a data, o valor) antes de confirmar a criação — igual a um "novo lançamento a partir deste", nunca uma duplicação automática e silenciosa.
+* **Impacto:** Reaproveita o modal de criação já existente, só muda o gatilho de `handleClone` (que hoje faz `insert` direto) para abrir o modal com valores iniciais. Vale também alinhar o item "Clonar um lançamento existente" do checklist do Artie (seção 1.4) para seguir a mesma regra — quando via chat/voz, o Artie deve apresentar os dados clonados para confirmação antes de criar, nunca criar direto.
