@@ -127,12 +127,6 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * **Status:** Roadmap (Longo Prazo).
 * **Descrição:** Aplicativo nativo ou híbrido (Capacitor/React Native) para iOS e Android com login biométrico (FaceID/TouchID), experiência focada em dispositivos móveis e notificações push nativas de faturas e lembretes.
 
-#### 💳 Total Previsto no Agrupamento de Contas (Tela de Lançamentos)
-
-* **Status:** Planejado.
-* **Descrição:** No card de agrupamento por contas da tela de Lançamentos (`FinancialTransactionsV2`), o total exibido no cabeçalho do grupo deve ser o **somatório previsto até o final do mês**, e não apenas o total dos lançamentos já lançados/filtrados. Isso permite ao usuário ter uma visão de projeção mensal real de cada conta, sem precisar navegar até o dashboard.
-* **Impacto:** Apenas visual/query no agrupamento — sem alteração no comportamento dos lançamentos individuais.
-
 #### 🍿 Painel de Controle de Assinaturas Pessoais (Streaming/SaaS)
 
 * **Status:** Roadmap.

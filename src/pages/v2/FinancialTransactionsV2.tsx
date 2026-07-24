@@ -1308,7 +1308,10 @@ const FinancialTransactionsV2 = () => {
                 >
                   <ChevronDown size={11} className={`text-slate-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider flex-1 text-left">{group.label}</span>
-                  <span className="text-[10px] font-black text-emerald-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(group.confirmed)}</span>
+                  <div className="text-right leading-none">
+                    <p className={`text-[10px] font-black ${group.projected >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(group.projected)}</p>
+                    <p className="text-[7px] font-bold text-slate-400 mt-0.5">Conf: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(group.confirmed)}</p>
+                  </div>
                 </button>
                 {!isCollapsed && (
                   <div className="divide-y divide-slate-50">
