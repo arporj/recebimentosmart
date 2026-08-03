@@ -17,7 +17,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * **Regras de Negócio:**
   * O afiliado acumula o valor integral da primeira mensalidade paga pelo indicado na sua carteira de cashback.
   * O resgate via PIX só é liberado ao acumular o valor mínimo de R$ 100,00.
-  * **Painel Administrativo:** Exibe indicados, pagamentos realizados, saldos acumulados e envia notificações de solicitação de resgate.
+  * **Painel Administrativo:** Exibe indicados, se já realizaram o cadastro, se já realizaram o primeiro pagamento, saldos acumulados, resgates efetuados e envia notificações de solicitação de resgate.
   * **Painel do Usuário:** Interface transparente para o acompanhamento dos indicados, cadastramento da Chave PIX e solicitação de saque de cashback.
 
 ---
@@ -64,6 +64,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
   * **Cashback/PIX de Indicações** — depende do novo sistema de cashback (ver 1.1.1), que ainda não foi construído; hoje o programa de indicação é só desconto automático.
 
 **✅ Já suportado (Fase 1 — lançamentos, fatura e saldo):**
+
 * [x] Criar lançamento (única, parcelada, recorrente, transferência entre contas)
 * [x] Confirmar (dar baixa) em lançamento pendente
 * [x] Editar lançamento (descrição, valor, data, conta, categoria, status)
@@ -74,6 +75,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * [x] Fechar/pagar fatura de cartão (integral, parcial com Acerto de Saldo, agendada)
 
 **⬜ Lançamentos — ações que faltam:**
+
 * [ ] Trocar modalidade de um lançamento existente (única ↔ parcelada ↔ recorrente) — backend já suporta via `mudarModalidadeTransacao`, só falta expor como tool
 * [ ] Clonar um lançamento existente
 * [ ] Confirmar com a data de hoje (distinto de confirmar na data original)
@@ -83,6 +85,7 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * [ ] Aplicar filtro na tela de Lançamentos (tipo, status, conta, busca por texto, mês) — hoje `list_transactions` só responde a pergunta em texto, não altera o estado visual dos filtros da tela como o usuário faria manualmente
 
 **⬜ Contas Bancárias (`FinancialAccountsV2`):**
+
 * [ ] Criar conta (corrente/poupança/investimento/cartão de crédito)
 * [ ] Editar conta (nome, saldo inicial, tipo)
 * [ ] Excluir conta
@@ -90,20 +93,24 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * [ ] Vincular/editar cartão secundário de uma conta
 
 **⬜ Categorias (`FinancialCategoriesV2`):**
+
 * [ ] Criar categoria e subcategoria
 * [ ] Editar categoria/subcategoria
 * [ ] Excluir categoria/subcategoria
 
 **⬜ Tags (`FinancialTagsV2`):**
+
 * [ ] Criar tag (nome + cor)
 * [ ] Editar tag
 * [ ] Excluir tag
 
 **⬜ Cartões de Crédito (`CreditCardV2`) — além do pagamento de fatura já suportado:**
+
 * [ ] Fechar fatura manualmente antes do vencimento
 * [ ] Reabrir fatura já fechada
 
 **⬜ Clientes e Cobranças (módulo de reembolsos/gestão comercial — `GestaoClientesV2`, `CobrancasV2`):**
+
 * [ ] Criar cliente
 * [ ] Editar cliente
 * [ ] Excluir cliente
@@ -114,28 +121,34 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 * [ ] Configurar notificações automáticas (individuais por cliente ou globais)
 
 **⬜ Campos Personalizados (`CamposPersonalizadosV2`):**
+
 * [ ] Criar/editar/excluir campo personalizado
 * [ ] Preencher valor de campo personalizado para um cliente
 
 **⬜ Relatórios (`ReportsV2`):**
+
 * [ ] Consultar relatórios (clientes ativos/atrasados/pagos no mês)
 * [ ] Exportar base de clientes
 
 **⬜ Indicações (`ReferralPageV2`):**
+
 * [ ] Consultar estatísticas de indicados e desconto acumulado
 * [ ] Gerar/compartilhar link de indicação
 
 **⬜ Assinatura (`SubscriptionPageV2`):**
+
 * [ ] Consultar plano atual e limites de uso
 * [ ] Trocar de plano
 
 **⬜ Perfil e Preferências (`UserProfileSettingsV2`):**
+
 * [ ] Editar dados de perfil
 * [ ] Ajustar preferências de exibição (tema, densidade, símbolo de moeda, layout de valores)
 * [ ] Trocar o próprio tom de conversa do Artie (casual/normal/técnico)
 * [ ] Ativar/desativar notificações por e-mail (vencimento, fatura)
 
 **⬜ Feedback e Suporte (`FeedbackV2`):**
+
 * [ ] Abrir um novo feedback/chamado de suporte via chat
 
 ---
@@ -174,8 +187,10 @@ O histórico de tarefas que já foram concluídas foi movido para o arquivo [his
 
 #### 1.6.1. 🤝 Reativação de Lançamentos Compartilhados
 
-* **Status:** Adiado (Pendente de reavaliação de produto).
-* **Descrição:** Reativação e readequação de layout do menu de compartilhamento de lançamentos por e-mail com parceiros, com alertas sonoros (Web Audio API) e badges de notificação em tempo real. As tabelas (`client_shares`, etc.) e triggers permanecem ativas no banco.
+* **Status:** Adiado (Pendente de reavaliação de produto). Clonagem automática pausada em 03/08/2026.
+* **Descrição:** Reativação e readequação de layout do menu de compartilhamento de lançamentos por e-mail com parceiros, com alertas sonoros (Web Audio API) e badges de notificação em tempo real. As tabelas (`client_shares`, etc.) permanecem ativas no banco.
+* **Pausa aplicada em 03/08/2026** (`supabase/migrations/20260803190000_pause_auto_clone_shared_transactions_on_insert.sql`): a trigger `trg_handle_shared_transaction`/`fn_handle_shared_transaction()` continuava criando clones automáticos em toda nova transação de um cliente com `client_shares.status = 'accepted'`, mesmo com a UI adiada. Isso causou uma cadeia de cancelamentos cruzados não intencionais no cliente Ricardo Cabral (recorrências de meses inteiros somem de Cobranças por virarem `status = cancelled` sem o usuário ter cancelado nada — investigado nesta mesma data). A partir desta migração, **escolher um cliente compartilhado ao criar um lançamento não gera mais clone automático no receptor**; a sincronização de UPDATE/DELETE dos clones já existentes antes da pausa continua ativa normalmente, sem alteração de dados já compartilhados. Reverter isso faz parte do escopo de "refazer essa função toda" abaixo.
+* **Ao refazer:** repensar se a clonagem automática por client_shares (sem opt-in por lançamento) é o modelo certo, ou se deveria haver confirmação explícita do lado de quem compartilha e/ou de quem recebe antes de cada clone.
 
 #### 1.6.2. 💸 Split de Despesas Pessoais (Viagens e Jantares)
 
