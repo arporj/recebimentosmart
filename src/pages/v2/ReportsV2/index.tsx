@@ -1,48 +1,103 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { formatToSP, toSPDate, getCurrentSPDate } from '../../../lib/dates';
-import { isBefore, isSameMonth, startOfMonth, subMonths, addMonths } from 'date-fns';
+import { formatToSP } from '../../../lib/dates';
+import { format, parseISO, isSameMonth, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import Plot from 'react-plotly.js';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Download } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import ConfirmModal from '../../../components/v2/ConfirmModal';
+import { expandTransactionInstances } from '../../../lib/financeiro/instanceExpansion';
 
 type Client = {
     id: string;
     name: string;
     status: boolean;
     deleted_at: string | null | undefined;
-    next_payment_date: string | null;
-    monthly_payment: number;
-    payment_frequency: string;
 };
 
-type Payment = {
+type ClientIncomeTx = {
     id: string;
-    client_id: string;
+    type: 'income';
     amount: number;
-    payment_date: string;
+    date: string;
+    status: 'pending' | 'paid' | 'partial' | 'cancelled';
+    client_id: string;
+    parent_id?: string | null;
+    installment_current?: number | null;
+    recurrence_period?: string;
+    recurrence_interval?: number;
+    recurrence_end_date?: string | null;
 };
+
+// Rótulo legível para a periodicidade real de cobrança de um cliente, a partir do
+// template de recorrência em `financial_transactions` (fonte de verdade atual).
+function periodLabel(period?: string, interval?: number): string {
+    const n = interval || 1;
+    if (period === 'daily') return 'Diária';
+    if (period === 'weekly') return n > 1 ? `A cada ${n} semanas` : 'Semanal';
+    if (period === 'yearly') return 'Anual';
+    if (n === 1) return 'Mensal';
+    if (n === 2) return 'Bimestral';
+    if (n === 3) return 'Trimestral';
+    if (n === 6) return 'Semestral';
+    return `A cada ${n} meses`;
+}
 
 export function ReportsV2() {
     const [clients, setClients] = useState<Client[]>([]);
-    const [payments, setPayments] = useState<Payment[]>([]);
+    const [rawTx, setRawTx] = useState<ClientIncomeTx[]>([]);
+    const [rawTemplates, setRawTemplates] = useState<ClientIncomeTx[]>([]);
     const [selectedMonth, setSelectedMonth] = useState(() =>
-        formatToSP(getCurrentSPDate(), 'yyyy-MM')
+        formatToSP(new Date(), 'yyyy-MM')
     );
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
 
-    // Data Fetching
+    // Data Fetching — cobranças reais vivem em `financial_transactions` (client_id),
+    // não mais nas tabelas legadas `clients.monthly_payment/next_payment_date` e
+    // `payments`, que o fluxo atual de cadastro/cobrança de clientes não preenche mais.
     useEffect(() => {
         async function fetchData() {
             if (!user) return;
             setLoading(true);
-            const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', user.id);
-            const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
-            setClients((clientsData as unknown as Client[]) || []);
-            setPayments((paymentsData as unknown as Payment[]) || []);
-            setLoading(false);
+            try {
+                const [
+                    { data: clientsData, error: clientsError },
+                    { data: txData, error: txError },
+                    { data: templateData, error: tmplError },
+                ] = await Promise.all([
+                    supabase.from('clients').select('id, name, status, deleted_at').eq('user_id', user.id),
+                    supabase
+                        .from('financial_transactions')
+                        .select('id, amount, date, status, client_id, parent_id, installment_current, type')
+                        .eq('user_id', user.id)
+                        .not('client_id', 'is', null)
+                        .neq('status', 'cancelled')
+                        .eq('is_template', false)
+                        .eq('type', 'income'),
+                    supabase
+                        .from('financial_transactions')
+                        .select('id, amount, date, status, client_id, recurrence_period, recurrence_interval, recurrence_end_date, type')
+                        .eq('user_id', user.id)
+                        .not('client_id', 'is', null)
+                        .neq('status', 'cancelled')
+                        .eq('is_template', true)
+                        .eq('recurrence_enabled', true)
+                        .eq('type', 'income'),
+                ]);
+                if (clientsError) throw clientsError;
+                if (txError) throw txError;
+                if (tmplError) throw tmplError;
+                setClients((clientsData as unknown as Client[]) || []);
+                setRawTx((txData as unknown as ClientIncomeTx[]) || []);
+                setRawTemplates((templateData as unknown as ClientIncomeTx[]) || []);
+            } catch (err) {
+                console.error('Erro ao buscar dados de relatórios:', err);
+                toast.error('Erro ao carregar relatórios');
+            } finally {
+                setLoading(false);
+            }
         }
         fetchData();
     }, [user?.id]);
@@ -53,71 +108,65 @@ export function ReportsV2() {
 
         const [year, month] = selectedMonth.split('-').map(Number);
         const periodStart = startOfMonth(new Date(year, month - 1));
-        const today = getCurrentSPDate();
+        const horizonEnd = endOfMonth(periodStart);
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
 
         const activeClients = clients.filter(c => c.status && !c.deleted_at);
         const activeClientsCount = activeClients.length;
 
-        // Expected vs Received in current month
-        const expectedClients = activeClients.filter(client => {
-            if (!client.next_payment_date) return false;
-            const nextPayment = toSPDate(client.next_payment_date);
-            return isSameMonth(nextPayment, periodStart);
+        const expanded = expandTransactionInstances(rawTx as any, rawTemplates as any, {
+            horizonEnd,
+            rollOverUnpaidToToday: true,
         });
 
-        const expectedRevenue = expectedClients.reduce((sum, c) => sum + c.monthly_payment, 0);
+        // Mesma regra usada em CobrancasV2/FinancialTransactionsV2: pendência vencida
+        // sempre aparece "hoje", nunca presa no mês antigo em que venceu.
+        const rolled = expanded.map(t =>
+            t.status === 'pending' && t.originalInstanceDate < todayStr
+                ? { ...t, instanceDate: todayStr }
+                : t
+        );
 
-        const receivedRevenue = payments
-            .filter(p => {
-                const dt = toSPDate(p.payment_date);
-                return isSameMonth(dt, periodStart);
-            })
-            .reduce((sum, p) => sum + p.amount, 0);
-
-        // Late clients calculation
-        const lateClients = expectedClients.filter(client => {
-            if (!client.next_payment_date) return false;
-            const nextPayment = toSPDate(client.next_payment_date);
-            if (!isBefore(nextPayment, today)) return false;
-            const hasPaid = payments.some(p => p.client_id === client.id && isSameMonth(toSPDate(p.payment_date), nextPayment));
-            return !hasPaid;
-        });
-
-        const lateValue = lateClients.reduce((sum, c) => sum + c.monthly_payment, 0);
+        // KPIs do mês selecionado (data já rolada, igual às demais telas)
+        const monthInstances = rolled.filter(t => isSameMonth(parseISO(t.instanceDate), periodStart));
+        const expectedRevenue = monthInstances.reduce((sum, t) => sum + Number(t.amount), 0);
+        const receivedRevenue = monthInstances
+            .filter(t => t.status === 'paid')
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+        const lateInstances = monthInstances.filter(t => t.status !== 'paid' && t.originalInstanceDate < todayStr);
+        const lateValue = lateInstances.reduce((sum, t) => sum + Number(t.amount), 0);
         const inadimplenciaPercent = expectedRevenue > 0 ? (lateValue / expectedRevenue) * 100 : 0;
 
-        // Evolution Data
+        // Histórico (6 meses): usa a data ORIGINAL (sem rollover) de cada instância,
+        // para refletir o que de fato era esperado/recebido naquele mês — sem que uma
+        // pendência antiga, hoje "rolada" para o mês atual, distorça meses passados.
         const evol = [];
         const inadimplenciaHist = [];
         for (let i = 5; i >= 0; i--) {
             const dt = subMonths(periodStart, i);
             const label = formatToSP(dt, 'MMM/yy');
 
-            const monthExpectedClients = activeClients.filter(client => {
-                if (!client.next_payment_date) return false;
-                // Simplified assumption: client expected to pay if active
-                return isSameMonth(toSPDate(client.next_payment_date), dt) || isBefore(toSPDate(client.next_payment_date), dt);
-            });
-
-            const esperada = monthExpectedClients.reduce((sum, c) => sum + c.monthly_payment, 0);
-
-            const recebida = payments
-                .filter(p => isSameMonth(toSPDate(p.payment_date), dt))
-                .reduce((sum, p) => sum + p.amount, 0);
+            const monthOriginal = expanded.filter(t => isSameMonth(parseISO(t.originalInstanceDate), dt));
+            const esperada = monthOriginal.reduce((sum, t) => sum + Number(t.amount), 0);
+            const recebida = monthOriginal
+                .filter(t => t.status === 'paid')
+                .reduce((sum, t) => sum + Number(t.amount), 0);
 
             evol.push({ mes: label, esperada, recebida });
 
-            // Historical delinquency approximation for the chart
             const inadimplenciaMes = esperada > 0 ? ((esperada - recebida) / esperada) * 100 : 0;
             inadimplenciaHist.push({ mes: label, percent: Math.max(0, inadimplenciaMes) });
         }
 
-        // Plan distribution
-        const frequencies = activeClients.reduce((acc, client) => {
-            const freq = client.payment_frequency || 'monthly';
-            acc[freq] = (acc[freq] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+        // Distribuição de planos: baseada nos templates de recorrência reais de cada
+        // cliente ativo (fonte de verdade atual). O campo legado `clients.payment_frequency`
+        // deixou de ser preenchido pelo fluxo atual de cadastro de clientes.
+        const frequencies: Record<string, number> = {};
+        activeClients.forEach(client => {
+            const template = (rawTemplates as any[]).find(t => t.client_id === client.id);
+            const label = template ? periodLabel(template.recurrence_period, template.recurrence_interval) : 'Avulso/Pontual';
+            frequencies[label] = (frequencies[label] || 0) + 1;
+        });
 
         return {
             activeClientsCount,
@@ -129,7 +178,7 @@ export function ReportsV2() {
             inadimplenciaHist,
             frequencies
         };
-    }, [clients, payments, selectedMonth]);
+    }, [clients, rawTx, rawTemplates, selectedMonth]);
 
     function handlePrevMonth() {
         const [year, month] = selectedMonth.split('-').map(Number);
@@ -143,14 +192,6 @@ export function ReportsV2() {
         setSelectedMonth(formatToSP(next, 'yyyy-MM'));
     }
 
-    const FREQ_LABELS: Record<string, string> = {
-        monthly: 'Mensal',
-        bimonthly: 'Bimestral',
-        quarterly: 'Trimestral',
-        semiannual: 'Semestral',
-        annual: 'Anual',
-    };
-
     const [showNoClientsAlert, setShowNoClientsAlert] = useState(false);
 
     function handleExportBase() {
@@ -160,12 +201,22 @@ export function ReportsV2() {
             return;
         }
 
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const horizon = endOfMonth(addMonths(new Date(), 12));
+        const expanded = expandTransactionInstances(rawTx as any, rawTemplates as any, { horizonEnd: horizon });
+
         const headers = ['Nome', 'Valor Mensalidade (R$)', 'Frequência de Pagamento', 'Data do Próximo Pagamento'];
 
         const csvRows = activeClients.map(c => {
-            const freq = FREQ_LABELS[c.payment_frequency || 'monthly'] || 'Mensal';
-            const value = c.monthly_payment.toString().replace('.', ',');
-            const date = c.next_payment_date ? formatToSP(c.next_payment_date, 'dd/MM/yyyy') : '';
+            const template = (rawTemplates as any[]).find(t => t.client_id === c.id);
+            const freq = template ? periodLabel(template.recurrence_period, template.recurrence_interval) : 'Avulso/Pontual';
+
+            const nextInstance = expanded
+                .filter((t: any) => t.client_id === c.id && t.status === 'pending' && t.instanceDate >= todayStr)
+                .sort((a: any, b: any) => a.instanceDate.localeCompare(b.instanceDate))[0];
+
+            const value = nextInstance ? String(nextInstance.amount).replace('.', ',') : '';
+            const date = nextInstance ? formatToSP(nextInstance.instanceDate, 'dd/MM/yyyy') : '';
             return `"${c.name}","${value}","${freq}","${date}"`;
         });
 
@@ -329,7 +380,7 @@ export function ReportsV2() {
                         <Plot
                             data={[
                                 {
-                                    labels: Object.keys(reportData.frequencies).map(k => FREQ_LABELS[k] || k),
+                                    labels: Object.keys(reportData.frequencies),
                                     values: Object.values(reportData.frequencies),
                                     type: 'pie',
                                     hole: 0.6,
