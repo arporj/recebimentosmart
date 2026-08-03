@@ -397,6 +397,7 @@ const FinancialTransactionsV2 = () => {
       }
     } catch (err) {
       console.error('Erro ao buscar contas:', err);
+      toast.error('Erro ao carregar contas');
     }
   };
 
@@ -429,6 +430,7 @@ const FinancialTransactionsV2 = () => {
       })));
     } catch (err) {
       console.error('Erro ao buscar cartões:', err);
+      toast.error('Erro ao carregar cartões de crédito');
     }
   };
 
