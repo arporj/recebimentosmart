@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar, CreditCard, DollarSign, Scale } from 'lucide-react';
+import { X, Calendar, CreditCard, DollarSign, Scale, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { format, addMonths, parseISO } from 'date-fns';
-import { pagarFatura, lancarDiferencaProximoMes } from '../../lib/financeiro/pagarFatura';
+import { pagarFatura, editarFatura, lancarDiferencaProximoMes } from '../../lib/financeiro/pagarFatura';
+
+export interface BillTransferInfo {
+  id: string;
+  amount: number;
+  date: string;              // 'YYYY-MM-DD'
+  account_id: string | null; // conta de origem do pagamento
+  status: string;
+}
 
 interface CloseBillModalProps {
   isOpen: boolean;
@@ -14,6 +22,9 @@ interface CloseBillModalProps {
   invoiceMonth: string; // 'YYYY-MM'
   totalAmount: number;
   dueDate?: string; // 'YYYY-MM-DD' - data de vencimento da fatura sendo fechada
+  /** 'edit' altera uma fatura já fechada, sem exigir reabertura. Exige billTransfer. */
+  mode?: 'create' | 'edit';
+  billTransfer?: BillTransferInfo | null;
 }
 
 interface Account {
@@ -41,8 +52,11 @@ export default function CloseBillModal({
   cardId,
   invoiceMonth,
   totalAmount,
-  dueDate
+  dueDate,
+  mode = 'create',
+  billTransfer = null,
 }: CloseBillModalProps) {
+  const isEdit = mode === 'edit' && !!billTransfer;
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -60,17 +74,18 @@ export default function CloseBillModal({
     if (isOpen) {
       setStep('form');
       setPendingDiff(null);
-      setPaymentDate(dueDate || format(new Date(), 'yyyy-MM-dd'));
+      setPaymentDate((isEdit ? billTransfer!.date : dueDate) || format(new Date(), 'yyyy-MM-dd'));
       setPaymentAccountId('');
       setAmountInput(
-        new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalAmount)
+        new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          .format(isEdit ? billTransfer!.amount : totalAmount)
       );
-      fetchAccounts();
+      fetchAccounts(isEdit ? billTransfer!.account_id : null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, totalAmount, dueDate]);
+  }, [isOpen, totalAmount, dueDate, isEdit, billTransfer?.id]);
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = async (preferredAccountId: string | null) => {
     if (!user) return;
     try {
       const { data, error } = await supabase
@@ -84,7 +99,11 @@ export default function CloseBillModal({
       if (error) throw error;
       setAccounts(data || []);
       if (data && data.length > 0) {
-        setPaymentAccountId(data[0].id);
+        // Na edição, mantém a conta que já pagou a fatura; ela pode não ser a primeira da lista.
+        const preferred = preferredAccountId && data.some(a => a.id === preferredAccountId)
+          ? preferredAccountId
+          : data[0].id;
+        setPaymentAccountId(preferred);
       }
     } catch (err) {
       console.error(err);
@@ -112,20 +131,46 @@ export default function CloseBillModal({
 
     setLoading(true);
     try {
-      const { data: paymentResult, diff, error } = await pagarFatura({
-        cardId,
-        invoiceMonth,
-        invoiceTotal: totalAmount,
-        amount: finalAmount,
-        paymentDate,
-        paymentAccountId,
-      });
+      const result = isEdit
+        ? await editarFatura({
+            transferId: billTransfer!.id,
+            cardId,
+            invoiceMonth,
+            invoiceTotal: totalAmount,
+            amount: finalAmount,
+            paymentDate,
+            paymentAccountId,
+          })
+        : await pagarFatura({
+            cardId,
+            invoiceMonth,
+            invoiceTotal: totalAmount,
+            amount: finalAmount,
+            paymentDate,
+            paymentAccountId,
+          });
 
-      if (error || !paymentResult) throw error || new Error('Falha ao fechar a fatura');
+      const { data: paymentResult, diff, error } = result;
+      if (error || !paymentResult) {
+        throw error || new Error(isEdit ? 'Falha ao editar a fatura' : 'Falha ao fechar a fatura');
+      }
 
-      toast.success(paymentResult.isFutureDate ? 'Fatura fechada e pagamento agendado!' : 'Fatura fechada e confirmada!');
+      if (isEdit) {
+        toast.success(paymentResult.isFutureDate ? 'Fatura atualizada e pagamento reagendado!' : 'Fatura atualizada!');
+      } else {
+        toast.success(paymentResult.isFutureDate ? 'Fatura fechada e pagamento agendado!' : 'Fatura fechada e confirmada!');
+      }
 
-      if (diff >= 0.01) {
+      // Acerto do mês seguinte já existente e já pago: não dá para ajustar sozinho.
+      const nextMonthLocked = isEdit && (result as { nextMonthLocked?: boolean }).nextMonthLocked;
+      if (nextMonthLocked) {
+        toast('O acerto lançado no mês seguinte já foi pago e não foi alterado.', { icon: '⚠️' });
+      }
+
+      // Só pergunta sobre a diferença quando ainda não existe um acerto no mês seguinte —
+      // na edição, um acerto pré-existente já foi atualizado/removido por editarFatura.
+      const alreadyHandled = isEdit && (result as { nextMonthHandled?: boolean }).nextMonthHandled;
+      if (diff >= 0.01 && !alreadyHandled) {
         const invoiceDate = parseISO(`${invoiceMonth}-01`);
         setPendingDiff({
           amount: diff,
@@ -137,8 +182,8 @@ export default function CloseBillModal({
         onSuccess();
       }
     } catch (err) {
-      console.error('Erro ao fechar fatura:', err);
-      toast.error('Não foi possível fechar a fatura');
+      console.error(isEdit ? 'Erro ao editar fatura:' : 'Erro ao fechar fatura:', err);
+      toast.error(isEdit ? 'Não foi possível editar a fatura' : 'Não foi possível fechar a fatura');
     } finally {
       setLoading(false);
     }
@@ -177,7 +222,7 @@ export default function CloseBillModal({
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
               <CreditCard className="text-[#14b8a6]" size={24} />
-              {step === 'form' ? 'Fechar Fatura' : 'Diferença de Saldo'}
+              {step === 'form' ? (isEdit ? 'Editar Fatura' : 'Fechar Fatura') : 'Diferença de Saldo'}
             </h2>
             <p className="text-sm text-slate-400 mt-1">
               Fatura {invoiceMonth}
@@ -197,6 +242,17 @@ export default function CloseBillModal({
             <div className="flex-1 overflow-y-auto w-full p-6 bg-slate-50">
               <form id="close-bill-form" onSubmit={handleSubmit} className="space-y-6 max-w-sm mx-auto">
 
+                {/* Aviso: editar um pagamento já confirmado altera o saldo já realizado da conta */}
+                {isEdit && billTransfer!.status === 'paid' && (
+                  <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] font-medium text-amber-800 leading-relaxed">
+                      Este pagamento já está confirmado. Alterar o valor ou a data muda um movimento
+                      já realizado e recalcula o saldo da conta de origem.
+                    </p>
+                  </div>
+                )}
+
                 {/* Valor da Fatura (editável) */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-2">
                   <p className="text-xs font-black uppercase tracking-widest text-[#14b8a6]">Valor da Fatura</p>
@@ -211,7 +267,9 @@ export default function CloseBillModal({
                     />
                   </div>
                   <p className="text-[10px] text-slate-500 font-medium">
-                    Total calculado: {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Altere para registrar um Acerto de Saldo.
+                    {isEdit
+                      ? 'Alterar o valor recalcula o Acerto de Saldo desta fatura, sem duplicar o acerto anterior.'
+                      : `Total calculado: ${totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Altere para registrar um Acerto de Saldo.`}
                   </p>
                 </div>
 
@@ -221,7 +279,7 @@ export default function CloseBillModal({
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
                       <Calendar size={14} className="text-[#14b8a6]" />
-                      Data de Agendamento
+                      {isEdit ? 'Data do Pagamento' : 'Data de Agendamento'}
                     </label>
                     <input
                       type="date"
@@ -230,7 +288,11 @@ export default function CloseBillModal({
                       onChange={(e) => setPaymentDate(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-[#14b8a6]/20 transition-all"
                     />
-                    <p className="text-[10px] text-slate-500 font-medium">Esta é a data em que o pagamento da fatura será agendado.</p>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      {isEdit
+                        ? 'Data futura reagenda o pagamento; data de hoje ou passada mantém o pagamento confirmado.'
+                        : 'Esta é a data em que o pagamento da fatura será agendado.'}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -273,7 +335,9 @@ export default function CloseBillModal({
                   disabled={loading}
                   className={`flex-1 px-4 py-3 bg-[#14b8a6] hover:bg-teal-600 text-white rounded-xl font-bold shadow-lg shadow-teal-500/30 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {loading ? 'Fechando...' : (paymentDate <= format(new Date(), 'yyyy-MM-dd') ? 'Fechar e Confirmar' : 'Fechar e Agendar')}
+                  {isEdit
+                    ? (loading ? 'Salvando...' : 'Salvar Alterações')
+                    : (loading ? 'Fechando...' : (paymentDate <= format(new Date(), 'yyyy-MM-dd') ? 'Fechar e Confirmar' : 'Fechar e Agendar'))}
                 </button>
               </div>
             </div>
@@ -286,7 +350,7 @@ export default function CloseBillModal({
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
                   <Scale className="mx-auto text-[#14b8a6]" size={32} />
                   <p className="text-sm text-slate-600">
-                    A fatura foi fechada com um Acerto de Saldo de{' '}
+                    A fatura foi {isEdit ? 'atualizada' : 'fechada'} com um Acerto de Saldo de{' '}
                     <span className="font-bold text-slate-800">
                       {pendingDiff?.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>.

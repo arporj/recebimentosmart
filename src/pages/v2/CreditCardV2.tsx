@@ -16,6 +16,7 @@ import CloseBillModal from '../../components/v2/CloseBillModal';
 import ConfirmModal from '../../components/v2/ConfirmModal';
 import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
+import { reabrirFatura } from '../../lib/financeiro/pagarFatura';
 import { BRAZILIAN_BANKS } from '../../constants/banks';
 
 interface Account {
@@ -240,6 +241,7 @@ const CreditCardV2 = () => {
   const [itemToDelete, setItemToDelete] = useState<FinancialTransaction | null>(null);
 
   const [isCloseBillModalOpen, setIsCloseBillModalOpen] = useState(false);
+  const [isEditBillModalOpen, setIsEditBillModalOpen] = useState(false);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
 
   const today = new Date();
@@ -593,14 +595,25 @@ const CreditCardV2 = () => {
   const isBillClosed = !!billPaymentTransaction;
 
   const handleReopenBill = async () => {
-    if (!billPaymentTransaction) return;
+    if (!billPaymentTransaction || !selectedCardId) return;
     try {
-      // Reabrir desfaz apenas o agendamento de pagamento (transferência). Lançamentos de
-      // "Acerto de Saldo" já criados são transações normais da fatura e permanecem intactos,
-      // podendo ser editados/excluídos manualmente como qualquer outro lançamento.
-      const { error } = await supabase.from('financial_transactions').delete().eq('id', billPaymentTransaction.id);
+      // Reabrir desfaz o fechamento inteiro: a transferência de pagamento e os acertos que o
+      // fechamento criou. Deixar os acertos para trás faria o próximo fechamento partir de um
+      // total já contaminado e empilhar um segundo Acerto de Saldo na mesma fatura.
+      const { removedAdjustments, nextMonthLocked, error } = await reabrirFatura(
+        billPaymentTransaction.id,
+        selectedCardId,
+        currentInvoiceMonthString,
+      );
       if (error) throw error;
-      toast.success('Fatura reaberta com sucesso!');
+      toast.success(
+        removedAdjustments > 0
+          ? `Fatura reaberta! ${removedAdjustments} lançamento(s) de acerto removido(s).`
+          : 'Fatura reaberta com sucesso!',
+      );
+      if (nextMonthLocked) {
+        toast('O acerto lançado no mês seguinte já foi pago e foi mantido.', { icon: '⚠️' });
+      }
       fetchTransactions();
       setIsReopenConfirmOpen(false);
     } catch (err) {
@@ -886,12 +899,20 @@ const CreditCardV2 = () => {
                   <span className="font-bold text-slate-700">{format(invoicePeriod.dueDate, 'dd/MM/yyyy')}</span>
                 </div>
                 {isBillClosed ? (
-                  <button
-                    onClick={() => setIsReopenConfirmOpen(true)}
-                    className="w-full py-3 bg-white border-2 border-[#14b8a6]/20 text-[#14b8a6] rounded-xl font-bold uppercase tracking-wider text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Repeat size={14} /> Reabrir Fatura
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setIsEditBillModalOpen(true)}
+                      className="w-full py-3 bg-[#14b8a6] hover:bg-teal-600 text-white rounded-xl font-bold shadow-lg shadow-teal-500/30 uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-2"
+                    >
+                      <Pencil size={14} /> Editar Fatura
+                    </button>
+                    <button
+                      onClick={() => setIsReopenConfirmOpen(true)}
+                      className="w-full py-3 bg-white border-2 border-[#14b8a6]/20 text-[#14b8a6] rounded-xl font-bold uppercase tracking-wider text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Repeat size={14} /> Reabrir Fatura
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => setIsCloseBillModalOpen(true)}
@@ -1065,11 +1086,34 @@ const CreditCardV2 = () => {
         />
       )}
 
+      {/* Modal de Editar Fatura (já fechada) */}
+      {selectedCardId && billPaymentTransaction && (
+        <CloseBillModal
+          isOpen={isEditBillModalOpen}
+          onClose={() => setIsEditBillModalOpen(false)}
+          onSuccess={() => {
+            setIsEditBillModalOpen(false);
+            fetchTransactions();
+          }}
+          cardId={selectedCardId}
+          invoiceMonth={currentInvoiceMonthString}
+          totalAmount={invoiceSummary.total}
+          mode="edit"
+          billTransfer={{
+            id: billPaymentTransaction.id,
+            amount: Number(billPaymentTransaction.amount) || 0,
+            date: billPaymentTransaction.date,
+            account_id: billPaymentTransaction.account_id ?? null,
+            status: billPaymentTransaction.status,
+          }}
+        />
+      )}
+
       {/* Confirmar Reabertura */}
       <ConfirmModal
         isOpen={isReopenConfirmOpen}
         title="Reabrir Fatura"
-        message={`Você tem certeza que deseja cancelar o fechamento da fatura ${currentInvoiceMonthString}? Isso excluirá o agendamento de pagamento associado. Lançamentos de Acerto de Saldo já criados permanecem na fatura.`}
+        message={`Você tem certeza que deseja cancelar o fechamento da fatura ${currentInvoiceMonthString}? Isso excluirá o agendamento de pagamento e os lançamentos de Acerto de Saldo criados no fechamento (o acerto do mês seguinte só é removido se ainda não estiver pago). Para apenas corrigir valor ou data, use "Editar Fatura".`}
         confirmLabel="Sim, Reabrir"
         cancelLabel="Cancelar"
         onConfirm={handleReopenBill}

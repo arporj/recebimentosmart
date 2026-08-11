@@ -35,6 +35,7 @@ import FinancialTransactionModalV2 from '../../components/v2/FinancialTransactio
 import { ModalOpcaoRecorrente } from '../../components/financeiro/ModalOpcaoRecorrente';
 import { deletarTransacao } from '../../lib/financeiro/deletarTransacao';
 import { TransactionSummaryModal } from '../../components/v2/TransactionSummaryModal';
+import CloseBillModal, { type BillTransferInfo } from '../../components/v2/CloseBillModal';
 import { ShareTransactionsModalV2 } from '../../components/v2/ShareTransactionsModalV2';
 import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
 import { expandTransactionInstances, type TransactionInstance as FinanceiroTransactionInstance } from '../../lib/financeiro/instanceExpansion';
@@ -174,9 +175,11 @@ interface TransactionInstance extends FinancialTransaction {
   invoiceData?: {
     cardId: string;
     cardName: string;
+    invoiceMonth?: string;
     linkedAccountName: string | null;
     invoicePaymentAccountId: string | null;
     total: number;
+    billTransfer?: BillTransferInfo | null;
   };
   runningBalance?: number;
 }
@@ -259,6 +262,25 @@ const FinancialTransactionsV2 = () => {
   // Estados para o modal de resumo
   const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState<TransactionInstance | null>(null);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+
+  // Edição de fatura já fechada, direto da linha de fatura da lista
+  const [editingInvoice, setEditingInvoice] = useState<{
+    cardId: string;
+    invoiceMonth: string;
+    total: number;
+    billTransfer: BillTransferInfo;
+  } | null>(null);
+
+  const openInvoiceEditor = (t: TransactionInstance) => {
+    const d = t.invoiceData;
+    if (!d?.billTransfer || !d.invoiceMonth) return;
+    setEditingInvoice({
+      cardId: d.cardId,
+      invoiceMonth: d.invoiceMonth,
+      total: d.total,
+      billTransfer: d.billTransfer,
+    });
+  };
 
   // Estado para o modal de compartilhamento
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -1665,6 +1687,14 @@ const FinancialTransactionsV2 = () => {
                           }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                             <CreditCard size={12} className="text-purple-600" /> Visualizar Fatura
                           </button>
+                          {t.invoiceData?.billTransfer && (
+                            <button onClick={() => {
+                              setOpenDropdown(null);
+                              openInvoiceEditor(t);
+                            }} className="w-full px-3 py-1.5 text-left text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                              <Pencil size={12} className="text-teal-600" /> Editar Fatura
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2128,6 +2158,14 @@ const FinancialTransactionsV2 = () => {
                               }} className="w-full px-4 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3">
                                 <CreditCard size={14} className="text-purple-600" /> Visualizar Fatura
                               </button>
+                              {t.invoiceData?.billTransfer && (
+                                <button onClick={() => {
+                                  setOpenDropdown(null);
+                                  openInvoiceEditor(t);
+                                }} className="w-full px-4 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+                                  <Pencil size={14} className="text-teal-600" /> Editar Fatura
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2401,6 +2439,20 @@ const FinancialTransactionsV2 = () => {
         isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setIsCloning(false); }} onSuccess={fetchTransactions}
         initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming} isCloning={isCloning}
       />
+
+      {/* Edição de fatura já fechada (valor, data e conta de pagamento) */}
+      {editingInvoice && (
+        <CloseBillModal
+          isOpen={true}
+          onClose={() => setEditingInvoice(null)}
+          onSuccess={() => { setEditingInvoice(null); fetchTransactions(); }}
+          cardId={editingInvoice.cardId}
+          invoiceMonth={editingInvoice.invoiceMonth}
+          totalAmount={editingInvoice.total}
+          mode="edit"
+          billTransfer={editingInvoice.billTransfer}
+        />
+      )}
 
       <TransactionSummaryModal
         isOpen={isSummaryModalOpen}

@@ -51,6 +51,11 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
+        question: 'Errei o valor ou a data ao fechar a fatura. Preciso reabri-la?',
+        answer: 'Não. Use "Editar Fatura" — disponível no menu da linha da fatura na tela de Lançamentos e também na tela de Cartões — para corrigir o valor, a data e a conta de pagamento de uma fatura já fechada. Vale a mesma regra do fechamento: se o valor ficar diferente do total original da fatura, o "Acerto de Saldo" é recalculado (atualizado, criado ou removido), nunca duplicado, e o acerto lançado no mês seguinte é ajustado junto — salvo se ele já tiver sido pago, caso em que você é avisado. Se a data passar a ser futura, o pagamento volta a ficar agendado; se for hoje ou uma data passada, ele fica confirmado. A opção "Reabrir Fatura" continua existindo para quando você quiser desfazer o fechamento por completo: ela remove o pagamento e os acertos criados no fechamento.'
+    },
+    {
+        category: 'funcionalidades',
         question: 'Como funcionam os alertas por e-mail de contas e cartões?',
         answer: 'Dependendo do seu plano, você pode habilitar alertas por e-mail em suas Preferências. Para planos de envio diário, é possível ativar alertas de contas que vencem no dia e notificações na data exata de fechamento da fatura do seu cartão. Para planos semanais, você recebe um resumo consolidado das contas da semana juntamente com a fatura do cartão a vencer, tudo de forma automática no dia escolhido.'
     },

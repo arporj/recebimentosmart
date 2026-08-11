@@ -144,9 +144,21 @@ export function buildInvoiceSummaryInstances(
         invoiceData: {
           cardId: g.cardId,
           cardName: g.cardName,
+          invoiceMonth: g.invoiceMonth,
           linkedAccountName: g.linkedAccountName,
           invoicePaymentAccountId: g.invoicePaymentAccountId,
           total: g.total,
+          // Dados da transferência de pagamento, para editar a fatura já fechada direto
+          // da lista de lançamentos (sem precisar reabrir na tela de Cartões).
+          billTransfer: g.billTransfer
+            ? {
+                id: g.billTransfer.id,
+                amount: Number(g.billTransfer.amount) || 0,
+                date: g.billTransfer.date,
+                account_id: g.billTransfer.account_id ?? null,
+                status: g.billTransfer.status,
+              }
+            : null,
         },
       } as unknown as TransactionInstance;
     });

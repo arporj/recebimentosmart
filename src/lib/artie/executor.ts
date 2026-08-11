@@ -540,7 +540,7 @@ async function executePayCreditCardInvoice(
       const statusLabel = group.billTransfer?.status === 'paid' ? 'paga' : 'com pagamento agendado';
       return {
         success: false,
-        error: `A fatura ${invoiceMonth} do cartão ${card.name} já está fechada (${statusLabel}). Para alterar, reabra a fatura na tela de Cartões.`,
+        error: `A fatura ${invoiceMonth} do cartão ${card.name} já está fechada (${statusLabel}). Para corrigir o valor ou a data, use "Editar Fatura" na linha da fatura em Lançamentos ou na tela de Cartões.`,
       };
     }
 
