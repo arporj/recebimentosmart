@@ -794,7 +794,7 @@ const DashboardV2 = () => {
                   currentMonthInstances.slice(-5).reverse().map((t) => (
                     <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-100/50 hover:border-slate-200/70 rounded-xl transition-all group cursor-default">
                       <div className={`p-2 rounded-lg shadow-sm transition-all ${t.type === 'income' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white' : 'bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white'}`}>
-                        {t.type === 'income' ? <Plus size={14} className="font-black" /> : <ArrowDownCircle size={14} className="font-black" />}
+                        {t.type === 'income' ? <ArrowUpCircle size={14} className="font-black" /> : <ArrowDownCircle size={14} className="font-black" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-black text-slate-800 truncate group-hover:text-slate-900 capitalize">{t.description || 'Sem Descrição'}</p>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Search, X,
   ArrowDownCircle,
+  ArrowUpCircle,
   ArrowRightLeft,
   RefreshCcw,
   Plus,
@@ -2208,7 +2209,7 @@ const FinancialTransactionsV2 = () => {
                       </div>
                       {/* Ícone de Tipo */}
                       <div className={`p-1.5 rounded-lg shrink-0 ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : t.type === 'expense' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                        {t.type === 'income' ? <Plus size={16} /> : t.type === 'expense' ? <ArrowDownCircle size={16} /> : <ArrowRightLeft size={16} />}
+                        {t.type === 'income' ? <ArrowUpCircle size={16} /> : t.type === 'expense' ? <ArrowDownCircle size={16} /> : <ArrowRightLeft size={16} />}
                       </div>
 
                       {/* Data como coluna antes da descrição */}
