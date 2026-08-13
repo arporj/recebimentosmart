@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -109,6 +109,8 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
     const [isChangelogOpen, setIsChangelogOpen] = useState(false);
     const [unreadChangelogCount, setUnreadChangelogCount] = useState(0);
 
+    const headerRef = useRef<HTMLElement>(null);
+
     const checkUnreadChangelogs = async () => {
         if (!user) return;
         try {
@@ -179,6 +181,25 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
         const collapsed = localStorage.getItem('sidebar_desktop_collapsed') === 'true';
         setSidebarDesktopCollapsed(collapsed);
     }, [user]);
+
+    // Publica a altura real do header superior em --app-header-h para que as telas
+    // possam posicionar seus próprios cabeçalhos sticky logo abaixo dele (sem magic numbers).
+    useEffect(() => {
+        const el = headerRef.current;
+        const apply = () => {
+            const height = el ? el.getBoundingClientRect().height : 0;
+            document.documentElement.style.setProperty('--app-header-h', `${Math.round(height)}px`);
+        };
+        apply();
+        if (!el) return;
+        const observer = new ResizeObserver(apply);
+        observer.observe(el);
+        window.addEventListener('resize', apply);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', apply);
+        };
+    }, [sidebarDesktopCollapsed]);
 
     // Ouvir alterações temporárias de layout (antes de salvar) vindas da tela de perfil
     useEffect(() => {
@@ -396,7 +417,7 @@ export function MainLayoutV2({ children }: MainLayoutV2Props) {
             }`}>
  
                 {/* Header Superior (Sempre visível para permitir abrir o menu lateral colapsado) */}
-                <header className={`bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3 shadow-sm justify-start ${
+                <header ref={headerRef} className={`bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3 shadow-sm justify-start ${
                     !sidebarDesktopCollapsed ? 'lg:hidden' : ''
                 }`}>
                     {/* Botão de menu hambúrguer para expandir a sidebar colapsada em qualquer resolução, posicionado do lado esquerdo, antes do logo */}

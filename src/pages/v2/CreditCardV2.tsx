@@ -733,8 +733,8 @@ const CreditCardV2 = () => {
     <div className="bg-slate-50 flex flex-col min-h-screen">
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="lg:hidden flex flex-col">
-        {/* Mobile Header */}
-        <div className="shrink-0 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+        {/* Mobile Header (fixo no topo, logo abaixo do header do layout) */}
+        <div className="sticky top-[var(--app-header-h,57px)] z-20 shrink-0 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2 shadow-sm">
           {/* Card selector + month */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">

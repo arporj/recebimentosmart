@@ -1422,7 +1422,7 @@ const FinancialTransactionsV2 = () => {
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="xl:hidden flex flex-col min-h-screen">
         {/* Mobile Header: Resumo + Busca + Criar */}
-        <div className="sticky top-[57px] z-20 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
+        <div className="sticky top-[var(--app-header-h,57px)] z-20 bg-white border-b border-slate-100 px-3 pt-3 pb-2 space-y-2">
           {/* Top Row for Sm and Above / Standard mobile rows */}
           {/* Mobile view only: < sm */}
           <div className="flex sm:hidden items-center justify-between w-full gap-2">
