@@ -68,6 +68,8 @@ export async function gerarInstanciasRecorrentes(
       status: 'pending', // Future instances are always pending
       installment_current: (parentData.installment_current || 1) + i,
       installment_total: 1,
+      recurrence_enabled: false,
+      is_template: false,
     });
 
     i++;

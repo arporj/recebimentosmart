@@ -251,12 +251,13 @@ export async function editarTransacao(
 
 
       // 3. Criar a nova mãe (template) com as novas regras
-      const { id: _, created_at: __, recurrence_end_date: ___, ...parentFields } = current;
+      const { id: _, created_at: __, recurrence_end_date: ___, parent_id: ____, ...parentFields } = current;
       const targetDay = parseISO(effectiveDate).getDate();
       const newMotherPayload = {
         ...parentFields,
         ...safeBulkUpdate,
         ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
+        parent_id: null,
         date: newMotherStartDate,
         due_day: targetDay,
         status: isPaid ? 'pending' : (cleanUpdate.status || 'pending'),
@@ -291,6 +292,7 @@ export async function editarTransacao(
         ...newMotherPayload,
         is_template: false,
         parent_id: newMother.id,
+        recurrence_enabled: false,
       };
 
       const { data: newFirstChild, error: createChildError } = await supabase

@@ -109,11 +109,6 @@ const hasExpensesForMonth = (card: Account, cursorDate: Date, allTransactions: F
   const hasPhysical = allTransactions.some(t => {
     if (t.account_id !== card.id || t.type !== 'expense' || t.status === 'cancelled') return false;
     
-    if (t.recurrence_enabled) {
-      const tDate = parseISO(t.date);
-      return !isAfter(tDate, period ? period.endDate : endOfMonth(cursorDate));
-    }
-    
     if (t.invoice_month) {
       return t.invoice_month === cursorMonthStr;
     }
@@ -432,75 +427,14 @@ const CreditCardV2 = () => {
       if (t.status === 'cancelled') continue;
 
       const tDate = parseISO(t.date);
+      const matchesInvoice = t.invoice_month
+        ? t.invoice_month === currentInvoiceMonthString
+        : (invoicePeriod
+            ? (!isBefore(tDate, invoicePeriod.startDate) && !isAfter(tDate, invoicePeriod.endDate))
+            : isSameMonth(tDate, currentMonth));
 
-      if (!t.recurrence_enabled) {
-        const matchesInvoice = t.invoice_month
-          ? t.invoice_month === currentInvoiceMonthString
-          : (invoicePeriod
-              ? (!isBefore(tDate, invoicePeriod.startDate) && !isAfter(tDate, invoicePeriod.endDate))
-              : isSameMonth(tDate, currentMonth));
-
-        if (matchesInvoice) {
-          instances.push({ ...t, instanceDate: t.date, isVirtual: false });
-        }
-        continue;
-      }
-
-      const interval = t.recurrence_interval || 1;
-      const period = t.recurrence_period || 'monthly';
-      const recEndDate = t.recurrence_end_date ? parseISO(t.recurrence_end_date) : null;
-      const absMax = addYears(today, 5);
-      let cursor = new Date(tDate);
-      const parentId = t.id;
-      let occurrenceIndex = 0;
-
-      while (isBefore(cursor, absMax)) {
-        // Respect recurrence_end_date
-        if (recEndDate && isAfter(cursor, recEndDate)) break;
-
-        const dateStr = format(cursor, 'yyyy-MM-dd');
-        const currentInst = (t.installment_current || 1) + occurrenceIndex;
-
-        // Checar por índice sequencial e por data (fallback)
-        const hasPhysicalByIndex = physicalIndicesByParent.get(parentId)?.has(currentInst);
-        const hasPhysicalByDate = physicalDatesByParent.get(parentId)?.has(dateStr);
-        const alreadyHasPhysical = hasPhysicalByIndex || hasPhysicalByDate;
-
-        const cursorDate = parseISO(dateStr);
-
-        let inPeriod = false;
-        if (dateStr === t.date && t.invoice_month) {
-          inPeriod = t.invoice_month === currentInvoiceMonthString;
-        } else {
-          if (invoicePeriod) {
-            inPeriod = !isBefore(cursorDate, invoicePeriod.startDate) && !isAfter(cursorDate, invoicePeriod.endDate);
-          } else {
-            inPeriod = isSameMonth(cursorDate, currentMonth);
-          }
-        }
-
-        // Se for a data original do pai (e não houver filho físico desmembrado para esse mesmo índice)
-        // ou uma virtual que não existe fisicamente.
-        if (inPeriod && (!alreadyHasPhysical || (dateStr === t.date && !hasPhysicalByIndex))) {
-          instances.push({
-            ...t,
-            instanceDate: dateStr,
-            isVirtual: dateStr !== t.date,
-            installment_current: currentInst,
-          });
-        }
-
-        if (invoicePeriod && isAfter(cursor, invoicePeriod.endDate)) break;
-        if (!invoicePeriod && isAfter(cursor, endOfMonth(currentMonth))) break;
-
-        occurrenceIndex++;
-        switch (period) {
-          case 'daily': cursor = addDays(cursor, interval); break;
-          case 'weekly': cursor = addWeeks(cursor, interval); break;
-          case 'monthly': cursor = addMonths(cursor, interval); break;
-          case 'yearly': cursor = addYears(cursor, interval); break;
-          default: cursor = addMonths(cursor, interval);
-        }
+      if (matchesInvoice) {
+        instances.push({ ...t, instanceDate: t.date, isVirtual: false });
       }
     }
 

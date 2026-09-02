@@ -91,4 +91,41 @@ describe('expandTransactionInstances', () => {
     });
     expect(forced[0].status).toBe('paid');
   });
+
+  it('does not duplicate occurrences when multiple physical instances exist before virtual horizon', () => {
+    const template = tx({
+      id: 'template-meli',
+      date: '2026-09-02',
+      recurrence_enabled: true,
+      recurrence_period: 'monthly',
+      recurrence_interval: 1,
+      status: 'pending',
+    });
+    const childSept = tx({ id: 'c-1', parent_id: 'template-meli', date: '2026-09-02', recurrence_enabled: false });
+    const childOct = tx({ id: 'c-2', parent_id: 'template-meli', date: '2026-10-02', recurrence_enabled: false });
+    const childNov = tx({ id: 'c-3', parent_id: 'template-meli', date: '2026-11-02', recurrence_enabled: false });
+
+    const instances = expandTransactionInstances(
+      [childSept, childOct, childNov],
+      [template],
+      { horizonEnd: new Date('2026-12-31') },
+    );
+
+    const sept = instances.filter(i => i.instanceDate.startsWith('2026-09'));
+    const oct = instances.filter(i => i.instanceDate.startsWith('2026-10'));
+    const nov = instances.filter(i => i.instanceDate.startsWith('2026-11'));
+    const dec = instances.filter(i => i.instanceDate.startsWith('2026-12'));
+
+    expect(sept).toHaveLength(1);
+    expect(sept[0].isVirtual).toBe(false);
+
+    expect(oct).toHaveLength(1);
+    expect(oct[0].isVirtual).toBe(false);
+
+    expect(nov).toHaveLength(1);
+    expect(nov[0].isVirtual).toBe(false);
+
+    expect(dec).toHaveLength(1);
+    expect(dec[0].isVirtual).toBe(true);
+  });
 });
