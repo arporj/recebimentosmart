@@ -41,6 +41,7 @@ import { ShareTransactionsModalV2 } from '../../components/v2/ShareTransactionsM
 import { calcularMesFatura } from '../../lib/financeiro/faturaUtils';
 import { expandTransactionInstances, type TransactionInstance as FinanceiroTransactionInstance } from '../../lib/financeiro/instanceExpansion';
 import { groupCreditCardInvoices, buildInvoiceSummaryInstances } from '../../lib/financeiro/invoiceGrouping';
+import { editarFatura } from '../../lib/financeiro/pagarFatura';
 import { computeAccountBalanceAsOf, computeRunningBalanceWithTodayRollover } from '../../lib/financeiro/balanceCalculator';
 
 
@@ -638,7 +639,41 @@ const FinancialTransactionsV2 = () => {
     }
   };
 
+  // "Confirmar hoje" de uma fatura já fechada e agendada (ex: para o dia do vencimento):
+  // reusa editarFatura mantendo o mesmo valor e conta de origem, só antecipando a data do
+  // pagamento para hoje — evita duplicar a lógica de Acerto de Saldo/próximo mês.
+  const handleConfirmInvoiceTodayAction = async (t: TransactionInstance) => {
+    setOpenDropdown(null);
+    const billTransfer = t.invoiceData?.billTransfer;
+    const invoiceMonth = t.invoiceData?.invoiceMonth;
+    const cardId = t.invoiceData?.cardId;
+    const total = t.invoiceData?.total;
 
+    if (!billTransfer || !invoiceMonth || !cardId || total === undefined || !billTransfer.account_id) {
+      toast.error('Não foi possível confirmar a fatura.');
+      return;
+    }
+
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const { error } = await editarFatura({
+      transferId: billTransfer.id,
+      cardId,
+      invoiceMonth,
+      invoiceTotal: total,
+      amount: billTransfer.amount,
+      paymentDate: todayStr,
+      paymentAccountId: billTransfer.account_id,
+    });
+
+    if (error) {
+      console.error('Erro ao confirmar fatura hoje:', error);
+      toast.error('Erro ao confirmar fatura.');
+      return;
+    }
+
+    toast.success('Fatura confirmada para hoje!');
+    fetchTransactions();
+  };
 
   const handleClone = (t: TransactionInstance) => {
     // Abre a modal de criação pré-preenchida com os dados do lançamento original,
@@ -1696,6 +1731,11 @@ const FinancialTransactionsV2 = () => {
                               <Pencil size={12} className="text-teal-600" /> Editar Fatura
                             </button>
                           )}
+                          {t.invoiceData?.billTransfer && t.invoiceData.billTransfer.status !== 'paid' && (
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmInvoiceTodayAction(t); }} className="w-full px-3 py-1.5 text-left text-[11px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center gap-2">
+                              <CalendarCheck size={12} /> Confirmar hoje
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2165,6 +2205,11 @@ const FinancialTransactionsV2 = () => {
                                   openInvoiceEditor(t);
                                 }} className="w-full px-4 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3">
                                   <Pencil size={14} className="text-teal-600" /> Editar Fatura
+                                </button>
+                              )}
+                              {t.invoiceData?.billTransfer && t.invoiceData.billTransfer.status !== 'paid' && (
+                                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmInvoiceTodayAction(t); }} className="w-full px-4 py-2 text-left text-xs font-black text-emerald-600 hover:bg-emerald-50 flex items-center gap-3">
+                                  <CalendarCheck size={14} /> Confirmar hoje
                                 </button>
                               )}
                             </div>
