@@ -110,18 +110,20 @@ interface TodayRolloverItem extends RunningBalanceItem {
 }
 
 /**
- * Calcula o saldo acumulado na ORDEM CRONOLÓGICA REAL (`chronologicalItems`, já ordenados
- * pela data real de vencimento) e só DEPOIS "empurra" visualmente pra hoje qualquer lançamento
- * pendente/atrasado (exceto cartão de crédito, que usa a linha-resumo de fatura) — sem tocar
- * no saldo já fixado por linha no passo 1.
+ * "Empurra" visualmente pra hoje qualquer lançamento pendente/atrasado do MESMO mês visualizado
+ * (exceto cartão de crédito, que usa a linha-resumo de fatura) e só DEPOIS calcula o saldo
+ * acumulado, já na ORDEM DE EXIBIÇÃO final (`finalSort` aplicado após mover as datas) — o valor
+ * do lançamento passa a ser somado/descontado na posição em que ele aparece pro usuário (hoje),
+ * não na sua data de vencimento original. Como o item continua entrando exatamente uma vez na
+ * soma, o saldo final da lista (última linha) não muda — só as posições intermediárias.
  *
- * Existe pra evitar repetir o bug que corrompeu o Resumo Mensal/saldo previsto 3x no histórico
- * deste projeto (ver overdueRollover.test.ts): mudar a data de exibição de uma linha E
- * recalcular o saldo na nova posição ao mesmo tempo. Aqui as duas coisas são passos separados —
- * mover onde a linha aparece nunca desloca quando o valor é de fato descontado/somado.
- *
- * `reminderItems` (ex.: overdueRolloverInstances de meses já fechados) nunca passam pelo
- * cálculo de saldo: herdam o saldo da linha anterior na ordem final (`finalSort`).
+ * Isso é seguro pra itens do MESMO mês porque nada aqui sai do total do mês corrente nem do
+ * saldo de abertura do mês seguinte. Já `reminderItems` (ex.: overdueRolloverInstances de meses
+ * JÁ FECHADOS) continuam de fora desse cálculo — mover a exibição deles pra hoje E somar seu
+ * valor de novo no mês corrente duplicaria o desconto que já aconteceu no saldo do mês em que
+ * venceram (esse é o bug que corrompeu o Resumo Mensal/saldo previsto 3x no histórico deste
+ * projeto — ver overdueRollover.test.ts). Por isso eles continuam apenas herdando o saldo da
+ * linha anterior na ordem final, nunca entrando na soma.
  */
 export function computeRunningBalanceWithTodayRollover<T extends TodayRolloverItem>(
   chronologicalItems: T[],
@@ -131,9 +133,7 @@ export function computeRunningBalanceWithTodayRollover<T extends TodayRolloverIt
   todayStr: string,
   finalSort: (a: T, b: T) => number,
 ): Array<T & { runningBalance: number }> {
-  const withBalance = computeRunningBalance(chronologicalItems, openingBalance, selectedAccountIds);
-
-  const withTodayOverride = withBalance.map(t => {
+  const withTodayOverride = chronologicalItems.map(t => {
     if (
       t.status !== 'paid' &&
       t.status !== 'cancelled' &&
@@ -145,7 +145,10 @@ export function computeRunningBalanceWithTodayRollover<T extends TodayRolloverIt
     return t;
   });
 
-  const combined = [...withTodayOverride, ...reminderItems].sort(finalSort);
+  const displayOrdered = [...withTodayOverride].sort(finalSort);
+  const withBalance = computeRunningBalance(displayOrdered, openingBalance, selectedAccountIds);
+
+  const combined = [...withBalance, ...reminderItems].sort(finalSort);
 
   let lastBalance = openingBalance;
   return combined.map(t => {

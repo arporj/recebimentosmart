@@ -960,9 +960,12 @@ const FinancialTransactionsV2 = () => {
 
     // Contas pendentes/em atraso do MÊS VISUALIZADO migram pra hoje na exibição — mesmo
     // tratamento visual que contas de meses já fechados recebem via overdueRolloverInstances,
-    // mas aqui é a própria linha que muda de posição (sem duplicar). O saldo é calculado na
-    // ordem cronológica real ANTES de mover qualquer linha (ver computeRunningBalanceWithTodayRollover),
-    // pra nunca repetir o bug que corrompeu o Resumo Mensal 3x no histórico deste projeto.
+    // mas aqui é a própria linha que muda de posição (sem duplicar) E seu valor passa a ser
+    // contado no saldo acumulado na posição de hoje, não na data de vencimento original (ver
+    // computeRunningBalanceWithTodayRollover). Isso é seguro pq o item continua sendo somado
+    // exatamente uma vez, dentro do mesmo mês — diferente do caso de meses já fechados
+    // (filteredOverdueRollover), que nunca entra nessa soma pra não duplicar o desconto já
+    // aplicado no saldo do mês em que o lançamento realmente venceu.
     const chronological = [...filtered, ...filteredInvoices].sort(chronologicalCompare);
     const sortedList = computeRunningBalanceWithTodayRollover(
       chronological,

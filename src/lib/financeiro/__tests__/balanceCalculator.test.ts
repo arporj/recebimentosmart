@@ -128,13 +128,34 @@ describe('computeRunningBalanceWithTodayRollover', () => {
     expect(unimedRow.originalInstanceDate).toBe('2026-07-05');
 
     // O saldo final da lista é idêntico ao que computeRunningBalance normal daria SEM mover
-    // nenhuma linha — mover onde a linha aparece nunca muda quanto ela desconta.
+    // nenhuma linha — mover onde a linha aparece nunca muda quanto ela desconta, só ONDE.
     const withoutRollover = computeRunningBalance(chronological, 0, new Set(['acc-1']));
     expect(result[result.length - 1].runningBalance).toBe(withoutRollover[withoutRollover.length - 1].runningBalance);
 
-    // E o saldo fixado NA PRÓPRIA linha da conta atrasada é o saldo real na sua posição
-    // cronológica (logo após a receita de 1000), não o saldo recalculado na posição de hoje.
+    // Nesse cenário não há nada entre a data original (05/07) e hoje (10/07), então a posição
+    // de exibição coincide com a cronológica: saldo logo após a receita de 1000.
     expect(unimedRow.runningBalance).toBe(1000 - 400);
+  });
+
+  it('conta o valor do lançamento atrasado NO DIA DE HOJE (posição de exibição), não na data de vencimento original', () => {
+    const income = instance({ id: 'income', type: 'income', amount: 1000, date: '2026-07-01', instanceDate: '2026-07-01', status: 'paid', account_id: 'acc-1' });
+    // Vence dia 03, mas continua pendente até hoje (10/07) — "atrasado".
+    const overdueSameMonth = instance({ id: 'unimed', type: 'expense', amount: 300, date: '2026-07-03', instanceDate: '2026-07-03', originalInstanceDate: '2026-07-03', status: 'pending', account_id: 'acc-1' });
+    // Pago de verdade no dia 08, ou seja, ENTRE o vencimento original do atrasado e hoje.
+    const paidBetween = instance({ id: 'paid-between', type: 'expense', amount: 200, date: '2026-07-08', instanceDate: '2026-07-08', status: 'paid', account_id: 'acc-1' });
+
+    const chronological = [income, overdueSameMonth, paidBetween].sort(chronologicalCompare);
+    const result = computeRunningBalanceWithTodayRollover(chronological, [], 0, new Set(['acc-1']), todayStr, chronologicalCompare);
+
+    const unimedRow = result.find(r => r.id === 'unimed')!;
+    // O saldo da linha reflete a posição em que ela é EXIBIDA (hoje, depois do pagamento do
+    // dia 08): 1000 (receita) - 200 (pago dia 08) - 300 (atrasado, contado hoje) = 500.
+    expect(unimedRow.runningBalance).toBe(500);
+
+    // O saldo final da lista continua batendo com o cálculo sem rollover (o valor só é
+    // aplicado uma vez, em posições diferentes).
+    const withoutRollover = computeRunningBalance(chronological, 0, new Set(['acc-1']));
+    expect(result[result.length - 1].runningBalance).toBe(withoutRollover[withoutRollover.length - 1].runningBalance);
   });
 
   it('não move uma linha já paga nem uma despesa de cartão de crédito', () => {
