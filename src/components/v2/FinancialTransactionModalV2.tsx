@@ -404,13 +404,14 @@ const FinancialTransactionModalV2 = ({
       if (transaction.start_installment) {
         setStartInstallment(String(transaction.start_installment));
       }
-      if (transaction.recurrence_interval) {
-        setRecurrenceInterval(String(transaction.recurrence_interval));
-      }
-      if (transaction.recurrence_period) {
-        const period = transaction.recurrence_period;
-        setPeriodicidade(period === 'daily' ? 'diaria' : period === 'weekly' ? 'semanal' : period === 'yearly' ? 'anual' : 'mensal');
-      }
+      setRecurrenceInterval(String(transaction.recurrence_interval || 1));
+      // Ocorrências físicas (filhas) não carregam recurrence_period/interval — só o
+      // template os tem. Sem este default, um `if` que só atualiza quando o valor vem
+      // preenchido deixaria o estado com o lixo da última transação recorrente aberta
+      // no modal (ex.: "semanal" de uma edição anterior), e esse valor travado (disabled)
+      // ainda assim seria enviado no payload ao salvar, corrompendo a periodicidade real.
+      const period = transaction.recurrence_period;
+      setPeriodicidade(period === 'daily' ? 'diaria' : period === 'weekly' ? 'semanal' : period === 'yearly' ? 'anual' : 'mensal');
     } else if (isOpen && !transaction) {
       // Reset para novo lançamento
       setType(initialType);

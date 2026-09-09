@@ -157,7 +157,20 @@ export async function editarTransacao(
 
   // Protect invoice_month and date from uniform overwrite on bulk updates.
   // Each installment/occurrence has its own invoice cycle and date.
-  const { invoice_month: _removedInvoiceMonth, date: _removedDate, tags: inputTags, ...safeBulkUpdate } = cleanUpdate;
+  // A UI trava periodicidade e intervalo de uma série (parcelada ou recorrente) já
+  // ativa (ver aviso "Alteração de Recorrência Não Permitida"): esses campos só podem
+  // ser definidos na criação. Um formulário reaproveitado entre edições pode reter
+  // valores obsoletos em campos desabilitados e ainda assim enviá-los aqui — reforça a
+  // trava no backend para que isso nunca sobrescreva a periodicidade real da série
+  // (causou duplicação semanal de uma recorrência mensal em produção).
+  const {
+    invoice_month: _removedInvoiceMonth,
+    date: _removedDate,
+    tags: inputTags,
+    recurrence_period: _ignoredRecurrencePeriod,
+    recurrence_interval: _ignoredRecurrenceInterval,
+    ...safeBulkUpdate
+  } = cleanUpdate;
 
   if (scope === 'all') {
     let query = supabase.from('financial_transactions').update(safeBulkUpdate);
