@@ -259,7 +259,7 @@ const FinancialTransactionModalV2 = ({
       // Abre para cima apenas em casos extremos de falta de espaço inferior
       const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenCategoryUpward(shouldOpenUpward);
-      setCategoryMaxHeight(Math.max(150, Math.min(260, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
+      setCategoryMaxHeight(Math.max(150, Math.min(420, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isCategoryDropdownOpen]);
 
@@ -293,7 +293,7 @@ const FinancialTransactionModalV2 = ({
       // Abre para cima apenas em casos extremos de falta de espaço inferior
       const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenAccountUpward(shouldOpenUpward);
-      setAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
+      setAccountMaxHeight(Math.max(150, Math.min(420, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isAccountDropdownOpen]);
 
@@ -310,7 +310,7 @@ const FinancialTransactionModalV2 = ({
       // Abre para cima apenas em casos extremos de falta de espaço inferior
       const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenDestAccountUpward(shouldOpenUpward);
-      setDestAccountMaxHeight(Math.max(150, Math.min(280, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
+      setDestAccountMaxHeight(Math.max(150, Math.min(420, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
     }
   }, [isDestAccountDropdownOpen]);
 
@@ -433,12 +433,14 @@ const FinancialTransactionModalV2 = ({
         setAmount('');
       }
 
-      setDate(initialDate || format(new Date(), 'yyyy-MM-dd'));
+      const newDate = initialDate || format(new Date(), 'yyyy-MM-dd');
+      setDate(newDate);
       setInvoiceMonth(format(new Date(), 'yyyy-MM'));
       setCardHolderName('');
       setInstallmentTotal(String(initialInstallmentTotal || '1'));
       setAutoConfirm(false);
-      setStatus('pending');
+      // Lançamento novo com data de hoje já nasce marcado como pago/recebido
+      setStatus(newDate === format(new Date(), 'yyyy-MM-dd') ? 'paid' : 'pending');
       setClientId('');
       setAccountId(initialAccountId || '');
       setCategoryId('');
@@ -472,6 +474,10 @@ const FinancialTransactionModalV2 = ({
       setAutoConfirm(false);
     } else if (date > todayStr) {
       setStatus('pending');
+    } else if (date === todayStr && userChangedDateOrAccountRef.current) {
+      // Se o usuário mudou manualmente a data para hoje, marca como pago/recebido.
+      // Não roda ao carregar uma edição existente, pra não sobrescrever o status já salvo.
+      setStatus('paid');
     }
   }, [date, isOpen]);
 
