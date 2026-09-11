@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Search,
@@ -238,6 +239,14 @@ const FinancialTransactionModalV2 = ({
   const [accountSearch, setAccountSearch] = useState('');
   const [destAccountSearch, setDestAccountSearch] = useState('');
 
+  // Posição (relativa à viewport) dos botões de conta/conta destino/categoria, usada para
+  // renderizar os respectivos dropdowns via portal, fora do container com overflow-y-auto
+  // do modal — assim eles usam o espaço real da tela em vez de ficarem cortados pelo scroll interno.
+  type TriggerRect = { left: number; width: number; top: number; bottom: number };
+  const [accountTriggerRect, setAccountTriggerRect] = useState<TriggerRect | null>(null);
+  const [destAccountTriggerRect, setDestAccountTriggerRect] = useState<TriggerRect | null>(null);
+  const [categoryTriggerRect, setCategoryTriggerRect] = useState<TriggerRect | null>(null);
+
   // Rastrear dispositivo mobile vs desktop
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -247,20 +256,27 @@ const FinancialTransactionModalV2 = ({
   }, []);
 
   useEffect(() => {
-    if (isCategoryDropdownOpen && categoryRef.current) {
+    if (!isCategoryDropdownOpen || !categoryRef.current) return;
+    const updatePosition = () => {
+      if (!categoryRef.current) return;
       const rect = categoryRef.current.getBoundingClientRect();
-      const scrollContainer = categoryRef.current.closest('.overflow-y-auto');
-      const bottomSpace = scrollContainer 
-        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
-        : window.innerHeight - rect.bottom;
-      const topSpace = scrollContainer
-        ? rect.top - scrollContainer.getBoundingClientRect().top
-        : rect.top;
+      // Usa a viewport inteira (não o container com scroll do modal) como espaço
+      // disponível, já que o dropdown é renderizado via portal fora dele.
+      const bottomSpace = window.innerHeight - rect.bottom;
+      const topSpace = rect.top;
       // Abre para cima apenas em casos extremos de falta de espaço inferior
       const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenCategoryUpward(shouldOpenUpward);
       setCategoryMaxHeight(Math.max(150, Math.min(420, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
-    }
+      setCategoryTriggerRect({ left: rect.left, width: rect.width, top: rect.top, bottom: rect.bottom });
+    };
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
   }, [isCategoryDropdownOpen]);
 
   useEffect(() => {
@@ -281,37 +297,47 @@ const FinancialTransactionModalV2 = ({
   }, [isTagDropdownOpen]);
 
   useEffect(() => {
-    if (isAccountDropdownOpen && accountRef.current) {
+    if (!isAccountDropdownOpen || !accountRef.current) return;
+    const updatePosition = () => {
+      if (!accountRef.current) return;
       const rect = accountRef.current.getBoundingClientRect();
-      const scrollContainer = accountRef.current.closest('.overflow-y-auto');
-      const bottomSpace = scrollContainer 
-        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
-        : window.innerHeight - rect.bottom;
-      const topSpace = scrollContainer
-        ? rect.top - scrollContainer.getBoundingClientRect().top
-        : rect.top;
+      const bottomSpace = window.innerHeight - rect.bottom;
+      const topSpace = rect.top;
       // Abre para cima apenas em casos extremos de falta de espaço inferior
       const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenAccountUpward(shouldOpenUpward);
       setAccountMaxHeight(Math.max(150, Math.min(420, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
-    }
+      setAccountTriggerRect({ left: rect.left, width: rect.width, top: rect.top, bottom: rect.bottom });
+    };
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
   }, [isAccountDropdownOpen]);
 
   useEffect(() => {
-    if (isDestAccountDropdownOpen && destAccountRef.current) {
+    if (!isDestAccountDropdownOpen || !destAccountRef.current) return;
+    const updatePosition = () => {
+      if (!destAccountRef.current) return;
       const rect = destAccountRef.current.getBoundingClientRect();
-      const scrollContainer = destAccountRef.current.closest('.overflow-y-auto');
-      const bottomSpace = scrollContainer 
-        ? scrollContainer.getBoundingClientRect().bottom - rect.bottom 
-        : window.innerHeight - rect.bottom;
-      const topSpace = scrollContainer
-        ? rect.top - scrollContainer.getBoundingClientRect().top
-        : rect.top;
+      const bottomSpace = window.innerHeight - rect.bottom;
+      const topSpace = rect.top;
       // Abre para cima apenas em casos extremos de falta de espaço inferior
       const shouldOpenUpward = bottomSpace < 120 && topSpace > 300;
       setOpenDestAccountUpward(shouldOpenUpward);
       setDestAccountMaxHeight(Math.max(150, Math.min(420, (shouldOpenUpward ? topSpace : bottomSpace) - 16)));
-    }
+      setDestAccountTriggerRect({ left: rect.left, width: rect.width, top: rect.top, bottom: rect.bottom });
+    };
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
   }, [isDestAccountDropdownOpen]);
 
   useEffect(() => {
@@ -1541,15 +1567,22 @@ const FinancialTransactionModalV2 = ({
                       <ChevronDown size={14} className="text-slate-400" />
                     </button>
 
-                    {isAccountDropdownOpen && !isMobile && (
+                    {isAccountDropdownOpen && !isMobile && accountTriggerRect && createPortal(
                       <>
-                        <div 
-                          className="fixed inset-0 z-20" 
-                          onClick={() => setIsAccountDropdownOpen(false)} 
+                        <div
+                          className="fixed inset-0 z-[9998]"
+                          onClick={() => setIsAccountDropdownOpen(false)}
                         />
-                        <div 
-                          className={`absolute z-30 ${openAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
-                          style={{ maxHeight: `${accountMaxHeight}px` }}
+                        <div
+                          className="fixed z-[9999] bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto"
+                          style={{
+                            left: accountTriggerRect.left,
+                            width: accountTriggerRect.width,
+                            maxHeight: `${accountMaxHeight}px`,
+                            ...(openAccountUpward
+                              ? { bottom: window.innerHeight - accountTriggerRect.top + 4 }
+                              : { top: accountTriggerRect.bottom + 4 }),
+                          }}
                         >
                           {accounts.filter(a => a.id !== destinationAccountId).map(a => (
                             <button
@@ -1586,7 +1619,8 @@ const FinancialTransactionModalV2 = ({
                             </button>
                           </div>
                         </div>
-                      </>
+                      </>,
+                      document.body
                     )}
                   </div>
                 </div>
@@ -1617,15 +1651,22 @@ const FinancialTransactionModalV2 = ({
                         <ChevronDown size={14} className="text-indigo-400" />
                       </button>
 
-                      {isDestAccountDropdownOpen && !isMobile && (
+                      {isDestAccountDropdownOpen && !isMobile && destAccountTriggerRect && createPortal(
                         <>
-                          <div 
-                            className="fixed inset-0 z-20" 
-                            onClick={() => setIsDestAccountDropdownOpen(false)} 
+                          <div
+                            className="fixed inset-0 z-[9998]"
+                            onClick={() => setIsDestAccountDropdownOpen(false)}
                           />
-                          <div 
-                            className={`absolute z-30 ${openDestAccountUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto`}
-                            style={{ maxHeight: `${destAccountMaxHeight}px` }}
+                          <div
+                            className="fixed z-[9999] bg-white rounded-xl shadow-xl border border-slate-100 overflow-y-auto"
+                            style={{
+                              left: destAccountTriggerRect.left,
+                              width: destAccountTriggerRect.width,
+                              maxHeight: `${destAccountMaxHeight}px`,
+                              ...(openDestAccountUpward
+                                ? { bottom: window.innerHeight - destAccountTriggerRect.top + 4 }
+                                : { top: destAccountTriggerRect.bottom + 4 }),
+                            }}
                           >
                             {accounts.filter(a => a.id !== accountId).map(a => (
                               <button
@@ -1661,7 +1702,8 @@ const FinancialTransactionModalV2 = ({
                               </button>
                             </div>
                           </div>
-                        </>
+                        </>,
+                        document.body
                       )}
                     </div>
                   </div>
@@ -1689,15 +1731,22 @@ const FinancialTransactionModalV2 = ({
                       <ChevronDown size={14} className="text-slate-400" />
                     </button>
 
-                    {isCategoryDropdownOpen && !isMobile && (
+                    {isCategoryDropdownOpen && !isMobile && categoryTriggerRect && createPortal(
                       <>
                         {/* Backdrop transparente para fechar ao clicar fora sem atrapalhar o foco do input */}
-                        <div 
-                          className="fixed inset-0 z-20" 
-                          onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
+                        <div
+                          className="fixed inset-0 z-[9998]"
+                          onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }}
                         />
                         <div
-                          className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col`}
+                          className="fixed z-[9999] bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col"
+                          style={{
+                            left: categoryTriggerRect.left,
+                            width: categoryTriggerRect.width,
+                            ...(openCategoryUpward
+                              ? { bottom: window.innerHeight - categoryTriggerRect.top + 4 }
+                              : { top: categoryTriggerRect.bottom + 4 }),
+                          }}
                         >
                           {/* Campo de busca de categoria */}
                           <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 shrink-0">
@@ -1792,7 +1841,8 @@ const FinancialTransactionModalV2 = ({
                             </div>
                           </div>
                         </div>
-                      </>
+                      </>,
+                      document.body
                     )}
                   </div>
                 </div>
