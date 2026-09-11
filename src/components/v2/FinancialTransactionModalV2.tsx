@@ -1696,12 +1696,11 @@ const FinancialTransactionModalV2 = ({
                           className="fixed inset-0 z-20" 
                           onClick={() => { setIsCategoryDropdownOpen(false); setCategorySearch(''); }} 
                         />
-                        <div 
+                        <div
                           className={`absolute z-30 ${openCategoryUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden flex flex-col`}
-                          style={{ maxHeight: `${categoryMaxHeight}px` }}
                         >
                           {/* Campo de busca de categoria */}
-                          <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 sticky top-0 z-10">
+                          <div className="p-2 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 shrink-0">
                             <Search size={14} className="text-slate-400 shrink-0 ml-2" />
                             <input
                               type="text"
@@ -1727,8 +1726,8 @@ const FinancialTransactionModalV2 = ({
                             )}
                           </div>
 
-                          {/* Container com rolagem */}
-                          <div className="overflow-y-auto flex-1">
+                          {/* Container com rolagem: limitado ao espaço disponível, mas sem esticar além do conteúdo */}
+                          <div className="overflow-y-auto" style={{ maxHeight: `${Math.max(100, categoryMaxHeight - 48)}px` }}>
                             {filteredCategories.parentCategories.length === 0 ? (
                               <div className="px-4 py-6 text-center text-xs text-slate-400">
                                 Nenhuma categoria encontrada para "{categorySearch}"
