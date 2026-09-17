@@ -208,58 +208,76 @@ export async function editarTransacao(
       
       const isPaid = current.status === 'paid';
       
+      // IMPORTANTE: a partir daqui usar sempre `effectiveDate` (data real da
+      // ocorrência editada) e nunca o `currentDate` cru. Quando a edição parte
+      // de uma ocorrência virtual futura, `transactionId`/`current` é o próprio
+      // template da série (ver instanceExpansion.ts, instâncias virtuais reusam
+      // o id do template), então `currentDate` é a data-âncora original da série
+      // (ex.: 2024), não a data da ocorrência que o usuário está vendo (ex.:
+      // novembro/2026). Usar `currentDate` aqui fecha a mãe antiga no lugar
+      // errado e ela continua gerando a ocorrência antiga junto com a nova
+      // (mesma classe de bug já corrigida em mudarModalidade.ts e
+      // deletarTransacao.ts — manter os três em sincronia).
       if (isPaid) {
         // Se a ocorrência atual já foi paga:
-        // 1. Ela mantém a sua data original (currentDate)
-        endDateOfOldMother = currentDate;
-        
+        // 1. Ela mantém a sua data original (effectiveDate)
+        endDateOfOldMother = effectiveDate;
+
         // 2. A nova mãe (ciclo futuro) começa no ciclo seguinte com o novo dia
-        const nextCycleDate = addPeriod(parseISO(currentDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
+        const nextCycleDate = addPeriod(parseISO(effectiveDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
         const nextCycleDateStr = format(nextCycleDate, 'yyyy-MM-dd');
-        
+
         const targetDay = parseISO(effectiveDate).getDate();
         newMotherStartDate = ajustarDiaDaData(nextCycleDateStr, targetDay);
-        
+
         // Finalizar a mãe atual definindo a data de término igual à data original da ocorrência editada
-        await supabase
+        const { error: endDateError } = await supabase
           .from('financial_transactions')
           .update({ recurrence_end_date: endDateOfOldMother })
           .eq('id', refId);
+        if (endDateError) throw endDateError;
 
         // Deletar filhas físicas futuras (pendentes) maiores que a data original da ocorrência editada
-        await supabase
+        const { error: deleteChildrenError } = await supabase
           .from('financial_transactions')
           .delete()
           .eq('parent_id', refId)
-          .gt('date', currentDate)
+          .gt('date', effectiveDate)
           .neq('status', 'paid');
+        if (deleteChildrenError) throw deleteChildrenError;
       } else {
         // Se a ocorrência atual NÃO foi paga ainda:
         // 1. Ela assume a nova data (effectiveDate)
         // 2. A mãe antiga termina no dia anterior à data original da ocorrência editada
-        endDateOfOldMother = format(subDays(parseISO(currentDate), 1), 'yyyy-MM-dd');
-        
-        await supabase
+        endDateOfOldMother = format(subDays(parseISO(effectiveDate), 1), 'yyyy-MM-dd');
+
+        const { error: endDateError } = await supabase
           .from('financial_transactions')
           .update({ recurrence_end_date: endDateOfOldMother })
           .eq('id', refId);
+        if (endDateError) throw endDateError;
 
         // Deletar filhas físicas futuras (pendentes) maiores ou iguais à data original da ocorrência editada
-        await supabase
+        const { error: deleteChildrenError } = await supabase
           .from('financial_transactions')
           .delete()
           .eq('parent_id', refId)
-          .gte('date', currentDate)
+          .gte('date', effectiveDate)
           .neq('status', 'paid');
+        if (deleteChildrenError) throw deleteChildrenError;
       }
 
       // Se a transação mãe antiga ficou com término anterior à sua própria data,
       // significa que ela foi totalmente substituída pela nova mãe e deve ser removida.
+      // (Aqui comparamos com `current.date`, a data-âncora real da própria mãe —
+      // não com `effectiveDate` — pois a pergunta é "essa série antiga chegou a
+      // ter alguma ocorrência válida?", não "onde está a ocorrência editada?".)
       if (!current.parent_id && endDateOfOldMother < current.date) {
-        await supabase
+        const { error: deleteOldMotherError } = await supabase
           .from('financial_transactions')
           .delete()
           .eq('id', refId);
+        if (deleteOldMotherError) throw deleteOldMotherError;
       }
 
 
@@ -315,7 +333,7 @@ export async function editarTransacao(
         .single();
 
       if (createChildError) {
-        console.error('Erro ao criar o primeiro filho do novo ciclo recorrente:', createChildError);
+        throw createChildError;
       } else if (inputTags && newFirstChild) {
         // Vincular tags ao primeiro filho físico
         if (inputTags.length > 0) {
