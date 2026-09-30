@@ -1,7 +1,8 @@
 import { supabase } from '../supabase';
 import { gerarInstanciasRecorrentes, addPeriod, defaultRecurrenceHorizon } from './recorrenciaUtils';
-import { format, subDays, parseISO } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 import { mudarModalidadeTransacao } from './mudarModalidade';
+import { encerrarSerieAPartirDe } from './serieRecorrente';
 
 function ajustarDiaDaData(dateStr: string, diaAlvo: number): string {
   const [year, month, _] = dateStr.split('-');
@@ -42,10 +43,20 @@ export interface TransactionUpdate {
   tags?: string[];
 }
 
+export interface EditOptions {
+  /**
+   * Data da ocorrência antes da edição (instância exibida na UI). Necessária para
+   * ocorrências virtuais, em que `transactionId` é o template e a data do registro é
+   * a data-âncora da série, não a da ocorrência.
+   */
+  originalDate?: string;
+}
+
 export async function editarTransacao(
   transactionId: string,
   update: TransactionUpdate,
-  scope: EditScope = 'this'
+  scope: EditScope = 'this',
+  options: EditOptions = {}
 ) {
   // Higienizar payload removendo propriedades exclusivas de criação de parcelas que não existem na tabela
   const { start_installment: _start_installment, is_total_value: _is_total_value, ...cleanUpdate } = update;
@@ -201,85 +212,46 @@ export async function editarTransacao(
   if (scope === 'following') {
     // Se for recorrente infinita, aplica a fragmentação elegante
     if (currentModalidade === 'recorrente') {
+      // `effectiveDate` = nova data escolhida no formulário.
+      // `originalDate` = data em que a ocorrência editada estava antes da edição.
+      // Nunca usar o `currentDate` cru para ocorrências virtuais: aí `current` é o
+      // próprio template da série (ver instanceExpansion.ts, instâncias virtuais
+      // reusam o id do template) e `currentDate` é a data-âncora da série (ex.: 2024).
+      // Para filhas físicas, `currentDate` já é a data original da ocorrência.
       const effectiveDate = cleanUpdate.date || currentDate;
-      
-      let newMotherStartDate = effectiveDate;
-      let endDateOfOldMother = '';
-      
-      const isPaid = current.status === 'paid';
-      
-      // IMPORTANTE: a partir daqui usar sempre `effectiveDate` (data real da
-      // ocorrência editada) e nunca o `currentDate` cru. Quando a edição parte
-      // de uma ocorrência virtual futura, `transactionId`/`current` é o próprio
-      // template da série (ver instanceExpansion.ts, instâncias virtuais reusam
-      // o id do template), então `currentDate` é a data-âncora original da série
-      // (ex.: 2024), não a data da ocorrência que o usuário está vendo (ex.:
-      // novembro/2026). Usar `currentDate` aqui fecha a mãe antiga no lugar
-      // errado e ela continua gerando a ocorrência antiga junto com a nova
-      // (mesma classe de bug já corrigida em mudarModalidade.ts e
-      // deletarTransacao.ts — manter os três em sincronia).
-      if (isPaid) {
-        // Se a ocorrência atual já foi paga:
-        // 1. Ela mantém a sua data original (effectiveDate)
-        endDateOfOldMother = effectiveDate;
+      const originalDate = options.originalDate || (parent_id ? currentDate : effectiveDate);
 
-        // 2. A nova mãe (ciclo futuro) começa no ciclo seguinte com o novo dia
+      let newMotherStartDate = effectiveDate;
+
+      const isPaid = current.status === 'paid';
+
+      let cutFrom: string;
+      if (isPaid) {
+        // Ocorrência já paga: fica na série antiga, na sua data original. A nova mãe
+        // começa no ciclo seguinte, com o novo dia.
+        cutFrom = format(addDays(parseISO(originalDate), 1), 'yyyy-MM-dd');
+
         const nextCycleDate = addPeriod(parseISO(effectiveDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
         const nextCycleDateStr = format(nextCycleDate, 'yyyy-MM-dd');
 
         const targetDay = parseISO(effectiveDate).getDate();
         newMotherStartDate = ajustarDiaDaData(nextCycleDateStr, targetDay);
-
-        // Finalizar a mãe atual definindo a data de término igual à data original da ocorrência editada
-        const { error: endDateError } = await supabase
-          .from('financial_transactions')
-          .update({ recurrence_end_date: endDateOfOldMother })
-          .eq('id', refId);
-        if (endDateError) throw endDateError;
-
-        // Deletar filhas físicas futuras (pendentes) maiores que a data original da ocorrência editada
-        const { error: deleteChildrenError } = await supabase
-          .from('financial_transactions')
-          .delete()
-          .eq('parent_id', refId)
-          .gt('date', effectiveDate)
-          .neq('status', 'paid');
-        if (deleteChildrenError) throw deleteChildrenError;
       } else {
-        // Se a ocorrência atual NÃO foi paga ainda:
-        // 1. Ela assume a nova data (effectiveDate)
-        // 2. A mãe antiga termina no dia anterior à data original da ocorrência editada
-        endDateOfOldMother = format(subDays(parseISO(effectiveDate), 1), 'yyyy-MM-dd');
-
-        const { error: endDateError } = await supabase
-          .from('financial_transactions')
-          .update({ recurrence_end_date: endDateOfOldMother })
-          .eq('id', refId);
-        if (endDateError) throw endDateError;
-
-        // Deletar filhas físicas futuras (pendentes) maiores ou iguais à data original da ocorrência editada
-        const { error: deleteChildrenError } = await supabase
-          .from('financial_transactions')
-          .delete()
-          .eq('parent_id', refId)
-          .gte('date', effectiveDate)
-          .neq('status', 'paid');
-        if (deleteChildrenError) throw deleteChildrenError;
+        // Ocorrência não paga: passa para a nova série, na nova data. O corte usa a
+        // menor entre data original e nova — cortar só pela nova data deixava a
+        // ocorrência original viva quando a data era movida para frente (28 → 30),
+        // aparecendo duplicada no mesmo mês.
+        cutFrom = originalDate < effectiveDate ? originalDate : effectiveDate;
       }
 
-      // Se a transação mãe antiga ficou com término anterior à sua própria data,
-      // significa que ela foi totalmente substituída pela nova mãe e deve ser removida.
-      // (Aqui comparamos com `current.date`, a data-âncora real da própria mãe —
-      // não com `effectiveDate` — pois a pergunta é "essa série antiga chegou a
-      // ter alguma ocorrência válida?", não "onde está a ocorrência editada?".)
-      if (!current.parent_id && endDateOfOldMother < current.date) {
-        const { error: deleteOldMotherError } = await supabase
-          .from('financial_transactions')
-          .delete()
-          .eq('id', refId);
-        if (deleteOldMotherError) throw deleteOldMotherError;
-      }
-
+      // Encerra a série antiga — incluindo pedaços criados por divisões anteriores
+      // (ver serieRecorrente.ts) — e descobre o series_id que a nova mãe herda.
+      const seriesId = await encerrarSerieAPartirDe({
+        motherId: refId,
+        userId: current.user_id,
+        cutFrom,
+        keepPaidChildren: true,
+      });
 
       // 3. Criar a nova mãe (template) com as novas regras
       const { id: _, created_at: __, recurrence_end_date: ___, parent_id: ____, ...parentFields } = current;
@@ -289,6 +261,7 @@ export async function editarTransacao(
         ...safeBulkUpdate,
         ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
         parent_id: null,
+        series_id: seriesId,
         date: newMotherStartDate,
         due_day: targetDay,
         status: isPaid ? 'pending' : (cleanUpdate.status || 'pending'),

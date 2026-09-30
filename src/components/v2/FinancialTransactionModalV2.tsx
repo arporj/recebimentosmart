@@ -912,7 +912,9 @@ const FinancialTransactionModalV2 = ({
           }
         } else {
           // Edição normal de registro existente físico ou atualização do pai
-          const { error } = await editarTransacaoFinanceira(transaction!.id, payload, scope);
+          const { error } = await editarTransacaoFinanceira(transaction!.id, payload, scope, {
+            originalDate: transaction!.originalInstanceDate || transaction!.instanceDate || transaction!.date,
+          });
           if (error) throw error;
         }
       } else {

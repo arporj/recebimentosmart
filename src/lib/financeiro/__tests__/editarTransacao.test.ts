@@ -1,73 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// gerarInstanciasRecorrentes dispara sua própria sequência de chamadas ao Supabase
-// (materialização das ocorrências futuras). Não é o alvo deste teste — mockamos só
-// essa função, mantendo addPeriod/defaultRecurrenceHorizon reais.
-vi.mock('../recorrenciaUtils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../recorrenciaUtils')>();
-  return { ...actual, gerarInstanciasRecorrentes: vi.fn().mockResolvedValue(undefined) };
-});
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../supabase', () => ({ supabase: { from: vi.fn() } }));
 
 import { supabase } from '../../supabase';
 import { editarTransacao } from '../editarTransacao';
+import { expandTransactionInstances } from '../instanceExpansion';
+import { createFakeSupabase, type Row } from './fakeSupabase';
 
-interface RecordedCall {
-  table: string;
-  op?: 'update' | 'delete' | 'insert';
-  payload?: any;
-  filters: Array<[string, ...any[]]>;
-}
+const USER = 'user-1';
 
-/**
- * Fake mínimo do query builder do Supabase: registra tabela, operação, payload e
- * filtros de cada chamada, e resolve cada `await supabase.from(...)` com a próxima
- * resposta do script, na ordem em que o código realmente as dispara (sequencial,
- * sem Promise.all neste trecho).
- */
-function mockSupabaseSequence(script: Array<{ data?: any; error?: any }>) {
-  const calls: RecordedCall[] = [];
-  let i = 0;
-
-  (supabase.from as any).mockImplementation((table: string) => {
-    const call: RecordedCall = { table, filters: [] };
-    calls.push(call);
-    const builder: any = {
-      select() { return builder; },
-      update(payload: any) { call.op = 'update'; call.payload = payload; return builder; },
-      delete() { call.op = 'delete'; return builder; },
-      insert(payload: any) { call.op = 'insert'; call.payload = payload; return builder; },
-      eq(col: string, val: any) { call.filters.push(['eq', col, val]); return builder; },
-      gt(col: string, val: any) { call.filters.push(['gt', col, val]); return builder; },
-      gte(col: string, val: any) { call.filters.push(['gte', col, val]); return builder; },
-      neq(col: string, val: any) { call.filters.push(['neq', col, val]); return builder; },
-      or(expr: string) { call.filters.push(['or', expr]); return builder; },
-      single() { return builder; },
-      then(resolve: any, reject: any) {
-        const res = script[i++] ?? { data: null, error: null };
-        Promise.resolve(res).then(resolve, reject);
-      },
-    };
-    return builder;
-  });
-
-  return calls;
-}
-
-// Template de uma recorrência mensal "Simples Nacional" criada em 2024, sem tags,
-// sem cartão. `date` aqui é a data-âncora original da série — nunca a da ocorrência
-// que está sendo editada quando o id passado é o do próprio template (caso de
-// edição de uma ocorrência virtual futura, ver instanceExpansion.ts).
-function baseTemplate(overrides: Partial<Record<string, any>> = {}) {
+function mother(overrides: Row = {}): Row {
   return {
-    id: 'template-1',
+    id: 'A',
+    series_id: 'A',
     parent_id: null,
-    user_id: 'user-1',
+    user_id: USER,
     type: 'expense',
-    description: 'Simples Nacional',
-    amount: 1500,
-    date: '2024-03-05',
+    description: 'Seguro Cartão (Inter)',
+    amount: 1.9,
+    date: '2026-06-28',
     status: 'pending',
     modalidade: 'recorrente',
     recurrence_enabled: true,
@@ -83,97 +34,166 @@ function baseTemplate(overrides: Partial<Record<string, any>> = {}) {
     client_id: null,
     invoice_month: null,
     card_holder_name: null,
-    created_at: '2024-03-01T00:00:00Z',
     ...overrides,
   };
 }
 
-describe('editarTransacao — scope "following" em recorrência (edição de ocorrência virtual futura)', () => {
+function child(id: string, date: string, overrides: Row = {}): Row {
+  const base = mother();
+  return {
+    ...base,
+    id,
+    series_id: null,
+    parent_id: 'A',
+    date,
+    recurrence_enabled: false,
+    is_template: false,
+    installment_current: Number(date.slice(5, 7)) - 5,
+    ...overrides,
+  };
+}
+
+/** Ocorrências que a tela de lançamentos mostraria em cada mês (mesma expansão da UI). */
+function visibleByMonth(rows: Row[]) {
+  const instances = expandTransactionInstances(
+    rows.filter(r => !r.is_template) as any,
+    rows.filter(r => r.is_template) as any,
+    { horizonEnd: new Date(2027, 2, 31), today: new Date(2026, 8, 30) }
+  );
+  const byMonth: Record<string, Array<{ date: string; amount: number }>> = {};
+  for (const i of instances) {
+    const month = i.instanceDate.slice(0, 7);
+    (byMonth[month] ||= []).push({ date: i.instanceDate, amount: Number(i.amount) });
+  }
+  return byMonth;
+}
+
+function useFakeDb(rows: Row[]) {
+  const db = createFakeSupabase(rows);
+  (supabase.from as any).mockImplementation(db.from);
+  return db;
+}
+
+describe('editarTransacao — "este e os futuros" em recorrência', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 30, 12, 0, 0));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('fecha a série antiga na data da ocorrência editada, não na data-âncora do template (ocorrência não paga)', async () => {
-    const current = baseTemplate({ status: 'pending' });
-
-    const calls = mockSupabaseSequence([
-      { data: current, error: null }, // 1. busca a transação (pelo id do template, por ser instância virtual)
-      { error: null }, // 2. update recurrence_end_date na mãe antiga
-      { error: null }, // 3. delete das filhas físicas futuras da mãe antiga
-      { data: { ...current, id: 'nova-mae-1' }, error: null }, // 4. insert da nova mãe
-      { data: { id: 'novo-filho-1' }, error: null }, // 5. insert do primeiro filho físico
+  it('duas edições seguidas da mesma ocorrência não deixam duas séries ativas (bug do Seguro Cartão, 2026-09-30)', async () => {
+    const db = useFakeDb([
+      mother({ status: 'paid' }),
+      child('jun', '2026-06-28', { status: 'paid' }),
+      child('jul', '2026-07-28', { status: 'paid' }),
+      child('ago', '2026-08-28', { status: 'paid' }),
+      child('set', '2026-09-28', { status: 'paid', amount: 3.9, is_customized: true }),
+      child('out', '2026-10-28'),
+      child('nov', '2026-11-28'),
+      child('dez', '2026-12-28'),
     ]);
 
-    // Usuário edita a ocorrência de novembro/2026 (virtual, id = id do template) de 1500 para 1200.
-    const result = await editarTransacao(
-      'template-1',
-      { amount: 1200, date: '2026-11-05' },
-      'following'
-    );
+    // 1ª edição: setembro (pago), data 30/09, valor 3,90 → nova série no dia 30
+    const r1 = await editarTransacao('set', { amount: 3.9, date: '2026-09-30', status: 'paid' }, 'following', { originalDate: '2026-09-28' });
+    expect(r1.error).toBeNull();
 
-    expect(result.error).toBeNull();
+    // 2ª edição: a mesma ocorrência de setembro (ainda da série antiga), de volta ao dia 28
+    const r2 = await editarTransacao('set', { amount: 3.9, date: '2026-09-28', status: 'paid' }, 'following', { originalDate: '2026-09-28' });
+    expect(r2.error).toBeNull();
 
-    const updateEndDateCall = calls.find(c => c.op === 'update');
-    const deleteChildrenCall = calls.find(c => c.op === 'delete');
-    const insertNewMotherCall = calls.find(c => c.op === 'insert');
+    const byMonth = visibleByMonth(db.rows);
+    for (const month of ['2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03']) {
+      expect(byMonth[month], month).toEqual([{ date: `${month}-28`, amount: 3.9 }]);
+    }
+    expect(byMonth['2026-09']).toEqual([{ date: '2026-09-28', amount: 3.9 }]);
 
-    // A mãe antiga deve ser encerrada em 2026-11-04 (véspera da ocorrência editada),
-    // nunca em 2024-03-04 (véspera da data-âncora original do template) — esse era o bug.
-    expect(updateEndDateCall?.payload).toEqual({ recurrence_end_date: '2026-11-04' });
-
-    // O corte das filhas físicas futuras da mãe antiga deve usar a data da ocorrência
-    // editada (2026-11-05), não a data-âncora do template (2024-03-05).
-    expect(deleteChildrenCall?.filters).toContainEqual(['gte', 'date', '2026-11-05']);
-
-    // A nova mãe deve começar na própria ocorrência editada.
-    expect(insertNewMotherCall?.payload.date).toBe('2026-11-05');
-    expect(insertNewMotherCall?.payload.amount).toBe(1200);
+    // Só uma mãe da série segue aberta, e ela herdou o series_id original
+    const openMothers = db.rows.filter(r => r.is_template && !r.recurrence_end_date);
+    expect(openMothers).toHaveLength(1);
+    expect(openMothers[0].series_id).toBe('A');
   });
 
-  it('não apaga a mãe antiga inteira quando ela ainda tem histórico válido antes da ocorrência editada', async () => {
-    const current = baseTemplate({ status: 'pending' });
-
-    const calls = mockSupabaseSequence([
-      { data: current, error: null },
-      { error: null },
-      { error: null },
-      { data: { ...current, id: 'nova-mae-1' }, error: null },
-      { data: { id: 'novo-filho-1' }, error: null },
+  it('mover uma ocorrência não paga para frente (28 → 30) não deixa a do dia 28 no mesmo mês', async () => {
+    const db = useFakeDb([
+      mother(),
+      child('set', '2026-09-28', { status: 'paid' }),
+      child('out', '2026-10-28'),
+      child('nov', '2026-11-28'),
     ]);
 
-    await editarTransacao('template-1', { amount: 1200, date: '2026-11-05' }, 'following');
+    const r = await editarTransacao('out', { amount: 5, date: '2026-10-30' }, 'following', { originalDate: '2026-10-28' });
+    expect(r.error).toBeNull();
 
-    // A mãe antiga (2024-03-05) segue válida até 2026-11-04: não deve haver um delete
-    // pelo id do template em si (só o delete das filhas futuras).
-    const deleteOldMotherCall = calls.find(c => c.op === 'delete' && c.filters.some(f => f[1] === 'id'));
-    expect(deleteOldMotherCall).toBeUndefined();
+    const byMonth = visibleByMonth(db.rows);
+    expect(byMonth['2026-09']).toEqual([{ date: '2026-09-28', amount: 1.9 }]);
+    expect(byMonth['2026-10']).toEqual([{ date: '2026-10-30', amount: 5 }]);
+    expect(byMonth['2026-11']).toEqual([{ date: '2026-11-30', amount: 5 }]);
   });
 
-  it('ancora a próxima mãe no ciclo seguinte à ocorrência editada, não ao ciclo seguinte à data-âncora do template (ocorrência já paga)', async () => {
-    // Cenário real do bug: o template guarda seu próprio status "cru" (aqui, 'paid',
-    // herdado da criação) mesmo representando uma ocorrência virtual futura que nunca
-    // foi de fato paga — ver mudarModalidade.ts, mesmo aviso.
-    const current = baseTemplate({ status: 'paid' });
-
-    const calls = mockSupabaseSequence([
-      { data: current, error: null },
-      { error: null },
-      { error: null },
-      { data: { ...current, id: 'nova-mae-1' }, error: null },
-      { data: { id: 'novo-filho-1' }, error: null },
+  it('mover uma ocorrência virtual para frente usa a data original para encerrar a série antiga', async () => {
+    // Só a mãe e setembro físicos: outubro em diante são virtuais (id = id da mãe)
+    const db = useFakeDb([
+      mother(),
+      child('set', '2026-09-28', { status: 'paid' }),
     ]);
 
-    await editarTransacao('template-1', { amount: 1200, date: '2026-11-05' }, 'following');
+    const r = await editarTransacao('A', { amount: 5, date: '2026-10-30' }, 'following', { originalDate: '2026-10-28' });
+    expect(r.error).toBeNull();
 
-    const updateEndDateCall = calls.find(c => c.op === 'update');
-    const insertNewMotherCall = calls.find(c => c.op === 'insert');
+    const byMonth = visibleByMonth(db.rows);
+    expect(byMonth['2026-10']).toEqual([{ date: '2026-10-30', amount: 5 }]);
+    expect(byMonth['2026-11']).toEqual([{ date: '2026-11-30', amount: 5 }]);
+    expect(db.rows.find(r => r.id === 'A')?.recurrence_end_date).toBe('2026-10-27');
+  });
 
-    // Mãe antiga encerra na própria ocorrência editada (2026-11-05), não em 2024-03-05.
-    expect(updateEndDateCall?.payload).toEqual({ recurrence_end_date: '2026-11-05' });
+  it('editar um mês anterior a uma divisão já feita encerra também a série criada por ela', async () => {
+    const db = useFakeDb([
+      mother(),
+      child('set', '2026-09-28', { status: 'paid' }),
+      child('out', '2026-10-28'),
+      child('nov', '2026-11-28'),
+      child('dez', '2026-12-28'),
+    ]);
 
-    // Nova mãe começa no ciclo seguinte a NOVEMBRO (2026-12-05) — não no ciclo seguinte
-    // à data-âncora original do template (o que daria 2024-04-05, uma data absurda que
-    // faz a nova série de R$1200 se sobrepor a anos de lançamentos antigos de R$1500).
-    expect(insertNewMotherCall?.payload.date).toBe('2026-12-05');
+    // Divisão a partir de novembro (valor 5), depois nova edição a partir de outubro (valor 7)
+    await editarTransacao('nov', { amount: 5, date: '2026-11-28' }, 'following', { originalDate: '2026-11-28' });
+    await editarTransacao('out', { amount: 7, date: '2026-10-28' }, 'following', { originalDate: '2026-10-28' });
+
+    const byMonth = visibleByMonth(db.rows);
+    for (const month of ['2026-10', '2026-11', '2026-12', '2027-01']) {
+      expect(byMonth[month], month).toEqual([{ date: `${month}-28`, amount: 7 }]);
+    }
+  });
+
+  it('sem data original (chamadores antigos), ocorrência virtual futura corta a série na véspera da data editada', async () => {
+    const db = useFakeDb([
+      mother({ date: '2024-03-05', description: 'Simples Nacional', amount: 1500 }),
+    ]);
+
+    const r = await editarTransacao('A', { amount: 1200, date: '2026-11-05' }, 'following');
+    expect(r.error).toBeNull();
+
+    const old = db.rows.find(r => r.id === 'A');
+    expect(old?.recurrence_end_date).toBe('2026-11-04');
+
+    const newMother = db.rows.find(r => r.is_template && r.id !== 'A');
+    expect(newMother?.date).toBe('2026-11-05');
+    expect(newMother?.amount).toBe(1200);
+    expect(newMother?.series_id).toBe('A');
+  });
+
+  it('mãe com status cru "paid" (virtual futura) ancora a nova série no ciclo seguinte à ocorrência, não à data-âncora', async () => {
+    const db = useFakeDb([
+      mother({ date: '2024-03-05', status: 'paid', amount: 1500 }),
+    ]);
+
+    await editarTransacao('A', { amount: 1200, date: '2026-11-05' }, 'following');
+
+    expect(db.rows.find(r => r.id === 'A')?.recurrence_end_date).toBe('2026-11-05');
+    const newMother = db.rows.find(r => r.is_template && r.id !== 'A');
+    expect(newMother?.date).toBe('2026-12-05');
   });
 });

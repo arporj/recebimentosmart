@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { format, subDays, parseISO } from 'date-fns';
+import { encerrarSerieAPartirDe } from './serieRecorrente';
 
 export type DeleteScope = 'this' | 'following' | 'all';
 
@@ -43,12 +43,14 @@ export async function deletarTransacao(
   const effectiveDate = instanceDate || currentDate;
 
   let effectiveScope = scope;
-  if (effectiveScope === 'following') {
-    const parentRecord = parent_id 
+  let motherDate: string | undefined;
+  if (effectiveScope === 'following' || effectiveScope === 'all') {
+    const parentRecord = parent_id
       ? (await supabase.from('financial_transactions').select('date').eq('id', parent_id).single()).data
       : current;
-      
-    if (parentRecord && effectiveDate <= parentRecord.date) {
+    motherDate = parentRecord?.date;
+
+    if (effectiveScope === 'following' && parentRecord && effectiveDate <= parentRecord.date) {
       effectiveScope = 'all';
     }
   }
@@ -101,44 +103,30 @@ export async function deletarTransacao(
       .eq('id', transactionId);
   }
 
-  // ── SCOPE: ALL ───────────────────────────────────────────────────────
-  if (effectiveScope === 'all') {
-    if (isShared) {
-      return supabase
+  // ── SCOPE: ALL / FOLLOWING ───────────────────────────────────────────
+  // Ambos encerram também os pedaços da mesma série criados por edições "este e os
+  // futuros" anteriores (ver serieRecorrente.ts) — encerrar só a mãe da ocorrência
+  // deixava esses pedaços ativos e o lançamento "excluído" continuava aparecendo.
+  if (effectiveScope === 'all' || effectiveScope === 'following') {
+    if (isShared && effectiveScope === 'all') {
+      // Mantém a mãe compartilhada visível como cancelada para o outro usuário
+      const { error: cancelMotherError } = await supabase
         .from('financial_transactions')
         .update({ status: 'cancelled', shared_status: 'modified' })
-        .or(`id.eq.${refId},parent_id.eq.${refId}`);
+        .eq('id', refId);
+      if (cancelMotherError) return { data: null, error: cancelMotherError };
     }
-    // Delete the parent and all children
-    return supabase
-      .from('financial_transactions')
-      .delete()
-      .or(`id.eq.${refId},parent_id.eq.${refId}`);
-  }
 
-  // ── SCOPE: FOLLOWING ─────────────────────────────────────────────────
-  if (effectiveScope === 'following') {
-    const endDate = format(subDays(parseISO(effectiveDate), 1), 'yyyy-MM-dd');
-
-    // Set recurrence_end_date on the parent to stop virtual generation
-    await supabase
-      .from('financial_transactions')
-      .update({ recurrence_end_date: endDate })
-      .eq('id', refId);
-
-    // Delete all physical children on or after the effective date (logically if shared)
-    if (isShared) {
-      await supabase
-        .from('financial_transactions')
-        .update({ status: 'cancelled', shared_status: 'modified' })
-        .or(`id.eq.${refId},parent_id.eq.${refId}`)
-        .gte('date', effectiveDate);
-    } else {
-      await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('parent_id', refId)
-        .gte('date', effectiveDate);
+    try {
+      await encerrarSerieAPartirDe({
+        motherId: refId,
+        userId: current.user_id,
+        cutFrom: effectiveScope === 'all' ? (motherDate || currentDate) : effectiveDate,
+        keepPaidChildren: false,
+        cancelChildren: !!isShared,
+      });
+    } catch (error) {
+      return { data: null, error };
     }
 
     return { data: null, error: null };

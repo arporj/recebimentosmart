@@ -71,6 +71,11 @@ const FAQ_ITEMS: FAQItem[] = [
     },
     {
         category: 'funcionalidades',
+        question: 'O que acontece ao editar ou excluir um lançamento recorrente com "Este e os futuros"?',
+        answer: 'Ao editar com "Este e os futuros", a recorrência é dividida: os meses anteriores continuam com os dados antigos e, a partir do mês editado, passa a valer o novo valor, data ou categoria. Se o lançamento editado já estiver pago, ele permanece como está e a mudança vale a partir do mês seguinte. Você pode editar novamente qualquer mês, inclusive um anterior a uma edição já feita: a nova alteração substitui tudo o que vem depois dele, sem duplicar lançamentos. Da mesma forma, "Excluir este e os futuros" remove todos os lançamentos seguintes daquela recorrência, mesmo os criados por edições anteriores, preservando o histórico dos meses anteriores.'
+    },
+    {
+        category: 'funcionalidades',
         question: 'Como funciona a ordenação dos lançamentos na tela principal?',
         answer: 'Para facilitar o controle financeiro, no dia de "Hoje", os lançamentos são agrupados e ordenados automaticamente de forma inteligente: primeiro são exibidos os lançamentos pagos, seguidos pelos vencidos (em atraso) e, por último, os pendentes. Além disso, os lançamentos que foram pagos no mesmo dia são exibidos em ordem cronológica de pagamento (do primeiro ao último pago).'
     },

@@ -605,12 +605,13 @@ const CreditCardV2 = () => {
   const handleDeleteTransaction = async (scope: 'this' | 'following' | 'all') => {
     if (!itemToDelete) return;
     try {
-      await deletarTransacao({
+      const { error } = await deletarTransacao({
         transactionId: itemToDelete.id,
         scope,
         instanceDate: (itemToDelete as any).instanceDate || itemToDelete.date,
         installmentCurrent: (itemToDelete as any).installment_current,
       });
+      if (error) throw error;
       toast.success('Lançamento excluído!');
       setIsDeleteScopeModalOpen(false);
       setItemToDelete(null);
