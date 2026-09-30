@@ -100,8 +100,8 @@ describe('editarTransacao — "este e os futuros" em recorrência', () => {
     const r1 = await editarTransacao('set', { amount: 3.9, date: '2026-09-30', status: 'paid' }, 'following', { originalDate: '2026-09-28' });
     expect(r1.error).toBeNull();
 
-    // 2ª edição: a mesma ocorrência de setembro (ainda da série antiga), de volta ao dia 28
-    const r2 = await editarTransacao('set', { amount: 3.9, date: '2026-09-28', status: 'paid' }, 'following', { originalDate: '2026-09-28' });
+    // 2ª edição: a mesma ocorrência de setembro (ainda da série antiga, agora em 30/09), de volta ao dia 28
+    const r2 = await editarTransacao('set', { amount: 3.9, date: '2026-09-28', status: 'paid' }, 'following', { originalDate: '2026-09-30' });
     expect(r2.error).toBeNull();
 
     const byMonth = visibleByMonth(db.rows);
@@ -185,15 +185,52 @@ describe('editarTransacao — "este e os futuros" em recorrência', () => {
     expect(newMother?.series_id).toBe('A');
   });
 
-  it('mãe com status cru "paid" (virtual futura) ancora a nova série no ciclo seguinte à ocorrência, não à data-âncora', async () => {
+  it('ocorrência virtual nunca é tratada como paga, mesmo com a mãe com status cru "paid": o mês editado recebe o novo valor', async () => {
     const db = useFakeDb([
       mother({ date: '2024-03-05', status: 'paid', amount: 1500 }),
     ]);
 
-    await editarTransacao('A', { amount: 1200, date: '2026-11-05' }, 'following');
+    await editarTransacao('A', { amount: 1200, date: '2026-11-05' }, 'following', { originalDate: '2026-11-05' });
 
-    expect(db.rows.find(r => r.id === 'A')?.recurrence_end_date).toBe('2026-11-05');
+    expect(db.rows.find(r => r.id === 'A')?.recurrence_end_date).toBe('2026-11-04');
     const newMother = db.rows.find(r => r.is_template && r.id !== 'A');
-    expect(newMother?.date).toBe('2026-12-05');
+    expect(newMother?.date).toBe('2026-11-05');
+    expect(visibleByMonth(db.rows)['2026-11']).toEqual([{ date: '2026-11-05', amount: 1200 }]);
+  });
+
+  it('ocorrência já paga também é editada ("ESTE" e os futuros) e continua uma só no mês', async () => {
+    const db = useFakeDb([
+      mother(),
+      child('ago', '2026-08-28', { status: 'paid' }),
+      child('set', '2026-09-28', { status: 'paid' }),
+      child('out', '2026-10-28'),
+    ]);
+
+    const r = await editarTransacao('set', { amount: 3.9, date: '2026-09-28', status: 'paid' }, 'following', { originalDate: '2026-09-28' });
+    expect(r.error).toBeNull();
+
+    const byMonth = visibleByMonth(db.rows);
+    expect(byMonth['2026-08']).toEqual([{ date: '2026-08-28', amount: 1.9 }]);
+    expect(byMonth['2026-09']).toEqual([{ date: '2026-09-28', amount: 3.9 }]);
+    expect(byMonth['2026-10']).toEqual([{ date: '2026-10-28', amount: 3.9 }]);
+    expect(db.rows.find(r => r.id === 'set')?.status).toBe('paid');
+  });
+
+  it('ocorrência paga lançada no mês seguinte (set pago em 02/10) não faz a série pular outubro', async () => {
+    const db = useFakeDb([
+      mother(),
+      child('set', '2026-09-28', { status: 'paid' }),
+      child('out', '2026-10-28'),
+    ]);
+
+    await editarTransacao('set', { amount: 3.9, date: '2026-10-02', status: 'paid' }, 'following', { originalDate: '2026-09-28' });
+
+    const byMonth = visibleByMonth(db.rows);
+    // Setembro (pago em 02/10) + a própria ocorrência de outubro da nova série
+    expect(byMonth['2026-10']).toEqual([
+      { date: '2026-10-02', amount: 3.9 },
+      { date: '2026-10-02', amount: 3.9 },
+    ]);
+    expect(byMonth['2026-11']).toEqual([{ date: '2026-11-02', amount: 3.9 }]);
   });
 });

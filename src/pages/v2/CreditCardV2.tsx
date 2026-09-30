@@ -238,6 +238,7 @@ const CreditCardV2 = () => {
   const [isCloseBillModalOpen, setIsCloseBillModalOpen] = useState(false);
   const [isEditBillModalOpen, setIsEditBillModalOpen] = useState(false);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const today = new Date();
   const selectedCard = cards.find(c => c.id === selectedCardId) || null;
@@ -754,7 +755,7 @@ const CreditCardV2 = () => {
                 setOpenDropdown={setOpenDropdown}
                 setItemToDelete={setItemToDelete}
                 setIsDeleteScopeModalOpen={setIsDeleteScopeModalOpen}
-                fetchTransactions={fetchTransactions}
+                setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
               />
             ))
           )}
@@ -971,7 +972,7 @@ const CreditCardV2 = () => {
                       setOpenDropdown={setOpenDropdown}
                       setItemToDelete={setItemToDelete}
                       setIsDeleteScopeModalOpen={setIsDeleteScopeModalOpen}
-                      fetchTransactions={fetchTransactions}
+                      setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
                     />
                   ))}
                 </div>
@@ -1055,6 +1056,21 @@ const CreditCardV2 = () => {
         onClose={() => setIsReopenConfirmOpen(false)}
         confirmColor="blue"
       />
+
+      {/* Confirmar exclusão de lançamento único */}
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen && !!itemToDelete}
+        title="Excluir Lançamento"
+        message={`Deseja excluir o lançamento "${itemToDelete?.description ?? ''}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Sim, Excluir"
+        cancelLabel="Cancelar"
+        onConfirm={async () => {
+          await handleDeleteTransaction('this');
+          setIsDeleteConfirmOpen(false);
+        }}
+        onClose={() => { setIsDeleteConfirmOpen(false); setItemToDelete(null); }}
+        confirmColor="red"
+      />
     </div>
   );
 };
@@ -1073,7 +1089,7 @@ interface TransactionRowProps {
   setOpenDropdown: (key: string | null) => void;
   setItemToDelete: (t: FinancialTransaction | null) => void;
   setIsDeleteScopeModalOpen: (open: boolean) => void;
-  fetchTransactions: () => void;
+  setIsDeleteConfirmOpen: (open: boolean) => void;
 }
 
 const statusDot: Record<string, string> = {
@@ -1095,7 +1111,7 @@ const TransactionRow = ({
   setOpenDropdown,
   setItemToDelete,
   setIsDeleteScopeModalOpen,
-  fetchTransactions
+  setIsDeleteConfirmOpen
 }: TransactionRowProps) => {
   const visualStatus = isInvoiceOverdue ? 'overdue' : 'default';
   const dropdownKey = t.id + t.instanceDate;
@@ -1148,7 +1164,7 @@ const TransactionRow = ({
             <button onClick={() => { setEditingTransaction(t); setModalType(t.type); setIsModalOpen(true); setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
               <Pencil size={14} /> Editar
             </button>
-            <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { if (confirm('Excluir este lançamento?')) { deletarTransacao({ transactionId: t.id, scope: 'this', instanceDate: t.instanceDate || t.date, installmentCurrent: t.installment_current }).then(() => { toast.success('Excluído!'); fetchTransactions(); }); } } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
+            <button onClick={() => { setItemToDelete(t); if (t.recurrence_enabled || t.parent_id) { setIsDeleteScopeModalOpen(true); } else { setIsDeleteConfirmOpen(true); } setOpenDropdown(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors">
               <Trash2 size={14} /> Excluir
             </button>
           </div>

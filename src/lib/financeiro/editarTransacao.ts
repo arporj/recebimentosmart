@@ -223,15 +223,20 @@ export async function editarTransacao(
 
       let newMotherStartDate = effectiveDate;
 
-      const isPaid = current.status === 'paid';
+      // Só uma ocorrência física pode estar paga. Numa ocorrência virtual `current` é o
+      // template, cujo status cru (herdado da criação) não diz nada sobre a ocorrência
+      // editada — que é sempre pendente.
+      const isPaid = current.status === 'paid' && !(current as { is_template?: boolean }).is_template;
 
       let cutFrom: string;
       if (isPaid) {
-        // Ocorrência já paga: fica na série antiga, na sua data original. A nova mãe
-        // começa no ciclo seguinte, com o novo dia.
+        // Ocorrência já paga: continua na série antiga (recebendo os novos dados, ver
+        // abaixo). A nova mãe começa no ciclo seguinte ao da ocorrência, com o novo dia.
+        // O ciclo parte da data original: partir da nova data pularia um mês quando o
+        // pagamento é lançado no mês seguinte (ex.: setembro pago em 02/10).
         cutFrom = format(addDays(parseISO(originalDate), 1), 'yyyy-MM-dd');
 
-        const nextCycleDate = addPeriod(parseISO(effectiveDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
+        const nextCycleDate = addPeriod(parseISO(originalDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
         const nextCycleDateStr = format(nextCycleDate, 'yyyy-MM-dd');
 
         const targetDay = parseISO(effectiveDate).getDate();
@@ -252,6 +257,37 @@ export async function editarTransacao(
         cutFrom,
         keepPaidChildren: true,
       });
+
+      if (isPaid) {
+        // "Este e os futuros" inclui ESTE: a ocorrência paga também recebe os novos
+        // dados (a não paga já é recriada com eles como primeira filha da nova mãe).
+        // Campos de regra da série não se aplicam a uma ocorrência isolada.
+        const {
+          tags: _tags,
+          recurrence_period: _period,
+          recurrence_interval: _interval,
+          due_day: _dueDay,
+          installment_total: _installmentTotal,
+          ...occurrenceUpdate
+        } = cleanUpdate;
+
+        const { error: updateCurrentError } = await supabase
+          .from('financial_transactions')
+          .update({ ...occurrenceUpdate, is_customized: true })
+          .eq('id', transactionId);
+        if (updateCurrentError) throw updateCurrentError;
+
+        if (inputTags) {
+          const { error: deleteTagsError } = await supabase.from('transaction_tags').delete().eq('transaction_id', transactionId);
+          if (deleteTagsError) throw deleteTagsError;
+          if (inputTags.length > 0) {
+            const { error: tagError } = await supabase
+              .from('transaction_tags')
+              .insert(inputTags.map(tagId => ({ transaction_id: transactionId, tag_id: tagId })));
+            if (tagError) throw tagError;
+          }
+        }
+      }
 
       // 3. Criar a nova mãe (template) com as novas regras
       const { id: _, created_at: __, recurrence_end_date: ___, parent_id: ____, ...parentFields } = current;
