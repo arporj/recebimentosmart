@@ -120,7 +120,6 @@ export async function deletarTransacao(
     try {
       await encerrarSerieAPartirDe({
         motherId: refId,
-        userId: current.user_id,
         cutFrom: effectiveScope === 'all' ? (motherDate || currentDate) : effectiveDate,
         keepPaidChildren: false,
         cancelChildren: !!isShared,

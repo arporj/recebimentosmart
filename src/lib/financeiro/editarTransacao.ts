@@ -1,19 +1,18 @@
 import { supabase } from '../supabase';
-import { gerarInstanciasRecorrentes, addPeriod, defaultRecurrenceHorizon } from './recorrenciaUtils';
-import { format, addDays, parseISO } from 'date-fns';
 import { mudarModalidadeTransacao } from './mudarModalidade';
-import { encerrarSerieAPartirDe } from './serieRecorrente';
 
-function ajustarDiaDaData(dateStr: string, diaAlvo: number): string {
-  const [year, month, _] = dateStr.split('-');
-  const anoNum = Number(year);
-  const mesNum = Number(month);
-  
-  // Obter o último dia do mês para não estourar (ex: dia 31 em fevereiro)
-  const ultimoDia = new Date(anoNum, mesNum, 0).getDate();
-  const diaSeguro = Math.min(diaAlvo, ultimoDia);
-  
-  return `${year}-${String(month).padStart(2, '0')}-${String(diaSeguro).padStart(2, '0')}`;
+// Campos opcionais que o formulário envia como undefined quando o usuário os limpa:
+// precisam chegar ao banco como null, senão a série nova herdaria o valor antigo.
+const CAMPOS_LIMPAVEIS = ['client_id', 'destination_account_id', 'card_holder_name'];
+
+/** Prepara um update para JSONB: undefined = "não alterar", exceto nos campos limpáveis. */
+function paraJsonb(update: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(update)) {
+    if (value !== undefined) result[key] = value;
+    else if (CAMPOS_LIMPAVEIS.includes(key)) result[key] = null;
+  }
+  return result;
 }
 
 export type EditScope = 'this' | 'following' | 'all';
@@ -221,166 +220,36 @@ export async function editarTransacao(
       const effectiveDate = cleanUpdate.date || currentDate;
       const originalDate = options.originalDate || (parent_id ? currentDate : effectiveDate);
 
-      let newMotherStartDate = effectiveDate;
+      // Campos de regra da série não se aplicam a uma ocorrência isolada (usado só
+      // quando a ocorrência editada está paga e continua na série antiga).
+      const {
+        tags: _tags,
+        recurrence_period: _period,
+        recurrence_interval: _interval,
+        due_day: _dueDay,
+        installment_total: _installmentTotal,
+        ...occurrenceUpdate
+      } = cleanUpdate;
 
-      // Só uma ocorrência física pode estar paga. Numa ocorrência virtual `current` é o
-      // template, cujo status cru (herdado da criação) não diz nada sobre a ocorrência
-      // editada — que é sempre pendente.
-      const isPaid = current.status === 'paid' && !(current as { is_template?: boolean }).is_template;
+      // A divisão inteira (encerrar a série antiga, criar a nova mãe, a primeira filha e
+      // as próximas ocorrências) roda numa única transação no banco. Feita em chamadas
+      // separadas, uma falha no meio apagaria os futuros sem criar a série nova
+      // (ver supabase/migrations/20261013180000_atomic_recurring_series_split.sql).
+      const { data: firstChildId, error: splitError } = await supabase.rpc('fn_dividir_serie_recorrente' as never, {
+        p_transaction_id: transactionId,
+        p_original_date: originalDate,
+        p_new_date: effectiveDate,
+        p_series_update: paraJsonb({
+          ...safeBulkUpdate,
+          ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
+        }),
+        p_occurrence_update: paraJsonb(occurrenceUpdate),
+        p_tags: inputTags ?? null,
+      } as never);
 
-      let cutFrom: string;
-      if (isPaid) {
-        // Ocorrência já paga: continua na série antiga (recebendo os novos dados, ver
-        // abaixo). A nova mãe começa no ciclo seguinte ao da ocorrência, com o novo dia.
-        // O ciclo parte da data original: partir da nova data pularia um mês quando o
-        // pagamento é lançado no mês seguinte (ex.: setembro pago em 02/10).
-        cutFrom = format(addDays(parseISO(originalDate), 1), 'yyyy-MM-dd');
+      if (splitError) return { data: null, error: splitError };
 
-        const nextCycleDate = addPeriod(parseISO(originalDate), 1 * (current.recurrence_interval || 1), current.recurrence_period || 'monthly');
-        const nextCycleDateStr = format(nextCycleDate, 'yyyy-MM-dd');
-
-        const targetDay = parseISO(effectiveDate).getDate();
-        newMotherStartDate = ajustarDiaDaData(nextCycleDateStr, targetDay);
-      } else {
-        // Ocorrência não paga: passa para a nova série, na nova data. O corte usa a
-        // menor entre data original e nova — cortar só pela nova data deixava a
-        // ocorrência original viva quando a data era movida para frente (28 → 30),
-        // aparecendo duplicada no mesmo mês.
-        cutFrom = originalDate < effectiveDate ? originalDate : effectiveDate;
-      }
-
-      // Encerra a série antiga — incluindo pedaços criados por divisões anteriores
-      // (ver serieRecorrente.ts) — e descobre o series_id que a nova mãe herda.
-      const seriesId = await encerrarSerieAPartirDe({
-        motherId: refId,
-        userId: current.user_id,
-        cutFrom,
-        keepPaidChildren: true,
-      });
-
-      if (isPaid) {
-        // "Este e os futuros" inclui ESTE: a ocorrência paga também recebe os novos
-        // dados (a não paga já é recriada com eles como primeira filha da nova mãe).
-        // Campos de regra da série não se aplicam a uma ocorrência isolada.
-        const {
-          tags: _tags,
-          recurrence_period: _period,
-          recurrence_interval: _interval,
-          due_day: _dueDay,
-          installment_total: _installmentTotal,
-          ...occurrenceUpdate
-        } = cleanUpdate;
-
-        const { error: updateCurrentError } = await supabase
-          .from('financial_transactions')
-          .update({ ...occurrenceUpdate, is_customized: true })
-          .eq('id', transactionId);
-        if (updateCurrentError) throw updateCurrentError;
-
-        if (inputTags) {
-          const { error: deleteTagsError } = await supabase.from('transaction_tags').delete().eq('transaction_id', transactionId);
-          if (deleteTagsError) throw deleteTagsError;
-          if (inputTags.length > 0) {
-            const { error: tagError } = await supabase
-              .from('transaction_tags')
-              .insert(inputTags.map(tagId => ({ transaction_id: transactionId, tag_id: tagId })));
-            if (tagError) throw tagError;
-          }
-        }
-      }
-
-      // 3. Criar a nova mãe (template) com as novas regras
-      const { id: _, created_at: __, recurrence_end_date: ___, parent_id: ____, ...parentFields } = current;
-      const targetDay = parseISO(effectiveDate).getDate();
-      const newMotherPayload = {
-        ...parentFields,
-        ...safeBulkUpdate,
-        ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
-        parent_id: null,
-        series_id: seriesId,
-        date: newMotherStartDate,
-        due_day: targetDay,
-        status: isPaid ? 'pending' : (cleanUpdate.status || 'pending'),
-        paid_date: isPaid ? null : (cleanUpdate.paid_date || null),
-        modalidade: 'recorrente',
-        recurrence_enabled: true,
-        is_template: true,
-        installment_current: (current.installment_current || 1) + (isPaid ? 1 : 0),
-      };
-
-      const { data: newMother, error: createError } = await supabase
-        .from('financial_transactions')
-        .insert(newMotherPayload)
-        .select()
-        .single();
-
-      if (createError) throw createError;
-
-      // Vincular as tags ao template da nova mãe
-      if (inputTags && newMother) {
-        if (inputTags.length > 0) {
-          const junctionRows = inputTags.map(tagId => ({
-            transaction_id: newMother.id,
-            tag_id: tagId
-          }));
-          await supabase.from('transaction_tags').insert(junctionRows);
-        }
-      }
-
-      // 4. Criar o primeiro filho físico real da nova série recorrente
-      const newFirstChildPayload = {
-        ...newMotherPayload,
-        is_template: false,
-        parent_id: newMother.id,
-        recurrence_enabled: false,
-      };
-
-      const { data: newFirstChild, error: createChildError } = await supabase
-        .from('financial_transactions')
-        .insert(newFirstChildPayload)
-        .select()
-        .single();
-
-      if (createChildError) {
-        throw createChildError;
-      } else if (inputTags && newFirstChild) {
-        // Vincular tags ao primeiro filho físico
-        if (inputTags.length > 0) {
-          const junctionRows = inputTags.map(tagId => ({
-            transaction_id: newFirstChild.id,
-            tag_id: tagId
-          }));
-          await supabase.from('transaction_tags').insert(junctionRows);
-        }
-      }
-
-      // 5. Gerar as próximas ocorrências físicas do novo template até o horizonte padrão
-      try {
-        await gerarInstanciasRecorrentes(
-          newMother,
-          {
-            user_id: newMother.user_id,
-            description: newMother.description,
-            amount: newMother.amount,
-            type: newMother.type,
-            category_id: newMother.category_id,
-            account_id: newMother.account_id,
-            destination_account_id: newMother.destination_account_id,
-            client_id: newMother.client_id,
-            modalidade: 'recorrente',
-            status: 'pending',
-          },
-          current.recurrence_period || 'monthly',
-          current.recurrence_interval || 1,
-          defaultRecurrenceHorizon(),
-          null,
-          inputTags || undefined
-        );
-      } catch (genError) {
-        console.error('Erro ao gerar as instâncias futuras da nova recorrência editada:', genError);
-      }
-
-      return { data: [newFirstChild || newMother], error: null };
+      return { data: [{ id: firstChildId as unknown as string }], error: null };
     }
 
     // Comportamento original para parcelas físicas
