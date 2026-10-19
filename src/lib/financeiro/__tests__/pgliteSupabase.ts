@@ -9,7 +9,8 @@
  * quebre se a migration mudar.
  *
  * Expõe um `supabase` mínimo: só o subconjunto do query builder que editarTransacao/
- * deletarTransacao usam nos fluxos "este e os futuros" (select/update por id e rpc).
+ * deletarTransacao usam nos fluxos "este e os futuros" e "todos" (select/update com
+ * filtros eq/neq/gte/or, update com select de retorno, e rpc).
  * Qualquer outro uso lança erro em vez de responder errado em silêncio.
  */
 import { PGlite } from '@electric-sql/pglite';
@@ -92,6 +93,10 @@ export async function createPgliteDb() {
   ));
   await pg.exec(readFileSync(resolve(MIGRATIONS, '20260522210000_fix_shared_transaction_deletes.sql'), 'utf8'));
   await pg.exec(readFileSync(resolve(MIGRATIONS, '20261013180000_atomic_recurring_series_split.sql'), 'utf8'));
+  await pg.exec(fromMigration(
+    '20261018230000_template_never_paid_and_unpay_future_occurrences.sql',
+    /CREATE OR REPLACE FUNCTION public\.fn_template_status_pending[\s\S]*?EXECUTE FUNCTION public\.fn_template_status_pending\(\);/,
+  ));
 
   async function reset(rows: Row[]) {
     await pg.exec('TRUNCATE transaction_tags, financial_transactions, client_shares');
@@ -123,28 +128,50 @@ export async function createPgliteDb() {
     if (table !== 'financial_transactions') throw new Error(`pgliteSupabase: tabela não suportada: ${table}`);
     let op: 'select' | 'update' = 'select';
     let columns = '*';
+    let returning = false;
     let payload: Row = {};
-    let id: string | null = null;
     let single = false;
+    // Filtros acumulados (AND), com "?" no lugar de cada parâmetro: a numeração ($n) só
+    // é feita na execução, porque no update o $1 é o payload.
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    const column = (name: string) => {
+      if (!/^[a-z_]+$/.test(name)) throw new Error(`pgliteSupabase: coluna inválida: ${name}`);
+      return `t."${name}"`;
+    };
+    const param = (value: unknown) => {
+      params.push(value);
+      return '?';
+    };
+    const numbered = (sql: string, offset: number) => {
+      let n = offset;
+      return sql.replace(/\?/g, () => `$${++n}`);
+    };
+
+    const project = (r: Row) => {
+      const row: Row = { ...r, amount: Number(r.amount) };
+      return columns === '*' ? row : Object.fromEntries(columns.split(',').map(c => [c.trim(), row[c.trim()]]));
+    };
 
     const exec = async () => {
-      if (id === null) throw new Error('pgliteSupabase: só consultas filtradas por id são suportadas');
+      if (conditions.length === 0) throw new Error('pgliteSupabase: consulta sem filtro não é suportada');
+      const where = conditions.join(' AND ');
       try {
         if (op === 'update') {
-          await pg.query(
+          const { rows: updated } = await pg.query<{ r: Row }>(
             `UPDATE financial_transactions t SET ${Object.keys(payload).map(k => `"${k}" = r."${k}"`).join(', ')}
-             FROM jsonb_populate_record(NULL::financial_transactions, $1) r WHERE t.id = $2`,
-            [payload, id],
+             FROM jsonb_populate_record(NULL::financial_transactions, $1) r WHERE ${numbered(where, 1)}
+             RETURNING to_jsonb(t) AS r`,
+            [payload, ...params],
           );
-          return { data: null, error: null };
+          return { data: returning ? updated.map(({ r }) => project(r)) : null, error: null };
         }
         const { rows: found } = await pg.query<{ r: Row }>(
-          'SELECT to_jsonb(t) AS r FROM financial_transactions t WHERE id = $1', [id],
+          `SELECT to_jsonb(t) AS r FROM financial_transactions t WHERE ${numbered(where, 0)} ORDER BY t.date`,
+          params,
         );
-        const data = found.map(({ r }) => {
-          const row: Row = { ...r, amount: Number(r.amount) };
-          return columns === '*' ? row : Object.fromEntries(columns.split(',').map(c => [c.trim(), row[c.trim()]]));
-        });
+        const data = found.map(({ r }) => project(r));
         if (single) return data[0] ? { data: data[0], error: null } : { data: null, error: { message: 'not found' } };
         return { data, error: null };
       } catch (error) {
@@ -153,11 +180,19 @@ export async function createPgliteDb() {
     };
 
     const builder: any = {
-      select(cols = '*') { columns = cols; return builder; },
+      select(cols = '*') { columns = cols; if (op === 'update') returning = true; return builder; },
       update(p: Row) { op = 'update'; payload = p; return builder; },
-      eq(column: string, value: string) {
-        if (column !== 'id') throw new Error(`pgliteSupabase: filtro não suportado: ${column}`);
-        id = value;
+      eq(name: string, value: unknown) { conditions.push(`${column(name)} = ${param(value)}`); return builder; },
+      neq(name: string, value: unknown) { conditions.push(`${column(name)} <> ${param(value)}`); return builder; },
+      gte(name: string, value: unknown) { conditions.push(`${column(name)} >= ${param(value)}`); return builder; },
+      // Só o formato usado em lib/financeiro: "col.eq.valor,col.eq.valor"
+      or(expr: string) {
+        const parts = expr.split(',').map(part => {
+          const match = part.match(/^([a-z_]+)\.eq\.(.+)$/);
+          if (!match) throw new Error(`pgliteSupabase: filtro or não suportado: ${part}`);
+          return `${column(match[1])} = ${param(match[2])}`;
+        });
+        conditions.push(`(${parts.join(' OR ')})`);
         return builder;
       },
       single() { single = true; return builder; },

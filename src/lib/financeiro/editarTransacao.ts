@@ -15,6 +15,15 @@ function paraJsonb(update: Record<string, unknown>): Record<string, unknown> {
   return result;
 }
 
+/**
+ * Ajusta a numeração "(n/total)" da descrição de uma parcela: "Simples (35/60)" na
+ * parcela 36 vira "Simples (36/60)". Troca só a última numeração da descrição; se não
+ * houver nenhuma (o usuário a removeu), a descrição fica como está.
+ */
+export function numerarDescricaoParcela(description: string, current: number, total: number): string {
+  return description.replace(/\(\d+\/\d+\)(?![\s\S]*\(\d+\/\d+\))/, `(${current}/${total})`);
+}
+
 export type EditScope = 'this' | 'following' | 'all';
 
 export interface TransactionUpdate {
@@ -26,6 +35,7 @@ export interface TransactionUpdate {
   client_id?: string;
   date?: string;
   status?: string;
+  paid_date?: string | null;
   modalidade?: 'unica' | 'parcelada' | 'recorrente';
   recurrence_period?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   recurrence_interval?: number;
@@ -173,21 +183,71 @@ export async function editarTransacao(
   // valores obsoletos em campos desabilitados e ainda assim enviá-los aqui — reforça a
   // trava no backend para que isso nunca sobrescreva a periodicidade real da série
   // (causou duplicação semanal de uma recorrência mensal em produção).
+  // Status e data de pagamento também ficam de fora: pagar a ocorrência editada não
+  // paga as demais (editar a parcela paga com "este e os futuros" marcava todas as
+  // parcelas futuras como pagas). Eles são aplicados só na ocorrência editada, por
+  // aplicarStatusNaOcorrencia.
   const {
     invoice_month: _removedInvoiceMonth,
     date: _removedDate,
     tags: inputTags,
     recurrence_period: _ignoredRecurrencePeriod,
     recurrence_interval: _ignoredRecurrenceInterval,
+    status: occurrenceStatus,
+    paid_date: occurrencePaidDate,
     ...safeBulkUpdate
   } = cleanUpdate;
 
+  // Numa parcelada a descrição carrega o número da parcela ("(35/60)"): copiá-la igual
+  // para a série deixava todas as parcelas com o número da editada. Ela sai do update em
+  // massa e é gravada parcela a parcela por renumerarDescricoes.
+  const isParcelada = currentModalidade === 'parcelada';
+  const { description: novaDescricao, ...bulkSemDescricao } = safeBulkUpdate;
+  const bulkUpdate = isParcelada ? bulkSemDescricao : safeBulkUpdate;
+
+  type ParcelaRow = { id: string; installment_current: number | null; installment_total: number | null };
+  const renumerarDescricoes = async (rows: ParcelaRow[] | null) => {
+    if (!isParcelada || novaDescricao === undefined || !rows) return null;
+    const results = await Promise.all(rows.map(row =>
+      supabase
+        .from('financial_transactions')
+        .update({
+          description: numerarDescricaoParcela(
+            novaDescricao,
+            row.installment_current || 1,
+            safeBulkUpdate.installment_total || row.installment_total || 1,
+          ),
+        })
+        .eq('id', row.id)
+    ));
+    return results.find(r => r.error)?.error ?? null;
+  };
+
+  const aplicarStatusNaOcorrencia = async () => {
+    // Ocorrência virtual: transactionId é o template, que nunca é pago.
+    if (occurrenceStatus === undefined || (current as unknown as { is_template?: boolean }).is_template) return null;
+    const { error } = await supabase
+      .from('financial_transactions')
+      .update({
+        status: occurrenceStatus,
+        ...(occurrencePaidDate !== undefined ? { paid_date: occurrencePaidDate } : {}),
+      })
+      .eq('id', transactionId);
+    return error;
+  };
+
   if (scope === 'all') {
-    let query = supabase.from('financial_transactions').update(safeBulkUpdate);
-    
-    query = query.or(`id.eq.${refId},parent_id.eq.${refId}`).neq('is_customized', true).select('id');
+    let query = supabase.from('financial_transactions').update(bulkUpdate);
+
+    query = query.or(`id.eq.${refId},parent_id.eq.${refId}`).neq('is_customized', true).select('id, installment_current, installment_total');
     const { data: updatedRows, error } = await query;
     if (error) return { data: null, error };
+
+    const descriptionError = await renumerarDescricoes(updatedRows);
+    if (descriptionError) return { data: null, error: descriptionError };
+
+    const statusError = await aplicarStatusNaOcorrencia();
+    if (statusError) return { data: null, error: statusError };
 
     if (inputTags && updatedRows && updatedRows.length > 0) {
       const ids = updatedRows.map(r => r.id);
@@ -239,8 +299,13 @@ export async function editarTransacao(
         p_transaction_id: transactionId,
         p_original_date: originalDate,
         p_new_date: effectiveDate,
+        // status/paid_date vão junto porque a primeira filha da série nova é a própria
+        // ocorrência editada; as ocorrências seguintes nascem sempre 'pending' e a mãe
+        // nunca fica paga (trigger trg_template_status_pending).
         p_series_update: paraJsonb({
           ...safeBulkUpdate,
+          status: occurrenceStatus,
+          paid_date: occurrencePaidDate,
           ...(cleanUpdate.invoice_month !== undefined ? { invoice_month: cleanUpdate.invoice_month } : {}),
         }),
         p_occurrence_update: paraJsonb(occurrenceUpdate),
@@ -253,24 +318,36 @@ export async function editarTransacao(
     }
 
     // Comportamento original para parcelas físicas
-    const { data: futureTransactions, error: listError } = await supabase
+    const { data: futureData, error: listError } = await supabase
       .from('financial_transactions')
-      .select('id, date, status')
+      .select('id, date, status, installment_current, installment_total')
       .or(`id.eq.${refId},parent_id.eq.${refId}`)
       .gte('date', currentDate)
       .neq('is_customized', true);
 
     if (listError) return { data: null, error: listError };
+    // Os tipos gerados (src/types/supabase.ts) ainda não têm as colunas de parcela.
+    const futureTransactions = futureData as unknown as (ParcelaRow & { date: string; status: string })[] | null;
 
     if (cleanUpdate.date && futureTransactions) {
       const newDateObj = new Date(cleanUpdate.date + 'T12:00:00');
       const targetDay = newDateObj.getDate();
 
       const dateUpdates = futureTransactions.map((t) => {
+        // Este caminho é só de parceladas (recorrentes retornam acima).
+        const rowUpdate = novaDescricao === undefined ? bulkUpdate : {
+          ...bulkUpdate,
+          description: numerarDescricaoParcela(
+            novaDescricao,
+            t.installment_current || 1,
+            safeBulkUpdate.installment_total || t.installment_total || 1,
+          ),
+        };
+
         if (t.status === 'paid') {
           return supabase
             .from('financial_transactions')
-            .update(safeBulkUpdate)
+            .update(rowUpdate)
             .eq('id', t.id);
         }
 
@@ -284,7 +361,7 @@ export async function editarTransacao(
         return supabase
           .from('financial_transactions')
           .update({
-            ...safeBulkUpdate,
+            ...rowUpdate,
             date: safeNewDateStr,
           })
           .eq('id', t.id);
@@ -293,6 +370,9 @@ export async function editarTransacao(
       const results = await Promise.all(dateUpdates);
       const firstError = results.find(r => r.error)?.error;
       if (firstError) return { data: null, error: firstError };
+
+      const statusError = await aplicarStatusNaOcorrencia();
+      if (statusError) return { data: null, error: statusError };
 
       // Sincronizar tags para o escopo following (com data)
       if (inputTags && futureTransactions.length > 0) {
@@ -313,15 +393,22 @@ export async function editarTransacao(
 
       return { data: futureTransactions, error: null };
     } else {
-      const { data: updatedRows, error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from('financial_transactions')
-        .update(safeBulkUpdate)
+        .update(bulkUpdate)
         .or(`id.eq.${refId},parent_id.eq.${refId}`)
         .gte('date', currentDate)
         .neq('is_customized', true)
-        .select('id');
+        .select('id, installment_current, installment_total');
 
       if (error) return { data: null, error };
+      const updatedRows = updatedData as unknown as ParcelaRow[] | null;
+
+      const descriptionError = await renumerarDescricoes(updatedRows);
+      if (descriptionError) return { data: null, error: descriptionError };
+
+      const statusError = await aplicarStatusNaOcorrencia();
+      if (statusError) return { data: null, error: statusError };
 
       // Sincronizar tags para o escopo following (sem data)
       if (inputTags && updatedRows && updatedRows.length > 0) {

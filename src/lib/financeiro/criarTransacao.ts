@@ -186,9 +186,13 @@ export async function criarTransacao(input: TransactionInput) {
   if (input.modalidade === 'recorrente') {
     const recurrenceInterval = input.recurrence_interval || 1;
     
-    // 1. Inserir a transação mãe como template (is_template = true)
+    // 1. Inserir a transação mãe como template (is_template = true).
+    // O template é só a regra da série: quem é pago é a ocorrência física. Nunca
+    // herda o status do formulário (lançamento criado já pago), senão a série fica
+    // "paga" — ver trigger trg_template_status_pending.
     const { data: parentData, error: parentError } = await supabase.from('financial_transactions').insert({
       ...baseTransaction,
+      status: 'pending',
       date: input.date,
       recurrence_period: recurrencePeriod,
       recurrence_interval: recurrenceInterval,
