@@ -257,13 +257,15 @@ export default function CloseBillModal({
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-2">
                   <p className="text-xs font-black uppercase tracking-widest text-[#14b8a6]">Valor da Fatura</p>
                   <div className="flex items-center justify-center gap-1">
-                    <span className="text-slate-400 font-bold text-2xl">R$</span>
+                    <span className="text-slate-400 font-bold text-2xl shrink-0">R$</span>
+                    {/* Ocupa toda a largura do cartão e reduz a fonte a partir de 100 mil
+                        (mais de 9 caracteres), para o valor caber inteiro até no celular */}
                     <input
                       type="text"
                       inputMode="numeric"
                       value={amountInput}
                       onChange={handleAmountChange}
-                      className="w-40 text-center bg-transparent text-4xl font-black text-slate-800 tracking-tight focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/20 rounded-xl"
+                      className={`flex-1 min-w-0 text-center bg-transparent font-black text-slate-800 tracking-tight focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/20 rounded-xl ${amountInput.length > 9 ? 'text-3xl' : 'text-4xl'}`}
                     />
                   </div>
                   <p className="text-[10px] text-slate-500 font-medium">
