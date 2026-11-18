@@ -42,7 +42,12 @@ const FAQ_ITEMS: FAQItem[] = [
     {
         category: 'funcionalidades',
         question: 'Como funciona o gerenciamento de cartões de crédito?',
-        answer: 'Você pode cadastrar seus cartões de crédito na plataforma, definindo o limite total, o dia de fechamento da fatura e o dia de vencimento. Ao lançar uma despesa no cartão de crédito, o sistema calcula automaticamente em qual fatura ela se enquadra de acordo com a data de fechamento e debita do seu limite restante. Além disso, se o seu plano permitir, você será notificado por e-mail assim que a fatura do cartão fechar.'
+        answer: 'Você pode cadastrar seus cartões de crédito na plataforma, definindo o limite total, o dia de fechamento da fatura e o dia de vencimento. Ao lançar uma despesa no cartão de crédito, o sistema calcula automaticamente em qual fatura ela se enquadra de acordo com a data de fechamento e debita do seu limite restante. Além disso, se o seu plano permitir, você será notificado por e-mail assim que a fatura do cartão fechar. Na tela de Cartões, o total da fatura fica sempre visível no topo enquanto você rola a lista de lançamentos.'
+    },
+    {
+        category: 'funcionalidades',
+        question: 'Como faço vários lançamentos seguidos, um atrás do outro?',
+        answer: 'Nas telas de Lançamentos e de Cartões, ao criar um lançamento novo, use o botão "Salvar e continuar". O lançamento é salvo e a janela continua aberta para o próximo, já com o tipo, a conta ou cartão, o titular do cartão, a data e o mês da fatura do lançamento anterior. Valor, descrição, categoria, cliente, tags e parcelamento ficam em branco para você preencher. O topo da janela mostra quantos lançamentos você já fez nessa sequência. Quando terminar, use "Criar Lançamento" no último ou feche a janela.'
     },
     {
         category: 'funcionalidades',

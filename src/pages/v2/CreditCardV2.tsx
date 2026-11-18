@@ -719,12 +719,8 @@ const CreditCardV2 = () => {
               </button>
             </div>
           </div>
-          {/* Filter bar removed as we have no conciliation */}
-        </div>
-
-        {/* Mobile: Invoice summary card */}
-        <div className="shrink-0 px-3 py-2 bg-purple-50 border-b border-purple-100">
-          <div className="flex items-center justify-between text-xs">
+          {/* Total da fatura dentro do cabeçalho fixo, para continuar visível ao rolar a lista */}
+          <div className="flex items-center justify-between text-xs px-3 py-2 bg-purple-50 rounded-xl">
             <span className="text-purple-600 font-bold">Fatura</span>
             <span className={`font-black tabular-nums ${invoiceSummary.total >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
               {invoiceSummary.total >= 0 ? '-' : ''}{formatCurrency(Math.abs(invoiceSummary.total))}
@@ -919,6 +915,14 @@ const CreditCardV2 = () => {
                <ArrowRight size={14} className="ml-1 opacity-70" />
             </button>
 
+            {/* Total da fatura repetido na barra fixa: em telas baixas o da coluna lateral pode ficar fora de vista */}
+            <div className="flex items-baseline gap-2 shrink-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fatura</span>
+              <span className={`text-sm font-black tabular-nums ${invoiceSummary.total >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                {invoiceSummary.total >= 0 ? '-' : ''}{formatCurrency(Math.abs(invoiceSummary.total))}
+              </span>
+            </div>
+
             <div className="flex-1 max-w-sm relative ml-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
@@ -937,7 +941,7 @@ const CreditCardV2 = () => {
               <div className="py-12 text-center text-slate-400 italic">Carregando...</div>
             ) : displayInstances.length === 0 ? (
               <div className="py-12 text-center text-slate-400 italic">Nenhum lançamento neste período.</div>
-            ) : groupedByHolder.length > 0 ? (
+            ) : (
               groupedByHolder.map(group => (
                 <div key={group.holder} className="divide-y divide-slate-100">
                   {/* Group header */}
@@ -977,8 +981,6 @@ const CreditCardV2 = () => {
                   ))}
                 </div>
               ))
-            ) : (
-              displayInstances.map(t => <TransactionRow key={t.id + t.instanceDate} t={t} />)
             )}
           </div>
         </div>
@@ -990,6 +992,7 @@ const CreditCardV2 = () => {
           isOpen={isModalOpen}
           onClose={() => { setIsModalOpen(false); setEditingTransaction(null); }}
           onSuccess={() => { setIsModalOpen(false); setEditingTransaction(null); fetchTransactions(); }}
+          onSalvarEContinuar={fetchTransactions}
           initialType={modalType}
           transaction={editingTransaction}
           initialAccountId={selectedCardId || undefined}

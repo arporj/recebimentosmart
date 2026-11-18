@@ -2486,6 +2486,7 @@ const FinancialTransactionsV2 = () => {
 
       <FinancialTransactionModalV2
         isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setIsCloning(false); }} onSuccess={fetchTransactions}
+        onSalvarEContinuar={fetchTransactions}
         initialType={modalType} transaction={editingTransaction} isConfirming={isConfirming} isCloning={isCloning}
       />
 

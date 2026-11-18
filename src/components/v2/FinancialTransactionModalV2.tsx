@@ -141,6 +141,12 @@ interface FinancialTransactionModalProps {
   transaction?: TransactionData | null;
   isConfirming?: boolean;
   isCloning?: boolean;
+  /**
+   * Quando informado, exibe o botão "Salvar e continuar" em lançamentos novos:
+   * salva, chama esta função (para a tela atualizar a lista) e deixa o modal aberto
+   * para o próximo lançamento, mantendo conta, titular, data e mês da fatura.
+   */
+  onSalvarEContinuar?: () => void;
 }
 
 const FinancialTransactionModalV2 = ({
@@ -159,7 +165,8 @@ const FinancialTransactionModalV2 = ({
   initialRecurrenceInterval = '1',
   transaction = null,
   isConfirming = false,
-  isCloning = false
+  isCloning = false,
+  onSalvarEContinuar
 }: FinancialTransactionModalProps) => {
   const { user, markOnboardingStep } = useAuth();
   const { checkLimit } = usePlanLimits();
@@ -202,6 +209,8 @@ const FinancialTransactionModalV2 = ({
   const isCreditCard = accounts.find(a => a.id === accountId)?.type === 'credit_card';
   const isRecurring = !!transaction && (transaction.modalidade === 'recorrente' || transaction.modalidade === 'parcelada' || !!transaction.parent_id || !!transaction.recurrence_enabled);
   const [loading, setLoading] = useState(false);
+  // Quantos lançamentos foram salvos com "Salvar e continuar" desde que o modal abriu
+  const [lancadosNaSequencia, setLancadosNaSequencia] = useState(0);
   
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
@@ -482,6 +491,34 @@ const FinancialTransactionModalV2 = ({
       setRecurrenceInterval(String(initialRecurrenceInterval || '1'));
     }
   }, [isOpen, transaction, isCloning, initialType, initialAccountId, initialDestinationAccountId, initialDescription, initialAmount, initialDate, initialModalidade, initialInstallmentTotal, initialPeriodicidade, initialRecurrenceInterval]);
+
+  useEffect(() => {
+    if (isOpen) setLancadosNaSequencia(0);
+  }, [isOpen]);
+
+  // Prepara o formulário para o próximo lançamento da sequência ("Salvar e continuar").
+  // Mantém o contexto (tipo, conta/cartão, destino, titular, data, mês da fatura e
+  // situação) e limpa o que muda de um lançamento para outro. A categoria é limpa de
+  // propósito: numa fatura cada compra costuma ter uma diferente, e mantê-la levaria a
+  // categorizar errado sem perceber.
+  const limparParaProximoLancamento = () => {
+    setAmount('');
+    setDescription('');
+    setCategoryId('');
+    setClientId('');
+    setSelectedTags([]);
+    setTagSearch('');
+    setCategorySearch('');
+    setModalidade(initialModalidade);
+    setPeriodicidade(initialPeriodicidade);
+    setInstallmentTotal(String(initialInstallmentTotal || '1'));
+    setStartInstallment('1');
+    setIsTotalValue(false);
+    setRecurrenceInterval(String(initialRecurrenceInterval || '1'));
+    setDueDay(new Date().getDate());
+    setAutoConfirm(false);
+    setTimeout(() => amountInputRef.current?.focus(), 50);
+  };
 
 
   useEffect(() => {
@@ -768,7 +805,11 @@ const FinancialTransactionModalV2 = ({
     };
   }, [categories, categorySearch]);
 
-  const handleSubmit = async (e?: React.FormEvent, selectedScope?: 'this' | 'following' | 'all') => {
+  const handleSubmit = async (
+    e?: React.FormEvent,
+    selectedScope?: 'this' | 'following' | 'all',
+    continuarAposSalvar = false
+  ) => {
     e?.preventDefault();
     if (!user) return;
     
@@ -924,6 +965,14 @@ const FinancialTransactionModalV2 = ({
 
       toast.success(isEditing ? 'Lançamento atualizado!' : 'Lançamento criado!');
       if (!isEditing) markOnboardingStep('transaction_created');
+
+      if (continuarAposSalvar && !isEditing && onSalvarEContinuar) {
+        onSalvarEContinuar();
+        setLancadosNaSequencia(n => n + 1);
+        limparParaProximoLancamento();
+        return;
+      }
+
       onSuccess();
       handleClose();
     } catch (err) {
@@ -979,6 +1028,8 @@ const FinancialTransactionModalV2 = ({
   // Trava campos específicos de tipo (periodicidade, parcelas, due_day...) apenas
   // quando NÃO se está convertendo a modalidade de uma série já ativa — durante uma
   // conversão real esses campos precisam ficar editáveis para configurar o tipo novo.
+  const podeSalvarEContinuar = !!onSalvarEContinuar && !isEditing && !isConfirming;
+
   const isTypeLocked =
     isEditing &&
     !!transaction?.modalidade &&
@@ -1004,6 +1055,11 @@ const FinancialTransactionModalV2 = ({
             <h2 className="text-lg font-bold text-slate-900 font-manrope">
               {isEditing ? `Editar ${description || 'Lançamento'}` : 'Nova Transação'}
             </h2>
+            {lancadosNaSequencia > 0 && (
+              <span className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 text-[10px] font-extrabold uppercase tracking-wider">
+                {lancadosNaSequencia} {lancadosNaSequencia === 1 ? 'lançado' : 'lançados'} nesta sequência
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-extrabold text-teal-600 tracking-widest uppercase opacity-60">Recebimento $mart</span>
@@ -2135,6 +2191,18 @@ const FinancialTransactionModalV2 = ({
               Cancelar
             </button>
           </div>
+          <div className="flex flex-col-reverse md:flex-row gap-3 w-full md:w-auto">
+          {podeSalvarEContinuar && (
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, undefined, true)}
+              disabled={loading}
+              className="w-full md:w-auto px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-xs font-extrabold transition-all uppercase tracking-widest border-2 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300 disabled:opacity-60"
+            >
+              <Plus size={16} />
+              {loading ? 'Salvando...' : 'Salvar e continuar'}
+            </button>
+          )}
           <button
             onClick={handleSubmit}
             disabled={loading}
@@ -2151,6 +2219,7 @@ const FinancialTransactionModalV2 = ({
             {loading ? 'Salvando...' : (isConfirming ? 'Confirmar Lançamento' : (isEditing ? 'Salvar Alterações' : 'Criar Lançamento'))}
             <ArrowRight size={18} />
           </button>
+          </div>
         </footer>
       </div>
 
